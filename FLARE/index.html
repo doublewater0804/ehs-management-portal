@@ -1,0 +1,2985 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>廠區廢氣燃燒塔管制表</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .app-shell {
+            max-width: none;
+            width: 100%;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 260px 260px 980px;
+            grid-template-areas: "settings manual report";
+            gap: 16px;
+            align-items: start;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+        }
+        .main-layout::-webkit-scrollbar,
+        .exclusion-scroll::-webkit-scrollbar,
+        .import-preview-wrap::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .main-layout::-webkit-scrollbar-thumb,
+        .exclusion-scroll::-webkit-scrollbar-thumb,
+        .import-preview-wrap::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        .entry-panel,
+        .exclusion-panel {
+            width: 260px;
+            min-width: 260px;
+        }
+        .entry-panel {
+            grid-area: settings;
+        }
+        .exclusion-panel {
+            grid-area: manual;
+        }
+        .excel-panel {
+            width: 340px;
+            min-width: 340px;
+        }
+        .report-panel {
+            grid-area: report;
+            width: 980px;
+            min-width: 980px;
+        }
+        .report-card {
+            width: 100%;
+        }
+        .exclusion-scroll {
+            max-height: 300px;
+            overflow: auto;
+        }
+        @media (max-width: 767px) {
+            .main-layout {
+                display: block;
+                overflow-x: visible;
+                padding-bottom: 0;
+            }
+            .entry-panel,
+            .excel-panel,
+            .exclusion-panel,
+            .report-panel {
+                width: 100%;
+                min-width: 0;
+                margin-bottom: 16px;
+            }
+        }
+
+        /* 報表框線樣式 */
+        .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 4px 8px;
+            text-align: center;
+        }
+        .report-table thead {
+            background-color: #f8fafc;
+        }
+        .factory-label {
+            text-align: left !important;
+            padding-left: 12px !important;
+        }
+        .area-header {
+            background-color: #f1f5f9;
+            font-weight: bold;
+        }
+        /* 移除日期輸入框的預設字體大小限制 */
+        input[type="date"] {
+            font-size: 0.85rem;
+        }
+        .import-preview-table th, .import-preview-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            white-space: nowrap;
+        }
+        .import-preview-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            z-index: 1;
+        }
+
+        .day-list-table th, .day-list-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            white-space: nowrap;
+        }
+        .day-list-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            z-index: 1;
+        }
+
+        .excel-panel {
+            display: none !important;
+        }
+        .top-import-control {
+            position: relative;
+        }
+        .top-import-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 250px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+            padding: 8px;
+            z-index: 40;
+        }
+        .top-import-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 0.875rem;
+            color: #1f2937;
+            transition: background-color .15s ease;
+        }
+        .top-import-menu button:hover {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .top-import-section {
+            display: none;
+        }
+        .top-import-section.active {
+            display: block;
+        }
+        .top-import-panel {
+            border-left: 4px solid #2563eb;
+        }
+        .top-import-panel .top-import-section > .bg-white {
+            box-shadow: none;
+            border: 0;
+            padding: 0;
+        }
+        /* 列印樣式優化 */
+        .print-remark-content {
+            display: none;
+            white-space: pre-wrap;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .screen-remark-editor { display: none !important; }
+            .print-remark-content { display: block !important; }
+            body { background-color: white; padding: 0; }
+            .app-shell { max-width: 100%; }
+            .main-layout { display: block; }
+            .report-panel { width: 100%; min-width: 0; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+<div class="app-shell mx-auto">
+<!-- 標題區域 -->
+<div class="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-6">
+<div>
+<h1 class="text-2xl font-bold text-gray-800 flex flex-wrap items-center gap-y-1">
+<select class="mr-2 border-b-2 border-blue-600 bg-transparent focus:outline-none no-print" id="view-year" onchange="renderAll()">
+<!-- 年度選項由 JS 動態生成 -->
+</select>
+<span class="mr-1" id="display-year"></span>年廠區廢氣燃燒塔排放使用事件日數統計
+                </h1>
+<p class="text-gray-500 text-sm mt-1">廠區自主管理系統 (台塑工業專用)</p>
+</div>
+<div class="flex flex-wrap gap-2 no-print items-center">
+<div class="top-import-control" id="top-import-control">
+<button class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm font-bold" id="top-import-toggle" type="button">匯入資料 ▼</button>
+<div class="top-import-menu hidden" id="top-import-menu">
+<button data-import-type="flare" type="button"><span class="text-green-600 font-bold">▣</span>匯入 FLARE 排放 Excel</button>
+<button data-import-type="schedule" type="button"><span class="text-emerald-600 font-bold">▣</span>匯入定檢期間 Excel</button>
+<button data-import-type="maintenance" type="button"><span class="text-sky-600 font-bold">CSV</span>匯入維護用 CSV</button>
+</div>
+</div>
+<span class="hidden xl:inline-flex items-center rounded bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold">← 匯入功能集中於此</span>
+<button class="bg-blue-100 text-blue-700 px-4 py-2 rounded shadow-sm hover:bg-blue-200 transition text-sm" onclick="window.print()">列印報表</button>
+<button class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition text-sm" onclick="exportAllDataCSV()">匯出全部資料 CSV</button>
+<button class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded shadow-sm hover:bg-emerald-200 transition text-sm" onclick="exportIncludedDataCSV()">匯出納入統計 CSV</button>
+<button class="bg-sky-600 text-white px-4 py-2 rounded shadow hover:bg-sky-700 transition text-sm" onclick="exportMaintenanceCSV()">匯出維護用 CSV</button>
+<button class="text-red-500 text-sm underline" onclick="clearAllData()">清除所有數據</button>
+</div>
+</div>
+<div class="top-import-panel hidden no-print bg-white rounded-lg shadow-sm border border-blue-100 p-4 mb-6" id="top-import-panel">
+<div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2 mb-3">
+<div>
+<h2 class="text-base font-bold text-gray-800" id="top-import-panel-title">匯入資料</h2>
+<p class="text-xs text-gray-500 mt-1">匯入功能統一集中在此區，確認前僅產生預覽，不會寫入統計。</p>
+</div>
+<button class="text-gray-500 hover:text-gray-800 text-sm underline" id="top-import-close" type="button">關閉</button>
+</div>
+<div id="top-import-panel-body"></div>
+</div>
+<!-- 區域小計摘要 -->
+<div class="bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-200">
+<p class="text-lg font-bold">
+                1. 麥寮廠使用事件日：<span class="text-blue-600 underline" id="summary-mai-liao">0</span> 天；
+                海豐廠使用事件日：<span class="text-blue-600 underline" id="summary-hai-feng">0</span> 天；
+                醋酸廠使用事件日：<span class="text-blue-600 underline" id="summary-hac">0</span> 天
+            </p>
+<p class="mt-2 text-sm text-orange-700 font-medium" id="excluded-days-summary">目前統計已排除人工剔除使用日數：0 天</p>
+</div>
+<div class="main-layout">
+<!-- 左欄：設定類工具；上方為設定預計定檢期間，下方為工廠名稱對照管理 -->
+<div class="entry-panel space-y-4 no-print"><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-blue-600">
+<h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-center">設定預計定檢期間</h2>
+<form class="space-y-4 text-xs" id="schedule-form">
+<div>
+<label class="block font-medium text-gray-700 mb-1">選擇工廠</label>
+<select class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="sched-factory" required="">
+<option value="">選擇工廠...</option>
+<option value="ARO1廠">ARO1廠</option>
+<option value="SM廠麥寮">SM廠麥寮</option>
+<option value="PABS廠(麥寮)">PABS廠(麥寮)</option>
+<option value="PC廠">PC廠</option>
+<option value="HAC廠">HAC廠</option>
+<option value="ARO2廠">ARO2廠</option>
+<option value="ARO3廠">ARO3廠</option>
+<option value="SM廠海豐">SM廠海豐</option>
+<option value="合成酚廠">合成酚廠</option>
+<option value="PP廠">PP廠</option>
+</select>
+</div>
+<div>
+<label class="block font-medium text-gray-700 mb-1">定檢類型</label>
+<input class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="sched-type" list="schedule-type-options" placeholder="例如：定檢、無計劃、配合醋酸廠" type="text" value="定檢"/>
+<datalist id="schedule-type-options">
+<option value="定檢"></option>
+<option value="無計劃"></option>
+<option value="封存"></option>
+<option value="配合醋酸廠"></option>
+<option value="配合產銷停車"></option>
+<option value="計畫性停車"></option>
+</datalist>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block font-medium text-gray-700 mb-1">開始日期</label>
+<input class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="sched-start" type="date"/>
+</div>
+<div>
+<label class="block font-medium text-gray-700 mb-1">結束日期</label>
+<input class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="sched-end" type="date"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition shadow" id="schedule-submit-btn" type="submit">新增此定檢期間</button>
+<button class="hidden bg-gray-100 text-gray-700 font-bold py-2 rounded hover:bg-gray-200 transition" id="schedule-cancel-edit-btn" type="button">取消修改</button>
+</div>
+</form>
+<div class="mt-4 border-t pt-3 text-xs">
+<div class="flex items-center justify-between mb-2 gap-2">
+<h3 class="font-bold text-gray-700">目前已設定期間</h3>
+<div class="flex items-center gap-2">
+<span class="text-gray-400" id="schedule-period-count">0 組</span>
+<button class="text-[11px] text-red-600 underline hover:text-red-800 disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed" disabled="" id="clear-schedule-factory-btn" type="button">清空此工廠</button>
+</div>
+</div>
+<div class="max-h-36 overflow-auto border rounded bg-white">
+<table class="w-full text-[11px]">
+<thead class="bg-gray-50 sticky top-0">
+<tr class="text-left text-gray-700">
+<th class="px-2 py-1 border-b w-16">定檢類型</th>
+<th class="px-2 py-1 border-b">期間</th>
+<th class="px-2 py-1 border-b w-20">操作</th>
+</tr>
+</thead>
+<tbody id="schedule-period-list">
+<tr><td class="text-center text-gray-400 py-3" colspan="3">請先選擇工廠</td></tr>
+</tbody>
+</table>
+</div>
+<p class="mt-2 text-[11px] text-gray-400 leading-relaxed">同一工廠可新增多組定檢期間；若期間重疊，系統會提醒但仍可保留。</p>
+</div>
+<div class="top-import-section text-xs" data-import-title="匯入定檢期間 Excel" id="schedule-import-section">
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-bold text-gray-700">匯入定檢期間 Excel</h3>
+<span class="text-gray-400">覆蓋目前年度</span>
+</div>
+<p class="text-[11px] text-gray-500 leading-relaxed mb-2">上傳年度定檢工安業務執行表，系統會讀取「廠處、定檢類型、停俥開始日期、停俥結束日期」，並只寫入報表內 10 個工廠。</p>
+<input accept=".xlsx,.xls" class="block w-full text-xs border rounded p-2 bg-gray-50" id="schedule-excel-file" type="file"/>
+<div class="mt-2 rounded bg-gray-50 border border-gray-200 p-2 text-gray-600 leading-relaxed" id="schedule-import-summary">尚未選擇定檢 Excel 檔案。</div>
+<div class="hidden max-h-44 overflow-auto border rounded bg-white mt-2 import-preview-wrap" id="schedule-import-preview-wrap">
+<table class="import-preview-table w-full text-[11px]">
+<thead>
+<tr class="text-left text-gray-700">
+<th>列號</th>
+<th>工廠</th>
+<th>定檢類型</th>
+<th>預計定檢期間</th>
+<th>判斷</th>
+</tr>
+</thead>
+<tbody id="schedule-import-preview-body"></tbody>
+</table>
+</div>
+<div class="hidden rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 max-h-32 overflow-auto mt-2" id="schedule-import-error-wrap">
+<div class="font-bold mb-1">定檢匯入檢查訊息</div>
+<ul class="list-disc pl-5 space-y-1" id="schedule-import-error-list"></ul>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<button class="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed" disabled="" id="confirm-schedule-import-btn" onclick="confirmScheduleExcelImport()">確認填入期間</button>
+<button class="bg-gray-100 text-gray-700 font-bold py-2 rounded hover:bg-gray-200 transition" onclick="resetScheduleImportState()">清除預覽</button>
+</div>
+</div>
+<div class="mt-4 border-t pt-3 text-xs">
+<div class="flex items-center justify-between mb-2 gap-2">
+<h3 class="font-bold text-gray-700">工廠名稱對照管理</h3>
+<button class="text-[11px] text-red-600 underline hover:text-red-800" id="clear-custom-factory-map-btn" type="button">清除自訂對照</button>
+</div>
+<p class="text-[11px] text-gray-500 leading-relaxed mb-2">不同 Excel 來源的廠名會先轉成報表標準工廠；無法判定者會列入待確認，儲存後下次自動套用。</p>
+<form class="grid grid-cols-1 gap-2 mb-3" id="factory-map-form">
+<input class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="factory-map-raw" placeholder="匯入資料中的廠名，例如：PHL、SM廠" type="text"/>
+<select class="w-full rounded bg-white border-gray-300 p-2 text-gray-900 border focus:ring-2 focus:ring-blue-500" id="factory-map-target"></select>
+<button class="bg-slate-700 text-white font-bold py-2 rounded hover:bg-slate-800 transition" type="submit">新增 / 更新對照</button>
+</form>
+<div class="hidden rounded border border-amber-200 bg-amber-50 p-2 text-amber-900 mb-3" id="pending-factory-map-wrap">
+<div class="font-bold mb-1">待確認工廠名稱</div>
+<div class="max-h-36 overflow-auto rounded border border-amber-100 bg-white">
+<table class="w-full text-[11px]">
+<thead class="bg-amber-50 sticky top-0">
+<tr class="text-left">
+<th class="px-2 py-1 border-b">匯入名稱</th>
+<th class="px-2 py-1 border-b w-10">筆數</th>
+<th class="px-2 py-1 border-b w-28">對應到</th>
+</tr>
+</thead>
+<tbody id="pending-factory-map-body"></tbody>
+</table>
+</div>
+<button class="mt-2 w-full bg-amber-600 text-white font-bold py-2 rounded hover:bg-amber-700 transition" id="save-pending-factory-map-btn" type="button">儲存對照並重新解析</button>
+</div>
+<div class="max-h-32 overflow-auto border rounded bg-white">
+<table class="w-full text-[11px]">
+<thead class="bg-gray-50 sticky top-0">
+<tr class="text-left text-gray-700">
+<th class="px-2 py-1 border-b">匯入名稱</th>
+<th class="px-2 py-1 border-b">標準工廠</th>
+<th class="px-2 py-1 border-b w-10">操作</th>
+</tr>
+</thead>
+<tbody id="custom-factory-map-body">
+<tr><td class="text-center text-gray-400 py-3" colspan="3">尚無自訂對照</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="top-import-section text-xs" data-import-title="匯入維護用 CSV" id="maintenance-import-section">
+<div class="flex items-center justify-between mb-2 gap-2">
+<h3 class="font-bold text-gray-700">匯入維護用 CSV</h3>
+<span class="text-gray-400">CSV</span>
+</div>
+<p class="text-[11px] text-gray-500 leading-relaxed mb-2">匯出維護用 CSV 後可用 Excel 離線修改；再匯入時會先產生預覽，確認後才寫入瀏覽器資料。</p>
+<div class="grid grid-cols-1 gap-2">
+<button class="hidden bg-sky-600 text-white font-bold py-2 rounded hover:bg-sky-700 transition" id="export-maintenance-csv-btn" type="button">匯出維護用 CSV</button>
+<div>
+<label class="block font-medium text-gray-700 mb-1">匯入模式</label>
+<select class="w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-sky-500" id="maintenance-import-mode">
+<option value="overwrite">覆蓋目前年度：清除目前年度資料後依 CSV 重建</option>
+<option value="append">追加更新：保留既有資料，CSV 內資料新增或更新</option>
+</select>
+</div>
+<div>
+<label class="block font-medium text-gray-700 mb-1">選擇維護用 CSV</label>
+<input accept=".csv,text/csv" class="block w-full text-xs border rounded p-2 bg-gray-50" id="maintenance-csv-file" type="file"/>
+</div>
+<div class="rounded bg-gray-50 border border-gray-200 p-2 text-gray-600 leading-relaxed" id="maintenance-import-summary">尚未選擇維護用 CSV。</div>
+<div class="hidden rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 max-h-32 overflow-auto" id="maintenance-import-error-wrap">
+<div class="font-bold mb-1">維護 CSV 檢查訊息</div>
+<ul class="list-disc pl-5 space-y-1" id="maintenance-import-error-list"></ul>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="bg-sky-600 text-white font-bold py-2 rounded hover:bg-sky-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed" disabled="" id="confirm-maintenance-import-btn" type="button">確認匯入維護 CSV</button>
+<button class="bg-gray-100 text-gray-700 font-bold py-2 rounded hover:bg-gray-200 transition" id="reset-maintenance-import-btn" type="button">清除預覽</button>
+</div>
+<p class="text-[11px] text-gray-400 leading-relaxed">啟用狀態填「是」才會匯入；填「否」會略過。覆蓋模式會以 CSV 內容重建目前年度資料。</p>
+</div>
+</div>
+</div></div>
+<!-- Excel 批次匯入：已移至上方匯入資料面板 -->
+<div class="excel-panel no-print"><div class="top-import-section text-xs" data-import-title="匯入 FLARE 排放 Excel" id="flare-import-section">
+<h2 class="text-lg font-bold text-gray-800 mb-2 border-b pb-2">匯入 FLARE 排放 Excel</h2>
+<p class="text-xs text-gray-500 mb-4 leading-relaxed">
+                        上傳 FLARE Excel 後，系統只會納入「累計排放量(管道) ≥ 5000」的資料，並依「監測日期」與本年度已設定的多組「預計定檢期間」自動判斷定檢 / 非定檢。確認前僅產生預覽，不會寫入統計。
+                    </p>
+<div class="space-y-3 text-xs">
+<div>
+<label class="block font-medium text-gray-700 mb-1">匯入模式</label>
+<select class="w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-purple-500" id="import-mode">
+<option value="append">追加資料：保留既有紀錄，重複資料自動跳過</option>
+<option value="overwrite">覆蓋目前年度：清除目前年度資料後再匯入</option>
+</select>
+</div>
+<div>
+<label class="block font-medium text-gray-700 mb-1">選擇 Excel 檔案</label>
+<input accept=".xlsx,.xls" class="block w-full text-xs border rounded p-2 bg-gray-50" id="excel-file" type="file"/>
+</div>
+<div class="rounded bg-gray-50 border border-gray-200 p-3 text-gray-600 leading-relaxed" id="import-summary">
+                            尚未選擇 Excel 檔案。
+                        </div>
+<div class="hidden max-h-60 overflow-auto border rounded bg-white import-preview-wrap" id="import-preview-wrap">
+<table class="import-preview-table w-full text-[11px]">
+<thead>
+<tr class="text-left text-gray-700">
+<th>列號</th>
+<th>日期</th>
+<th>工廠</th>
+<th>判斷類型</th>
+<th>排放量</th>
+<th>判斷依據</th>
+</tr>
+</thead>
+<tbody id="import-preview-body"></tbody>
+</table>
+</div>
+<div class="hidden rounded border border-amber-200 bg-amber-50 p-3 text-amber-800 max-h-44 overflow-auto" id="import-error-wrap">
+<div class="font-bold mb-1">匯入檢查訊息</div>
+<ul class="list-disc pl-5 space-y-1" id="import-error-list"></ul>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed" disabled="" id="confirm-import-btn" onclick="confirmExcelImport()">確認導入統計</button>
+<button class="bg-gray-100 text-gray-700 font-bold py-2 rounded hover:bg-gray-200 transition" onclick="resetImportState()">清除預覽</button>
+</div>
+<p class="text-[11px] text-gray-400 leading-relaxed">
+                            欄位需求：公私場所代號或廠處名稱、監測日期、累計排放量(管道)。僅統計累計排放量(管道) ≥ 5000 的資料；低於門檻者只計入略過筆數，不列入預覽與統計。
+                        </p>
+</div>
+</div></div>
+<!-- 中欄：人工資料操作；上方為人工新增排放紀錄，下方為人工剔除使用日數 -->
+<div class="exclusion-panel space-y-4 no-print"><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-blue-600">
+<h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">人工新增排放紀錄</h2>
+<form class="space-y-4 text-sm" id="event-form">
+<div>
+<label class="block font-medium text-gray-700">選擇工廠</label>
+<select class="mt-1 block w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-blue-500" id="factory" required="">
+<option value="">請選擇...</option>
+<optgroup label="1. 麥寮區">
+<option value="ARO1廠">ARO1廠</option>
+<option value="SM廠麥寮">SM廠麥寮</option>
+<option value="PABS廠(麥寮)">PABS廠(麥寮)</option>
+<option value="PC廠">PC廠</option>
+</optgroup>
+<optgroup label="2. HAC廠">
+<option value="HAC廠">HAC廠</option>
+</optgroup>
+<optgroup label="3. 海豐區">
+<option value="ARO2廠">ARO2廠</option>
+<option value="ARO3廠">ARO3廠</option>
+<option value="SM廠海豐">SM廠海豐</option>
+<option value="合成酚廠">合成酚廠</option>
+<option value="PP廠">PP廠</option>
+</optgroup>
+</select>
+</div>
+<div>
+<label class="block font-medium text-gray-700">期間類型</label>
+<div class="mt-1 flex space-x-4">
+<label class="inline-flex items-center">
+<input checked="" class="text-blue-600" name="period_type" type="radio" value="TA"/> <span class="ml-1">定檢 (TA)</span>
+</label>
+<label class="inline-flex items-center">
+<input class="text-orange-600" name="period_type" type="radio" value="NON-TA"/> <span class="ml-1">非定檢</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block font-medium text-gray-700">日期</label>
+<input class="mt-1 block w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-blue-500" id="date" required="" type="date"/>
+</div>
+<div>
+<label class="block font-medium text-gray-700">排放量 (NM3)</label>
+<input class="mt-1 block w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-blue-500" id="amount" required="" step="0.1" type="number"/>
+</div>
+<button class="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition shadow" type="submit">儲存紀錄</button>
+</form>
+</div><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-orange-500">
+<h2 class="text-lg font-bold text-gray-800 mb-2 border-b pb-2">人工剔除使用日數</h2>
+<p class="text-xs text-gray-500 mb-4 leading-relaxed">
+                        以「工廠 + 日期」為單位人工剔除。資料不會被刪除，只是不納入定檢、非定檢、合計與區域總計。剔除原因可填可不填。
+                    </p>
+<div class="rounded bg-orange-50 border border-orange-100 p-3 text-xs text-orange-800 mb-3 leading-relaxed" id="exclusion-panel-summary">
+                        本年度納入統計 0 天；已剔除 0 天。
+                    </div>
+<div class="space-y-4 text-xs">
+<div>
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-bold text-gray-700">納入統計清單</h3>
+<span class="text-gray-400" id="included-day-count">0 天</span>
+</div>
+<div class="exclusion-scroll border rounded bg-white">
+<table class="day-list-table w-full text-[11px]">
+<thead>
+<tr class="text-left text-gray-700">
+<th>日期</th>
+<th>工廠</th>
+<th>類型</th>
+<th>排放量</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="included-days-body">
+<tr><td class="text-center text-gray-400 py-4" colspan="5">尚無資料</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-bold text-gray-700">已剔除清單</h3>
+<span class="text-gray-400" id="excluded-day-count">0 天</span>
+</div>
+<div class="exclusion-scroll border rounded bg-white">
+<table class="day-list-table w-full text-[11px]">
+<thead>
+<tr class="text-left text-gray-700">
+<th>日期</th>
+<th>工廠</th>
+<th>類型</th>
+<th>剔除原因</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="excluded-days-body">
+<tr><td class="text-center text-gray-400 py-4" colspan="5">尚無剔除資料</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div></div>
+<!-- 右側：主要統計報表 -->
+<div class="report-panel">
+<div class="report-card bg-white rounded shadow-sm overflow-hidden border border-black p-2">
+<table class="report-table w-full text-[11px] border-collapse">
+<thead>
+<tr class="bg-gray-50">
+<th rowspan="3" width="70">廠處</th>
+<th rowspan="3" width="90">工廠</th>
+<th colspan="7" id="report-period-label">統計期間(1/1 - 12/31)</th>
+<th rowspan="3" width="40">合計</th>
+<th rowspan="3" width="70">總計</th>
+</tr>
+<tr class="bg-gray-50">
+<th rowspan="2" width="70">定檢類型</th>
+<th colspan="3">定檢</th>
+<th colspan="2">非定檢</th>
+<th rowspan="2" width="35">合計</th>
+</tr>
+<tr class="bg-gray-50">
+<th width="105">預計定檢期間</th>
+<th width="90">發生時間</th>
+<th width="35">天數</th>
+<th width="125">發生時間</th>
+<th width="35">天數</th>
+</tr>
+</thead>
+<tbody id="stats-body">
+<!-- 由 JS 動態生成內容 -->
+</tbody>
+</table>
+</div>
+<!-- 備註欄位 -->
+<div class="mt-4 p-4 bg-white border border-black rounded shadow-sm min-h-[120px]">
+<h3 class="font-bold border-b mb-2 text-sm">備註：</h3>
+<div class="screen-remark-editor no-print">
+<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed focus:ring-2 focus:ring-blue-500" id="manual-remarks" placeholder="請手動輸入本年度非定檢原因、異常說明或補充事項..." rows="5"></textarea>
+<p class="mt-2 text-[11px] text-gray-400">此備註欄依年度自動儲存在瀏覽器；Excel 匯入不會寫入任何備註內容。</p>
+</div>
+<div class="print-remark-content text-[11px] text-gray-700 leading-relaxed" id="manual-remarks-print"></div>
+</div>
+<!-- 頁尾說明 (僅列印可見) -->
+<div class="mt-4 text-[10px] text-gray-400 hidden print:block text-right">
+                    報表生成日期：<span id="print-date"></span>
+</div>
+</div>
+</div>
+</div>
+<script>
+        // 1. 工廠配置結構
+        const factoryConfig = {
+            "麥寮區": ["ARO1廠", "SM廠麥寮", "PABS廠(麥寮)", "PC廠"],
+            "HAC廠": ["HAC廠"],
+            "海豐區": ["ARO2廠", "ARO3廠", "SM廠海豐", "合成酚廠", "PP廠"]
+        };
+
+        const validFactories = Object.values(factoryConfig).flat();
+
+        // Excel 來源名稱 / 代號對應統計表名稱
+        const factoryCodeMap = {
+            "A07": "SM廠麥寮",
+            "A09": "ARO1廠",
+            "A13": "PABS廠(麥寮)",
+            "A14": "PC廠"
+        };
+
+        const factoryAliasMap = {
+            "ARO1廠": ["ARO1廠", "ARO-1廠", "ARO 1廠", "ARO_1廠", "ARO1", "ARO-1"],
+            "SM廠麥寮": ["SM廠麥寮", "SM麥寮廠", "SM麥寮"],
+            "PABS廠(麥寮)": ["PABS廠(麥寮)", "PABS廠", "PABS麥寮", "PABS"],
+            "PC廠": ["PC廠", "PC"],
+            "HAC廠": ["HAC廠", "醋酸廠", "HAC"],
+            "ARO2廠": ["ARO2廠", "ARO-2廠", "ARO 2廠", "ARO_2廠", "ARO2", "ARO-2"],
+            "ARO3廠": ["ARO3廠", "ARO-3廠", "ARO 3廠", "ARO_3廠", "ARO3", "ARO-3"],
+            "SM廠海豐": ["SM廠海豐", "SM海豐廠", "SM海豐"],
+            "合成酚廠": ["合成酚廠", "合成酚", "PHL廠", "PHL"],
+            "PP廠": ["PP廠", "PP"]
+        };
+
+        // 年度定檢工安業務執行表的廠處名稱對應報表工廠名稱。
+        const scheduleFactoryAliasMap = {
+            "ARO1廠": ["ARO1廠", "ARO-1廠", "ARO 1廠", "ARO_1廠", "ARO1", "ARO-1"],
+            "SM廠麥寮": ["SM廠(麥寮)", "SM廠麥寮", "SM麥寮廠", "SM麥寮"],
+            "PABS廠(麥寮)": ["麥寮PABS廠", "PABS廠(麥寮)", "PABS麥寮", "PABS廠", "PABS"],
+            "PC廠": ["PC廠", "PC"],
+            "HAC廠": ["HAC廠", "醋酸廠", "HAC"],
+            "ARO2廠": ["ARO2廠", "ARO-2廠", "ARO 2廠", "ARO_2廠", "ARO2", "ARO-2"],
+            "ARO3廠": ["ARO3廠", "ARO-3廠", "ARO 3廠", "ARO_3廠", "ARO3", "ARO-3"],
+            "SM廠海豐": ["SM廠(海豐)", "SM廠海豐", "SM海豐廠", "SM海豐"],
+            "合成酚廠": ["PHL廠", "PHL", "合成酚廠", "合成酚"],
+            "PP廠": ["PP廠", "PP"]
+        };
+
+        // 2. 數據持久化處理
+        let events = JSON.parse(localStorage.getItem('flare_events_final')) || [];
+        let schedules = migrateSchedulesToMultiPeriods(JSON.parse(localStorage.getItem('flare_schedules_final')) || {});
+        let excludedDays = JSON.parse(localStorage.getItem('flare_excluded_days_final')) || {};
+        const IMPORT_AMOUNT_THRESHOLD = 5000;
+        let pendingImportEvents = [];
+        let pendingImportMessages = [];
+        let pendingImportMeta = {};
+        let pendingBelowThresholdCount = 0;
+        let pendingScheduleImportRecords = {};
+        let pendingScheduleImportRows = [];
+        let pendingScheduleImportMessages = [];
+        let pendingScheduleImportMeta = {};
+        let pendingMaintenanceImport = null;
+        let pendingMaintenanceMessages = [];
+        let editingScheduleState = null;
+        const CUSTOM_FACTORY_ALIAS_STORAGE_KEY = 'flare_custom_factory_alias_rules';
+        let customFactoryAliasRules = loadCustomFactoryAliasRules();
+        let pendingFactoryAliasMap = {};
+        let lastImportContext = null;
+
+        window.onload = () => {
+            initYearSelector();
+            const today = new Date();
+            document.getElementById('date').value = today.toISOString().split('T')[0];
+            document.getElementById('print-date').innerText = today.toLocaleDateString();
+            initTopImportUI();
+            bindExcelImportEvents();
+            bindScheduleExcelImportEvents();
+            bindMaintenanceCSVEvents();
+            bindManualRemarksEvents();
+            bindSchedulePeriodEvents();
+            bindFactoryAliasManagementEvents();
+            renderFactoryAliasManager();
+            saveData();
+            renderAll();
+        };
+
+
+        function initTopImportUI() {
+            const panel = document.getElementById('top-import-panel');
+            const panelBody = document.getElementById('top-import-panel-body');
+            const menu = document.getElementById('top-import-menu');
+            const toggle = document.getElementById('top-import-toggle');
+            const closeBtn = document.getElementById('top-import-close');
+            const sections = ['flare-import-section', 'schedule-import-section', 'maintenance-import-section']
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+
+            if (!panel || !panelBody || !menu || !toggle) return;
+
+            sections.forEach(section => {
+                section.classList.remove('mt-4', 'border-t', 'pt-3');
+                panelBody.appendChild(section);
+            });
+
+            toggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                menu.classList.toggle('hidden');
+            });
+
+            menu.querySelectorAll('[data-import-type]').forEach(button => {
+                button.addEventListener('click', () => {
+                    openTopImportPanel(button.dataset.importType);
+                    menu.classList.add('hidden');
+                });
+            });
+
+            if (closeBtn) closeBtn.addEventListener('click', closeTopImportPanel);
+
+            document.addEventListener('click', (event) => {
+                const control = document.getElementById('top-import-control');
+                if (control && !control.contains(event.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+        }
+
+        function openTopImportPanel(type) {
+            const sectionMap = {
+                flare: 'flare-import-section',
+                schedule: 'schedule-import-section',
+                maintenance: 'maintenance-import-section'
+            };
+            const targetId = sectionMap[type];
+            const panel = document.getElementById('top-import-panel');
+            const title = document.getElementById('top-import-panel-title');
+            const target = document.getElementById(targetId);
+            if (!panel || !target) return;
+
+            document.querySelectorAll('.top-import-section').forEach(section => section.classList.remove('active'));
+            target.classList.add('active');
+            if (title) title.innerText = target.dataset.importTitle || '匯入資料';
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function closeTopImportPanel() {
+            const panel = document.getElementById('top-import-panel');
+            if (panel) panel.classList.add('hidden');
+            document.querySelectorAll('.top-import-section').forEach(section => section.classList.remove('active'));
+        }
+
+        // 初始化年度選擇器
+        function initYearSelector() {
+            const selector = document.getElementById('view-year');
+            const currentYear = new Date().getFullYear();
+            for(let i = currentYear - 3; i <= currentYear + 2; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.text = i;
+                if(i === currentYear) opt.selected = true;
+                selector.appendChild(opt);
+            }
+        }
+
+        function bindExcelImportEvents() {
+            const excelInput = document.getElementById('excel-file');
+            if (excelInput) excelInput.addEventListener('change', handleExcelFileSelect);
+        }
+
+        function bindScheduleExcelImportEvents() {
+            const scheduleExcelInput = document.getElementById('schedule-excel-file');
+            if (scheduleExcelInput) scheduleExcelInput.addEventListener('change', handleScheduleExcelFileSelect);
+        }
+
+        function bindMaintenanceCSVEvents() {
+            const exportBtn = document.getElementById('export-maintenance-csv-btn');
+            if (exportBtn) exportBtn.addEventListener('click', exportMaintenanceCSV);
+            const fileInput = document.getElementById('maintenance-csv-file');
+            if (fileInput) fileInput.addEventListener('change', handleMaintenanceCSVSelect);
+            const confirmBtn = document.getElementById('confirm-maintenance-import-btn');
+            if (confirmBtn) confirmBtn.addEventListener('click', confirmMaintenanceCSVImport);
+            const resetBtn = document.getElementById('reset-maintenance-import-btn');
+            if (resetBtn) resetBtn.addEventListener('click', () => resetMaintenanceImportState());
+        }
+
+
+        function loadCustomFactoryAliasRules() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(CUSTOM_FACTORY_ALIAS_STORAGE_KEY) || '[]');
+                return Array.isArray(parsed)
+                    ? parsed.filter(rule => rule && rule.rawName && validFactories.includes(rule.factory))
+                    : [];
+            } catch (err) {
+                return [];
+            }
+        }
+
+        function saveCustomFactoryAliasRules() {
+            localStorage.setItem(CUSTOM_FACTORY_ALIAS_STORAGE_KEY, JSON.stringify(customFactoryAliasRules));
+        }
+
+        function getCustomFactoryAlias(rawName) {
+            const rawKey = normalizeFactoryKey(rawName);
+            if (!rawKey) return null;
+            const rule = customFactoryAliasRules.find(item => normalizeFactoryKey(item.rawName) === rawKey);
+            return rule?.factory || null;
+        }
+
+        function upsertCustomFactoryAlias(rawName, factory, source = 'manual') {
+            const cleanRaw = String(rawName ?? '').trim();
+            if (!cleanRaw || !validFactories.includes(factory)) return false;
+            const rawKey = normalizeFactoryKey(cleanRaw);
+            const existingIndex = customFactoryAliasRules.findIndex(item => normalizeFactoryKey(item.rawName) === rawKey);
+            const rule = { rawName: cleanRaw, factory, source, updatedAt: new Date().toISOString() };
+            if (existingIndex >= 0) customFactoryAliasRules[existingIndex] = { ...customFactoryAliasRules[existingIndex], ...rule };
+            else customFactoryAliasRules.push(rule);
+            customFactoryAliasRules.sort((a, b) => String(a.rawName).localeCompare(String(b.rawName), 'zh-Hant'));
+            saveCustomFactoryAliasRules();
+            return true;
+        }
+
+        function deleteCustomFactoryAlias(rawName) {
+            const rawKey = normalizeFactoryKey(rawName);
+            customFactoryAliasRules = customFactoryAliasRules.filter(item => normalizeFactoryKey(item.rawName) !== rawKey);
+            saveCustomFactoryAliasRules();
+            renderFactoryAliasManager();
+        }
+
+        function resetPendingFactoryAliases() {
+            pendingFactoryAliasMap = {};
+        }
+
+        function addPendingFactoryAlias(rawName, source = '匯入資料') {
+            const cleanRaw = String(rawName ?? '').trim();
+            const rawKey = normalizeFactoryKey(cleanRaw);
+            if (!rawKey) return;
+            if (getCustomFactoryAlias(cleanRaw)) return;
+            if (!pendingFactoryAliasMap[rawKey]) {
+                pendingFactoryAliasMap[rawKey] = { rawName: cleanRaw, count: 0, sources: new Set() };
+            }
+            pendingFactoryAliasMap[rawKey].count += 1;
+            if (source) pendingFactoryAliasMap[rawKey].sources.add(source);
+        }
+
+        function makeFactorySelect(selectedValue = '', className = '') {
+            const select = document.createElement('select');
+            select.className = className || 'w-full rounded bg-white border-gray-300 p-1 text-gray-900 border focus:ring-2 focus:ring-blue-500';
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '不建立';
+            select.appendChild(empty);
+            validFactories.forEach(factory => {
+                const option = document.createElement('option');
+                option.value = factory;
+                option.textContent = factory;
+                if (factory === selectedValue) option.selected = true;
+                select.appendChild(option);
+            });
+            return select;
+        }
+
+        function bindFactoryAliasManagementEvents() {
+            const form = document.getElementById('factory-map-form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const rawInput = document.getElementById('factory-map-raw');
+                    const targetSelect = document.getElementById('factory-map-target');
+                    const rawName = rawInput?.value || '';
+                    const target = targetSelect?.value || '';
+                    if (!rawName.trim()) return alert('請輸入匯入資料中的廠名。');
+                    if (!validFactories.includes(target)) return alert('請選擇要對應的標準工廠。');
+                    upsertCustomFactoryAlias(rawName, target, 'manual');
+                    if (rawInput) rawInput.value = '';
+                    if (targetSelect) targetSelect.value = '';
+                    reparseLastImportContext();
+                    renderFactoryAliasManager();
+                });
+            }
+            const savePendingBtn = document.getElementById('save-pending-factory-map-btn');
+            if (savePendingBtn) savePendingBtn.addEventListener('click', savePendingFactoryAliasesAndReparse);
+            const clearBtn = document.getElementById('clear-custom-factory-map-btn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    if (!customFactoryAliasRules.length) return alert('目前沒有自訂對照。');
+                    if (!confirm('確定要清除所有自訂工廠名稱對照嗎？內建對照不會被刪除。')) return;
+                    customFactoryAliasRules = [];
+                    saveCustomFactoryAliasRules();
+                    reparseLastImportContext();
+                    renderFactoryAliasManager();
+                });
+            }
+        }
+
+        function renderFactoryAliasManager() {
+            const targetSelect = document.getElementById('factory-map-target');
+            if (targetSelect && !targetSelect.dataset.ready) {
+                targetSelect.innerHTML = '';
+                const empty = document.createElement('option');
+                empty.value = '';
+                empty.textContent = '選擇標準工廠...';
+                targetSelect.appendChild(empty);
+                validFactories.forEach(factory => {
+                    const option = document.createElement('option');
+                    option.value = factory;
+                    option.textContent = factory;
+                    targetSelect.appendChild(option);
+                });
+                targetSelect.dataset.ready = '1';
+            }
+
+            const pendingWrap = document.getElementById('pending-factory-map-wrap');
+            const pendingBody = document.getElementById('pending-factory-map-body');
+            const pendingItems = Object.values(pendingFactoryAliasMap || {})
+                .sort((a, b) => String(a.rawName).localeCompare(String(b.rawName), 'zh-Hant'));
+            if (pendingWrap && pendingBody) {
+                pendingBody.innerHTML = '';
+                pendingWrap.classList.toggle('hidden', pendingItems.length === 0);
+                pendingItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const rawTd = document.createElement('td');
+                    rawTd.className = 'px-2 py-1 border-b text-gray-700';
+                    rawTd.textContent = item.rawName;
+                    const countTd = document.createElement('td');
+                    countTd.className = 'px-2 py-1 border-b text-gray-700';
+                    countTd.textContent = item.count;
+                    const selectTd = document.createElement('td');
+                    selectTd.className = 'px-2 py-1 border-b';
+                    const select = makeFactorySelect('', 'w-full rounded bg-white border-gray-300 p-1 text-gray-900 border');
+                    select.dataset.rawName = item.rawName;
+                    selectTd.appendChild(select);
+                    tr.append(rawTd, countTd, selectTd);
+                    pendingBody.appendChild(tr);
+                });
+            }
+
+            const customBody = document.getElementById('custom-factory-map-body');
+            if (customBody) {
+                customBody.innerHTML = '';
+                if (!customFactoryAliasRules.length) {
+                    customBody.innerHTML = '<tr><td class="text-center text-gray-400 py-3" colspan="3">尚無自訂對照</td></tr>';
+                } else {
+                    customFactoryAliasRules.forEach(rule => {
+                        const tr = document.createElement('tr');
+                        const rawTd = document.createElement('td');
+                        rawTd.className = 'px-2 py-1 border-b text-gray-700';
+                        rawTd.textContent = rule.rawName;
+                        const targetTd = document.createElement('td');
+                        targetTd.className = 'px-2 py-1 border-b font-bold text-gray-700';
+                        targetTd.textContent = rule.factory;
+                        const actionTd = document.createElement('td');
+                        actionTd.className = 'px-2 py-1 border-b';
+                        const delBtn = document.createElement('button');
+                        delBtn.type = 'button';
+                        delBtn.className = 'text-red-600 underline hover:text-red-800';
+                        delBtn.textContent = '刪除';
+                        delBtn.addEventListener('click', () => {
+                            if (!confirm(`確定刪除「${rule.rawName} → ${rule.factory}」對照嗎？`)) return;
+                            deleteCustomFactoryAlias(rule.rawName);
+                            reparseLastImportContext();
+                        });
+                        actionTd.appendChild(delBtn);
+                        tr.append(rawTd, targetTd, actionTd);
+                        customBody.appendChild(tr);
+                    });
+                }
+            }
+        }
+
+        function savePendingFactoryAliasesAndReparse() {
+            const selects = document.querySelectorAll('#pending-factory-map-body select[data-raw-name]');
+            let saved = 0;
+            selects.forEach(select => {
+                const rawName = select.dataset.rawName || '';
+                const target = select.value || '';
+                if (rawName && validFactories.includes(target)) {
+                    if (upsertCustomFactoryAlias(rawName, target, 'pending-confirm')) saved++;
+                }
+            });
+            if (!saved) return alert('請至少選擇一個待確認名稱的標準工廠。');
+            reparseLastImportContext();
+            renderFactoryAliasManager();
+            alert(`已儲存 ${saved} 筆工廠名稱對照，並重新解析目前匯入資料。`);
+        }
+
+        function reparseLastImportContext() {
+            if (!lastImportContext?.matrix) return;
+            if (lastImportContext.type === 'schedule') {
+                parseScheduleExcelMatrix(lastImportContext.matrix, lastImportContext.fileName, lastImportContext.sheetName, lastImportContext.refInfo || {});
+            } else if (lastImportContext.type === 'event') {
+                parseExcelMatrix(lastImportContext.matrix, lastImportContext.fileName, lastImportContext.sheetName, lastImportContext.refInfo || {});
+            }
+        }
+
+        function getManualRemarksKey(year) {
+            return `flare_manual_remarks_${year}`;
+        }
+
+        function bindManualRemarksEvents() {
+            const remarks = document.getElementById('manual-remarks');
+            if (!remarks) return;
+            remarks.addEventListener('input', () => {
+                const year = parseInt(document.getElementById('view-year').value);
+                localStorage.setItem(getManualRemarksKey(year), remarks.value);
+                updateManualRemarksPrint(remarks.value);
+            });
+        }
+
+        function loadManualRemarksForYear(year) {
+            const remarks = document.getElementById('manual-remarks');
+            const value = localStorage.getItem(getManualRemarksKey(year)) || '';
+            if (remarks && remarks.value !== value) remarks.value = value;
+            updateManualRemarksPrint(value);
+        }
+
+        function updateManualRemarksPrint(value) {
+            const printTarget = document.getElementById('manual-remarks-print');
+            if (!printTarget) return;
+            printTarget.textContent = value && value.trim() ? value : '－';
+        }
+
+        function clearManualRemarksStorage() {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('flare_manual_remarks_')) localStorage.removeItem(key);
+            });
+        }
+
+        // 處理事件填報
+        document.getElementById('event-form').onsubmit = (e) => {
+            e.preventDefault();
+            const newEvent = {
+                id: Date.now(),
+                source: 'manual',
+                factory: document.getElementById('factory').value,
+                type: document.querySelector('input[name="period_type"]:checked').value,
+                date: document.getElementById('date').value,
+                amount: parseFloat(document.getElementById('amount').value)
+            };
+            events.push(newEvent);
+            saveData();
+            renderAll();
+            e.target.reset();
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        };
+
+        // 處理預計排程設定：同一工廠同一年度可設定多組期間；支援新增與更新模式
+        document.getElementById('schedule-form').onsubmit = (e) => {
+            e.preventDefault();
+            const year = String(document.getElementById('view-year').value);
+            const factorySelect = document.getElementById('sched-factory');
+            const factory = factorySelect.value;
+            const scheduleTypeInput = document.getElementById('sched-type');
+            const scheduleType = String(scheduleTypeInput?.value || '').trim();
+            const start = document.getElementById('sched-start').value;
+            const end = document.getElementById('sched-end').value;
+            const isEditing = Boolean(editingScheduleState);
+            const hasStart = Boolean(start);
+            const hasEnd = Boolean(end);
+
+            if (!factory) return alert('請先選擇工廠。');
+            if (hasStart !== hasEnd) return alert('開始日期與結束日期需同時填寫。');
+            if (!isEditing && (!hasStart || !hasEnd)) return alert('新增定檢期間需填寫開始日期與結束日期。');
+            if (isEditing && !hasStart && !hasEnd && !scheduleType) return alert('修改無日期資料時，請至少填寫定檢類型。');
+
+            const newRecord = hasStart && hasEnd
+                ? { ...normalizeScheduleRange(start, end), scheduleType: scheduleType || '定檢', source: 'manual' }
+                : { start: '', end: '', scheduleType: scheduleType || '無計劃', source: 'manual' };
+
+            const targetFactory = isEditing ? editingScheduleState.factory : factory;
+            let records = getScheduleRecords(year, targetFactory);
+            const editingIndex = isEditing ? editingScheduleState.index : -1;
+            if (isEditing && !records[editingIndex]) {
+                resetScheduleEditMode(false);
+                return alert('找不到原本要修改的定檢資料，請重新選擇。');
+            }
+
+            if (newRecord.start && newRecord.end) {
+                const hasOverlap = records.some((period, index) => {
+                    if (isEditing && index === editingIndex) return false;
+                    return period.start && period.end && doDateRangesOverlap(period, newRecord);
+                });
+                if (hasOverlap) {
+                    const actionLabel = isEditing ? '更新' : '新增';
+                    const ok = confirm(`提醒：${targetFactory} ${actionLabel}的定檢期間 ${formatScheduleRange(newRecord)} 與既有期間重疊。
+
+仍要保留並${actionLabel}這組資料嗎？`);
+                    if (!ok) return;
+                }
+            }
+
+            if (isEditing) {
+                records[editingIndex] = { ...records[editingIndex], ...newRecord, source: records[editingIndex].source || 'manual' };
+            } else {
+                records.push(newRecord);
+            }
+
+            setScheduleRecords(year, targetFactory, records);
+            saveData();
+            resetImportState();
+            resetScheduleEditMode(false);
+            renderAll();
+            const doneText = newRecord.start && newRecord.end
+                ? `${formatScheduleType(newRecord)} / ${formatScheduleRange(newRecord)}`
+                : `${formatScheduleType(newRecord)} / 無日期`;
+            alert(`${isEditing ? '已更新' : '已新增'} ${targetFactory} 於 ${year} 年度的定檢資料：${doneText}。`);
+        };
+
+        function bindSchedulePeriodEvents() {
+            const schedFactory = document.getElementById('sched-factory');
+            if (schedFactory) schedFactory.addEventListener('change', () => renderSchedulePeriodsList());
+            const cancelBtn = document.getElementById('schedule-cancel-edit-btn');
+            if (cancelBtn) cancelBtn.addEventListener('click', () => {
+                resetScheduleEditMode(false);
+                renderSchedulePeriodsList();
+            });
+            const clearBtn = document.getElementById('clear-schedule-factory-btn');
+            if (clearBtn) clearBtn.addEventListener('click', () => clearCurrentFactoryScheduleRecords());
+        }
+
+        function saveData() {
+            localStorage.setItem('flare_events_final', JSON.stringify(events));
+            localStorage.setItem('flare_schedules_final', JSON.stringify(schedules));
+        }
+
+        function saveExcludedDays() {
+            localStorage.setItem('flare_excluded_days_final', JSON.stringify(excludedDays));
+        }
+
+        function normalizeScheduleRange(start, end) {
+            if (!start || !end) return { start, end };
+            return start <= end ? { start, end } : { start: end, end: start };
+        }
+
+        function normalizeScheduleRecord(record) {
+            const scheduleType = String(record?.scheduleType ?? record?.type ?? '').trim();
+            const unitName = String(record?.unitName ?? '').trim();
+            const source = String(record?.source ?? '').trim();
+            const rowNo = record?.rowNo || null;
+            const hasRange = Boolean(record?.start && record?.end);
+            if (hasRange) {
+                const range = normalizeScheduleRange(record.start, record.end);
+                return {
+                    start: range.start,
+                    end: range.end,
+                    scheduleType,
+                    unitName,
+                    source,
+                    rowNo
+                };
+            }
+            if (scheduleType || unitName || source) {
+                return {
+                    start: '',
+                    end: '',
+                    scheduleType,
+                    unitName,
+                    source,
+                    rowNo
+                };
+            }
+            return null;
+        }
+
+        function sortScheduleRecords(records) {
+            return [...(records || [])].sort((a, b) => {
+                const aHasDate = Boolean(a.start && a.end);
+                const bHasDate = Boolean(b.start && b.end);
+                if (aHasDate && bHasDate && a.start !== b.start) return a.start.localeCompare(b.start);
+                if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+                const aRow = Number(a.rowNo || 999999);
+                const bRow = Number(b.rowNo || 999999);
+                if (aRow !== bRow) return aRow - bRow;
+                return String(a.scheduleType || '').localeCompare(String(b.scheduleType || ''), 'zh-Hant');
+            });
+        }
+
+        function migrateSchedulesToMultiPeriods(rawSchedules) {
+            const migrated = {};
+            Object.entries(rawSchedules || {}).forEach(([year, factorySchedules]) => {
+                migrated[year] = {};
+                Object.entries(factorySchedules || {}).forEach(([factory, value]) => {
+                    const records = Array.isArray(value) ? value : (value ? [value] : []);
+                    migrated[year][factory] = sortScheduleRecords(records
+                        .map(record => normalizeScheduleRecord(record))
+                        .filter(Boolean));
+                });
+            });
+            return migrated;
+        }
+
+        function getScheduleRecords(year, factory) {
+            const raw = schedules?.[year]?.[factory];
+            if (!raw) return [];
+            const records = Array.isArray(raw) ? raw : [raw];
+            return sortScheduleRecords(records
+                .map(record => normalizeScheduleRecord(record))
+                .filter(Boolean));
+        }
+
+        function getSchedulePeriods(year, factory) {
+            return getScheduleRecords(year, factory)
+                .filter(record => record.start && record.end)
+                .map(record => normalizeScheduleRange(record.start, record.end));
+        }
+
+        function setScheduleRecords(year, factory, records) {
+            if (!schedules[year]) schedules[year] = {};
+            schedules[year][factory] = dedupeScheduleRecords(records);
+        }
+
+        function setSchedulePeriods(year, factory, periods) {
+            const displayOnlyRecords = getScheduleRecords(year, factory).filter(record => !(record.start && record.end));
+            const datedRecords = (periods || [])
+                .filter(range => range && range.start && range.end)
+                .map(range => ({ ...normalizeScheduleRange(range.start, range.end), scheduleType: range.scheduleType || '', unitName: range.unitName || '', source: range.source || '', rowNo: range.rowNo || null }));
+            setScheduleRecords(year, factory, [...datedRecords, ...displayOnlyRecords]);
+        }
+
+        function dedupeScheduleRecords(records) {
+            const seen = new Set();
+            const deduped = [];
+            sortScheduleRecords((records || []).map(record => normalizeScheduleRecord(record)).filter(Boolean)).forEach(record => {
+                const key = [record.start || '-', record.end || '-', record.scheduleType || '-'].join('|');
+                if (seen.has(key)) return;
+                seen.add(key);
+                deduped.push(record);
+            });
+            return deduped;
+        }
+
+        function doDateRangesOverlap(a, b) {
+            const rangeA = normalizeScheduleRange(a.start, a.end);
+            const rangeB = normalizeScheduleRange(b.start, b.end);
+            return rangeA.start <= rangeB.end && rangeB.start <= rangeA.end;
+        }
+
+        function formatScheduleRange(range) {
+            if (!range?.start || !range?.end) return '-';
+            const normalized = normalizeScheduleRange(range.start, range.end);
+            return `${formatMonthDay(normalized.start)}~${formatMonthDay(normalized.end)}`;
+        }
+
+        function formatScheduleType(record) {
+            const type = String(record?.scheduleType || '').trim();
+            return type || '-';
+        }
+
+        function renderSchedulePeriodsList() {
+            const year = String(document.getElementById('view-year')?.value || '');
+            const factory = document.getElementById('sched-factory')?.value;
+            const list = document.getElementById('schedule-period-list');
+            const count = document.getElementById('schedule-period-count');
+            const clearBtn = document.getElementById('clear-schedule-factory-btn');
+            if (!list || !count) return;
+
+            if (editingScheduleState && editingScheduleState.year !== year) {
+                resetScheduleEditMode(false);
+            }
+
+            if (!factory) {
+                list.innerHTML = `<tr><td class="text-center text-gray-400 py-3" colspan="3">請先選擇工廠</td></tr>`;
+                count.innerText = '0 組';
+                if (clearBtn) clearBtn.disabled = true;
+                return;
+            }
+            const records = getScheduleRecords(year, factory);
+            count.innerText = `${records.length} 組`;
+            if (clearBtn) clearBtn.disabled = records.length === 0 || Boolean(editingScheduleState);
+            if (!records.length) {
+                list.innerHTML = `<tr><td class="text-center text-gray-400 py-3" colspan="3">尚未設定期間</td></tr>`;
+                return;
+            }
+            list.innerHTML = '';
+            records.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                if (editingScheduleState && editingScheduleState.factory === factory && editingScheduleState.index === index) {
+                    tr.className = 'bg-blue-50';
+                }
+
+                const typeTd = document.createElement('td');
+                typeTd.className = 'px-2 py-1 border-b text-gray-700';
+                typeTd.textContent = formatScheduleType(record);
+
+                const periodTd = document.createElement('td');
+                periodTd.className = 'px-2 py-1 border-b text-gray-700';
+                periodTd.textContent = formatScheduleRange(record);
+
+                const actionTd = document.createElement('td');
+                actionTd.className = 'px-2 py-1 border-b whitespace-nowrap';
+
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'text-blue-700 underline hover:text-blue-900 mr-2';
+                editBtn.textContent = '修改';
+                editBtn.addEventListener('click', () => editScheduleRecord(factory, index));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'text-red-600 underline hover:text-red-800';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => {
+                    deleteScheduleRecord(factory, index);
+                });
+
+                actionTd.appendChild(editBtn);
+                actionTd.appendChild(deleteBtn);
+                tr.appendChild(typeTd);
+                tr.appendChild(periodTd);
+                tr.appendChild(actionTd);
+                list.appendChild(tr);
+            });
+        }
+
+        function setScheduleEditMode(factory, index) {
+            const year = String(document.getElementById('view-year').value);
+            const records = getScheduleRecords(year, factory);
+            const target = records[index];
+            if (!target) return alert('找不到要修改的定檢資料。');
+
+            editingScheduleState = { year, factory, index };
+            const factorySelect = document.getElementById('sched-factory');
+            const typeInput = document.getElementById('sched-type');
+            const startInput = document.getElementById('sched-start');
+            const endInput = document.getElementById('sched-end');
+            const submitBtn = document.getElementById('schedule-submit-btn');
+            const cancelBtn = document.getElementById('schedule-cancel-edit-btn');
+
+            if (factorySelect) {
+                factorySelect.value = factory;
+                factorySelect.disabled = true;
+                factorySelect.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+            if (typeInput) typeInput.value = target.scheduleType || '';
+            if (startInput) startInput.value = target.start || '';
+            if (endInput) endInput.value = target.end || '';
+            if (submitBtn) submitBtn.textContent = '更新此定檢期間';
+            if (cancelBtn) cancelBtn.classList.remove('hidden');
+            renderSchedulePeriodsList();
+        }
+
+        function editScheduleRecord(factory, index) {
+            const year = String(document.getElementById('view-year').value);
+            const records = getScheduleRecords(year, factory);
+            const target = records[index];
+            if (!target) return;
+            setScheduleEditMode(factory, index);
+        }
+
+        function resetScheduleEditMode(clearFactory = false) {
+            editingScheduleState = null;
+            const factorySelect = document.getElementById('sched-factory');
+            const typeInput = document.getElementById('sched-type');
+            const startInput = document.getElementById('sched-start');
+            const endInput = document.getElementById('sched-end');
+            const submitBtn = document.getElementById('schedule-submit-btn');
+            const cancelBtn = document.getElementById('schedule-cancel-edit-btn');
+
+            if (factorySelect) {
+                factorySelect.disabled = false;
+                factorySelect.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                if (clearFactory) factorySelect.value = '';
+            }
+            if (typeInput) typeInput.value = '定檢';
+            if (startInput) startInput.value = '';
+            if (endInput) endInput.value = '';
+            if (submitBtn) submitBtn.textContent = '新增此定檢期間';
+            if (cancelBtn) cancelBtn.classList.add('hidden');
+        }
+
+        function deleteScheduleRecord(factory, index) {
+            const year = String(document.getElementById('view-year').value);
+            const records = getScheduleRecords(year, factory);
+            const target = records[index];
+            if (!target) return;
+            const targetText = target.start && target.end
+                ? `${formatScheduleType(target)} / ${formatScheduleRange(target)}`
+                : `${formatScheduleType(target)} / 無日期`;
+            if (!confirm(`確定要刪除 ${factory} 的定檢資料 ${targetText} 嗎？`)) return;
+            records.splice(index, 1);
+            setScheduleRecords(year, factory, records);
+            saveData();
+            resetImportState();
+            resetScheduleEditMode(false);
+            renderAll();
+        }
+
+        function clearCurrentFactoryScheduleRecords() {
+            const year = String(document.getElementById('view-year').value);
+            const factory = document.getElementById('sched-factory')?.value;
+            if (!factory) return alert('請先選擇工廠。');
+            const records = getScheduleRecords(year, factory);
+            if (!records.length) return alert(`${factory} 目前沒有可清空的定檢資料。`);
+            if (!confirm(`確定要清空 ${factory} 於 ${year} 年度的全部定檢期間與定檢類型嗎？`)) return;
+            setScheduleRecords(year, factory, []);
+            saveData();
+            resetImportState();
+            resetScheduleEditMode(false);
+            renderAll();
+            alert(`已清空 ${factory} 於 ${year} 年度的定檢資料。`);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getYearFromISO(dateISO) {
+            return parseInt(String(dateISO).substring(0, 4));
+        }
+
+        function formatMonthDay(dateISO) {
+            return String(dateISO).substring(5).replace('-', '/');
+        }
+
+        function normalizeColumnName(name) {
+            return String(name ?? '')
+                .replace(/&lt;br\s*\/?&gt;/gi, '')
+                .replace(/<br\s*\/?>/gi, '')
+                .replace(/[\r\n\t\s　]/g, '')
+                .replace(/[()（）]/g, '')
+                .replace(/[：:]/g, '')
+                .toLowerCase();
+        }
+
+        function findColumn(headers, aliases) {
+            const normalizedHeaders = headers.map(h => ({ raw: h, key: normalizeColumnName(h) }));
+            for (const alias of aliases) {
+                const aliasKey = normalizeColumnName(alias);
+                const exact = normalizedHeaders.find(h => h.key === aliasKey);
+                if (exact) return exact.raw;
+            }
+            for (const alias of aliases) {
+                const aliasKey = normalizeColumnName(alias);
+                const partial = normalizedHeaders.find(h => h.key.includes(aliasKey) || aliasKey.includes(h.key));
+                if (partial) return partial.raw;
+            }
+            return null;
+        }
+
+        function normalizeFactoryKey(value) {
+            return String(value ?? '')
+                .replace(/[\s　]/g, '')
+                .replace(/[\-_]/g, '')
+                .replace(/[()（）]/g, '')
+                .toUpperCase();
+        }
+
+        function normalizeFactoryName(rawFactory, rawCode) {
+            const code = String(rawCode ?? '').trim().toUpperCase();
+            if (factoryCodeMap[code]) return { factory: factoryCodeMap[code], note: `依公私場所代號 ${code} 對應` };
+
+            const raw = String(rawFactory ?? '').trim();
+            const rawKey = normalizeFactoryKey(raw);
+            if (!rawKey) return { factory: null, note: '廠處名稱空白' };
+
+            const customMapped = getCustomFactoryAlias(raw);
+            if (customMapped) return { factory: customMapped, note: `依自訂工廠對照 ${raw} → ${customMapped}` };
+
+            // SM 僅能在名稱帶有麥寮 / 海豐時自動判斷；只有「SM廠」或「SM」時留給人工確認，避免歸錯廠。
+            if (raw.includes('海豐') && rawKey.includes('SM')) {
+                return { factory: 'SM廠海豐', note: '依廠處名稱含海豐判斷' };
+            }
+            if (raw.includes('麥寮') && rawKey.includes('SM')) {
+                return { factory: 'SM廠麥寮', note: '依廠處名稱含麥寮判斷' };
+            }
+            if (rawKey === 'SM' || rawKey === 'SM廠') {
+                addPendingFactoryAlias(raw, 'FLARE Excel');
+                return { factory: null, note: `SM 廠名未標示麥寮或海豐，需人工確認：${raw}` };
+            }
+
+            for (const [target, aliases] of Object.entries(factoryAliasMap)) {
+                if (aliases.some(alias => normalizeFactoryKey(alias) === rawKey)) {
+                    return { factory: target, note: '依廠處名稱對應' };
+                }
+            }
+            addPendingFactoryAlias(raw, 'FLARE Excel');
+            return { factory: null, note: `無法對應工廠，已列入待確認：${raw}` };
+        }
+
+        function parseExcelDate(value) {
+            if (value instanceof Date && !isNaN(value)) {
+                return toISODate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+            }
+            if (typeof value === 'number' && window.XLSX?.SSF?.parse_date_code) {
+                const parsed = XLSX.SSF.parse_date_code(value);
+                if (parsed) return toISODate(parsed.y, parsed.m, parsed.d);
+            }
+            const text = String(value ?? '').trim();
+            const matched = text.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+            if (matched) return toISODate(parseInt(matched[1]), parseInt(matched[2]), parseInt(matched[3]));
+            return null;
+        }
+
+        function toISODate(year, month, day) {
+            if (!year || !month || !day) return null;
+            const y = String(year).padStart(4, '0');
+            const m = String(month).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseNumber(value) {
+            if (typeof value === 'number') return value;
+            const text = String(value ?? '').replace(/,/g, '').trim();
+            const n = parseFloat(text);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function displayRawValue(value) {
+            if (value instanceof Date && !isNaN(value)) {
+                const date = toISODate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+                const h = String(value.getHours()).padStart(2, '0');
+                const m = String(value.getMinutes()).padStart(2, '0');
+                return `${date} ${h}:${m}`;
+            }
+            return String(value ?? '').trim();
+        }
+
+
+        function buildScheduleColumnMap(headers) {
+            return {
+                factory: findColumnIndex(headers, ['廠處', '工廠', '廠別', '廠處名稱']),
+                unitName: findColumnIndex(headers, ['定檢(工檢)單元名稱', '定檢工檢單元名稱', '單元名稱']),
+                scheduleType: findColumnIndex(headers, ['定檢(工檢)類型', '定檢工檢類型', '定檢類型', '工檢類型', '類型']),
+                startDate: findColumnIndex(headers, ['停俥開始日期', '停車開始日期', '停俥開始', '停車開始', '開始日期']),
+                endDate: findColumnIndex(headers, ['停俥結束日期', '停車結束日期', '停俥結束', '停車結束', '結束日期'])
+            };
+        }
+
+        function detectScheduleHeaderRow(matrix) {
+            let best = { index: -1, score: -1, headers: [], columnMap: null };
+            const maxScanRows = Math.min(matrix.length, 15);
+            for (let i = 0; i < maxScanRows; i++) {
+                const headers = (matrix[i] || []).map(displayRawValue);
+                const columnMap = buildScheduleColumnMap(headers);
+                let score = 0;
+                if (hasColumn(columnMap.factory)) score += 3;
+                if (hasColumn(columnMap.scheduleType)) score += 3;
+                if (hasColumn(columnMap.startDate)) score += 2;
+                if (hasColumn(columnMap.endDate)) score += 2;
+                if (hasColumn(columnMap.unitName)) score += 1;
+                if (score > best.score) best = { index: i, score, headers, columnMap };
+            }
+            return best;
+        }
+
+        function normalizeScheduleFactoryName(rawFactory) {
+            const raw = String(rawFactory ?? '').trim();
+            const rawKey = normalizeFactoryKey(raw);
+            if (!rawKey) return { factory: null, note: '廠處空白，沿用上一列或略過' };
+
+            const customMapped = getCustomFactoryAlias(raw);
+            if (customMapped) return { factory: customMapped, note: `依自訂工廠對照 ${raw} → ${customMapped}` };
+
+            // SM 僅能在名稱帶有麥寮 / 海豐時自動判斷；只有「SM廠」或「SM」時留給人工確認。
+            if (raw.includes('海豐') && rawKey.includes('SM')) {
+                return { factory: 'SM廠海豐', note: '依廠處名稱含海豐判斷' };
+            }
+            if (raw.includes('麥寮') && rawKey.includes('SM')) {
+                return { factory: 'SM廠麥寮', note: '依廠處名稱含麥寮判斷' };
+            }
+            if (rawKey === 'SM' || rawKey === 'SM廠') {
+                addPendingFactoryAlias(raw, '定檢 Excel');
+                return { factory: null, note: `SM 廠名未標示麥寮或海豐，需人工確認：${raw}` };
+            }
+
+            for (const [target, aliases] of Object.entries(scheduleFactoryAliasMap)) {
+                if (aliases.some(alias => normalizeFactoryKey(alias) === rawKey)) {
+                    return { factory: target, note: raw === target ? '依廠處名稱對應' : `依廠處名稱 ${raw} 對應 ${target}` };
+                }
+            }
+            addPendingFactoryAlias(raw, '定檢 Excel');
+            return { factory: null, note: `非報表內工廠或尚未建立對應，已列入待確認：${raw}` };
+        }
+
+        function parseScheduleDate(value, defaultYear) {
+            if (value instanceof Date && !isNaN(value)) {
+                return toISODate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+            }
+            if (typeof value === 'number' && window.XLSX?.SSF?.parse_date_code) {
+                const parsed = XLSX.SSF.parse_date_code(value);
+                if (parsed) return toISODate(parsed.y, parsed.m, parsed.d);
+            }
+            const text = String(value ?? '').trim()
+                .replace(/[()（）]/g, '')
+                .replace(/－/g, '-')
+                .replace(/—/g, '-')
+                .replace(/–/g, '-');
+            if (!text || text === '-' || text === '無' || text === '無計劃') return null;
+
+            let matched = text.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+            if (matched) return toISODate(parseInt(matched[1]), parseInt(matched[2]), parseInt(matched[3]));
+
+            matched = text.match(/(\d{1,2})[\/-](\d{1,2})/);
+            if (matched) return toISODate(defaultYear, parseInt(matched[1]), parseInt(matched[2]));
+
+            matched = text.match(/(\d{1,2})月(\d{1,2})日?/);
+            if (matched) return toISODate(defaultYear, parseInt(matched[1]), parseInt(matched[2]));
+
+            return null;
+        }
+
+        function handleScheduleExcelFileSelect(e) {
+            const file = e.target.files?.[0];
+            if (!file) return resetScheduleImportState(false);
+            if (!window.XLSX) {
+                alert('Excel 解析套件尚未載入，請確認網路可連線至 SheetJS CDN。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const refInfo = rebuildWorksheetRefIfNeeded(worksheet);
+                    const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true, blankrows: false });
+                    lastImportContext = { type: 'schedule', matrix, fileName: file.name, sheetName, refInfo };
+                    parseScheduleExcelMatrix(matrix, file.name, sheetName, refInfo);
+                } catch (err) {
+                    pendingScheduleImportRecords = {};
+                    pendingScheduleImportRows = [];
+                    pendingScheduleImportMessages = [`讀取定檢 Excel 失敗：${err.message}`];
+                    renderScheduleImportPreview(file.name);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseScheduleExcelMatrix(matrix, fileName, sheetName, refInfo = {}) {
+            resetPendingFactoryAliases();
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            pendingScheduleImportRecords = {};
+            pendingScheduleImportRows = [];
+            pendingScheduleImportMessages = [];
+            pendingScheduleImportMeta = {
+                originalRef: refInfo.originalRef || '',
+                actualRef: refInfo.actualRef || '',
+                refChanged: Boolean(refInfo.refChanged)
+            };
+
+            if (pendingScheduleImportMeta.originalRef || pendingScheduleImportMeta.actualRef) {
+                pendingScheduleImportMessages.push(`Excel 內部標記範圍：${pendingScheduleImportMeta.originalRef || '-'}；實際讀取範圍：${pendingScheduleImportMeta.actualRef || '-'}。`);
+            }
+            if (pendingScheduleImportMeta.refChanged) {
+                pendingScheduleImportMessages.push(`偵測到 Excel 內部範圍異常，已自動由 ${pendingScheduleImportMeta.originalRef} 修正為 ${pendingScheduleImportMeta.actualRef}。`);
+            }
+            if (!matrix.length) {
+                pendingScheduleImportMessages.push('定檢 Excel 沒有可解析的資料列。');
+                renderScheduleImportPreview(fileName, sheetName);
+                return;
+            }
+
+            const headerInfo = detectScheduleHeaderRow(matrix);
+            const columnMap = headerInfo.columnMap || {};
+            const headerRowNo = headerInfo.index + 1;
+
+            if (!hasColumn(columnMap.factory)) pendingScheduleImportMessages.push('缺少必要欄位：廠處。');
+            if (!hasColumn(columnMap.scheduleType)) pendingScheduleImportMessages.push('缺少必要欄位：定檢(工檢)類型。');
+            if (!hasColumn(columnMap.startDate)) pendingScheduleImportMessages.push('缺少欄位：停俥開始日期，將無法建立定檢期間。');
+            if (!hasColumn(columnMap.endDate)) pendingScheduleImportMessages.push('缺少欄位：停俥結束日期，將無法建立定檢期間。');
+
+            if (!hasColumn(columnMap.factory) || !hasColumn(columnMap.scheduleType)) {
+                if (headerInfo.headers?.length) pendingScheduleImportMessages.push(`目前偵測到第 ${headerRowNo || '-'} 列可能是標題列：${headerInfo.headers.filter(Boolean).join('、')}`);
+                renderScheduleImportPreview(fileName, sheetName);
+                return;
+            }
+
+            pendingScheduleImportMessages.push(`已偵測第 ${headerRowNo} 列為定檢 Excel 標題列。`);
+            let lastRawFactory = '';
+            let lastMappedFactory = null;
+
+            for (let i = headerInfo.index + 1; i < matrix.length; i++) {
+                const row = matrix[i] || [];
+                const rowNo = i + 1;
+                if (row.every(cell => displayRawValue(cell) === '')) continue;
+
+                const rawFactoryCell = hasColumn(columnMap.factory) ? displayRawValue(row[columnMap.factory]) : '';
+                let factory = null;
+                if (rawFactoryCell) {
+                    lastRawFactory = rawFactoryCell;
+                    const factoryResult = normalizeScheduleFactoryName(rawFactoryCell);
+                    lastMappedFactory = factoryResult.factory;
+                    factory = factoryResult.factory;
+                } else {
+                    factory = lastMappedFactory;
+                }
+
+                const rawType = hasColumn(columnMap.scheduleType) ? displayRawValue(row[columnMap.scheduleType]) : '';
+                const scheduleType = String(rawType || '').trim();
+                const unitName = hasColumn(columnMap.unitName) ? displayRawValue(row[columnMap.unitName]) : '';
+                const start = hasColumn(columnMap.startDate) ? parseScheduleDate(row[columnMap.startDate], selectedYear) : null;
+                const end = hasColumn(columnMap.endDate) ? parseScheduleDate(row[columnMap.endDate], selectedYear) : null;
+
+                if (!factory || !validFactories.includes(factory)) {
+                    if (rawFactoryCell) pendingScheduleImportMessages.push(`第 ${rowNo} 列：${normalizeScheduleFactoryName(rawFactoryCell).note}`);
+                    continue;
+                }
+                if (!scheduleType && !start && !end) continue;
+
+                const hasBothDates = Boolean(start && end);
+                const hasPartialDate = Boolean((start && !end) || (!start && end));
+                if (hasPartialDate) {
+                    pendingScheduleImportMessages.push(`第 ${rowNo} 列：${factory} 只有單邊停俥日期，已保留定檢類型但不建立期間。`);
+                }
+
+                const record = normalizeScheduleRecord({
+                    start: hasBothDates ? start : '',
+                    end: hasBothDates ? end : '',
+                    scheduleType,
+                    unitName,
+                    source: 'schedule-excel',
+                    rowNo
+                });
+                if (!record) continue;
+
+                addPendingScheduleRecord(factory, record);
+                pendingScheduleImportRows.push({
+                    rowNo,
+                    factory,
+                    scheduleType: formatScheduleType(record),
+                    range: formatScheduleRange(record),
+                    note: hasBothDates ? '會納入定檢期間判斷' : '只顯示定檢類型，不納入日期判斷'
+                });
+            }
+
+            validFactories.forEach(factory => {
+                if (!pendingScheduleImportRecords[factory]) pendingScheduleImportRecords[factory] = [];
+            });
+
+            renderScheduleImportPreview(fileName, sheetName);
+        }
+
+        function addPendingScheduleRecord(factory, record) {
+            if (!pendingScheduleImportRecords[factory]) pendingScheduleImportRecords[factory] = [];
+            pendingScheduleImportRecords[factory] = dedupeScheduleRecords([...pendingScheduleImportRecords[factory], record]);
+        }
+
+        function renderScheduleImportPreview(fileName = '', sheetName = '') {
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const summary = document.getElementById('schedule-import-summary');
+            const previewWrap = document.getElementById('schedule-import-preview-wrap');
+            const previewBody = document.getElementById('schedule-import-preview-body');
+            const errorWrap = document.getElementById('schedule-import-error-wrap');
+            const errorList = document.getElementById('schedule-import-error-list');
+            const confirmBtn = document.getElementById('confirm-schedule-import-btn');
+            if (!summary || !previewWrap || !previewBody || !errorWrap || !errorList || !confirmBtn) return;
+
+            const targetFactories = validFactories;
+            const totalRecords = Object.values(pendingScheduleImportRecords || {}).reduce((sum, records) => sum + records.length, 0);
+            const datedCount = Object.values(pendingScheduleImportRecords || {}).flat().filter(record => record.start && record.end).length;
+            const displayOnlyCount = totalRecords - datedCount;
+
+            previewBody.innerHTML = '';
+            pendingScheduleImportRows.slice(0, 120).forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.rowNo}</td>
+                    <td>${escapeHtml(row.factory)}</td>
+                    <td class="font-bold text-gray-700">${escapeHtml(row.scheduleType)}</td>
+                    <td>${escapeHtml(row.range)}</td>
+                    <td class="text-gray-500">${escapeHtml(row.note)}</td>`;
+                previewBody.appendChild(tr);
+            });
+
+            previewWrap.classList.toggle('hidden', pendingScheduleImportRows.length === 0);
+            confirmBtn.disabled = totalRecords === 0;
+
+            const missingFactories = targetFactories.filter(factory => !(pendingScheduleImportRecords[factory] || []).length);
+            const hiddenNote = pendingScheduleImportRows.length > 120 ? '<br>預覽僅顯示前 120 筆，其餘仍會寫入。' : '';
+            const missingNote = missingFactories.length ? `<br>未解析到資料：${missingFactories.map(escapeHtml).join('、')}。` : '';
+            summary.innerHTML = `
+                <div class="font-bold text-gray-800">${fileName ? `已解析：${escapeHtml(fileName)}` : '定檢期間預覽結果'}</div>
+                <div>工作表：${escapeHtml(sheetName || '-')}；目前年度：${selectedYear}</div>
+                <div>讀取範圍：${escapeHtml(pendingScheduleImportMeta.actualRef || '-')} ${pendingScheduleImportMeta.refChanged ? `<span class="text-orange-700 font-bold">（已自動修正原始範圍 ${escapeHtml(pendingScheduleImportMeta.originalRef || '-')}）</span>` : ''}</div>
+                <div>可寫入 ${totalRecords} 組：有日期 ${datedCount} 組、只顯示類型 ${displayOnlyCount} 組。</div>
+                <div class="text-gray-500">確認後會覆蓋目前年度報表內 10 個工廠的預計定檢期間與定檢類型。${hiddenNote}${missingNote}</div>`;
+
+            errorList.innerHTML = '';
+            const uniqueMessages = [...new Set(pendingScheduleImportMessages)].slice(0, 200);
+            uniqueMessages.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                errorList.appendChild(li);
+            });
+            errorWrap.classList.toggle('hidden', uniqueMessages.length === 0);
+            renderFactoryAliasManager();
+        }
+
+        function confirmScheduleExcelImport() {
+            const selectedYear = String(parseInt(document.getElementById('view-year').value));
+            const totalRecords = Object.values(pendingScheduleImportRecords || {}).reduce((sum, records) => sum + records.length, 0);
+            if (!totalRecords) return alert('沒有可寫入的定檢期間資料。');
+            if (!confirm(`確認要用本次定檢 Excel 覆蓋 ${selectedYear} 年度報表內 10 個工廠的定檢期間與定檢類型嗎？`)) return;
+
+            if (!schedules[selectedYear]) schedules[selectedYear] = {};
+            validFactories.forEach(factory => {
+                schedules[selectedYear][factory] = dedupeScheduleRecords(pendingScheduleImportRecords[factory] || []);
+            });
+            saveData();
+            resetImportState();
+            renderAll();
+            alert(`定檢期間匯入完成：已更新 ${validFactories.length} 個工廠，寫入 ${totalRecords} 組資料。`);
+        }
+
+        function resetScheduleImportState(clearFile = true) {
+            resetPendingFactoryAliases();
+            pendingScheduleImportRecords = {};
+            pendingScheduleImportRows = [];
+            pendingScheduleImportMessages = [];
+            pendingScheduleImportMeta = {};
+            if (clearFile) {
+                const fileInput = document.getElementById('schedule-excel-file');
+                if (fileInput) fileInput.value = '';
+            }
+            const summary = document.getElementById('schedule-import-summary');
+            const previewBody = document.getElementById('schedule-import-preview-body');
+            const previewWrap = document.getElementById('schedule-import-preview-wrap');
+            const errorList = document.getElementById('schedule-import-error-list');
+            const errorWrap = document.getElementById('schedule-import-error-wrap');
+            const confirmBtn = document.getElementById('confirm-schedule-import-btn');
+            if (summary) summary.innerHTML = '尚未選擇定檢 Excel 檔案。';
+            if (previewBody) previewBody.innerHTML = '';
+            if (previewWrap) previewWrap.classList.add('hidden');
+            if (errorList) errorList.innerHTML = '';
+            if (errorWrap) errorWrap.classList.add('hidden');
+            if (confirmBtn) confirmBtn.disabled = true;
+            renderFactoryAliasManager();
+        }
+
+        function judgeEventTypeBySchedule(factory, dateISO) {
+            const year = getYearFromISO(dateISO);
+            const periods = getSchedulePeriods(year, factory);
+            if (!periods.length) {
+                return { type: 'NON-TA', basis: '未設定預計定檢期間，預設為非定檢' };
+            }
+            const matched = periods.find(period => dateISO >= period.start && dateISO <= period.end);
+            if (matched) {
+                return { type: 'TA', basis: `落在預計定檢期間 ${formatScheduleRange(matched)}` };
+            }
+            const periodText = periods.map(formatScheduleRange).join('、');
+            return { type: 'NON-TA', basis: `未落在任何預計定檢期間（${periodText}）` };
+        }
+
+        function getEffectiveEventType(event) {
+            // Excel 匯入資料不自帶定檢 / 非定檢，依目前設定的多組預計定檢期間即時判斷。
+            // 人工新增資料則保留使用者手動選擇的類型。
+            if (event?.source === 'excel') {
+                return judgeEventTypeBySchedule(event.factory, event.date).type;
+            }
+            return event?.type || 'NON-TA';
+        }
+
+        function buildEventKey(event) {
+            return `${event.factory}|${event.date}|${getEffectiveEventType(event)}`;
+        }
+
+        function findColumnIndex(headers, aliases) {
+            // 避免空白儲存格被 partial match 誤判成任意欄位。
+            // 例如定檢 Excel 第 1 列標題列前方有空白格，舊寫法會因 aliasKey.includes('') 永遠為 true，
+            // 導致第 1 列被誤判為標題列，後續自然解析不到廠處、類型與日期。
+            const normalizedHeaders = headers
+                .map((h, index) => ({ raw: h, key: normalizeColumnName(h), index }))
+                .filter(h => h.key.length > 0);
+
+            for (const alias of aliases) {
+                const aliasKey = normalizeColumnName(alias);
+                if (!aliasKey) continue;
+                const exact = normalizedHeaders.find(h => h.key === aliasKey);
+                if (exact) return exact.index;
+            }
+            for (const alias of aliases) {
+                const aliasKey = normalizeColumnName(alias);
+                if (!aliasKey) continue;
+                const partial = normalizedHeaders.find(h => h.key.includes(aliasKey) || aliasKey.includes(h.key));
+                if (partial) return partial.index;
+            }
+            return -1;
+        }
+
+        function buildColumnMap(headers) {
+            return {
+                code: findColumnIndex(headers, ['公私場所代號', '場所代號', '代號']),
+                factory: findColumnIndex(headers, ['廠處名稱', '工廠', '廠別', '廠處']),
+                pipeNo: findColumnIndex(headers, ['管道編號', '管編', '排放管道']),
+                monitorDate: findColumnIndex(headers, ['監測日期', '日期', '資料日期']),
+                amount: findColumnIndex(headers, ['累計排放量(管道)', '累計排放量管道', '排放量', '累計排放量']),
+                limitValue: findColumnIndex(headers, ['超限數值', '超限值']),
+                limitTime: findColumnIndex(headers, ['超限時間']),
+                triggerTime: findColumnIndex(headers, ['系統觸發時間', '觸發時間'])
+            };
+        }
+
+        function hasColumn(index) {
+            return Number.isInteger(index) && index >= 0;
+        }
+
+
+        function getActualWorksheetRange(worksheet) {
+            if (!worksheet || !window.XLSX?.utils?.decode_cell || !window.XLSX?.utils?.encode_range) return null;
+            const cellKeys = Object.keys(worksheet).filter(key => /^[A-Z]+\d+$/i.test(key));
+            if (!cellKeys.length) return null;
+
+            let minRow = Infinity;
+            let minCol = Infinity;
+            let maxRow = -1;
+            let maxCol = -1;
+
+            cellKeys.forEach(key => {
+                try {
+                    const cell = XLSX.utils.decode_cell(key);
+                    minRow = Math.min(minRow, cell.r);
+                    minCol = Math.min(minCol, cell.c);
+                    maxRow = Math.max(maxRow, cell.r);
+                    maxCol = Math.max(maxCol, cell.c);
+                } catch (err) {
+                    // 略過非標準儲存格鍵值
+                }
+            });
+
+            if (!Number.isFinite(minRow) || maxRow < 0 || maxCol < 0) return null;
+            return XLSX.utils.encode_range({ s: { r: minRow, c: minCol }, e: { r: maxRow, c: maxCol } });
+        }
+
+        function rebuildWorksheetRefIfNeeded(worksheet) {
+            const originalRef = worksheet?.['!ref'] || '';
+            const actualRef = getActualWorksheetRange(worksheet);
+            if (actualRef && actualRef !== originalRef) {
+                worksheet['!ref'] = actualRef;
+            }
+            return {
+                originalRef,
+                actualRef: actualRef || originalRef,
+                refChanged: Boolean(actualRef && actualRef !== originalRef)
+            };
+        }
+
+        function detectHeaderRow(matrix) {
+            let best = { index: -1, score: -1, headers: [], columnMap: null };
+            const maxScanRows = Math.min(matrix.length, 20);
+
+            for (let i = 0; i < maxScanRows; i++) {
+                const headers = (matrix[i] || []).map(displayRawValue);
+                const columnMap = buildColumnMap(headers);
+                let score = 0;
+                if (hasColumn(columnMap.monitorDate)) score += 3;
+                if (hasColumn(columnMap.code)) score += 2;
+                if (hasColumn(columnMap.factory)) score += 2;
+                if (hasColumn(columnMap.amount)) score += 2;
+                if (hasColumn(columnMap.pipeNo)) score += 1;
+                if (hasColumn(columnMap.limitValue)) score += 1;
+                if (hasColumn(columnMap.limitTime)) score += 1;
+                if (hasColumn(columnMap.triggerTime)) score += 1;
+
+                if (score > best.score) best = { index: i, score, headers, columnMap };
+            }
+            return best;
+        }
+
+        function handleExcelFileSelect(e) {
+            const file = e.target.files?.[0];
+            if (!file) return resetImportState(false);
+            if (!window.XLSX) {
+                alert('Excel 解析套件尚未載入，請確認網路可連線至 SheetJS CDN。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const refInfo = rebuildWorksheetRefIfNeeded(worksheet);
+                    // 使用 header:1 讀成二維陣列，並先重建 !ref，避免系統匯出的 Excel 內部範圍錯誤造成只讀到 A 欄。
+                    const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true, blankrows: false });
+                    lastImportContext = { type: 'event', matrix, fileName: file.name, sheetName, refInfo };
+                    parseExcelMatrix(matrix, file.name, sheetName, refInfo);
+                } catch (err) {
+                    pendingImportEvents = [];
+                    pendingImportMessages = [`讀取 Excel 失敗：${err.message}`];
+                    renderImportPreview(file.name);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseExcelMatrix(matrix, fileName, sheetName, refInfo = {}) {
+            resetPendingFactoryAliases();
+            pendingImportEvents = [];
+            pendingImportMessages = [];
+            pendingImportMeta = {};
+            pendingBelowThresholdCount = 0;
+            pendingImportMeta = {
+                originalRef: refInfo.originalRef || '',
+                actualRef: refInfo.actualRef || '',
+                refChanged: Boolean(refInfo.refChanged)
+            };
+
+            if (pendingImportMeta.originalRef || pendingImportMeta.actualRef) {
+                pendingImportMessages.push(`Excel 內部標記範圍：${pendingImportMeta.originalRef || '-'}；實際讀取範圍：${pendingImportMeta.actualRef || '-'}。`);
+            }
+            if (pendingImportMeta.refChanged) {
+                pendingImportMessages.push(`偵測到 Excel 內部範圍異常，已自動由 ${pendingImportMeta.originalRef} 修正為 ${pendingImportMeta.actualRef}。`);
+            }
+
+            if (!matrix.length) {
+                pendingImportMessages.push('Excel 沒有可解析的資料列。');
+                renderImportPreview(fileName, sheetName);
+                return;
+            }
+
+            const headerInfo = detectHeaderRow(matrix);
+            const columnMap = headerInfo.columnMap || {};
+            const headerRowNo = headerInfo.index + 1;
+
+            if (!hasColumn(columnMap.monitorDate)) pendingImportMessages.push('缺少必要欄位：監測日期。');
+            if (!hasColumn(columnMap.code) && !hasColumn(columnMap.factory)) pendingImportMessages.push('缺少必要欄位：公私場所代號或廠處名稱至少需要一欄。');
+            if (!hasColumn(columnMap.amount)) pendingImportMessages.push('找不到「累計排放量(管道)」欄位，排放量將預設為 0。');
+
+            if (!hasColumn(columnMap.monitorDate) || (!hasColumn(columnMap.code) && !hasColumn(columnMap.factory))) {
+                if (headerInfo.headers?.length) {
+                    pendingImportMessages.push(`目前偵測到第 ${headerRowNo || '-'} 列可能是標題列：${headerInfo.headers.filter(Boolean).join('、')}`);
+                }
+                renderImportPreview(fileName, sheetName);
+                return;
+            }
+
+            pendingImportMessages.push(`已偵測第 ${headerRowNo} 列為 Excel 標題列。`);
+
+            for (let i = headerInfo.index + 1; i < matrix.length; i++) {
+                const row = matrix[i] || [];
+                const rowNo = i + 1;
+                if (row.every(cell => displayRawValue(cell) === '')) continue;
+
+                const rawDate = row[columnMap.monitorDate];
+                const dateISO = parseExcelDate(rawDate);
+                if (!dateISO) {
+                    pendingImportMessages.push(`第 ${rowNo} 列：無法解析監測日期「${displayRawValue(rawDate)}」。`);
+                    continue;
+                }
+
+                const rawCode = hasColumn(columnMap.code) ? row[columnMap.code] : '';
+                const rawFactory = hasColumn(columnMap.factory) ? row[columnMap.factory] : '';
+                const factoryResult = normalizeFactoryName(rawFactory, rawCode);
+                if (!factoryResult.factory || !validFactories.includes(factoryResult.factory)) {
+                    pendingImportMessages.push(`第 ${rowNo} 列：${factoryResult.note}`);
+                    continue;
+                }
+
+                const amount = hasColumn(columnMap.amount) ? parseNumber(row[columnMap.amount]) : 0;
+                if (amount < IMPORT_AMOUNT_THRESHOLD) {
+                    pendingBelowThresholdCount++;
+                    continue;
+                }
+
+                const typeJudge = judgeEventTypeBySchedule(factoryResult.factory, dateISO);
+                if (typeJudge.basis.includes('未設定')) {
+                    pendingImportMessages.push(`第 ${rowNo} 列：${factoryResult.factory} 於 ${getYearFromISO(dateISO)} 年未設定預計定檢期間，已先判定為非定檢。`);
+                }
+                if (factoryResult.note.includes('預設')) {
+                    pendingImportMessages.push(`第 ${rowNo} 列：${factoryResult.note}。`);
+                }
+
+                pendingImportEvents.push({
+                    id: null,
+                    source: 'excel',
+                    rowNo,
+                    factory: factoryResult.factory,
+                    type: typeJudge.type,
+                    date: dateISO,
+                    amount,
+                    importBasis: `${factoryResult.note}；累計排放量 ${Number(amount).toLocaleString()} ≥ ${IMPORT_AMOUNT_THRESHOLD.toLocaleString()}；${typeJudge.basis}`
+                });
+            }
+
+            renderImportPreview(fileName, sheetName);
+        }
+
+        function renderImportPreview(fileName = '', sheetName = '') {
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const yearEvents = pendingImportEvents.filter(e => getYearFromISO(e.date) === selectedYear);
+            const otherYearCount = pendingImportEvents.length - yearEvents.length;
+            const taCount = yearEvents.filter(e => e.type === 'TA').length;
+            const nonTaCount = yearEvents.filter(e => e.type === 'NON-TA').length;
+
+            const summary = document.getElementById('import-summary');
+            const previewWrap = document.getElementById('import-preview-wrap');
+            const previewBody = document.getElementById('import-preview-body');
+            const errorWrap = document.getElementById('import-error-wrap');
+            const errorList = document.getElementById('import-error-list');
+            const confirmBtn = document.getElementById('confirm-import-btn');
+
+            previewBody.innerHTML = '';
+            yearEvents.slice(0, 100).forEach(e => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${e.rowNo}</td>
+                    <td>${escapeHtml(e.date)}</td>
+                    <td>${escapeHtml(e.factory)}</td>
+                    <td><span class="font-bold ${e.type === 'TA' ? 'text-blue-700' : 'text-orange-700'}">${getEffectiveEventType(e) === 'TA' ? '定檢' : '非定檢'}</span></td>
+                    <td>${Number(e.amount || 0).toLocaleString()}</td>
+                    <td class="text-gray-500">${escapeHtml(e.importBasis)}</td>`;
+                previewBody.appendChild(tr);
+            });
+
+            previewWrap.classList.toggle('hidden', yearEvents.length === 0);
+            confirmBtn.disabled = yearEvents.length === 0;
+
+            const hiddenNote = yearEvents.length > 100 ? `<br>預覽僅顯示前 100 筆，其餘資料仍會參與匯入。` : '';
+            const otherYearNote = otherYearCount > 0 ? `<br>另有 ${otherYearCount} 筆不屬於目前選取年度 ${selectedYear}，確認匯入時不會導入。` : '';
+            summary.innerHTML = `
+                <div class="font-bold text-gray-800">${fileName ? `已解析：${escapeHtml(fileName)}` : 'Excel 預覽結果'}</div>
+                <div>工作表：${escapeHtml(sheetName || '-')}；目前年度：${selectedYear}</div>
+                <div>讀取範圍：${escapeHtml(pendingImportMeta.actualRef || '-')} ${pendingImportMeta.refChanged ? `<span class="text-orange-700 font-bold">（已自動修正原始範圍 ${escapeHtml(pendingImportMeta.originalRef || '-')}）</span>` : ''}</div>
+                <div>可匯入 ${yearEvents.length} 筆：定檢 ${taCount} 筆、非定檢 ${nonTaCount} 筆。</div>
+                <div>低於 ${IMPORT_AMOUNT_THRESHOLD.toLocaleString()} 略過：${pendingBelowThresholdCount} 筆。</div>
+                <div class="text-gray-500">確認導入前，不會寫入瀏覽器資料；Excel 不會寫入備註欄。${hiddenNote}${otherYearNote}</div>`;
+
+            errorList.innerHTML = '';
+            const uniqueMessages = [...new Set(pendingImportMessages)].slice(0, 200);
+            uniqueMessages.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                errorList.appendChild(li);
+            });
+            errorWrap.classList.toggle('hidden', uniqueMessages.length === 0);
+            renderFactoryAliasManager();
+        }
+
+        function confirmExcelImport() {
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const importMode = document.getElementById('import-mode').value;
+            const targetEvents = pendingImportEvents.filter(e => getYearFromISO(e.date) === selectedYear);
+            if (targetEvents.length === 0) return alert(`沒有可導入 ${selectedYear} 年度的資料。`);
+
+            let baseEvents = [...events];
+            if (importMode === 'overwrite') {
+                baseEvents = baseEvents.filter(e => getYearFromISO(e.date) !== selectedYear);
+                clearExcludedDaysForYear(selectedYear);
+            }
+
+            const existingKeys = new Set(baseEvents.map(buildEventKey));
+            let added = 0;
+            let skipped = 0;
+            const now = Date.now();
+
+            targetEvents.forEach((event, index) => {
+                const key = buildEventKey(event);
+                if (existingKeys.has(key)) {
+                    skipped++;
+                    return;
+                }
+                existingKeys.add(key);
+                baseEvents.push({
+                    id: now + index,
+                    source: 'excel',
+                    factory: event.factory,
+                    type: event.type,
+                    date: event.date,
+                    amount: event.amount
+                });
+                added++;
+            });
+
+            events = baseEvents;
+            saveData();
+            renderAll();
+
+            document.getElementById('import-summary').innerHTML = `
+                <div class="font-bold text-green-700">匯入完成</div>
+                <div>模式：${importMode === 'overwrite' ? '覆蓋目前年度' : '追加資料'}；年度：${selectedYear}</div>
+                <div>成功導入 ${added} 筆，跳過重複 ${skipped} 筆。</div>`;
+            document.getElementById('confirm-import-btn').disabled = true;
+            alert(`匯入完成：成功 ${added} 筆，跳過重複 ${skipped} 筆。`);
+        }
+
+
+        function getDayExclusionKey(factory, dateISO) {
+            return `${getYearFromISO(dateISO)}|${factory}|${dateISO}`;
+        }
+
+        function isDayExcluded(factory, dateISO) {
+            return Boolean(excludedDays[getDayExclusionKey(factory, dateISO)]);
+        }
+
+        function clearExcludedDaysForYear(year) {
+            Object.keys(excludedDays).forEach(key => {
+                if (key.startsWith(`${year}|`)) delete excludedDays[key];
+            });
+            saveExcludedDays();
+        }
+
+        function getTypeLabel(typeSet) {
+            const types = [...typeSet];
+            if (types.length > 1) return '混合';
+            return types[0] === 'TA' ? '定檢' : '非定檢';
+        }
+
+        function getTypeBadgeClass(typeSet) {
+            const types = [...typeSet];
+            if (types.length > 1) return 'text-purple-700';
+            return types[0] === 'TA' ? 'text-blue-700' : 'text-orange-700';
+        }
+
+        function getYearDayGroups(year) {
+            const groups = new Map();
+            events
+                .filter(e => getYearFromISO(e.date) === year)
+                .forEach(e => {
+                    const key = getDayExclusionKey(e.factory, e.date);
+                    if (!groups.has(key)) {
+                        groups.set(key, {
+                            key,
+                            year,
+                            factory: e.factory,
+                            date: e.date,
+                            types: new Set(),
+                            totalAmount: 0,
+                            maxAmount: 0,
+                            count: 0,
+                            sources: new Set(),
+                            excluded: isDayExcluded(e.factory, e.date),
+                            exclusion: excludedDays[key] || null
+                        });
+                    }
+                    const group = groups.get(key);
+                    group.types.add(getEffectiveEventType(e));
+                    const amount = Number(e.amount || 0);
+                    group.totalAmount += amount;
+                    group.maxAmount = Math.max(group.maxAmount, amount);
+                    group.count += 1;
+                    group.sources.add(e.source || 'manual');
+                });
+            return [...groups.values()].sort((a, b) => {
+                if (a.date !== b.date) return new Date(a.date) - new Date(b.date);
+                return a.factory.localeCompare(b.factory, 'zh-Hant');
+            });
+        }
+
+        function emptyRow(colspan, message) {
+            return `<tr><td colspan="${colspan}" class="text-center text-gray-400 py-4">${escapeHtml(message)}</td></tr>`;
+        }
+
+        function renderExclusionLists(year) {
+            const includedBody = document.getElementById('included-days-body');
+            const excludedBody = document.getElementById('excluded-days-body');
+            if (!includedBody || !excludedBody) return;
+
+            const groups = getYearDayGroups(year);
+            const includedGroups = groups.filter(g => !g.excluded);
+            const excludedGroups = groups.filter(g => g.excluded);
+
+            includedBody.innerHTML = includedGroups.length ? '' : emptyRow(5, '本年度尚無納入統計資料');
+            includedGroups.forEach(group => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(group.date)}</td>
+                    <td>${escapeHtml(group.factory)}</td>
+                    <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
+                    <td title="同日資料筆數：${group.count}">${Number(group.totalAmount || 0).toLocaleString()}</td>
+                    <td><button onclick='excludeDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-orange-700 underline hover:text-orange-900">剔除</button></td>`;
+                includedBody.appendChild(tr);
+            });
+
+            excludedBody.innerHTML = excludedGroups.length ? '' : emptyRow(5, '本年度尚無人工剔除資料');
+            excludedGroups.forEach(group => {
+                const reason = group.exclusion?.reason || '－';
+                const tr = document.createElement('tr');
+                tr.className = 'bg-orange-50';
+                tr.innerHTML = `
+                    <td>${escapeHtml(group.date)}</td>
+                    <td>${escapeHtml(group.factory)}</td>
+                    <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
+                    <td class="max-w-[160px] truncate" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
+                    <td><button onclick='restoreDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-blue-700 underline hover:text-blue-900">恢復</button></td>`;
+                excludedBody.appendChild(tr);
+            });
+
+            document.getElementById('included-day-count').innerText = `${includedGroups.length} 天`;
+            document.getElementById('excluded-day-count').innerText = `${excludedGroups.length} 天`;
+            document.getElementById('exclusion-panel-summary').innerHTML = `本年度納入統計 <span class="font-bold">${includedGroups.length}</span> 天；已剔除 <span class="font-bold">${excludedGroups.length}</span> 天。`;
+            document.getElementById('excluded-days-summary').innerText = `目前統計已排除人工剔除使用日數：${excludedGroups.length} 天`;
+        }
+
+        function excludeDay(factory, dateISO) {
+            const reason = prompt(`請輸入 ${factory} / ${dateISO} 的剔除原因（可留空）：`, '');
+            if (reason === null) return;
+            const key = getDayExclusionKey(factory, dateISO);
+            excludedDays[key] = {
+                factory,
+                date: dateISO,
+                reason: reason.trim(),
+                createdAt: new Date().toISOString()
+            };
+            saveExcludedDays();
+            renderAll();
+        }
+
+        function restoreDay(factory, dateISO) {
+            if (!confirm(`確定要恢復 ${factory} / ${dateISO}，重新納入統計嗎？`)) return;
+            delete excludedDays[getDayExclusionKey(factory, dateISO)];
+            saveExcludedDays();
+            renderAll();
+        }
+
+        function resetImportState(clearFile = true) {
+            pendingImportEvents = [];
+            pendingImportMessages = [];
+            pendingImportMeta = {};
+            pendingBelowThresholdCount = 0;
+            if (clearFile) document.getElementById('excel-file').value = '';
+            document.getElementById('import-summary').innerHTML = '尚未選擇 Excel 檔案。';
+            document.getElementById('import-preview-body').innerHTML = '';
+            document.getElementById('import-preview-wrap').classList.add('hidden');
+            document.getElementById('import-error-list').innerHTML = '';
+            document.getElementById('import-error-wrap').classList.add('hidden');
+            document.getElementById('confirm-import-btn').disabled = true;
+        }
+
+        // 核心渲染邏輯
+        function renderAll() {
+            const year = parseInt(document.getElementById('view-year').value);
+            document.getElementById('display-year').innerText = year;
+            
+            const allYearEvents = events
+                .filter(e => getYearFromISO(e.date) === year)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            const filteredEvents = allYearEvents
+                .filter(e => !isDayExcluded(e.factory, e.date));
+            const yearSchedules = schedules[year] || {};
+            
+            const statsBody = document.getElementById('stats-body');
+            statsBody.innerHTML = '';
+            loadManualRemarksForYear(year);
+            renderSchedulePeriodsList();
+
+            let areaDayCounters = { "麥寮區": new Set(), "海豐區": new Set(), "HAC廠": new Set() };
+
+            Object.entries(factoryConfig).forEach(([area, factories]) => {
+                let areaRowSpan = factories.length;
+                let areaTotalSet = new Set();
+
+                factories.forEach((factory, index) => {
+                    const fEvents = filteredEvents.filter(e => e.factory === factory);
+                    const taEvents = fEvents.filter(e => getEffectiveEventType(e) === 'TA');
+                    const nonTaEvents = fEvents.filter(e => getEffectiveEventType(e) === 'NON-TA');
+                    const taDateSet = new Set(taEvents.map(e => e.date));
+                    const nonTaDateSet = new Set(nonTaEvents.map(e => e.date));
+
+                    // 匯總區域事件日數
+                    fEvents.forEach(e => {
+                        areaTotalSet.add(e.date);
+                        areaDayCounters[area].add(e.date);
+                    });
+
+                    const tr = document.createElement('tr');
+                    
+                    // A. 廠處欄位 (跨列處理)
+                    if (index === 0) {
+                        const areaTd = document.createElement('td');
+                        areaTd.rowSpan = areaRowSpan;
+                        areaTd.className = "area-header";
+                        areaTd.innerText = area === "HAC廠" ? "醋酸廠" : (area === "麥寮區" ? "麥寮廠" : "海豐廠");
+                        tr.appendChild(areaTd);
+                    }
+
+                    // B. 工廠名
+                    tr.innerHTML += `<td class="factory-label font-medium">${escapeHtml(factory)}</td>`;
+                    
+                    // C. 定檢類型與預計定檢期間
+                    const schedRecords = getScheduleRecords(year, factory);
+                    const schedTypeText = schedRecords.length
+                        ? schedRecords.map(record => escapeHtml(formatScheduleType(record))).join('<br>')
+                        : '-';
+                    const schedText = schedRecords.length
+                        ? schedRecords.map(record => escapeHtml(formatScheduleRange(record))).join('<br>')
+                        : '-';
+                    tr.innerHTML += `<td class="text-gray-600 leading-relaxed">${schedTypeText}</td>`;
+                    tr.innerHTML += `<td class="text-gray-400 leading-relaxed">${schedText}</td>`;
+                    
+                    // D. 定檢發生時間與天數，以「同工廠 + 同類型 + 同日期」計算事件日，不重複累加
+                    const taDates = [...taDateSet].map(formatMonthDay).sort().join(', ');
+                    tr.innerHTML += `<td>${escapeHtml(taDates)}</td><td class="bg-blue-50 font-bold">${taDateSet.size || ''}</td>`;
+                    
+                    // E. 非定檢發生時間與天數
+                    const nonTaDates = [...nonTaDateSet].map(formatMonthDay).sort().join(', ');
+                    tr.innerHTML += `<td>${escapeHtml(nonTaDates)}</td><td class="bg-orange-50 font-bold">${nonTaDateSet.size || ''}</td>`;
+                    
+                    // F. 工廠內合計
+                    const factoryTotal = new Set(fEvents.map(e => e.date)).size;
+                    tr.innerHTML += `<td class="bg-gray-100 font-bold">${factoryTotal || ''}</td>`;
+
+                    // G. 區域總計 (聯集結果)
+                    if (index === 0) {
+                        const totalTd = document.createElement('td');
+                        totalTd.rowSpan = areaRowSpan;
+                        totalTd.id = `total-cell-${area}`;
+                        totalTd.className = "font-bold text-lg text-blue-700 bg-white";
+                        tr.appendChild(totalTd);
+                    }
+
+                    statsBody.appendChild(tr);
+                });
+
+                // 更新區域總計
+                document.getElementById(`total-cell-${area}`).innerText = areaTotalSet.size;
+                
+            });
+
+            // 更新摘要
+            document.getElementById('summary-mai-liao').innerText = areaDayCounters["麥寮區"].size;
+            document.getElementById('summary-hai-feng').innerText = areaDayCounters["海豐區"].size;
+            document.getElementById('summary-hac').innerText = areaDayCounters["HAC廠"].size;
+            renderExclusionLists(year);
+
+        }
+
+        function clearAllData() {
+            if(confirm('警告：確定要清除所有資料嗎？')) {
+                events = [];
+                schedules = {};
+                excludedDays = {};
+                clearManualRemarksStorage();
+                customFactoryAliasRules = [];
+                saveCustomFactoryAliasRules();
+                resetPendingFactoryAliases();
+                saveData();
+                saveExcludedDays();
+                resetImportState();
+                resetScheduleImportState();
+                resetMaintenanceImportState();
+                renderAll();
+            }
+        }
+
+        function escapeCSV(value) {
+            return String(value ?? '').replace(/"/g, '""');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        const MAINTENANCE_CSV_HEADERS = [
+            '啟用狀態', '資料類型', '資料ID', '年度', '工廠', '日期', '排放類型', '排放量', '來源',
+            '定檢類型', '開始日期', '結束日期', '剔除原因', '匯入名稱', '標準工廠', '備註'
+        ];
+
+        function csvCell(value) {
+            return `"${escapeCSV(value)}"`;
+        }
+
+        function makeCSVLine(values) {
+            return values.map(csvCell).join(',');
+        }
+
+        function getMaintenanceEventId(event, index) {
+            return event?.id ? `EVT-${event.id}` : `EVT-${getYearFromISO(event.date)}-${event.factory}-${event.date}-${getEffectiveEventType(event)}-${index}`;
+        }
+
+        function exportMaintenanceCSV() {
+            const year = parseInt(document.getElementById('view-year').value);
+            const rows = [MAINTENANCE_CSV_HEADERS];
+
+            events
+                .filter(e => getYearFromISO(e.date) === year)
+                .sort((a, b) => new Date(a.date) - new Date(b.date) || String(a.factory).localeCompare(String(b.factory), 'zh-Hant'))
+                .forEach((e, index) => {
+                    rows.push([
+                        '是', '排放紀錄', getMaintenanceEventId(e, index), year, e.factory, e.date,
+                        getEffectiveEventType(e) === 'TA' ? '定檢' : '非定檢', e.amount, e.source || 'manual',
+                        '', '', '', '', '', '', ''
+                    ]);
+                });
+
+            validFactories.forEach(factory => {
+                getScheduleRecords(year, factory).forEach((record, index) => {
+                    rows.push([
+                        '是', '定檢期間', `SCH-${year}-${factory}-${record.start || 'NODATE'}-${record.end || 'NODATE'}-${index}`,
+                        year, factory, '', '', '', record.source || 'manual',
+                        record.scheduleType || '', record.start || '', record.end || '', '', '', '', ''
+                    ]);
+                });
+            });
+
+            Object.keys(excludedDays)
+                .filter(key => key.startsWith(`${year}|`))
+                .sort()
+                .forEach(key => {
+                    const exclusion = excludedDays[key] || {};
+                    rows.push([
+                        '是', '剔除日數', `EXC-${year}-${exclusion.factory || ''}-${exclusion.date || ''}`,
+                        year, exclusion.factory || '', exclusion.date || '', '', '', '',
+                        '', '', '', exclusion.reason || '', '', '', ''
+                    ]);
+                });
+
+            customFactoryAliasRules.forEach(rule => {
+                rows.push([
+                    '是', '工廠對照', `ALIAS-${rule.rawName}`, '', '', '', '', '', rule.source || 'manual',
+                    '', '', '', '', rule.rawName || '', rule.factory || '', ''
+                ]);
+            });
+
+            const remarks = localStorage.getItem(getManualRemarksKey(year)) || '';
+            rows.push([
+                '是', '年度備註', `NOTE-${year}`, year, '', '', '', '', '', '', '', '', '', '', '', remarks
+            ]);
+
+            const csv = '\uFEFF' + rows.map(makeCSVLine).join('\n');
+            downloadCSV(csv, `燃燒塔離線維護資料_${year}.csv`);
+        }
+
+        function parseCSVText(text) {
+            const rows = [];
+            let row = [];
+            let value = '';
+            let inQuotes = false;
+            const content = String(text || '').replace(/^\uFEFF/, '');
+            for (let i = 0; i < content.length; i++) {
+                const char = content[i];
+                const next = content[i + 1];
+                if (inQuotes) {
+                    if (char === '"' && next === '"') {
+                        value += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = false;
+                    } else {
+                        value += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        row.push(value);
+                        value = '';
+                    } else if (char === '\n') {
+                        row.push(value);
+                        rows.push(row);
+                        row = [];
+                        value = '';
+                    } else if (char === '\r') {
+                        // CRLF 的 CR 略過，單獨 CR 也由下一輪處理或結尾處理。
+                    } else {
+                        value += char;
+                    }
+                }
+            }
+            if (value.length || row.length) {
+                row.push(value);
+                rows.push(row);
+            }
+            return rows.filter(r => r.some(cell => String(cell ?? '').trim() !== ''));
+        }
+
+        function normalizeMaintenanceHeader(value) {
+            return String(value ?? '').replace(/[\s　]/g, '').replace(/^\uFEFF/, '');
+        }
+
+        function buildMaintenanceHeaderMap(headers) {
+            const map = {};
+            headers.forEach((header, index) => {
+                const key = normalizeMaintenanceHeader(header);
+                if (key && map[key] === undefined) map[key] = index;
+            });
+            return map;
+        }
+
+        function getMaintenanceField(row, headerMap, aliases) {
+            for (const alias of aliases) {
+                const key = normalizeMaintenanceHeader(alias);
+                if (headerMap[key] !== undefined) return String(row[headerMap[key]] ?? '').trim();
+            }
+            return '';
+        }
+
+        function isMaintenanceRowActive(value) {
+            const text = String(value ?? '').trim().toLowerCase();
+            if (!text) return true;
+            return !['否', '不啟用', '略過', 'no', 'n', '0', 'false'].includes(text);
+        }
+
+        function parseMaintenanceEventType(value) {
+            const text = String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');
+            if (['TA', '定檢'].includes(text)) return 'TA';
+            if (['NON-TA', 'NONTA', '非定檢'].includes(text)) return 'NON-TA';
+            return null;
+        }
+
+        function parseMaintenanceDate(value, defaultYear) {
+            return parseScheduleDate(value, defaultYear);
+        }
+
+        function makeMaintenanceEmptyPayload() {
+            return {
+                events: [],
+                scheduleRecords: {},
+                exclusions: {},
+                aliases: [],
+                remarks: null,
+                counts: { events: 0, schedules: 0, exclusions: 0, aliases: 0, remarks: 0, skipped: 0, errors: 0 }
+            };
+        }
+
+        function handleMaintenanceCSVSelect(e) {
+            const file = e.target.files?.[0];
+            if (!file) return resetMaintenanceImportState(false);
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    parseMaintenanceCSVText(evt.target.result, file.name);
+                } catch (err) {
+                    pendingMaintenanceImport = makeMaintenanceEmptyPayload();
+                    pendingMaintenanceMessages = [`讀取維護 CSV 失敗：${err.message}`];
+                    renderMaintenanceImportPreview(file.name);
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        function parseMaintenanceCSVText(text, fileName = '') {
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const rows = parseCSVText(text);
+            pendingMaintenanceImport = makeMaintenanceEmptyPayload();
+            pendingMaintenanceMessages = [];
+
+            if (!rows.length) {
+                pendingMaintenanceMessages.push('CSV 沒有可解析的資料。');
+                renderMaintenanceImportPreview(fileName);
+                return;
+            }
+
+            const headers = rows[0];
+            const headerMap = buildMaintenanceHeaderMap(headers);
+            const requiredHeaders = ['資料類型'];
+            requiredHeaders.forEach(header => {
+                if (headerMap[normalizeMaintenanceHeader(header)] === undefined) {
+                    pendingMaintenanceMessages.push(`缺少必要欄位：${header}。`);
+                }
+            });
+            if (pendingMaintenanceMessages.some(msg => msg.includes('缺少必要欄位'))) {
+                renderMaintenanceImportPreview(fileName);
+                return;
+            }
+
+            const eventKeys = new Set();
+            const aliasKeys = new Set();
+
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const rowNo = i + 1;
+                const active = getMaintenanceField(row, headerMap, ['啟用狀態', '啟用']);
+                if (!isMaintenanceRowActive(active)) {
+                    pendingMaintenanceImport.counts.skipped++;
+                    continue;
+                }
+
+                const dataType = getMaintenanceField(row, headerMap, ['資料類型', '類型']);
+                const dataId = getMaintenanceField(row, headerMap, ['資料ID', 'ID']);
+                const yearText = getMaintenanceField(row, headerMap, ['年度', '年']);
+                const rowYear = yearText ? parseInt(yearText, 10) : selectedYear;
+
+                if (dataType !== '工廠對照' && rowYear !== selectedYear) {
+                    pendingMaintenanceImport.counts.skipped++;
+                    pendingMaintenanceMessages.push(`第 ${rowNo} 列：年度 ${rowYear || '-'} 不等於目前選取年度 ${selectedYear}，已略過。`);
+                    continue;
+                }
+
+                if (dataType === '排放紀錄') {
+                    const factory = getMaintenanceField(row, headerMap, ['工廠', '標準工廠']);
+                    const date = parseMaintenanceDate(getMaintenanceField(row, headerMap, ['日期']), selectedYear);
+                    const type = parseMaintenanceEventType(getMaintenanceField(row, headerMap, ['排放類型', '類型']));
+                    const amountText = getMaintenanceField(row, headerMap, ['排放量', 'NM3']);
+                    const source = getMaintenanceField(row, headerMap, ['來源']) || 'manual';
+                    const amount = parseNumber(amountText);
+                    if (!validFactories.includes(factory)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：排放紀錄工廠不在標準清單內：${factory || '-'}。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!date) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：排放紀錄日期格式錯誤。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!type) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：排放類型需為「定檢」或「非定檢」。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!amountText || !Number.isFinite(amount)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：排放量不是有效數字。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    const eventKey = dataId || `${factory}|${date}|${type}`;
+                    if (eventKeys.has(eventKey)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：排放紀錄重複，已保留第一筆：${eventKey}。`);
+                        continue;
+                    }
+                    eventKeys.add(eventKey);
+                    pendingMaintenanceImport.events.push({
+                        id: dataId && dataId.startsWith('EVT-') ? dataId.replace(/^EVT-/, '') : Date.now() + rowNo,
+                        source,
+                        factory,
+                        type,
+                        date,
+                        amount
+                    });
+                    pendingMaintenanceImport.counts.events++;
+                } else if (dataType === '定檢期間') {
+                    const factory = getMaintenanceField(row, headerMap, ['工廠', '標準工廠']);
+                    const scheduleType = getMaintenanceField(row, headerMap, ['定檢類型']);
+                    const source = getMaintenanceField(row, headerMap, ['來源']) || 'maintenance-csv';
+                    const startRaw = getMaintenanceField(row, headerMap, ['開始日期']);
+                    const endRaw = getMaintenanceField(row, headerMap, ['結束日期']);
+                    const start = startRaw ? parseMaintenanceDate(startRaw, selectedYear) : '';
+                    const end = endRaw ? parseMaintenanceDate(endRaw, selectedYear) : '';
+                    if (!validFactories.includes(factory)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：定檢期間工廠不在標準清單內：${factory || '-'}。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if ((startRaw && !start) || (endRaw && !end)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：定檢期間日期格式錯誤。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if ((start && !end) || (!start && end)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：開始日期與結束日期需同時填寫。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!scheduleType && !start && !end) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：定檢期間缺少定檢類型與日期，已略過。`);
+                        pendingMaintenanceImport.counts.skipped++;
+                        continue;
+                    }
+                    const record = normalizeScheduleRecord({
+                        start: start || '',
+                        end: end || '',
+                        scheduleType: scheduleType || (start && end ? '定檢' : '無計劃'),
+                        source,
+                        rowNo
+                    });
+                    if (!pendingMaintenanceImport.scheduleRecords[factory]) pendingMaintenanceImport.scheduleRecords[factory] = [];
+                    pendingMaintenanceImport.scheduleRecords[factory].push(record);
+                    pendingMaintenanceImport.scheduleRecords[factory] = dedupeScheduleRecords(pendingMaintenanceImport.scheduleRecords[factory]);
+                    pendingMaintenanceImport.counts.schedules++;
+                } else if (dataType === '剔除日數') {
+                    const factory = getMaintenanceField(row, headerMap, ['工廠', '標準工廠']);
+                    const date = parseMaintenanceDate(getMaintenanceField(row, headerMap, ['日期']), selectedYear);
+                    const reason = getMaintenanceField(row, headerMap, ['剔除原因']);
+                    if (!validFactories.includes(factory)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：剔除日數工廠不在標準清單內：${factory || '-'}。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!date) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：剔除日數日期格式錯誤。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    const key = `${selectedYear}|${factory}|${date}`;
+                    pendingMaintenanceImport.exclusions[key] = { factory, date, reason, createdAt: new Date().toISOString() };
+                    pendingMaintenanceImport.counts.exclusions = Object.keys(pendingMaintenanceImport.exclusions).length;
+                } else if (dataType === '工廠對照') {
+                    const rawName = getMaintenanceField(row, headerMap, ['匯入名稱']);
+                    const factory = getMaintenanceField(row, headerMap, ['標準工廠', '工廠']);
+                    if (!rawName) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：工廠對照缺少匯入名稱。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    if (!validFactories.includes(factory)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：工廠對照的標準工廠不在清單內：${factory || '-'}。`);
+                        pendingMaintenanceImport.counts.errors++;
+                        continue;
+                    }
+                    const aliasKey = normalizeFactoryKey(rawName);
+                    if (aliasKeys.has(aliasKey)) {
+                        pendingMaintenanceMessages.push(`第 ${rowNo} 列：工廠對照重複，已保留第一筆：${rawName}。`);
+                        continue;
+                    }
+                    aliasKeys.add(aliasKey);
+                    pendingMaintenanceImport.aliases.push({ rawName, factory, source: 'maintenance-csv', updatedAt: new Date().toISOString() });
+                    pendingMaintenanceImport.counts.aliases++;
+                } else if (dataType === '年度備註') {
+                    pendingMaintenanceImport.remarks = getMaintenanceField(row, headerMap, ['備註']);
+                    pendingMaintenanceImport.counts.remarks = 1;
+                } else {
+                    pendingMaintenanceMessages.push(`第 ${rowNo} 列：無法辨識資料類型「${dataType || '-'}」。`);
+                    pendingMaintenanceImport.counts.errors++;
+                }
+            }
+
+            renderMaintenanceImportPreview(fileName);
+        }
+
+        function renderMaintenanceImportPreview(fileName = '') {
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const summary = document.getElementById('maintenance-import-summary');
+            const errorWrap = document.getElementById('maintenance-import-error-wrap');
+            const errorList = document.getElementById('maintenance-import-error-list');
+            const confirmBtn = document.getElementById('confirm-maintenance-import-btn');
+            if (!summary || !errorWrap || !errorList || !confirmBtn) return;
+
+            const payload = pendingMaintenanceImport || makeMaintenanceEmptyPayload();
+            const counts = payload.counts;
+            const hasImportable = counts.events + counts.schedules + counts.exclusions + counts.aliases + counts.remarks > 0;
+            const mode = document.getElementById('maintenance-import-mode')?.value || 'overwrite';
+            summary.innerHTML = `
+                <div class="font-bold text-gray-800">${fileName ? `已解析：${escapeHtml(fileName)}` : '維護 CSV 預覽結果'}</div>
+                <div>目前年度：${selectedYear}；匯入模式：${mode === 'overwrite' ? '覆蓋目前年度' : '追加更新'}</div>
+                <div>排放紀錄 ${counts.events} 筆；定檢期間 ${counts.schedules} 組；人工剔除 ${counts.exclusions} 天。</div>
+                <div>工廠對照 ${counts.aliases} 筆；年度備註 ${counts.remarks} 筆；略過 ${counts.skipped} 列；錯誤 ${counts.errors} 列。</div>
+                <div class="text-gray-500">確認前不會寫入資料。覆蓋模式會清除目前年度資料，再依 CSV 重建。</div>`;
+
+            errorList.innerHTML = '';
+            [...new Set(pendingMaintenanceMessages)].slice(0, 200).forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                errorList.appendChild(li);
+            });
+            errorWrap.classList.toggle('hidden', pendingMaintenanceMessages.length === 0);
+            confirmBtn.disabled = !hasImportable || counts.errors > 0;
+        }
+
+        function resetMaintenanceImportState(clearFile = true) {
+            pendingMaintenanceImport = null;
+            pendingMaintenanceMessages = [];
+            if (clearFile) {
+                const fileInput = document.getElementById('maintenance-csv-file');
+                if (fileInput) fileInput.value = '';
+            }
+            const summary = document.getElementById('maintenance-import-summary');
+            const errorWrap = document.getElementById('maintenance-import-error-wrap');
+            const errorList = document.getElementById('maintenance-import-error-list');
+            const confirmBtn = document.getElementById('confirm-maintenance-import-btn');
+            if (summary) summary.innerHTML = '尚未選擇維護用 CSV。';
+            if (errorWrap) errorWrap.classList.add('hidden');
+            if (errorList) errorList.innerHTML = '';
+            if (confirmBtn) confirmBtn.disabled = true;
+        }
+
+        function applyMaintenanceAliases(aliases, replaceAll = false) {
+            if (replaceAll) {
+                customFactoryAliasRules = aliases.map(rule => ({ ...rule, updatedAt: new Date().toISOString() }));
+            } else {
+                aliases.forEach(rule => upsertCustomFactoryAlias(rule.rawName, rule.factory, 'maintenance-csv'));
+            }
+            customFactoryAliasRules.sort((a, b) => String(a.rawName).localeCompare(String(b.rawName), 'zh-Hant'));
+            saveCustomFactoryAliasRules();
+        }
+
+        function mergeMaintenanceEvents(importedEvents) {
+            const importedByKey = new Map();
+            importedEvents.forEach(event => {
+                const key = event.id ? `ID:${event.id}` : `${event.factory}|${event.date}|${event.type}`;
+                importedByKey.set(key, event);
+            });
+            const usedKeys = new Set();
+            events = events.map(existing => {
+                const idKey = existing.id ? `ID:${existing.id}` : null;
+                const typeKey = `${existing.factory}|${existing.date}|${existing.type || getEffectiveEventType(existing)}`;
+                const key = idKey && importedByKey.has(idKey) ? idKey : typeKey;
+                if (importedByKey.has(key)) {
+                    usedKeys.add(key);
+                    return { ...importedByKey.get(key), id: existing.id || importedByKey.get(key).id };
+                }
+                return existing;
+            });
+            importedByKey.forEach((event, key) => {
+                if (!usedKeys.has(key)) events.push({ ...event, id: event.id || Date.now() + events.length });
+            });
+        }
+
+        function confirmMaintenanceCSVImport() {
+            const payload = pendingMaintenanceImport;
+            if (!payload) return alert('請先選擇並解析維護用 CSV。');
+            const selectedYear = parseInt(document.getElementById('view-year').value);
+            const mode = document.getElementById('maintenance-import-mode')?.value || 'overwrite';
+            const counts = payload.counts;
+            if (counts.errors > 0) return alert('維護 CSV 仍有錯誤資料，請修正後重新匯入。');
+            if (!confirm(`確認要以「${mode === 'overwrite' ? '覆蓋目前年度' : '追加更新'}」模式匯入維護 CSV 嗎？`)) return;
+
+            if (mode === 'overwrite') {
+                events = events.filter(e => getYearFromISO(e.date) !== selectedYear);
+                payload.events.forEach((event, index) => events.push({ ...event, id: event.id || Date.now() + index }));
+
+                schedules[String(selectedYear)] = {};
+                validFactories.forEach(factory => {
+                    schedules[String(selectedYear)][factory] = dedupeScheduleRecords(payload.scheduleRecords[factory] || []);
+                });
+
+                clearExcludedDaysForYear(selectedYear);
+                Object.assign(excludedDays, payload.exclusions);
+
+                if (payload.remarks !== null) localStorage.setItem(getManualRemarksKey(selectedYear), payload.remarks);
+                else localStorage.removeItem(getManualRemarksKey(selectedYear));
+
+                if (payload.aliases.length) applyMaintenanceAliases(payload.aliases, true);
+            } else {
+                mergeMaintenanceEvents(payload.events);
+
+                if (!schedules[String(selectedYear)]) schedules[String(selectedYear)] = {};
+                Object.entries(payload.scheduleRecords).forEach(([factory, importedRecords]) => {
+                    const existingRecords = getScheduleRecords(selectedYear, factory);
+                    setScheduleRecords(selectedYear, factory, [...existingRecords, ...importedRecords]);
+                });
+
+                Object.assign(excludedDays, payload.exclusions);
+                if (payload.remarks !== null) localStorage.setItem(getManualRemarksKey(selectedYear), payload.remarks);
+                if (payload.aliases.length) applyMaintenanceAliases(payload.aliases, false);
+            }
+
+            saveData();
+            saveExcludedDays();
+            resetMaintenanceImportState();
+            resetImportState();
+            resetScheduleImportState();
+            renderFactoryAliasManager();
+            renderAll();
+            alert(`維護 CSV 匯入完成：排放紀錄 ${counts.events} 筆、定檢期間 ${counts.schedules} 組、剔除 ${counts.exclusions} 天、工廠對照 ${counts.aliases} 筆。`);
+        }
+
+        function exportAllDataCSV() {
+            const year = parseInt(document.getElementById('view-year').value);
+            const yearEvents = events.filter(e => getYearFromISO(e.date) === year);
+            if (yearEvents.length === 0) return alert('目前年度無數據。');
+            let csv = "\uFEFF年度,日期,工廠,類型,排放量,來源,是否人工剔除,剔除原因\n";
+            yearEvents.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(e => {
+                const key = getDayExclusionKey(e.factory, e.date);
+                const exclusion = excludedDays[key];
+                const excluded = exclusion ? '是' : '否';
+                const reason = exclusion?.reason || '';
+                csv += `${getYearFromISO(e.date)},${e.date},${escapeCSV(e.factory)},${getEffectiveEventType(e) === 'TA' ? '定檢' : '非定檢'},${e.amount},${e.source || 'manual'},${excluded},"${escapeCSV(reason)}"\n`;
+            });
+            downloadCSV(csv, `燃燒塔排放全部資料_${year}.csv`);
+        }
+
+        function exportIncludedDataCSV() {
+            const year = parseInt(document.getElementById('view-year').value);
+            const includedEvents = events
+                .filter(e => getYearFromISO(e.date) === year)
+                .filter(e => !isDayExcluded(e.factory, e.date));
+            if (includedEvents.length === 0) return alert('目前年度沒有納入統計的數據。');
+            let csv = "\uFEFF年度,日期,工廠,類型,排放量,來源\n";
+            includedEvents.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(e => {
+                csv += `${getYearFromISO(e.date)},${e.date},${escapeCSV(e.factory)},${getEffectiveEventType(e) === 'TA' ? '定檢' : '非定檢'},${e.amount},${e.source || 'manual'}\n`;
+            });
+            downloadCSV(csv, `燃燒塔排放納入統計_${year}.csv`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>個人工作內容與工時分析儀表板 V10</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+    .tab-btn.active{background:#0d9488;color:white;border-color:#0d9488;box-shadow:0 8px 18px rgba(13,148,136,.18)}
+    .page{display:none}.page.active{display:block}
+    .soft-card{background:white;border:1px solid #e2e8f0;border-radius:1rem;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+    .field{width:100%;border:1px solid #cbd5e1;border-radius:.75rem;padding:.65rem .8rem;font-size:.875rem;background:white;outline:none}.field:focus{border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+    .person-row.active{background:#f0fdfa;box-shadow:inset 4px 0 0 #0d9488}.person-row{cursor:pointer}.person-row:hover{background:#f8fafc}
+    .mini-pill{border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:.25rem .65rem;font-size:.75rem;color:#475569;font-weight:700}
+    .share-chip{display:inline-flex;align-items:center;gap:.25rem;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:.15rem .45rem;margin:.1rem;font-size:.72rem;color:#334155;white-space:nowrap}
+    .dashboard-table th,.dashboard-table td{padding:.7rem .85rem}
+
+    .person-check{display:inline-flex;align-items:center;gap:.45rem;border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:.45rem .75rem;font-size:.85rem;font-weight:700;color:#334155;cursor:pointer;transition:.15s}
+    .person-check:hover{border-color:#14b8a6;background:#f0fdfa}.person-check input{accent-color:#0d9488}.person-check.active{border-color:#0d9488;background:#f0fdfa;color:#0f766e}
+    .action-btn{px:4;}
+
+    .tab-btn{position:relative;display:flex;align-items:center;gap:.5rem;min-height:3.2rem;background:white;transition:.15s}
+    .tab-btn .tab-no{width:1.35rem;height:1.35rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;color:white;background:#0d9488;flex:none}
+    .tab-btn .tab-main{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;gap:.25rem}
+    .tab-badge{display:inline-flex;align-items:center;border-radius:.45rem;padding:.18rem .45rem;font-size:.68rem;font-weight:800;line-height:1}
+    .badge-manage{background:#d1fae5;color:#0f766e}.badge-input{background:#dbeafe;color:#1d4ed8}.badge-maint{background:#ffedd5;color:#c2410c}
+    .tab-btn.active .tab-no{background:white;color:#0d9488}.tab-btn.active .tab-badge{background:rgba(255,255,255,.22);color:white;border:1px solid rgba(255,255,255,.3)}
+    .module-note{border-radius:1rem;border:1px solid #e2e8f0;background:#fff;padding:1rem}.module-note.manage{background:#f0fdfa;border-color:#ccfbf1}.module-note.input{background:#eff6ff;border-color:#dbeafe}.module-note.maint{background:#fff7ed;border-color:#fed7aa}
+    .status-tag{display:inline-flex;align-items:center;border-radius:999px;padding:.2rem .55rem;font-size:.72rem;font-weight:800;border:1px solid #e2e8f0;background:#fff}
+    .tag-leave{color:#0f766e;border-color:#99f6e4;background:#f0fdfa}.tag-out{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}.tag-trip{color:#7c3aed;border-color:#ddd6fe;background:#f5f3ff}
+
+    #print-monthly-report{display:none}
+    .print-report-title{font-size:22px;font-weight:800;color:#0f172a;margin-bottom:4px}
+    .print-report-subtitle{font-size:12px;color:#475569;margin-bottom:12px}
+    .print-meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}
+    .print-meta-item{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:12px;background:#f8fafc}
+    .print-section{border:1px solid #cbd5e1;border-radius:10px;margin:12px 0;padding:12px;break-inside:avoid}
+    .print-section h3{font-size:16px;font-weight:800;margin:0 0 8px;color:#0f172a}
+    .print-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+    .print-table th{background:#f1f5f9;color:#334155;font-weight:800;text-align:left}
+    .print-table th,.print-table td{border:1px solid #cbd5e1;padding:6px 7px;vertical-align:top}
+    .print-table .num{text-align:right;font-weight:700}
+    .print-person-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px}
+    .print-person-name{font-size:17px;font-weight:800;color:#0f766e}
+    .print-page-break{page-break-before:always;break-before:page}
+    @media print{
+      header,.tab-nav,.no-print{display:none!important}
+      body{background:white!important;color:#0f172a!important}
+      main{max-width:none!important;padding:0!important;margin:0!important}
+      .soft-card{box-shadow:none!important;border:1px solid #cbd5e1!important;break-inside:avoid;margin-bottom:12px!important}
+
+      body.print-selected header,body.print-selected main,body.print-selected .tab-nav,body.print-selected .no-print{display:none!important}
+      body.print-selected #print-monthly-report{display:block!important}
+      body.print-selected{background:white!important;color:#0f172a!important}
+      body.print-selected .print-section{break-inside:avoid;page-break-inside:avoid}
+      body.print-selected .print-page-break{page-break-before:always;break-before:page}
+      body.print-all .page{display:none!important}
+      body.print-all #page-dashboard,body.print-all #page-monthly{display:block!important}
+      body.print-all #page-dashboard .soft-card,body.print-all #page-monthly .soft-card{break-inside:avoid}
+      canvas{max-width:100%!important}
+      table{page-break-inside:auto} tr{page-break-inside:avoid;page-break-after:auto}
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+<header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="p-2 rounded-xl bg-teal-600 text-white"><i data-lucide="bar-chart-3" class="w-6 h-6"></i></div>
+      <div>
+        <h1 class="font-bold text-lg">個人工作內容與工時分析儀表板 V10</h1>
+        <p class="text-xs text-slate-500">掌握每位人員的工作內容、工時與月負荷狀況</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <label class="text-sm text-slate-500">檢視月份</label>
+      <input id="viewMonth" type="month" class="field w-44" onchange="refreshAll()" />
+      <input type="file" id="importFile" accept=".xlsx,.xls,.json" class="hidden" onchange="importData(event)" />
+      <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 text-sm font-semibold hover:bg-sky-100 flex items-center gap-2 no-print"><i data-lucide="upload" class="w-4 h-4"></i>匯入</button>
+      <button onclick="printReport()" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold hover:bg-slate-100 flex items-center gap-2 no-print"><i data-lucide="printer" class="w-4 h-4"></i>列印 / PDF</button>
+      <button onclick="exportChartsPNG()" class="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-semibold hover:bg-indigo-100 flex items-center gap-2 no-print"><i data-lucide="image" class="w-4 h-4"></i>匯出圖表 PNG</button>
+      <button onclick="exportBackupJSON()" class="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 flex items-center gap-2 no-print"><i data-lucide="database-backup" class="w-4 h-4"></i>匯出備份檔</button>
+      <button onclick="exportExcel()" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold hover:bg-emerald-100 flex items-center gap-2 no-print"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>匯出 Excel</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-5 py-6 space-y-6">
+  <section class="soft-card p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 tab-nav">
+    <button class="tab-btn active px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('dashboard',this)" data-tab="dashboard"><span class="tab-no">1</span><span class="tab-main"><span>儀表板總覽</span><span class="tab-badge badge-manage">管理檢視</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('daily',this)" data-tab="daily"><span class="tab-no bg-blue-600">2</span><span class="tab-main"><span>每日填報</span><span class="tab-badge badge-input">人員填報</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('leave',this)" data-tab="leave"><span class="tab-no bg-blue-600">3</span><span class="tab-main"><span>請假 / 公出紀錄</span><span class="tab-badge badge-input">人員填報</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('monthly',this)" data-tab="monthly"><span class="tab-no">4</span><span class="tab-main"><span>人員工時負荷月報</span><span class="tab-badge badge-manage">管理檢視</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('calendar',this)" data-tab="calendar"><span class="tab-no bg-orange-500">5</span><span class="tab-main"><span>工作日曆設定</span><span class="tab-badge badge-maint">資料維護</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('people',this)" data-tab="people"><span class="tab-no bg-orange-500">6</span><span class="tab-main"><span>人員管理</span><span class="tab-badge badge-maint">資料維護</span></span></button>
+    <button class="tab-btn px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold" onclick="switchTab('templates',this)" data-tab="templates"><span class="tab-no bg-orange-500">7</span><span class="tab-main"><span>常用任務管理</span><span class="tab-badge badge-maint">資料維護</span></span></button>
+  </section>
+
+  <section id="page-dashboard" class="page active space-y-6">
+    <div class="soft-card p-6">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-3 mb-4">
+        <div>
+          <h2 class="font-bold text-xl">各工作人員 12 個月份工作負載波動趨勢</h2>
+          <p class="text-sm text-slate-500 mt-1">依每日填報資料統計全年各月份工時；每位人員使用固定顏色，並加入每月工時管制線。</p>
+        </div>
+        <span class="mini-pill bg-teal-50 text-teal-700 border-teal-100">含管制線｜單位：小時</span>
+      </div>
+      <div class="h-[380px]"><canvas id="chartMonthlyTrend"></canvas></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div class="soft-card p-6 lg:col-span-2">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h2 class="font-bold text-lg">本月各工作人員工時比較</h2>
+            <p class="text-xs text-slate-500 mt-1">依本月實際填報工時排序，含月工時管制線。</p>
+          </div>
+          <span id="controlLineLabel" class="text-xs px-3 py-1 bg-slate-50 text-slate-600 rounded-full border border-slate-200">管制值 -- 小時</span>
+        </div>
+        <div class="h-72"><canvas id="chartPeopleCompare"></canvas></div>
+      </div>
+
+      <div class="soft-card lg:col-span-3 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            <h2 class="font-bold text-lg">依人員彙整主表</h2>
+            <p class="text-xs text-slate-500 mt-1">點選人員列，可至月報查看該人員的工作明細與任務/屬性彙整。</p>
+          </div>
+          <span id="dashboardMeta" class="mini-pill">資料來源：每日填報</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm dashboard-table">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr>
+                <th class="text-left">人員</th>
+                <th class="text-right">本月工時</th>
+                <th class="text-right">請假</th>
+                <th class="text-right">公出/出差</th>
+                <th class="text-right">個人管制值</th>
+                <th class="text-right">負荷比例</th>
+                <th class="text-right">填報件數</th>
+                <th class="text-left">工作屬性占比</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardPersonSummary"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="soft-card p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="p-2 bg-teal-50 text-teal-700 rounded-full"><i data-lucide="info" class="w-5 h-5"></i></div>
+        <div>
+          <p class="font-bold text-slate-800">月報彙整頁可進一步查看：依任務彙整、依屬性彙整、每日工作明細。</p>
+          <p class="text-sm text-slate-500 mt-1">首頁以主管總覽為主，先看每位人員的工時、負荷與工作屬性占比，再到月報頁追細節。</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button onclick="switchTab('monthly',tabButton('monthly'))" class="px-5 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 font-bold hover:bg-teal-50 flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i>依任務彙整</button>
+        <button onclick="switchTab('monthly',tabButton('monthly'))" class="px-5 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 font-bold hover:bg-teal-50 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4"></i>依屬性彙整</button>
+        <button onclick="switchTab('monthly',tabButton('monthly'))" class="px-5 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 font-bold hover:bg-teal-50 flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4"></i>每日工作明細</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-templates" class="page space-y-6">
+    <div class="soft-card p-5 bg-orange-50/60"><div class="inline-flex mb-2"><span class="tab-badge badge-maint">資料維護</span></div><h2 class="font-bold text-lg">常用任務管理</h2><p class="text-sm text-slate-600 mt-1">這裡只作為每日填報的快速範本，不會直接進入月報。月報只統計「每日填報」資料。</p></div>
+    <div class="soft-card p-6">
+      <form onsubmit="saveTemplate(event)" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <input type="hidden" id="templateId" />
+        <div><label class="text-xs font-bold text-slate-500">任務名稱</label><input id="templateName" class="field" required placeholder="例：空污費申報" /></div>
+        <div><label class="text-xs font-bold text-slate-500">任務屬性</label><input id="templateCategory" class="field" required placeholder="例：文書、查核" /></div>
+        <div><label class="text-xs font-bold text-slate-500">性質</label><select id="templateNature" class="field"><option>定期性</option><option>不定期</option><option>臨時</option></select></div>
+        <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">常用描述</label><div class="flex gap-2"><input id="templateDesc" class="field" placeholder="可選填" /><button class="px-4 py-2 bg-teal-600 text-white rounded-xl font-bold">儲存範本</button></div></div>
+      </form>
+    </div>
+    <div class="soft-card overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">任務名稱</th><th class="text-left p-4">屬性</th><th class="text-left p-4">性質</th><th class="text-left p-4">描述</th><th class="text-center p-4">動作</th></tr></thead><tbody id="templateTable"></tbody></table></div>
+  </section>
+
+  <section id="page-daily" class="page space-y-6">
+    <div class="soft-card p-6">
+      <div class="inline-flex mb-2"><span class="tab-badge badge-input">人員填報</span></div><h2 class="font-bold text-lg mb-4">每日填報</h2>
+      <form onsubmit="saveDaily(event)" class="space-y-4">
+        <input type="hidden" id="dailyId" />
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div><label class="text-xs font-bold text-slate-500">日期</label><input id="dailyDate" type="date" class="field" required /></div>
+          <div><label class="text-xs font-bold text-slate-500">工作人員</label><div class="flex gap-2"><select id="dailyPerson" class="field" required></select><button type="button" onclick="quickAddPerson()" class="px-3 rounded-xl border border-slate-300 text-slate-600">+</button></div></div>
+          <div><label class="text-xs font-bold text-slate-500">套用常用任務</label><select id="dailyTemplate" class="field" onchange="applyTemplate()"><option value="">不套用，自由填寫</option></select></div>
+          <div><label class="text-xs font-bold text-slate-500">實際工時</label><input id="dailyHours" type="number" step="0.1" min="0.1" class="field" required placeholder="例：2.5" /></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div><label class="text-xs font-bold text-slate-500">任務名稱</label><input id="dailyTask" class="field" required placeholder="可自由新增臨時工作" /></div>
+          <div><label class="text-xs font-bold text-slate-500">任務屬性</label><input id="dailyCategory" class="field" required placeholder="例：文書、查核、開會" /></div>
+          <div><label class="text-xs font-bold text-slate-500">性質</label><select id="dailyNature" class="field"><option>定期性</option><option>不定期</option><option>臨時</option></select></div>
+        </div>
+        <div><label class="text-xs font-bold text-slate-500">實際工作內容</label><textarea id="dailyDesc" class="field" rows="3" placeholder="填寫今天實際完成的內容"></textarea></div>
+        <div class="flex justify-end gap-2"><button type="button" onclick="clearDailyForm()" class="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-600">清除</button><button class="px-5 py-2 bg-teal-600 text-white rounded-xl font-bold">儲存每日紀錄</button></div>
+      </form>
+    </div>
+    <div class="soft-card p-5 flex flex-col md:flex-row gap-3 md:items-center md:justify-between"><h3 class="font-bold">每日填報紀錄</h3><div class="flex gap-2"><input id="dailySearch" oninput="renderDailyTable()" class="field w-60" placeholder="搜尋人員/任務/內容" /><select id="dailyPersonFilter" onchange="renderDailyTable()" class="field w-44"></select></div></div>
+    <div class="soft-card overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">日期</th><th class="text-left p-4">人員</th><th class="text-left p-4">任務</th><th class="text-left p-4">屬性</th><th class="text-left p-4">性質</th><th class="text-right p-4">工時</th><th class="text-left p-4">內容</th><th class="text-center p-4">動作</th></tr></thead><tbody id="dailyTable"></tbody></table></div>
+  </section>
+
+
+  <section id="page-leave" class="page space-y-6">
+    <div class="soft-card p-6 bg-blue-50/50">
+      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 mb-2"><span class="tab-badge badge-input">人員填報</span><span class="text-xs text-slate-500 font-bold">影響個人管制值與月報負荷比例</span></div>
+          <h2 class="font-bold text-lg">請假 / 公出紀錄</h2>
+          <p class="text-sm text-slate-600 mt-1">登錄人員請假、公出與出差時數；請假會扣減個人月管制值，公出/出差僅於月報補充顯示。</p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-sm" id="leavePageMeta"></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="soft-card p-6 lg:col-span-1">
+        <h3 class="font-bold mb-4">新增請假 / 公出紀錄</h3>
+        <form onsubmit="saveLeaveRecord(event)" class="space-y-4">
+          <input type="hidden" id="leaveId" />
+          <div><label class="text-xs font-bold text-slate-500">日期</label><input id="leaveDate" type="date" class="field" required /></div>
+          <div><label class="text-xs font-bold text-slate-500">人員</label><select id="leavePerson" class="field" required></select></div>
+          <div><label class="text-xs font-bold text-slate-500">類型</label><select id="leaveType" class="field" onchange="syncLeaveReasonOptions()"><option value="請假">請假</option><option value="公出">公出</option><option value="出差">出差</option></select></div>
+          <div><label class="text-xs font-bold text-slate-500">假別 / 事由</label><input id="leaveReason" class="field" required placeholder="例：特休、病假、廠區會議" /></div>
+          <div><label class="text-xs font-bold text-slate-500">時數</label><input id="leaveHours" type="number" step="0.5" min="0.5" class="field" required placeholder="例：8、4、2" /></div>
+          <div><label class="text-xs font-bold text-slate-500">備註</label><textarea id="leaveNote" class="field" rows="2" placeholder="可選填"></textarea></div>
+          <div class="flex justify-end gap-2"><button type="button" onclick="clearLeaveForm()" class="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-600">清除</button><button class="px-5 py-2 bg-blue-600 text-white rounded-xl font-bold">儲存紀錄</button></div>
+        </form>
+      </div>
+      <div class="soft-card lg:col-span-2 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div><h3 class="font-bold">本月請假 / 公出紀錄</h3><p class="text-xs text-slate-500 mt-1">請假扣除個人管制值；公出與出差不扣除，僅於報表呈現。</p></div>
+          <div class="flex gap-2"><input id="leaveSearch" oninput="renderLeaveTable()" class="field w-56" placeholder="搜尋人員/事由/備註" /><select id="leavePersonFilter" onchange="renderLeaveTable()" class="field w-40"></select></div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">日期</th><th class="text-left p-4">人員</th><th class="text-left p-4">類型</th><th class="text-left p-4">假別 / 事由</th><th class="text-right p-4">時數</th><th class="text-left p-4">備註</th><th class="text-center p-4">動作</th></tr></thead><tbody id="leaveTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-monthly" class="page space-y-6">
+    <div class="soft-card p-6">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div class="inline-flex mb-2"><span class="tab-badge badge-manage">管理檢視</span></div><h2 class="font-bold text-lg">人員工時負荷月報</h2>
+          <p class="text-sm text-slate-500 mt-1">請先勾選要分析的人員；本頁將依勾選人員彙整任務、屬性與每日工作內容。</p>
+        </div>
+        <div class="flex flex-col lg:items-end gap-2">
+          <div id="monthlyMeta" class="flex flex-wrap gap-2 text-sm"></div>
+          <div class="flex flex-wrap gap-2 no-print">
+            <button onclick="printSelectedMonthlyReport()" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-bold hover:bg-slate-100 flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>列印勾選人員月報 / PDF</button>
+            <button onclick="exportExcel()" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>匯出勾選人員 Excel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="soft-card p-5 no-print">
+      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <h3 class="font-bold">勾選要分析的人員</h3>
+          <p class="text-xs text-slate-500 mt-1">可勾選單人或多人；下方月報內容與 Excel 匯出會依目前勾選範圍產生。</p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="selectAllMonthlyPeople()" class="px-3 py-1.5 rounded-lg border border-teal-200 text-teal-700 bg-teal-50 text-xs font-bold hover:bg-teal-100">全選</button>
+          <button onclick="clearMonthlyPeople()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white text-xs font-bold hover:bg-slate-50">清除</button>
+        </div>
+      </div>
+      <div id="monthlyPersonSelector" class="mt-4 flex flex-wrap gap-2"></div>
+    </div>
+
+    <div class="soft-card overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+          <h3 class="font-bold">已選人員工作摘要</h3>
+          <p class="text-xs text-slate-500 mt-1">僅顯示目前勾選人員，避免與儀表板總覽的全體人員主表重複。</p>
+        </div>
+        <span id="selectedPeopleCount" class="mini-pill">已選 0 人</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm dashboard-table">
+          <thead class="bg-slate-50 text-slate-500">
+            <tr>
+              <th class="text-left">人員</th>
+              <th class="text-right">本月工時</th>
+              <th class="text-right">本月請假</th>
+              <th class="text-right">公出/出差</th>
+              <th class="text-right">個人管制值</th>
+              <th class="text-right">負荷比例</th>
+              <th class="text-right">填報件數</th>
+              <th class="text-left">工作屬性占比</th>
+            </tr>
+          </thead>
+          <tbody id="selectedPeopleSummary"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="selectedPersonBlock" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="soft-card p-5 lg:col-span-1">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold" id="selectedPersonTitle">人員工作摘要</h3>
+          <span id="selectedPersonTotal" class="mini-pill">0.0 小時</span>
+        </div>
+        <div class="space-y-3 text-sm" id="selectedPersonSummaryCards"></div>
+      </div>
+      <div class="soft-card p-5 overflow-x-auto">
+        <h3 class="font-bold mb-3">依任務彙整</h3>
+        <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-3">任務</th><th class="text-right p-3">工時</th><th class="text-right p-3">件數</th></tr></thead><tbody id="selectedTaskSummary"></tbody></table>
+      </div>
+      <div class="soft-card p-5 overflow-x-auto">
+        <h3 class="font-bold mb-3">依屬性彙整</h3>
+        <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-3">屬性</th><th class="text-right p-3">工時</th><th class="text-right p-3">占比</th></tr></thead><tbody id="selectedCategorySummary"></tbody></table>
+      </div>
+    </div>
+
+    <div class="soft-card overflow-x-auto">
+      <div class="p-5 border-b border-slate-100"><h3 class="font-bold" id="selectedLeaveTitle">本月請假 / 公出紀錄</h3></div>
+      <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">日期</th><th class="text-left p-4">人員</th><th class="text-left p-4">類型</th><th class="text-left p-4">假別 / 事由</th><th class="text-right p-4">時數</th><th class="text-left p-4">備註</th></tr></thead><tbody id="selectedLeaveDetail"></tbody></table>
+    </div>
+
+    <div class="soft-card overflow-x-auto">
+      <div class="p-5 border-b border-slate-100"><h3 class="font-bold" id="selectedDetailTitle">本月每日工作明細</h3></div>
+      <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">日期</th><th class="text-left p-4">人員</th><th class="text-left p-4">任務</th><th class="text-left p-4">屬性</th><th class="text-left p-4">性質</th><th class="text-right p-4">工時</th><th class="text-left p-4">實際工作內容</th></tr></thead><tbody id="selectedPersonDetail"></tbody></table>
+    </div>
+  </section>
+
+  <section id="page-calendar" class="page space-y-6">
+    <div class="soft-card p-6 bg-teal-50/40">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div class="inline-flex mb-2"><span class="tab-badge badge-maint">資料維護</span></div><h2 class="font-bold text-lg">工作日曆設定</h2>
+          <p class="text-sm text-slate-600 mt-1">用來修正每月管制工時：可扣除國定假日、颱風假、公司停班日，也可加入補班日。所有圖表管制線、負荷比例、PDF 與 Excel 都會同步套用。</p>
+        </div>
+        <div id="calendarMonthMeta" class="flex flex-wrap gap-2 text-sm"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="soft-card p-6 lg:col-span-1">
+        <h3 class="font-bold mb-4">本月工時計算設定</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-bold text-slate-500">設定月份</label>
+            <div id="calendarSettingMonth" class="mt-1 p-3 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-700">--</div>
+            <p class="text-xs text-slate-400 mt-1">月份依上方「檢視月份」切換。</p>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">每日標準工時</label>
+            <div class="flex gap-2 mt-1">
+              <input id="calendarDailyHours" type="number" step="0.5" min="0" class="field" value="8" />
+              <button type="button" onclick="saveCalendarDailyHours()" class="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold whitespace-nowrap">套用</button>
+            </div>
+          </div>
+          <div id="calendarCalcBox" class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm space-y-2"></div>
+          <button type="button" onclick="resetCalendarMonth()" class="w-full px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-bold hover:bg-rose-100">重設本月日曆設定</button>
+        </div>
+      </div>
+
+      <div class="soft-card p-6 lg:col-span-2">
+        <h3 class="font-bold mb-4">新增休假 / 補班日</h3>
+        <form onsubmit="addCalendarException(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <label class="text-xs font-bold text-slate-500">日期</label>
+            <input id="calendarExceptionDate" type="date" class="field" required />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">類型</label>
+            <select id="calendarExceptionType" class="field">
+              <option value="國定假日">國定假日</option>
+              <option value="颱風假">颱風假</option>
+              <option value="公司停班">公司停班</option>
+              <option value="其他停班">其他停班</option>
+              <option value="補班日">補班日</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500">備註</label>
+            <input id="calendarExceptionNote" class="field" placeholder="例：勞動節、颱風停班" />
+          </div>
+          <button class="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold">新增</button>
+        </form>
+
+        <div class="mt-5 overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr><th class="text-left p-3">日期</th><th class="text-left p-3">星期</th><th class="text-left p-3">類型</th><th class="text-left p-3">計算影響</th><th class="text-left p-3">備註</th><th class="text-center p-3">動作</th></tr>
+            </thead>
+            <tbody id="calendarExceptionTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-people" class="page space-y-6">
+    <div class="soft-card p-6"><div class="inline-flex mb-2"><span class="tab-badge badge-maint">資料維護</span></div><h2 class="font-bold text-lg mb-4">人員管理</h2><form onsubmit="savePerson(event)" class="flex flex-col md:flex-row gap-3"><input id="personName" class="field md:w-80" placeholder="新增工作人員姓名" required /><button class="px-5 py-2 bg-teal-600 text-white rounded-xl font-bold">新增人員</button></form></div>
+    <div class="soft-card overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">人員</th><th class="text-left p-4">顏色</th><th class="text-left p-4">狀態</th><th class="text-center p-4">動作</th></tr></thead><tbody id="peopleTable"></tbody></table></div>
+  </section>
+</main>
+
+<div id="print-monthly-report"></div>
+
+<div id="toast" class="fixed bottom-5 right-5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl translate-y-20 opacity-0 transition-all z-50 text-sm font-bold"></div>
+
+<script>
+const STORAGE_KEY='workHoursDashboardV10';
+const LEGACY_STORAGE_KEY_V9='workHoursDashboardV9';
+const LEGACY_STORAGE_KEY_V8='workHoursDashboardV8';
+const LEGACY_STORAGE_KEY_V7='workHoursDashboardV7';
+const LEGACY_STORAGE_KEY_0='workHoursDashboardV6';
+const LEGACY_STORAGE_KEY='workHoursDashboardV5';
+const LEGACY_STORAGE_KEY_2='workHoursDashboardV4';
+let people=['王小明','陳小華','李大華','張雅婷','黃志明','林冠宇'];
+let templates=[
+{id:'tpl1',name:'空污費申報',category:'文書',nature:'定期性',desc:'空污費申報及差異分析'},
+{id:'tpl2',name:'責任區平時查核',category:'查核',nature:'定期性',desc:'現場查核與設備元件抽測'},
+{id:'tpl3',name:'安衛環聯繫會',category:'開會',nature:'定期性',desc:'參加事業部安衛環聯繫會'},
+{id:'tpl4',name:'主管臨時交辦',category:'臨時/其他',nature:'臨時',desc:'主管臨時交辦事項'}
+];
+let dailyRecords=[];
+let leaveRecords=[];
+let charts={};
+let selectedMonthlyPerson='';
+let selectedMonthlyPeople=[];
+let workCalendar={};
+const personColors=['#14b8a6','#3b82f6','#f59e0b','#8b5cf6','#06b6d4','#84cc16','#ec4899','#64748b','#ef4444','#0f766e'];
+const categoryColors=['#14b8a6','#3b82f6','#f59e0b','#8b5cf6','#06b6d4','#84cc16','#ec4899','#64748b'];
+
+function pad(n){return String(n).padStart(2,'0')}
+function nowMonth(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)}
+function today(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function ym(date){return date ? String(date).slice(0,7) : ''}
+function selectedMonth(){return document.getElementById('viewMonth').value || nowMonth()}
+function monthRecords(){const m=selectedMonth();return dailyRecords.filter(r=>ym(r.date)===m)}
+function monthLeaveRecords(){const m=selectedMonth();return leaveRecords.filter(r=>ym(r.date)===m)}
+function leaveTotalsForPerson(person){const rec=monthLeaveRecords().filter(r=>r.person===person); return {leave:sum(rec.filter(r=>r.type==='請假')), out:sum(rec.filter(r=>r.type==='公出'||r.type==='出差')), records:rec};}
+function personalControlHours(person){const base=monthlyWorkControlHours(); const t=leaveTotalsForPerson(person); return Math.max(0, +(base - t.leave).toFixed(1));}
+function fmt(n){return (+n||0).toFixed(1)}
+function sum(arr,field='hours'){return arr.reduce((a,b)=>a+(parseFloat(b[field])||0),0)}
+function groupBy(arr,key){const out={};arr.forEach(r=>{const k=r[key]||'未分類'; if(!out[k])out[k]={hours:0,count:0,items:[]}; out[k].hours+=parseFloat(r.hours)||0; out[k].count++; out[k].items.push(r);});return out}
+function sortedEntries(obj){return Object.entries(obj).sort((a,b)=>b[1].hours-a[1].hours)}
+function colorForPerson(name){const idx=Math.max(0,people.indexOf(name));return personColors[idx%personColors.length]}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('translate-y-20','opacity-0');setTimeout(()=>t.classList.add('translate-y-20','opacity-0'),2200)}
+function safe(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V9) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_0) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_2));
+    if(s){people=s.people||people; templates=s.templates||templates; dailyRecords=s.dailyRecords||[]; leaveRecords=s.leaveRecords||[]; selectedMonthlyPerson=s.selectedMonthlyPerson||''; selectedMonthlyPeople=s.selectedMonthlyPeople||[]; workCalendar=s.workCalendar||{};}
+  }catch(e){}
+  if(!dailyRecords.length) seedRecords();
+}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify({people,templates,dailyRecords,leaveRecords,selectedMonthlyPerson,selectedMonthlyPeople,workCalendar}))}
+function seedRecords(){
+  const y=new Date().getFullYear(); const cats=['文書','查核','開會','臨時/其他']; const tasks=['空污費申報','責任區平時查核','晨會記錄','環保異常調查','外來函辦理','月報資料整理']; let id=1;
+  for(let m=1;m<=12;m++){
+    people.forEach((p,pi)=>{const count= m%3===1?4:3; for(let i=0;i<count;i++){const cat=cats[(i+pi+m)%cats.length]; dailyRecords.push({id:'r'+id++,date:`${y}-${pad(m)}-${pad(3+i*5)}`,person:p,task:tasks[(i+pi)%tasks.length],category:cat,nature:cat==='臨時/其他'?'臨時':'定期性',hours:+(2+(pi%3)*0.7+(m%4)*0.4+i*0.5).toFixed(1),desc:'示範資料，可刪除後改填實際內容'});}})
+  }
+  leaveRecords=[
+    {id:'l1',date:`${y}-${pad(new Date().getMonth()+1)}-06`,person:'林冠宇',type:'請假',reason:'特休',hours:8,note:'示範資料'},
+    {id:'l2',date:`${y}-${pad(new Date().getMonth()+1)}-14`,person:'林冠宇',type:'公出',reason:'廠區會議',hours:4,note:'示範資料'}
+  ];
+  save();
+}
+
+function monthLabel(ymStr=selectedMonth()){const [y,m]=ymStr.split('-'); return `${y}年${Number(m)}月`;}
+function weekdayName(dateStr){const names=['日','一','二','三','四','五','六']; const d=new Date(dateStr+'T00:00:00'); return '星期'+names[d.getDay()];}
+function isWeekday(dateStr){const d=new Date(dateStr+'T00:00:00').getDay(); return d>=1&&d<=5;}
+function baseWeekdaysInMonth(ymStr=selectedMonth()){const [y,m]=ymStr.split('-').map(Number); const days=new Date(y,m,0).getDate(); let weekdays=0; for(let d=1;d<=days;d++){const day=new Date(y,m-1,d).getDay(); if(day>=1&&day<=5) weekdays++;} return weekdays;}
+function rawCalendarConfig(ymStr=selectedMonth()){if(!workCalendar[ymStr]) workCalendar[ymStr]={dailyHours:8,exceptions:[]}; if(!Array.isArray(workCalendar[ymStr].exceptions)) workCalendar[ymStr].exceptions=[]; if(!workCalendar[ymStr].dailyHours && workCalendar[ymStr].dailyHours!==0) workCalendar[ymStr].dailyHours=8; return workCalendar[ymStr];}
+function getCalendarConfig(ymStr=selectedMonth()){const cfg=workCalendar[ymStr]||{}; return {dailyHours:parseFloat(cfg.dailyHours)||8, exceptions:Array.isArray(cfg.exceptions)?cfg.exceptions:[]};}
+function exceptionMode(type){return type==='補班日'?'makeup':'nonwork';}
+function calendarCalculation(ymStr=selectedMonth()){
+  const cfg=getCalendarConfig(ymStr);
+  const base=baseWeekdaysInMonth(ymStr);
+  const nonworkDates=new Set();
+  const makeupDates=new Set();
+  cfg.exceptions.filter(e=>e.date&&String(e.date).startsWith(ymStr)).forEach(e=>{
+    const mode=e.mode||exceptionMode(e.type);
+    if(mode==='makeup'){
+      if(!isWeekday(e.date)) makeupDates.add(e.date);
+    }else{
+      if(isWeekday(e.date)) nonworkDates.add(e.date);
+    }
+  });
+  const workdays=Math.max(0,base-nonworkDates.size+makeupDates.size);
+  const dailyHours=parseFloat(cfg.dailyHours)||8;
+  const control=+(workdays*dailyHours).toFixed(1);
+  return {ym:ymStr,baseWeekdays:base,nonworkCount:nonworkDates.size,makeupCount:makeupDates.size,workdays,dailyHours,control};
+}
+function monthlyWorkdays(ymStr=selectedMonth()){return calendarCalculation(ymStr).workdays;}
+function monthlyWorkControlHours(ymStr=selectedMonth()){return calendarCalculation(ymStr).control;}
+
+const controlLinePlugin={id:'controlLinePlugin',afterDatasetsDraw(chart,args,pluginOptions){const v=pluginOptions?.value; if(!v && v!==0) return; const x=chart.scales.x; if(!x) return; const {ctx,chartArea:{top,bottom}}=chart; const xPos=x.getPixelForValue(v); if(xPos<x.left||xPos>x.right) return; ctx.save(); ctx.beginPath(); ctx.moveTo(xPos,top); ctx.lineTo(xPos,bottom); ctx.lineWidth=2; ctx.strokeStyle='#2563eb'; ctx.setLineDash([6,4]); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='#2563eb'; ctx.font='bold 12px Noto Sans TC, sans-serif'; ctx.textAlign='center'; ctx.fillText('管制值 '+v+' 小時',xPos,top+14); ctx.restore();}};
+
+const monthlyControlLabelPlugin={id:'monthlyControlLabelPlugin',afterDatasetsDraw(chart){
+  const dsIndex=chart.data.datasets.findIndex(ds=>ds.label==='月工時管制線');
+  if(dsIndex<0) return;
+  const meta=chart.getDatasetMeta(dsIndex);
+  const {ctx}=chart;
+  ctx.save();
+  ctx.fillStyle='#1d4ed8';
+  ctx.font='bold 12px Noto Sans TC, sans-serif';
+  ctx.textAlign='center';
+  meta.data.forEach((point,i)=>{
+    const val=chart.data.datasets[dsIndex].data[i];
+    ctx.fillText(val, point.x, point.y-10);
+  });
+  ctx.restore();
+}};
+Chart.register(controlLinePlugin, monthlyControlLabelPlugin);
+
+function tabButton(name){return document.querySelector(`.tab-btn[data-tab=\"${name}\"]`) || document.querySelector(`[onclick*=\"${name}\"]`);}
+function switchTab(name,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const page=document.getElementById('page-'+name); if(page) page.classList.add('active');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));(btn||tabButton(name))?.classList.add('active'); refreshAll();}
+function chart(id,type,data,options){if(charts[id])charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),{type,data,options});}
+function tableRows(entries,empty='尚無資料'){if(!entries.length)return `<tr><td colspan="3" class="p-6 text-center text-slate-400">${empty}</td></tr>`;return entries.map(([k,v])=>`<tr class="border-t"><td class="p-3 font-medium">${safe(k)}</td><td class="p-3 text-right font-bold">${fmt(v.hours)}</td><td class="p-3 text-right text-slate-500">${v.count}</td></tr>`).join('')}
+
+function categoryShareMarkup(items){
+  const total=sum(items);
+  const entries=sortedEntries(groupBy(items,'category'));
+  if(!entries.length || total<=0) return '<span class="text-slate-400">-</span>';
+  return entries.map(([k,v],i)=>{
+    const pct=((v.hours/total)*100).toFixed(0);
+    return `<span class="share-chip"><span class="inline-block w-2 h-2 rounded-full" style="background:${categoryColors[i%categoryColors.length]}"></span>${safe(k)} ${pct}%</span>`;
+  }).join('');
+}
+function categoryShareText(items){
+  const total=sum(items); const entries=sortedEntries(groupBy(items,'category'));
+  if(!entries.length || total<=0) return '-';
+  return entries.map(([k,v])=>`${k} ${((v.hours/total)*100).toFixed(0)}%`).join('｜');
+}
+
+function buildPersonSummaryRows(targetId,{selectable=false, compact=false}={}){
+  const rec=monthRecords();
+  const byPerson=groupBy(rec,'person');
+  const rows=people.map(p=>[p,byPerson[p]||{hours:0,count:0,items:[]}]).sort((a,b)=>b[1].hours-a[1].hours);
+  const tbody=document.getElementById(targetId);
+  if(!tbody) return;
+  tbody.innerHTML=rows.length?rows.map(([p,v])=>{
+    const totals=leaveTotalsForPerson(p);
+    const personalControl=personalControlHours(p);
+    const usage=personalControl?((v.hours/personalControl)*100):0;
+    const active=selectedMonthlyPerson===p?'active':'';
+    const click=selectable?`onclick="selectMonthlyPerson('${safe(p)}')"`:'';
+    const rowClass=selectable?`person-row ${active}`:'hover:bg-slate-50';
+    return `<tr class="border-t ${rowClass}" ${click}>
+      <td class="${compact?'p-3':'p-4'} font-bold whitespace-nowrap"><span class="inline-block w-3 h-3 rounded-full mr-2 align-middle" style="background:${colorForPerson(p)}"></span>${safe(p)}</td>
+      <td class="${compact?'p-3':'p-4'} text-right font-bold">${fmt(v.hours)}</td>
+      <td class="${compact?'p-3':'p-4'} text-right text-teal-700 font-bold">${fmt(totals.leave)}</td>
+      <td class="${compact?'p-3':'p-4'} text-right text-blue-700 font-bold">${fmt(totals.out)}</td>
+      <td class="${compact?'p-3':'p-4'} text-right text-slate-500">${fmt(personalControl)}</td>
+      <td class="${compact?'p-3':'p-4'} text-right"><span class="px-2 py-1 rounded-full bg-slate-50 border border-slate-200 font-bold ${usage>=100?'text-rose-600':usage>=80?'text-emerald-600':'text-slate-700'}">${usage.toFixed(1)}%</span></td>
+      <td class="${compact?'p-3':'p-4'} text-right text-slate-500">${v.count}</td>
+      <td class="${compact?'p-3':'p-4'} text-slate-600 min-w-[220px]">${categoryShareMarkup(v.items)}</td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="8" class="p-8 text-center text-slate-400">尚無人員資料</td></tr>';
+}
+
+function fillSelects(){
+  const pOpts=people.map(p=>`<option value="${safe(p)}">${safe(p)}</option>`).join('');
+  ['dailyPerson','analysisPerson','leavePerson'].forEach(id=>{const el=document.getElementById(id); if(el){const old=el.value; el.innerHTML=pOpts; if(old&&people.includes(old)) el.value=old; else el.value=people[0]||'';}});
+  const pf=document.getElementById('dailyPersonFilter'); if(pf){const old=pf.value; pf.innerHTML='<option value="">所有人員</option>'+pOpts; pf.value=old||'';}
+  const lf=document.getElementById('leavePersonFilter'); if(lf){const old=lf.value; lf.innerHTML='<option value="">所有人員</option>'+pOpts; lf.value=old||'';}
+  const tpl=document.getElementById('dailyTemplate'); if(tpl) tpl.innerHTML='<option value="">不套用，自由填寫</option>'+templates.map(t=>`<option value="${safe(t.id)}">${safe(t.name)}｜${safe(t.category)}</option>`).join('');
+}
+function ensureSelectedMonthlyPerson(){
+  const rec=monthRecords();
+  const personWithData=sortedEntries(groupBy(rec,'person')).map(e=>e[0]);
+  if(!selectedMonthlyPerson || !people.includes(selectedMonthlyPerson)) selectedMonthlyPerson=personWithData[0] || people[0] || '';
+}
+function ensureSelectedMonthlyPeople(){
+  selectedMonthlyPeople=(selectedMonthlyPeople||[]).filter(p=>people.includes(p));
+  if(!selectedMonthlyPeople.length){
+    const withData=sortedEntries(groupBy(monthRecords(),'person')).map(e=>e[0]);
+    selectedMonthlyPeople=withData.length?withData:[...people];
+  }
+  if(!selectedMonthlyPerson || !selectedMonthlyPeople.includes(selectedMonthlyPerson)) selectedMonthlyPerson=selectedMonthlyPeople[0] || '';
+}
+function getSelectedMonthlyPeople(){ensureSelectedMonthlyPeople(); return [...selectedMonthlyPeople];}
+function selectedMonthlyRecords(){const selected=getSelectedMonthlyPeople(); return monthRecords().filter(r=>selected.includes(r.person));}
+function refreshAll(){save(); fillSelects(); ensureSelectedMonthlyPerson(); ensureSelectedMonthlyPeople(); renderDashboard(); renderTemplates(); renderDailyTable(); renderLeaveTable(); renderMonthly(); renderPeople(); renderCalendarSettings(); lucide.createIcons();}
+function renderDashboard(){renderMonthlyTrend(); renderPeopleCompare(); renderDashboardPersonSummary();}
+
+function renderMonthlyTrend(){
+  const base=selectedMonth().slice(0,4);
+  const labels=Array.from({length:12},(_,i)=>(i+1)+'月');
+  const controlData=Array.from({length:12},(_,i)=>monthlyWorkControlHours(`${base}-${pad(i+1)}`));
+  const peopleDatasets=people.map(p=>({
+    label:p,
+    data:Array.from({length:12},(_,i)=>+sum(dailyRecords.filter(r=>r.person===p&&r.date.startsWith(base+'-'+pad(i+1)))).toFixed(1)),
+    backgroundColor:colorForPerson(p),
+    borderColor:colorForPerson(p),
+    borderWidth:1,
+    borderRadius:4,
+    barPercentage:.82,
+    categoryPercentage:.74,
+    order:2
+  }));
+  const lineDataset={
+    type:'line',
+    label:'月工時管制線',
+    data:controlData,
+    borderColor:'#1d4ed8',
+    backgroundColor:'#1d4ed8',
+    borderDash:[7,5],
+    borderWidth:2,
+    pointRadius:3,
+    pointHoverRadius:5,
+    pointBackgroundColor:'#1d4ed8',
+    tension:.18,
+    fill:false,
+    order:1
+  };
+  const allVals=peopleDatasets.flatMap(d=>d.data).concat(controlData);
+  const suggestedMax=Math.ceil(Math.max(...allVals,1)*1.15/10)*10;
+  chart('chartMonthlyTrend','bar',{labels,datasets:[...peopleDatasets,lineDataset]}, {
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'bottom',labels:{boxWidth:12,usePointStyle:true}},
+      tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.raw} 小時`}}
+    },
+    scales:{
+      y:{beginAtZero:true,suggestedMax,title:{display:true,text:'小時'},grid:{color:'#e2e8f0'}},
+      x:{grid:{display:false}}
+    }
+  });
+}
+
+
+function renderPeopleCompare(){
+  const entries=sortedEntries(groupBy(monthRecords(),'person'));
+  const control=monthlyWorkControlHours();
+  const label=document.getElementById('controlLineLabel'); if(label) label.textContent=`管制值 ${control} 小時/月`;
+  const maxData=Math.max(control,...entries.map(e=>e[1].hours),1);
+  chart('chartPeopleCompare','bar',{labels:entries.map(e=>e[0]),datasets:[{label:'工時',data:entries.map(e=>+e[1].hours.toFixed(1)),backgroundColor:entries.map(e=>colorForPerson(e[0])),borderRadius:8}]},{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},controlLinePlugin:{value:control},tooltip:{callbacks:{afterLabel:()=>`月管制值：${control} 小時`}}},
+    scales:{x:{beginAtZero:true,suggestedMax:Math.ceil(maxData*1.12),title:{display:true,text:'小時'}},y:{grid:{display:false}}}
+  });
+}
+
+function renderPersonalAnalysis(){
+  const p=document.getElementById('analysisPerson')?.value||people[0]; const rec=monthRecords().filter(r=>r.person===p); const entries=sortedEntries(groupBy(rec,'category')); const total=sum(rec);
+  chart('chartPersonCategory','doughnut',{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>+e[1].hours.toFixed(1)),backgroundColor:entries.map((_,i)=>categoryColors[i%categoryColors.length]),borderColor:'#fff',borderWidth:2}]},{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},cutout:'60%'});
+  document.getElementById('personCategoryTable').innerHTML=entries.length?entries.map(([k,v])=>`<tr class="border-t"><td class="p-3 font-medium">${safe(k)}</td><td class="p-3 text-right font-bold">${fmt(v.hours)}</td><td class="p-3 text-right text-slate-500">${total?((v.hours/total)*100).toFixed(1):0}%</td></tr>`).join(''):'<tr><td colspan="3" class="p-6 text-center text-slate-400">該人員本月尚無填報資料</td></tr>'
+}
+
+function renderDashboardPersonSummary(){
+  const meta=document.getElementById('dashboardMeta');
+  if(meta) meta.textContent=`${monthLabel()}｜共同管制值 ${monthlyWorkControlHours()} 小時/月｜負荷比例已扣除請假`;
+  buildPersonSummaryRows('dashboardPersonSummary',{selectable:true, compact:true});
+}
+
+function renderMonthly(){
+  const calc=calendarCalculation(); const control=calc.control; const workdays=calc.workdays;
+  document.getElementById('monthlyMeta').innerHTML=`<span class="mini-pill">彙整月份：${monthLabel()}</span><span class="mini-pill">月工作日：${workdays} 天</span><span class="mini-pill">月管制值：${control} 小時</span><span class="mini-pill">基準平日 ${calc.baseWeekdays}｜扣除 ${calc.nonworkCount}｜補班 ${calc.makeupCount}</span><span class="mini-pill">資料來源：每日填報＋請假/公出紀錄</span>`;
+  renderMonthlyPersonSelector();
+  renderSelectedMonthlyPeople();
+}
+function selectMonthlyPerson(person){
+  selectedMonthlyPerson=person;
+  selectedMonthlyPeople=[person];
+  const monthlyBtn=document.querySelectorAll('.tab-btn')[3];
+  if(monthlyBtn) switchTab('monthly',monthlyBtn); else refreshAll();
+}
+function renderMonthlyPersonSelector(){
+  const container=document.getElementById('monthlyPersonSelector');
+  if(!container) return;
+  ensureSelectedMonthlyPeople();
+  container.innerHTML=people.map(p=>{
+    const checked=selectedMonthlyPeople.includes(p);
+    return `<label class="person-check ${checked?'active':''}"><input type="checkbox" ${checked?'checked':''} onchange="toggleMonthlyPerson('${safe(p)}',this.checked)"><span class="inline-block w-3 h-3 rounded-full" style="background:${colorForPerson(p)}"></span>${safe(p)}</label>`;
+  }).join('') || '<span class="text-sm text-slate-400">尚未建立人員</span>';
+}
+function toggleMonthlyPerson(person,checked){
+  if(checked){ if(!selectedMonthlyPeople.includes(person)) selectedMonthlyPeople.push(person); }
+  else selectedMonthlyPeople=selectedMonthlyPeople.filter(p=>p!==person);
+  if(!selectedMonthlyPeople.length) selectedMonthlyPeople=[person];
+  selectedMonthlyPerson=selectedMonthlyPeople[0]||'';
+  refreshAll();
+}
+function selectAllMonthlyPeople(){selectedMonthlyPeople=[...people]; selectedMonthlyPerson=selectedMonthlyPeople[0]||''; refreshAll();}
+function clearMonthlyPeople(){selectedMonthlyPeople=[]; ensureSelectedMonthlyPeople(); refreshAll();}
+function buildSelectedPeopleSummaryRows(){
+  const tbody=document.getElementById('selectedPeopleSummary');
+  if(!tbody) return;
+  const rec=monthRecords(); const byPerson=groupBy(rec,'person'); const selected=getSelectedMonthlyPeople();
+  const rows=selected.map(p=>[p,byPerson[p]||{hours:0,count:0,items:[]}]).sort((a,b)=>b[1].hours-a[1].hours);
+  document.getElementById('selectedPeopleCount').textContent=`已選 ${selected.length} 人`;
+  tbody.innerHTML=rows.length?rows.map(([p,v])=>{
+    const totals=leaveTotalsForPerson(p);
+    const personalControl=personalControlHours(p);
+    const usage=personalControl?((v.hours/personalControl)*100):0;
+    return `<tr class="border-t hover:bg-slate-50"><td class="p-4 font-bold whitespace-nowrap"><span class="inline-block w-3 h-3 rounded-full mr-2 align-middle" style="background:${colorForPerson(p)}"></span>${safe(p)}</td><td class="p-4 text-right font-bold">${fmt(v.hours)}</td><td class="p-4 text-right text-teal-700 font-bold">${fmt(totals.leave)}</td><td class="p-4 text-right text-blue-700 font-bold">${fmt(totals.out)}</td><td class="p-4 text-right text-slate-500">${fmt(personalControl)}</td><td class="p-4 text-right"><span class="px-2 py-1 rounded-full bg-slate-50 border border-slate-200 font-bold ${usage>=100?'text-rose-600':usage>=80?'text-emerald-600':'text-slate-700'}">${usage.toFixed(1)}%</span></td><td class="p-4 text-right text-slate-500">${v.count}</td><td class="p-4 text-slate-600 min-w-[220px]">${categoryShareMarkup(v.items)}</td></tr>`;
+  }).join(''):'<tr><td colspan="8" class="p-8 text-center text-slate-400">尚未勾選人員</td></tr>';
+}
+function renderSelectedMonthlyPeople(){
+  buildSelectedPeopleSummaryRows();
+  const selected=getSelectedMonthlyPeople();
+  const rec=selectedMonthlyRecords();
+  const leaveRec=monthLeaveRecords().filter(r=>selected.includes(r.person));
+  const total=sum(rec); const baseControl=monthlyWorkControlHours();
+  const leaveTotal=sum(leaveRec.filter(r=>r.type==='請假'));
+  const outTotal=sum(leaveRec.filter(r=>r.type==='公出'||r.type==='出差'));
+  const selectedControl=Math.max(0, selected.reduce((a,p)=>a+personalControlHours(p),0));
+  const usage=selectedControl?((total/selectedControl)*100):0;
+  const title=selected.length===1?`${selected[0]} 工作摘要`:`已選 ${selected.length} 人合併工作摘要`;
+  document.getElementById('selectedPersonTitle').textContent=title;
+  document.getElementById('selectedPersonTotal').textContent=`${fmt(total)} 小時`;
+  document.getElementById('selectedPersonSummaryCards').innerHTML=`
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-xs text-slate-500">已選人員</div><div class="mt-1 font-bold text-base">${selected.map(safe).join('、')||'-'}</div></div>
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-xs text-slate-500">本月工時 / 個人管制值合計</div><div class="mt-1 font-bold text-lg">${fmt(total)} / ${fmt(selectedControl)} 小時</div><div class="text-xs text-slate-400 mt-1">共同月管制值：${baseControl} 小時/人</div></div>
+    <div class="p-3 rounded-xl bg-teal-50 border border-teal-100"><div class="text-xs text-teal-700">本月請假時數</div><div class="mt-1 font-bold text-lg text-teal-700">${fmt(leaveTotal)} 小時</div></div>
+    <div class="p-3 rounded-xl bg-blue-50 border border-blue-100"><div class="text-xs text-blue-700">公出 / 出差時數</div><div class="mt-1 font-bold text-lg text-blue-700">${fmt(outTotal)} 小時</div></div>
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-xs text-slate-500">負荷比例</div><div class="mt-1 font-bold text-lg">${usage.toFixed(1)}%</div></div>
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-xs text-slate-500">填報件數</div><div class="mt-1 font-bold text-lg">${rec.length} 件</div></div>`;
+  document.getElementById('selectedTaskSummary').innerHTML=tableRows(sortedEntries(groupBy(rec,'task')));
+  const catEntries=sortedEntries(groupBy(rec,'category'));
+  document.getElementById('selectedCategorySummary').innerHTML=catEntries.length?catEntries.map(([k,v])=>`<tr class="border-t"><td class="p-3 font-medium">${safe(k)}</td><td class="p-3 text-right font-bold">${fmt(v.hours)}</td><td class="p-3 text-right text-slate-500">${total?((v.hours/total)*100).toFixed(1):0}%</td></tr>`).join(''):'<tr><td colspan="3" class="p-6 text-center text-slate-400">尚無資料</td></tr>';
+  document.getElementById('selectedLeaveTitle').textContent=selected.length===1?`${selected[0]} 本月請假 / 公出紀錄`:`已選人員本月請假 / 公出紀錄`;
+  document.getElementById('selectedLeaveDetail').innerHTML=leaveRec.sort((a,b)=>a.date.localeCompare(b.date)||a.person.localeCompare(b.person)).map(r=>`<tr class="border-t"><td class="p-4">${safe(r.date)}</td><td class="p-4 font-bold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background:${colorForPerson(r.person)}"></span>${safe(r.person)}</td><td class="p-4"><span class="status-tag ${r.type==='請假'?'tag-leave':r.type==='公出'?'tag-out':'tag-trip'}">${safe(r.type)}</span></td><td class="p-4">${safe(r.reason||'')}</td><td class="p-4 text-right font-bold">${fmt(r.hours)}</td><td class="p-4 text-slate-600">${safe(r.note||'')}</td></tr>`).join('')||'<tr><td colspan="6" class="p-8 text-center text-slate-400">已選人員本月尚無請假、公出或出差紀錄</td></tr>';
+  document.getElementById('selectedDetailTitle').textContent=selected.length===1?`${selected[0]} 本月每日工作明細`:`已選人員本月每日工作明細`;
+  document.getElementById('selectedPersonDetail').innerHTML=rec.sort((a,b)=>a.date.localeCompare(b.date)||a.person.localeCompare(b.person)).map(r=>`<tr class="border-t"><td class="p-4">${safe(r.date)}</td><td class="p-4 font-bold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background:${colorForPerson(r.person)}"></span>${safe(r.person)}</td><td class="p-4 font-medium">${safe(r.task)}</td><td class="p-4">${safe(r.category)}</td><td class="p-4">${safe(r.nature)}</td><td class="p-4 text-right font-bold">${fmt(r.hours)}</td><td class="p-4 text-slate-600 max-w-xl">${safe(r.desc||'')}</td></tr>`).join('')||'<tr><td colspan="7" class="p-8 text-center text-slate-400">已選人員本月尚無每日填報紀錄</td></tr>';
+}
+
+function renderCalendarSettings(){
+  const page=document.getElementById('page-calendar');
+  if(!page) return;
+  const ymStr=selectedMonth();
+  const cfg=rawCalendarConfig(ymStr);
+  const calc=calendarCalculation(ymStr);
+  const monthBox=document.getElementById('calendarSettingMonth'); if(monthBox) monthBox.textContent=monthLabel(ymStr);
+  const daily=document.getElementById('calendarDailyHours'); if(daily && document.activeElement!==daily) daily.value=cfg.dailyHours;
+  const dateInput=document.getElementById('calendarExceptionDate'); if(dateInput && (!dateInput.value || !dateInput.value.startsWith(ymStr))) dateInput.value=ymStr+'-01';
+  const meta=document.getElementById('calendarMonthMeta');
+  if(meta) meta.innerHTML=`<span class="mini-pill">基準平日：${calc.baseWeekdays} 天</span><span class="mini-pill">扣除休假：${calc.nonworkCount} 天</span><span class="mini-pill">補班日：${calc.makeupCount} 天</span><span class="mini-pill">實際工作日：${calc.workdays} 天</span><span class="mini-pill">月管制值：${calc.control} 小時</span>`;
+  const box=document.getElementById('calendarCalcBox');
+  if(box) box.innerHTML=`
+    <div class="flex justify-between"><span class="text-slate-500">基準週一～週五</span><b>${calc.baseWeekdays} 天</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">扣除國定假日/颱風假/停班</span><b>-${calc.nonworkCount} 天</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">加入補班日</span><b>+${calc.makeupCount} 天</b></div>
+    <div class="border-t border-slate-200 pt-2 flex justify-between"><span class="text-slate-500">實際工作日</span><b>${calc.workdays} 天</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">每日標準工時</span><b>${calc.dailyHours} 小時</b></div>
+    <div class="border-t border-slate-200 pt-2 flex justify-between text-teal-700"><span class="font-bold">月工時管制值</span><b>${calc.control} 小時</b></div>`;
+  const tbody=document.getElementById('calendarExceptionTable');
+  if(tbody){
+    const rows=(cfg.exceptions||[]).filter(e=>e.date&&String(e.date).startsWith(ymStr)).sort((a,b)=>a.date.localeCompare(b.date));
+    tbody.innerHTML=rows.length?rows.map((e,i)=>{
+      const mode=e.mode||exceptionMode(e.type);
+      const impact=mode==='makeup'?(isWeekday(e.date)?'補班日落在平日，不額外增加':'補班 +1 工作日'):(isWeekday(e.date)?'休假 -1 工作日':'休假日落在週末，不重複扣除');
+      return `<tr class="border-t"><td class="p-3 font-medium">${safe(e.date)}</td><td class="p-3">${weekdayName(e.date)}</td><td class="p-3"><span class="mini-pill">${safe(e.type)}</span></td><td class="p-3 text-slate-600">${impact}</td><td class="p-3 text-slate-600">${safe(e.note||'')}</td><td class="p-3 text-center"><button onclick="deleteCalendarException(${i})" class="text-rose-600 font-bold">刪除</button></td></tr>`;
+    }).join(''):'<tr><td colspan="6" class="p-8 text-center text-slate-400">本月尚未設定國定假日、颱風假、公司停班或補班日</td></tr>';
+  }
+}
+function saveCalendarDailyHours(){
+  const ymStr=selectedMonth(); const cfg=rawCalendarConfig(ymStr);
+  cfg.dailyHours=parseFloat(document.getElementById('calendarDailyHours').value)||8;
+  refreshAll(); showToast('本月每日標準工時已更新，管制線與負荷比例已重新計算');
+}
+function addCalendarException(e){
+  e.preventDefault(); const ymStr=selectedMonth(); const cfg=rawCalendarConfig(ymStr);
+  const date=document.getElementById('calendarExceptionDate').value;
+  const type=document.getElementById('calendarExceptionType').value;
+  const note=document.getElementById('calendarExceptionNote').value.trim();
+  if(!date || !date.startsWith(ymStr)){alert('請新增目前檢視月份內的日期。若要設定其他月份，請先切換上方檢視月份。'); return;}
+  const mode=exceptionMode(type);
+  const existed=cfg.exceptions.find(x=>x.date===date && x.type===type);
+  if(existed){existed.note=note; existed.mode=mode;} else cfg.exceptions.push({date,type,mode,note});
+  document.getElementById('calendarExceptionNote').value='';
+  refreshAll(); showToast('工作日曆已更新，月管制值已重新計算');
+}
+function deleteCalendarException(index){
+  const ymStr=selectedMonth(); const cfg=rawCalendarConfig(ymStr);
+  const rows=cfg.exceptions.filter(e=>e.date&&String(e.date).startsWith(ymStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const target=rows[index]; if(!target) return;
+  cfg.exceptions=cfg.exceptions.filter(e=>!(e.date===target.date && e.type===target.type && (e.note||'')===(target.note||'')));
+  refreshAll(); showToast('工作日曆項目已刪除');
+}
+function resetCalendarMonth(){
+  const ymStr=selectedMonth();
+  if(confirm(`確定重設 ${monthLabel(ymStr)} 的工作日曆設定？`)){delete workCalendar[ymStr]; refreshAll(); showToast('本月工作日曆已重設為週一至週五 × 8 小時');}
+}
+function calendarMetaRowsForExport(){
+  const ymStr=selectedMonth(); const cfg=getCalendarConfig(ymStr); const calc=calendarCalculation(ymStr);
+  const rows=[
+    {'項目':'彙整月份','內容':monthLabel(ymStr)},
+    {'項目':'基準週一至週五天數','內容':calc.baseWeekdays},
+    {'項目':'扣除非工作日天數','內容':calc.nonworkCount},
+    {'項目':'補班日天數','內容':calc.makeupCount},
+    {'項目':'實際工作日數','內容':calc.workdays},
+    {'項目':'每日標準工時','內容':calc.dailyHours},
+    {'項目':'月工時管制值','內容':calc.control},
+    {'項目':'管制值計算式','內容':`(${calc.baseWeekdays} - ${calc.nonworkCount} + ${calc.makeupCount}) × ${calc.dailyHours} = ${calc.control} 小時`}
+  ];
+  (cfg.exceptions||[]).filter(e=>e.date&&String(e.date).startsWith(ymStr)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push({'項目':`${e.date} ${e.type}`,'內容':e.note||''}));
+  return rows;
+}
+
+function saveTemplate(e){e.preventDefault(); const id=document.getElementById('templateId').value; const obj={id:id||'tpl'+Date.now(),name:templateName.value.trim(),category:templateCategory.value.trim(),nature:templateNature.value,desc:templateDesc.value.trim()}; if(id){templates=templates.map(t=>t.id===id?obj:t)}else templates.push(obj); e.target.reset(); templateId.value=''; refreshAll(); showToast('常用任務範本已儲存')}
+function editTemplate(id){const t=templates.find(x=>x.id===id); if(!t)return; templateId.value=t.id; templateName.value=t.name; templateCategory.value=t.category; templateNature.value=t.nature; templateDesc.value=t.desc||''; window.scrollTo({top:0,behavior:'smooth'})}
+function deleteTemplate(id){if(confirm('確定刪除這個常用任務範本？')){templates=templates.filter(t=>t.id!==id); refreshAll()}}
+function renderTemplates(){document.getElementById('templateTable').innerHTML=templates.map(t=>`<tr class="border-t"><td class="p-4 font-bold">${safe(t.name)}</td><td class="p-4">${safe(t.category)}</td><td class="p-4">${safe(t.nature)}</td><td class="p-4 text-slate-600">${safe(t.desc||'')}</td><td class="p-4 text-center"><button onclick="editTemplate('${safe(t.id)}')" class="text-teal-700 mr-3">編輯</button><button onclick="deleteTemplate('${safe(t.id)}')" class="text-rose-600">刪除</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-6 text-center text-slate-400">尚無常用任務</td></tr>'}
+function applyTemplate(){const id=dailyTemplate.value; const t=templates.find(x=>x.id===id); if(t){dailyTask.value=t.name; dailyCategory.value=t.category; dailyNature.value=t.nature; dailyDesc.value=t.desc||''}}
+function clearDailyForm(){dailyId.value=''; dailyDate.value=today(); dailyTemplate.value=''; dailyHours.value=''; dailyTask.value=''; dailyCategory.value=''; dailyNature.value='定期性'; dailyDesc.value=''}
+function saveDaily(e){e.preventDefault(); const id=dailyId.value||'r'+Date.now(); const obj={id,date:dailyDate.value,person:dailyPerson.value,task:dailyTask.value.trim(),category:dailyCategory.value.trim(),nature:dailyNature.value,hours:parseFloat(dailyHours.value)||0,desc:dailyDesc.value.trim()}; if(dailyId.value){dailyRecords=dailyRecords.map(r=>r.id===id?obj:r)}else dailyRecords.push(obj); clearDailyForm(); refreshAll(); showToast('每日填報已儲存，月報已自動更新')}
+function editDaily(id){const r=dailyRecords.find(x=>x.id===id); if(!r)return; dailyId.value=r.id; dailyDate.value=r.date; dailyPerson.value=r.person; dailyTask.value=r.task; dailyCategory.value=r.category; dailyNature.value=r.nature; dailyHours.value=r.hours; dailyDesc.value=r.desc||''; switchTab('daily',tabButton('daily'));}
+function deleteDaily(id){if(confirm('確定刪除這筆每日紀錄？')){dailyRecords=dailyRecords.filter(r=>r.id!==id); refreshAll()}}
+function renderDailyTable(){const q=(dailySearch?.value||'').toLowerCase(); const pf=dailyPersonFilter?.value||''; let rec=monthRecords().filter(r=>(!pf||r.person===pf)&&(`${r.person} ${r.task} ${r.category} ${r.desc}`.toLowerCase().includes(q))); rec.sort((a,b)=>b.date.localeCompare(a.date)); document.getElementById('dailyTable').innerHTML=rec.map(r=>`<tr class="border-t"><td class="p-4">${safe(r.date)}</td><td class="p-4 font-bold"><span class="inline-block w-3 h-3 rounded-full mr-2 align-middle" style="background:${colorForPerson(r.person)}"></span>${safe(r.person)}</td><td class="p-4">${safe(r.task)}</td><td class="p-4">${safe(r.category)}</td><td class="p-4">${safe(r.nature)}</td><td class="p-4 text-right font-bold">${fmt(r.hours)}</td><td class="p-4 text-slate-600 max-w-xs">${safe(r.desc||'')}</td><td class="p-4 text-center"><button onclick="editDaily('${safe(r.id)}')" class="text-teal-700 mr-3">編輯</button><button onclick="deleteDaily('${safe(r.id)}')" class="text-rose-600">刪除</button></td></tr>`).join('')||'<tr><td colspan="8" class="p-8 text-center text-slate-400">本月尚無每日填報紀錄</td></tr>'}
+
+
+function syncLeaveReasonOptions(){
+  const type=document.getElementById('leaveType')?.value;
+  const reason=document.getElementById('leaveReason');
+  if(!reason || reason.value) return;
+  if(type==='請假') reason.placeholder='例：特休、病假、事假、公假、補休';
+  else if(type==='公出') reason.placeholder='例：廠區會議、現場查核、外部協調';
+  else reason.placeholder='例：教育訓練、外縣市會議、專案出差';
+}
+function clearLeaveForm(){leaveId.value=''; leaveDate.value=today(); leaveType.value='請假'; leaveReason.value=''; leaveHours.value=''; leaveNote.value=''; if(leavePerson && people.length) leavePerson.value=people[0]; syncLeaveReasonOptions();}
+function saveLeaveRecord(e){
+  e.preventDefault();
+  const id=leaveId.value||'l'+Date.now();
+  const obj={id,date:leaveDate.value,person:leavePerson.value,type:leaveType.value,reason:leaveReason.value.trim(),hours:parseFloat(leaveHours.value)||0,note:leaveNote.value.trim()};
+  if(leaveId.value){leaveRecords=leaveRecords.map(r=>r.id===id?obj:r)}else leaveRecords.push(obj);
+  clearLeaveForm(); refreshAll(); showToast('請假 / 公出紀錄已儲存，個人管制值與負荷比例已更新');
+}
+function editLeaveRecord(id){const r=leaveRecords.find(x=>x.id===id); if(!r)return; leaveId.value=r.id; leaveDate.value=r.date; leavePerson.value=r.person; leaveType.value=r.type; leaveReason.value=r.reason||''; leaveHours.value=r.hours; leaveNote.value=r.note||''; switchTab('leave',tabButton('leave'));}
+function deleteLeaveRecord(id){if(confirm('確定刪除這筆請假 / 公出紀錄？')){leaveRecords=leaveRecords.filter(r=>r.id!==id); refreshAll();}}
+function renderLeaveTable(){
+  const meta=document.getElementById('leavePageMeta'); const calc=calendarCalculation();
+  if(meta) meta.innerHTML=`<span class="mini-pill">彙整月份：${monthLabel()}</span><span class="mini-pill">共同月管制值：${calc.control} 小時</span><span class="mini-pill">請假扣除個人管制值</span><span class="mini-pill">公出/出差僅補充顯示</span>`;
+  const d=document.getElementById('leaveDate'); if(d && (!d.value || !d.value.startsWith(selectedMonth()))) d.value=selectedMonth()+'-01';
+  const q=(document.getElementById('leaveSearch')?.value||'').toLowerCase(); const pf=document.getElementById('leavePersonFilter')?.value||'';
+  const tbody=document.getElementById('leaveTable'); if(!tbody) return;
+  let rec=monthLeaveRecords().filter(r=>(!pf||r.person===pf)&&(`${r.person} ${r.type} ${r.reason} ${r.note}`.toLowerCase().includes(q)));
+  rec.sort((a,b)=>b.date.localeCompare(a.date)||a.person.localeCompare(b.person));
+  tbody.innerHTML=rec.map(r=>`<tr class="border-t"><td class="p-4">${safe(r.date)}</td><td class="p-4 font-bold"><span class="inline-block w-3 h-3 rounded-full mr-2 align-middle" style="background:${colorForPerson(r.person)}"></span>${safe(r.person)}</td><td class="p-4"><span class="status-tag ${r.type==='請假'?'tag-leave':r.type==='公出'?'tag-out':'tag-trip'}">${safe(r.type)}</span></td><td class="p-4">${safe(r.reason||'')}</td><td class="p-4 text-right font-bold">${fmt(r.hours)}</td><td class="p-4 text-slate-600 max-w-xs">${safe(r.note||'')}</td><td class="p-4 text-center"><button onclick="editLeaveRecord('${safe(r.id)}')" class="text-teal-700 mr-3">編輯</button><button onclick="deleteLeaveRecord('${safe(r.id)}')" class="text-rose-600">刪除</button></td></tr>`).join('')||'<tr><td colspan="7" class="p-8 text-center text-slate-400">本月尚無請假、公出或出差紀錄</td></tr>';
+}
+
+function savePerson(e){e.preventDefault(); const name=personName.value.trim(); if(name&&!people.includes(name)){people.push(name); personName.value=''; refreshAll(); showToast('已新增人員')}else showToast('人員已存在或名稱空白')}
+function quickAddPerson(){const name=prompt('請輸入新增工作人員姓名'); if(name&&name.trim()&&!people.includes(name.trim())){people.push(name.trim());refreshAll();dailyPerson.value=name.trim()}}
+function deletePerson(name){if(dailyRecords.some(r=>r.person===name)){alert('此人員已有填報紀錄，為避免月報資料遺失，請先保留。');return} if(confirm('確定刪除此人員？')){people=people.filter(p=>p!==name); if(selectedMonthlyPerson===name) selectedMonthlyPerson=''; refreshAll()}}
+function renderPeople(){document.getElementById('peopleTable').innerHTML=people.map(p=>`<tr class="border-t"><td class="p-4 font-bold">${safe(p)}</td><td class="p-4"><span class="inline-block w-6 h-3 rounded-full" style="background:${colorForPerson(p)}"></span></td><td class="p-4 text-slate-500">${dailyRecords.some(r=>r.person===p)?'已有填報紀錄':'尚無填報紀錄'}</td><td class="p-4 text-center"><button onclick="deletePerson('${safe(p)}')" class="text-rose-600">刪除</button></td></tr>`).join('')}
+
+function parseExcelDate(value){
+  if(value instanceof Date) return value.toISOString().slice(0,10);
+  if(typeof value==='number'){const d=XLSX.SSF.parse_date_code(value); if(d) return `${d.y}-${pad(d.m)}-${pad(d.d)}`;}
+  const s=String(value||'').trim().replace(/[\/\.]/g,'-');
+  const m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  return s.slice(0,10);
+}
+function importData(event){
+  const file=event.target.files[0]; if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const finish=(data)=>{try{
+    if(data.people) people=data.people;
+    if(data.templates) templates=data.templates;
+    if(data.dailyRecords) dailyRecords=data.dailyRecords;
+    if(data.leaveRecords) leaveRecords=data.leaveRecords;
+    if(data.selectedMonthlyPeople) selectedMonthlyPeople=data.selectedMonthlyPeople;
+    if(data.workCalendar) workCalendar=data.workCalendar;
+    if(Array.isArray(data)) dailyRecords=data;
+    const names=[...new Set(dailyRecords.map(r=>r.person).filter(Boolean))]; names.forEach(n=>{if(!people.includes(n)) people.push(n)});
+    refreshAll(); showToast('匯入完成，已更新每日填報與月報分析');
+  }catch(e){alert('匯入資料格式不正確');} event.target.value='';};
+  if(ext==='json'){
+    const reader=new FileReader(); reader.onload=e=>finish(JSON.parse(e.target.result)); reader.readAsText(file); return;
+  }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const sheetName=wb.SheetNames.includes('每日填報全部')?'每日填報全部':wb.SheetNames[0];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+    const rec=rows.map((r,i)=>({
+      id:'imp'+Date.now()+'_'+i,
+      date:parseExcelDate(r['日期']||r['date']),
+      person:String(r['人員']||r['person']||'').trim(),
+      task:String(r['任務']||r['task']||'').trim(),
+      category:String(r['屬性']||r['category']||'未分類').trim(),
+      nature:String(r['性質']||r['nature']||'定期性').trim(),
+      hours:parseFloat(r['工時']||r['hours']||0)||0,
+      desc:String(r['實際工作內容']||r['工作內容']||r['desc']||'').trim()
+    })).filter(r=>r.date&&r.person&&r.task);
+    if(!rec.length){alert('沒有讀取到可匯入的每日填報資料'); event.target.value=''; return;}
+    let leaveRec=[];
+    const leaveSheet=wb.SheetNames.find(n=>n.includes('請假')||n.includes('公出'));
+    if(leaveSheet){
+      leaveRec=XLSX.utils.sheet_to_json(wb.Sheets[leaveSheet]).map((r,i)=>({id:'limp'+Date.now()+'_'+i,date:parseExcelDate(r['日期']||r['date']),person:String(r['人員']||r['person']||'').trim(),type:String(r['類型']||r['type']||'請假').trim(),reason:String(r['假別 / 事由']||r['假別']||r['事由']||r['reason']||'').trim(),hours:parseFloat(r['時數']||r['hours']||0)||0,note:String(r['備註']||r['note']||'').trim()})).filter(r=>r.date&&r.person&&r.hours);
+    }
+    const names=[...new Set(rec.map(r=>r.person))]; names.forEach(n=>{if(!people.includes(n)) people.push(n)});
+    if(confirm(`讀取到 ${rec.length} 筆每日填報資料。是否覆蓋目前資料？\n按「取消」則採用合併匯入。`)) dailyRecords=rec; else dailyRecords=[...dailyRecords,...rec];
+    refreshAll(); showToast('Excel 匯入完成'); event.target.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+function downloadCanvas(canvasId,filename){
+  const canvas=document.getElementById(canvasId); if(!canvas) return;
+  const link=document.createElement('a'); link.download=filename; link.href=canvas.toDataURL('image/png',1.0); document.body.appendChild(link); link.click(); link.remove();
+}
+function exportChartsPNG(){
+  Object.values(charts).forEach(c=>{try{c.resize(); c.update('none');}catch(e){}});
+  const m=selectedMonth();
+  downloadCanvas('chartMonthlyTrend',`12月份多人工作負載趨勢_${m}.png`);
+  setTimeout(()=>downloadCanvas('chartPeopleCompare',`本月各工作人員工時比較_${m}.png`),250);
+  showToast('已匯出圖表 PNG');
+}
+function printReport(){
+  document.body.classList.add('print-all');
+  Object.values(charts).forEach(c=>{try{c.resize(); c.update('none');}catch(e){}});
+  setTimeout(()=>window.print(),350);
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('print-all','print-selected'));
+
+function groupPrintRows(obj, label, totalForPct=0){
+  const entries=sortedEntries(obj);
+  if(!entries.length) return `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:14px">尚無資料</td></tr>`;
+  return entries.map(([name,v])=>{
+    const pct=totalForPct?((v.hours/totalForPct)*100).toFixed(1)+'%':'-';
+    return `<tr><td>${safe(name)}</td><td class="num">${fmt(v.hours)}</td><td class="num">${v.count}</td><td class="num">${pct}</td></tr>`;
+  }).join('');
+}
+function buildSelectedMonthlyPrintHTML(){
+  const selected=getSelectedMonthlyPeople();
+  if(!selected.length){alert('請先勾選要列印的人員');return false;}
+  const calc=calendarCalculation();
+  const control=calc.control;
+  const workdays=calc.workdays;
+  const month=monthLabel();
+  const printTime=new Date().toLocaleString('zh-TW',{hour12:false});
+  const monthly=monthRecords();
+  const byPerson=groupBy(monthly,'person');
+  const selectedRecords=selectedMonthlyRecords();
+  const selectedLeaveRecords=monthLeaveRecords().filter(r=>selected.includes(r.person));
+  const selectedTotal=sum(selectedRecords);
+  const summaryRows=selected.map(p=>[p,byPerson[p]||{hours:0,count:0,items:[]}]).sort((a,b)=>b[1].hours-a[1].hours).map(([p,v])=>{
+    const totals=leaveTotalsForPerson(p); const personalControl=personalControlHours(p); const usage=personalControl?((v.hours/personalControl)*100):0;
+    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colorForPerson(p)};margin-right:6px"></span><b>${safe(p)}</b></td><td class="num">${fmt(v.hours)}</td><td class="num">${fmt(totals.leave)}</td><td class="num">${fmt(totals.out)}</td><td class="num">${fmt(personalControl)}</td><td class="num">${usage.toFixed(1)}%</td><td class="num">${v.count}</td><td>${safe(categoryShareText(v.items))}</td></tr>`;
+  }).join('') || `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:14px">尚無已選人員資料</td></tr>`;
+  const personSections=selected.map((p,idx)=>{
+    const rec=monthly.filter(r=>r.person===p).sort((a,b)=>a.date.localeCompare(b.date)||a.task.localeCompare(b.task));
+    const total=sum(rec); const leaveForPerson=monthLeaveRecords().filter(r=>r.person===p); const totals=leaveTotalsForPerson(p); const personalControl=personalControlHours(p); const usage=personalControl?((total/personalControl)*100):0;
+    const taskRows=groupPrintRows(groupBy(rec,'task'),'任務');
+    const catRows=groupPrintRows(groupBy(rec,'category'),'屬性',total);
+    const detailRows=rec.length?rec.map(r=>`<tr><td>${safe(r.date)}</td><td>${safe(r.task)}</td><td>${safe(r.category)}</td><td>${safe(r.nature)}</td><td class="num">${fmt(r.hours)}</td><td>${safe(r.desc||'')}</td></tr>`).join(''):`<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:14px">本月尚無每日填報紀錄</td></tr>`;
+    return `<section class="print-section ${idx>0?'print-page-break':''}">
+      <div class="print-person-header">
+        <div><div class="print-person-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorForPerson(p)};margin-right:6px"></span>${safe(p)} 工作明細</div><div style="font-size:12px;color:#64748b;margin-top:3px">資料來源：每日填報｜${month}</div></div>
+        <div style="font-size:12px;text-align:right;color:#334155"><b>本月工時：</b>${fmt(total)} 小時<br><b>請假：</b>${fmt(totals.leave)} 小時｜<b>公出/出差：</b>${fmt(totals.out)} 小時<br><b>個人管制值：</b>${fmt(personalControl)} 小時<br><b>負荷比例：</b>${usage.toFixed(1)}%｜<b>填報件數：</b>${rec.length}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><h3>依任務彙整</h3><table class="print-table"><thead><tr><th>任務</th><th>工時</th><th>件數</th><th>占比</th></tr></thead><tbody>${taskRows}</tbody></table></div>
+        <div><h3>依屬性彙整</h3><table class="print-table"><thead><tr><th>屬性</th><th>工時</th><th>件數</th><th>占比</th></tr></thead><tbody>${catRows}</tbody></table></div>
+      </div>
+      <h3 style="margin-top:14px">請假 / 公出紀錄</h3>
+      <table class="print-table"><thead><tr><th>日期</th><th>類型</th><th>假別/事由</th><th>時數</th><th>備註</th></tr></thead><tbody>${leaveForPerson.length?leaveForPerson.map(l=>`<tr><td>${safe(l.date)}</td><td>${safe(l.type)}</td><td>${safe(l.reason||'')}</td><td class="num">${fmt(l.hours)}</td><td>${safe(l.note||'')}</td></tr>`).join(''):`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:14px">本月尚無請假、公出或出差紀錄</td></tr>`}</tbody></table>
+      <h3 style="margin-top:14px">每日工作明細</h3>
+      <table class="print-table"><thead><tr><th>日期</th><th>任務</th><th>屬性</th><th>性質</th><th>工時</th><th>實際工作內容</th></tr></thead><tbody>${detailRows}</tbody></table>
+    </section>`;
+  }).join('');
+  document.getElementById('print-monthly-report').innerHTML=`
+    <div style="padding:16px 18px">
+      <div class="print-report-title">人員工時負荷月報</div>
+      <div class="print-report-subtitle">依目前勾選人員產生｜列印時間：${safe(printTime)}</div>
+      <div class="print-meta-grid">
+        <div class="print-meta-item"><b>彙整月份</b><br>${safe(month)}</div>
+        <div class="print-meta-item"><b>月工作日</b><br>${workdays} 天</div>
+        <div class="print-meta-item"><b>月工時管制值</b><br>${control} 小時</div>
+        <div class="print-meta-item"><b>勾選人員</b><br>${selected.map(safe).join('、')}</div>
+        <div class="print-meta-item"><b>已選總工時</b><br>${fmt(selectedTotal)} 小時</div>
+        <div class="print-meta-item"><b>資料來源</b><br>每日填報</div>
+      </div>
+      <section class="print-section"><h3>月管制值計算依據</h3><table class="print-table"><tbody><tr><td>基準週一至週五</td><td class="num">${calc.baseWeekdays} 天</td></tr><tr><td>扣除國定假日/颱風假/公司停班</td><td class="num">-${calc.nonworkCount} 天</td></tr><tr><td>補班日</td><td class="num">+${calc.makeupCount} 天</td></tr><tr><td>每日標準工時</td><td class="num">${calc.dailyHours} 小時</td></tr><tr><td><b>月工時管制值</b></td><td class="num"><b>${calc.control} 小時</b></td></tr></tbody></table></section>
+      <section class="print-section">
+        <h3>已選人員工作摘要</h3>
+        <table class="print-table"><thead><tr><th>人員</th><th>本月工時</th><th>請假</th><th>公出/出差</th><th>個人管制值</th><th>負荷比例</th><th>填報件數</th><th>工作屬性占比</th></tr></thead><tbody>${summaryRows}</tbody></table>
+      </section>
+      ${personSections}
+    </div>`;
+  return true;
+}
+function printSelectedMonthlyReport(){
+  if(!buildSelectedMonthlyPrintHTML()) return;
+  document.body.classList.remove('print-all');
+  document.body.classList.add('print-selected');
+  setTimeout(()=>window.print(),250);
+}
+
+function exportBackupJSON(){
+  const data={version:'V10',exportedAt:new Date().toISOString(),people,templates,dailyRecords,leaveRecords,selectedMonthlyPerson,selectedMonthlyPeople,workCalendar};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`工時分析備份_${selectedMonth()}.json`; document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove();
+  showToast('已匯出 JSON 備份檔，可供日後匯入還原');
+}
+function exportExcel(){
+  const wb=XLSX.utils.book_new(); const selected=getSelectedMonthlyPeople(); const rec=selectedMonthlyRecords(); const control=monthlyWorkControlHours(); const leaveRec=monthLeaveRecords().filter(r=>selected.includes(r.person));
+  const allRows=dailyRecords.map(r=>({'日期':r.date,'人員':r.person,'任務':r.task,'屬性':r.category,'性質':r.nature,'工時':r.hours,'實際工作內容':r.desc}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(allRows), '每日填報全部');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(leaveRecords.map(r=>({'日期':r.date,'人員':r.person,'類型':r.type,'假別 / 事由':r.reason,'時數':r.hours,'備註':r.note}))), '請假公出全部');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rec.map(r=>({'日期':r.date,'人員':r.person,'任務':r.task,'屬性':r.category,'性質':r.nature,'工時':r.hours,'實際工作內容':r.desc}))), '本月已選人員明細');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(leaveRec.map(r=>({'日期':r.date,'人員':r.person,'類型':r.type,'假別 / 事由':r.reason,'時數':r.hours,'備註':r.note}))), '本月請假公出紀錄');
+  const byPerson=groupBy(monthRecords(),'person');
+  const personSummary=selected.map(p=>{const v=byPerson[p]||{hours:0,count:0,items:[]}; const totals=leaveTotalsForPerson(p); const personalControl=personalControlHours(p); return {'人員':p,'本月工時':+v.hours.toFixed(1),'本月請假':+totals.leave.toFixed(1),'公出/出差':+totals.out.toFixed(1),'個人管制值':personalControl,'負荷比例':personalControl?`${((v.hours/personalControl)*100).toFixed(1)}%`:'0.0%','填報件數':v.count,'工作屬性占比':categoryShareText(v.items)};}).sort((a,b)=>b['本月工時']-a['本月工時']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(personSummary), '已選人員工作摘要');
+  const make=(obj,k)=>sortedEntries(obj).map(([name,v])=>({[k]:name,'總工時':+v.hours.toFixed(1),'件數':v.count}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(make(groupBy(rec,'task'),'任務')), '已選依任務彙整');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(make(groupBy(rec,'category'),'屬性')), '已選依屬性彙整');
+  const meta=[{'項目':'彙整月份','內容':monthLabel()},{'項目':'月工作日','內容':monthlyWorkdays()},{'項目':'共同月工時管制值','內容':control},{'項目':'勾選人員','內容':selected.join('、')},{'項目':'資料來源','內容':'每日填報＋請假/公出紀錄'}];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(meta), '匯出條件');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(calendarMetaRowsForExport()), '工作日曆設定');
+  XLSX.writeFile(wb,`人員工時負荷月報_${selectedMonth()}_${selected.length}人.xlsx`);
+}
+
+window.onload=()=>{document.getElementById('viewMonth').value=nowMonth(); document.getElementById('dailyDate').value=today(); const ld=document.getElementById('leaveDate'); if(ld) ld.value=today(); load(); refreshAll();}
+</script>
+</body>
+</html>

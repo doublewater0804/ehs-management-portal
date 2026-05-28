@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EHS 管理入口平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+    body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; }
+    .glass { background: rgba(15, 23, 42, .72); backdrop-filter: blur(18px); }
+    .card-glow { box-shadow: 0 18px 60px rgba(14, 165, 233, .12); }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(148, 163, 184, .08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, .08) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 grid-bg">
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-cyan-500/20 blur-3xl rounded-full"></div>
+    <div class="absolute top-24 right-0 w-[32rem] h-[32rem] bg-blue-700/20 blur-3xl rounded-full"></div>
+    <div class="absolute bottom-0 left-1/3 w-[28rem] h-[28rem] bg-teal-500/10 blur-3xl rounded-full"></div>
+  </div>
+
+  <header class="relative z-10 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl sticky top-0">
+    <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/10">🛡️</div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-black tracking-tight">EHS 管理入口平台</h1>
+          <p class="text-sm text-slate-400 mt-1">Environment・Health・Safety Digital Dashboard</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs font-bold">
+        <span id="module-count-badge" class="px-3 py-1.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 text-emerald-200">功能載入中</span>
+        <span class="px-3 py-1.5 rounded-full border border-cyan-300/30 bg-cyan-400/10 text-cyan-200">新分頁開啟</span>
+        <span class="px-3 py-1.5 rounded-full border border-slate-300/20 bg-white/5 text-slate-300">GitHub Pages Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="relative z-10 max-w-7xl mx-auto px-6 py-10">
+    <section class="glass border border-white/10 rounded-[2rem] p-7 md:p-10 mb-8 card-glow">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+        <div class="lg:col-span-2">
+          <p class="text-cyan-300 text-sm font-black tracking-[.25em] uppercase mb-3">EHS Command Center</p>
+          <h2 class="text-3xl md:text-5xl font-black leading-tight">整合工作管理、專案管制與工時分析</h2>
+          <p class="text-slate-300 mt-5 leading-8 max-w-3xl">
+            此入口平台用來集中管理目前已完成的 EHS 相關網頁工具。各系統維持原本功能與資料邏輯，透過入口平台快速切換。後續新增模組時，只要修改下方 MODULES 功能清單即可擴充。
+          </p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div class="text-sm text-slate-400 font-bold mb-4">系統概況</div>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center"><span class="text-slate-300">入口平台</span><span class="text-emerald-300 font-black">Active</span></div>
+            <div class="h-px bg-white/10"></div>
+            <div class="flex justify-between items-center"><span class="text-slate-300">功能模組</span><span id="module-count" class="text-cyan-300 font-black">0</span></div>
+            <div class="h-px bg-white/10"></div>
+            <div class="flex justify-between items-center"><span class="text-slate-300">開啟方式</span><span class="text-blue-300 font-black">New Tab</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="module-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></section>
+
+    <section class="mt-8 rounded-[1.5rem] border border-dashed border-cyan-300/25 bg-cyan-400/5 p-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 class="font-black text-lg text-cyan-100">後續擴充保留</h3>
+          <p class="text-sm text-slate-400 mt-2">新增功能時：建立新資料夾，例如 training/index.html，再到本頁最下方的 MODULES 清單新增一筆資料即可。</p>
+        </div>
+        <div class="text-xs text-slate-500 font-bold">Version 1.1｜Extensible Portal</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /*
+      【日後新增功能只改這裡】
+      1. 在 ehs_management_portal 底下新增資料夾，例如：training/index.html
+      2. 複製 MODULES 裡任一筆資料
+      3. 修改 title、description、href、icon、color
+      4. 儲存 index.html 後上傳 GitHub
+    */
+    const MODULES = [
+      {
+        title: '環安衛工作管理系統',
+        description: '用於工作事項建檔、責任人追蹤、狀態燈號、KPI 與圖表統計，適合日常任務管制。',
+        href: 'task/index.html',
+        icon: '📋',
+        status: '已上線',
+        color: 'blue'
+      },
+      {
+        title: '年度安衛環專案管制總表',
+        description: '用於年度專案、證照申請、改善事項與進度甘特圖管理，適合主管檢視專案推動狀態。',
+        href: 'project/index.html',
+        icon: '📊',
+        status: '已上線',
+        color: 'purple'
+      },
+      {
+        title: '工時分析表',
+        description: '用於每日填報、請假公出、人員月負荷、工作日曆與工時報表分析。',
+        href: 'workhours/index.html',
+        icon: '⏱️',
+        status: '已上線',
+        color: 'teal'
+      }
+
+      /*
+      【新增功能範例】
+      ,{
+        title: '教育訓練紀錄',
+        description: '用於教育訓練課程、參訓人員、時數與證照紀錄管理。',
+        href: 'training/index.html',
+        icon: '🎓',
+        status: '已上線',
+        color: 'cyan'
+      }
+      */
+    ];
+
+    const COLOR_MAP = {
+      blue:   { icon: 'bg-blue-400/15 border-blue-300/25',   button: 'bg-blue-500 hover:bg-blue-400' },
+      purple: { icon: 'bg-purple-400/15 border-purple-300/25', button: 'bg-purple-500 hover:bg-purple-400' },
+      teal:   { icon: 'bg-teal-400/15 border-teal-300/25',   button: 'bg-teal-500 hover:bg-teal-400' },
+      cyan:   { icon: 'bg-cyan-400/15 border-cyan-300/25',   button: 'bg-cyan-500 hover:bg-cyan-400' },
+      amber:  { icon: 'bg-amber-400/15 border-amber-300/25', button: 'bg-amber-500 hover:bg-amber-400' },
+      rose:   { icon: 'bg-rose-400/15 border-rose-300/25',   button: 'bg-rose-500 hover:bg-rose-400' },
+      slate:  { icon: 'bg-slate-400/15 border-slate-300/25', button: 'bg-slate-600 hover:bg-slate-500' }
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[c]));
+    }
+
+    function renderModules() {
+      const grid = document.getElementById('module-grid');
+      const count = MODULES.length;
+      document.getElementById('module-count').textContent = count;
+      document.getElementById('module-count-badge').textContent = `${count} 個功能已串接`;
+
+      grid.innerHTML = MODULES.map(module => {
+        const color = COLOR_MAP[module.color] || COLOR_MAP.slate;
+        const isOnline = module.status === '已上線';
+        const statusClass = isOnline
+          ? 'bg-emerald-400/10 text-emerald-200 border-emerald-300/20'
+          : 'bg-amber-400/10 text-amber-200 border-amber-300/20';
+        const href = escapeHtml(module.href || '#');
+        return `
+          <article class="group rounded-[1.7rem] border border-white/10 bg-white/[.06] hover:bg-white/[.09] transition overflow-hidden card-glow">
+            <div class="p-6">
+              <div class="flex items-start justify-between gap-4 mb-6">
+                <div class="w-14 h-14 rounded-2xl ${color.icon} border flex items-center justify-center text-3xl">${escapeHtml(module.icon)}</div>
+                <span class="text-[11px] font-black px-3 py-1 rounded-full border ${statusClass}">${escapeHtml(module.status || '已上線')}</span>
+              </div>
+              <h3 class="text-xl font-black mb-3">${escapeHtml(module.title)}</h3>
+              <p class="text-sm text-slate-400 leading-7 min-h-[5.2rem]">${escapeHtml(module.description)}</p>
+              <a href="${href}" target="_blank" rel="noopener" class="mt-6 inline-flex w-full items-center justify-center rounded-2xl ${color.button} text-white font-black py-3 transition">
+                進入系統 ↗
+              </a>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    renderModules();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>環安衛工作管理系統 v8.8 (View Detail Mode)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .chart-container { position: relative; width: 100%; height: 320px; }
+    .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    @media print { .no-print { display: none; } }
+    #save-indicator { transition: opacity 0.5s; }
+    .modal-checkbox { width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: #2563eb; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- Header -->
+  <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50 no-print">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <span class="text-2xl mr-3">🛡️</span>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">環安衛工作管理系統</h1>
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest leading-none">
+              EHS Task Supervisory System v8.8 • Firestore Realtime
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div id="save-indicator" class="opacity-0 flex items-center bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold">
+            <span class="mr-1">💾</span> 已儲存/同步
+          </div>
+
+          <div id="sync-indicator" class="flex items-center bg-slate-50 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold border border-slate-200">
+            <span class="mr-1">🔄</span><span id="sync-text">同步中…</span>
+          </div>
+
+          <div class="text-right hidden sm:block border-r border-slate-200 pr-4">
+            <div class="text-[10px] text-slate-400 font-bold uppercase">今日日期</div>
+            <div class="text-sm font-mono font-bold text-blue-600" id="current-date">----.--.--</div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="exportToExcel()" class="flex items-center bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition text-xs font-bold">
+              <span class="mr-1">📤</span> 備份 Excel
+            </button>
+            <button onclick="document.getElementById('excel-import').click()" class="flex items-center bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition text-xs font-bold">
+              <span class="mr-1">📥</span> 恢復備份
+            </button>
+            <input type="file" id="excel-import" class="hidden" accept=".xlsx, .xls" onchange="importFromExcel(event)" />
+            <button onclick="window.print()" class="bg-slate-100 p-2 rounded-lg hover:bg-slate-200 transition text-slate-600 text-xs font-bold">🖨️ PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- KPI Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">任務總數</p>
+        <p class="text-3xl font-black text-slate-800" id="kpi-total">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
+        <p class="text-xs font-bold text-blue-500 uppercase mb-1">已完成事項</p>
+        <p class="text-3xl font-black text-slate-800" id="kpi-done">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-red-500">
+        <p class="text-xs font-bold text-red-500 uppercase mb-1">逾期件數</p>
+        <p class="text-3xl font-black text-slate-800" id="kpi-overdue">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
+        <p class="text-xs font-bold text-emerald-500 uppercase mb-1">進行中件數</p>
+        <p class="text-3xl font-black text-slate-800" id="kpi-active">0</p>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800 mb-6 flex items-center">
+          <span class="w-2 h-5 bg-blue-600 rounded mr-2"></span> 管理燈號分佈
+        </h3>
+        <div class="chart-container"><canvas id="statusChart"></canvas></div>
+      </div>
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800 mb-6 flex items-center">
+          <span class="w-2 h-5 bg-emerald-500 rounded mr-2"></span> 各廠區任務統計 (已完成/進行中/警告/逾期)
+        </h3>
+        <div class="chart-container"><canvas id="factoryChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white p-4 rounded-t-xl border border-slate-200 shadow-sm no-print">
+      <div class="flex flex-wrap items-center gap-3">
+        <select id="filter-month" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/50 font-bold">
+          <option value="all">所有月份</option>
+        </select>
+        <select id="filter-status" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">所有狀態</option>
+          <option value="done">已完成</option>
+          <option value="overdue">逾期</option>
+          <option value="warning">警告</option>
+          <option value="active">進行中</option>
+        </select>
+        <select id="filter-factory" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">所有廠區</option>
+          <option value="台北">台北</option><option value="龍德">龍德</option>
+          <option value="彰化">彰化</option><option value="麥寮">麥寮</option>
+          <option value="新港">新港</option><option value="海外">海外</option>
+        </select>
+        <select id="filter-category" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">所有類別</option>
+          <option value="PSM">PSM</option><option value="工安">工安</option>
+          <option value="環保">環保</option><option value="消防">消防</option>
+          <option value="AI">AI</option><option value="庶務">庶務</option>
+          <option value="其他">其他 (自填內容)</option>
+        </select>
+        <select id="filter-owner" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">所有負責人</option>
+        </select>
+        <select id="filter-unit" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all">所有單位</option>
+        </select>
+        <select id="filter-source" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+  <option value="all">所有來源</option>
+  <option value="NOTES">NOTES</option><option value="速報表">速報表</option>
+  <option value="開會通知單">開會通知單</option><option value="環保通報單">環保通報單</option><option value="蓋用印申請單">蓋用印申請單</option>
+  <option value="外來文">外來文</option><option value="主管交辦">主管交辦</option>
+  <option value="報告">報告</option><option value="業洽函">業洽函</option>
+  <option value="層峰指示">層峰指示</option><option value="法規要求">法規要求</option>
+  <option value="全企業工安環保通報">全企業工安環保通報</option><option value="專案工作">專案工作</option>
+  <option value="其他">其他</option>
+</select>
+        <div class="ml-auto flex items-center space-x-2">
+          <span class="text-[11px] font-bold text-slate-400 uppercase mr-2" id="table-count">0 ITEMS</span>
+          <button id="btn-add" class="bg-blue-600 text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-blue-700 transition shadow-md shadow-blue-100 flex items-center">
+            <span class="mr-1">＋</span> 新增工作
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-b-xl border-x border-b border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-slate-50 text-[11px] text-slate-400 font-black uppercase tracking-wider border-b border-slate-100">
+              <th class="px-6 py-4 text-nowrap">狀態/提醒</th>
+              <th class="px-6 py-4 text-nowrap">類別</th>
+              <th class="px-6 py-4 text-nowrap">廠區/月份</th>
+              <th class="px-6 py-4 text-nowrap">負責人/單位/來源</th>
+              <th class="px-6 py-4">工作項目與內容</th>
+              <th class="px-6 py-4 text-center text-nowrap">建檔日期</th>
+              <th class="px-6 py-4 text-center text-nowrap">截止日期</th>
+              <th class="px-6 py-4 text-nowrap">進度</th>
+              <th class="px-6 py-4 text-center text-nowrap">操作</th>
+            </tr>
+          </thead>
+          <tbody id="main-table-body" class="text-sm text-slate-600 divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[100] p-4 no-print">
+    <div class="bg-white rounded-2xl shadow-2xl w-[min(95vw,36rem)] max-w-[95vw] max-h-[90vh] min-w-[320px] min-h-[260px] overflow-hidden resize flex flex-col">
+      <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h4 class="font-bold text-slate-800" id="modal-title">工作事項編輯</h4>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+      </div>
+
+      <div class="p-8 flex-1 overflow-y-auto custom-scrollbar">
+        <div class="grid grid-cols-2 gap-6" id="modal-fields">
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">廠區</label>
+            <select id="f-factory" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+              <option>台北</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>新港</option><option>海外</option>
+            </select>
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">工作類別</label>
+            <select id="f-category" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleOtherCategory(this.value)">
+              <option>PSM</option><option>工安</option><option>環保</option><option>消防</option><option>AI</option><option>庶務</option><option>其他</option>
+            </select>
+          </div>
+
+          <div class="col-span-2 hidden" id="other-category-container">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">請輸入具體類別名稱</label>
+            <input type="text" id="f-category-other" class="w-full border border-blue-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：健康促進、緊急應變" />
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">來源</label>
+            <select id="f-source" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleOtherSource(this.value)">
+  <option>NOTES</option><option>速報表</option><option>開會通知單</option><option>環保通報單</option>
+  <option>蓋用印申請單</option><option>外來文</option><option>主管交辦</option>
+  <option>報告</option><option>業洽函</option><option>層峰指示</option><option>法規要求</option>
+  <option>全企業工安環保通報</option><option>專案工作</option><option>其他</option>
+</select>
+          </div>
+
+          <div class="col-span-1 hidden" id="other-source-container">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">請輸入具體來源</label>
+            <input type="text" id="f-source-other" class="w-full border border-blue-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="來源名稱" />
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">工作項目</label>
+            <input type="text" id="f-task" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">詳細描述</label>
+            <textarea id="f-desc" rows="2" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">辦理進度（文字）</label>
+            <textarea id="f-work-progress" rows="2" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：已發函/已會勘/改善中/待回覆..."></textarea>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">結案說明</label>
+            <textarea id="f-close-note" rows="2" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：已完成改善並驗收/已結案核備..."></textarea>
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">負責人</label>
+            <input
+              type="text"
+              id="f-owner"
+              list="owner-options"
+              autocomplete="off"
+              class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="可輸入、搜尋或選擇其他:自行填寫"
+              onfocus="updateOwnerUnitOptions()"
+              oninput="handleOwnerInput(this.value)"
+              onchange="handleOwnerInput(this.value)"
+            />
+            <datalist id="owner-options"></datalist>
+          </div>
+
+          <div class="col-span-1 relative">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">單位</label>
+            <div class="relative">
+              <input
+                type="text"
+                id="f-unit"
+                autocomplete="off"
+                class="w-full border border-slate-200 rounded-lg p-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="可輸入、搜尋或選擇其他:自行填寫"
+                onfocus="showUnitDropdown(true)"
+                onclick="showUnitDropdown(true)"
+                oninput="handleUnitInput(this)"
+                onchange="handleOtherPrefixInput(this)"
+              />
+              <button type="button" onclick="showUnitDropdown(true)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-600 text-xs">▼</button>
+              <div id="unit-dropdown" class="hidden absolute z-[120] mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl custom-scrollbar"></div>
+            </div>
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">建檔日期</label>
+            <input type="date" id="f-created" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" />
+          </div>
+
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">截止日期</label>
+            <input type="date" id="f-deadline" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div class="col-span-1 flex items-end pb-3">
+            <label class="flex items-center space-x-3 cursor-pointer bg-slate-50 p-3 rounded-lg border border-slate-200 w-full hover:bg-slate-100 transition">
+              <input type="checkbox" id="f-is-done" class="modal-checkbox" onchange="handleModalDoneToggle(this.checked)" />
+              <span class="text-sm font-bold text-slate-700">設為「已完成」</span>
+            </label>
+          </div>
+
+          <div class="col-span-2">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-xs font-bold text-slate-400 uppercase">目前進度</label>
+              <span class="text-sm font-black text-blue-600"><span id="f-progress-text">0</span>%</span>
+            </div>
+            <input type="range" id="f-progress" min="0" max="100" step="5" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="handleProgressInput(this.value)" />
+          </div>
+
+        </div>
+      </div>
+
+      <div class="p-6 bg-slate-50 border-t border-slate-100 flex justify-end space-x-3" id="modal-footer">
+        <button onclick="closeModal()" class="px-6 py-2 text-sm font-bold text-slate-400 hover:text-slate-600">取消</button>
+        <button id="btn-modal-save" onclick="saveTask()" class="px-8 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-lg hover:bg-blue-700">儲存資料</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase + Firestore Realtime Sync -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      setDoc,
+      deleteDoc,
+      onSnapshot,
+      serverTimestamp,
+      query,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const TASKS_COL = collection(db, "ehs_tasks");
+
+    window.__fb = { app, auth, db, TASKS_COL };
+
+    function setSyncState(text, ok = true) {
+      const el = document.getElementById("sync-text");
+      const wrap = document.getElementById("sync-indicator");
+      if (!el || !wrap) return;
+      el.textContent = text;
+      wrap.className = ok
+        ? "flex items-center bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold border border-emerald-200"
+        : "flex items-center bg-red-50 text-red-700 px-3 py-1 rounded-full text-[10px] font-bold border border-red-200";
+    }
+
+    async function bootRealtime() {
+      setSyncState("登入中…", true);
+      try {
+        await signInAnonymously(auth);
+      } catch (e) {
+        setSyncState("登入失敗", false);
+        return;
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) return;
+        setSyncState("同步中…", true);
+        const q = query(TASKS_COL, orderBy("_createdTs", "desc"));
+        onSnapshot(q, (snap) => {
+          const list = [];
+          snap.forEach(d => list.push({ ...(d.data() || {}), id: d.id }));
+          if (typeof window.__applyRemoteTasks === "function") window.__applyRemoteTasks(list);
+          setSyncState("已同步", true);
+        }, (err) => {
+          setSyncState("同步失敗", false);
+        });
+      });
+    }
+
+    await bootRealtime();
+
+    function stableIdFromTask(t) {
+      const s = `${t.factory || ""}|${t.category || ""}|${t.owner || ""}|${t.task || ""}|${t.deadline || ""}|${t.createdAt || ""}`;
+      return btoa(unescape(encodeURIComponent(s))).replaceAll("=", "").replaceAll("+", "").replaceAll("/", "").slice(0, 32);
+    }
+
+    window.__fs_upsert = async (task) => {
+      const docId = String(task.id ?? stableIdFromTask(task) ?? Date.now());
+      const ref = doc(TASKS_COL, docId);
+      const payload = {
+        factory: task.factory || "台北",
+        category: task.category || "工安",
+        source: task.source || "NOTES",
+        owner: task.owner || "",
+        unit: task.unit || "",
+        task: task.task || "",
+        desc: task.desc || "",
+        workProgress: task.workProgress || "",
+        closeNote: task.closeNote || "",
+        createdAt: task.createdAt || new Date().toISOString().split("T")[0],
+        deadline: task.deadline || new Date().toISOString().split("T")[0],
+        progress: Number.isFinite(parseInt(task.progress)) ? parseInt(task.progress) : 0,
+        _updatedTs: serverTimestamp(),
+        ...(task._createdTs ? {} : { _createdTs: serverTimestamp() })
+      };
+      await setDoc(ref, payload, { merge: true });
+      return docId;
+    };
+
+    window.__fs_delete = async (id) => {
+      await deleteDoc(doc(TASKS_COL, String(id)));
+    };
+    window.__stableIdFromTask = stableIdFromTask;
+  </script>
+
+  <script>
+    const LOCAL_STORAGE_KEY = 'ESH_MANAGEMENT_DATA_V86';
+    const LOCAL_STORAGE_BACKUP_KEY = 'ESH_MANAGEMENT_DATA_V86__BACKUP';
+
+    let tasks = [];
+    let statusChart = null;
+    let factoryChart = null;
+    let editingId = null;
+    let lastManualProgress = 0;
+
+    const getTodayStr = () => new Date().toISOString().split('T')[0];
+    const fixDate = (v) => {
+      if (typeof v !== 'string') return null;
+      const s = v.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (/^\d{4}\.\d{2}\.\d{2}$/.test(s)) return s.replace(/\./g, '-');
+      return null;
+    };
+    const parseLocalDate = (yyyy_mm_dd) => new Date(`${yyyy_mm_dd}T00:00:00`);
+
+    function normalizeTask(t, i = 0) {
+      const today = getTodayStr();
+      return {
+        id: (t?.id !== undefined && t?.id !== null) ? String(t.id) : String(Date.now() + i),
+        factory: t?.factory || '台北',
+        category: t?.category || '工安',
+        source: t?.source || 'NOTES',
+        owner: t?.owner || '',
+        unit: t?.unit || '',
+        task: t?.task || '',
+        desc: t?.desc || '',
+        workProgress: t?.workProgress || '',
+        closeNote: t?.closeNote || '',
+        createdAt: fixDate(t?.createdAt) || today,
+        deadline: fixDate(t?.deadline) || today,
+        progress: Number.isFinite(parseInt(t?.progress)) ? parseInt(t.progress) : 0,
+        _createdTs: t?._createdTs || null,
+        _updatedTs: t?._updatedTs || null
+      };
+    }
+
+    function normalizeTasks(list) {
+      return (Array.isArray(list) ? list : []).map((t, i) => normalizeTask(t, i));
+    }
+
+    function loadDataFromStorage() {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY) || localStorage.getItem(LOCAL_STORAGE_BACKUP_KEY);
+      if (raw) {
+        try { tasks = normalizeTasks(JSON.parse(raw)); } catch (e) { tasks = []; }
+      }
+      if (tasks.length === 0) {
+        tasks = normalizeTasks([{ factory: "麥寮", category: "工安", source: "環保通報單", owner: "管理員", task: "範例工作", createdAt: "2024-05-20", deadline: "2024-06-15", progress: 0 }]);
+        saveDataToStorage();
+      }
+    }
+
+    function saveDataToStorage() {
+      const payload = JSON.stringify(tasks);
+      localStorage.setItem(LOCAL_STORAGE_KEY, payload);
+      localStorage.setItem(LOCAL_STORAGE_BACKUP_KEY, payload);
+      showSaveIndicator();
+    }
+
+    function showSaveIndicator() {
+      const el = document.getElementById('save-indicator');
+      if (el) { el.classList.remove('opacity-0'); setTimeout(() => el.classList.add('opacity-0'), 1500); }
+    }
+
+    window.__applyRemoteTasks = (remoteList) => {
+      tasks = normalizeTasks(remoteList);
+      saveDataToStorage();
+      updateFilters();
+      renderAll();
+    };
+
+    function handleModalDoneToggle(isChecked) {
+      const progressInput = document.getElementById('f-progress');
+      const progressText = document.getElementById('f-progress-text');
+      if (isChecked) { lastManualProgress = progressInput.value; progressInput.value = 100; }
+      else { progressInput.value = (lastManualProgress >= 100) ? 0 : lastManualProgress; }
+      progressText.innerText = progressInput.value;
+    }
+
+    function handleProgressInput(val) {
+      const checkbox = document.getElementById('f-is-done');
+      const progressText = document.getElementById('f-progress-text');
+      if (progressText) progressText.innerText = val;
+      if (checkbox) checkbox.checked = (parseInt(val) === 100);
+      if (val < 100) lastManualProgress = val;
+    }
+
+    function getStatusInfo(task) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const deadline = parseLocalDate(fixDate(task.deadline) || getTodayStr());
+      const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+      if (task.progress >= 100) return { code: 'done', label: '已完成', bg: 'bg-blue-50 text-blue-700 border-blue-100', dot: 'bg-blue-500', msg: '達成' };
+      if (diffDays < 0) return { code: 'overdue', label: '逾期', bg: 'bg-red-50 text-red-700 border-red-100', dot: 'bg-red-500', msg: `逾期 ${Math.abs(diffDays)} 天` };
+      if (diffDays <= 7) return { code: 'warning', label: '警告', bg: 'bg-amber-50 text-amber-700 border-amber-100', dot: 'bg-amber-400', msg: `僅剩 ${diffDays} 天` };
+      return { code: 'active', label: '進行中', bg: 'bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500', msg: `剩餘 ${diffDays} 天` };
+    }
+
+    function getCategoryStyle(cat) {
+      if (cat.startsWith('其他')) return 'bg-rose-100 text-rose-700';
+      const styles = { 'PSM': 'bg-purple-100 text-purple-700', '工安': 'bg-orange-100 text-orange-700', '環保': 'bg-green-100 text-green-700', '消防': 'bg-red-100 text-red-700', 'AI': 'bg-indigo-100 text-indigo-700', '庶務': 'bg-slate-100 text-slate-700' };
+      return styles[cat] || 'bg-slate-50 text-slate-500';
+    }
+
+    function toggleOtherSource(val) {
+      document.getElementById('other-source-container')?.classList.toggle('hidden', val !== '其他');
+    }
+
+    function toggleOtherCategory(val) {
+      document.getElementById('other-category-container')?.classList.toggle('hidden', val !== '其他');
+    }
+
+    function setDatalistOptions(datalistId, values, includeOther = true) {
+      const datalist = document.getElementById(datalistId);
+      if (!datalist) return;
+      datalist.innerHTML = '';
+
+      const uniqueValues = [...new Set(values.map(v => String(v || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+      if (includeOther && !uniqueValues.includes('其他:')) uniqueValues.unshift('其他:');
+
+      uniqueValues.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        datalist.appendChild(opt);
+      });
+    }
+
+    function getOwnerUnitMap() {
+      const counter = {};
+      tasks.forEach(t => {
+        const owner = String(t.owner || '').trim();
+        const unit = String(t.unit || '').trim();
+        if (!owner || !unit) return;
+        if (!counter[owner]) counter[owner] = {};
+        counter[owner][unit] = (counter[owner][unit] || 0) + 1;
+      });
+
+      const map = {};
+      Object.entries(counter).forEach(([owner, unitCounts]) => {
+        map[owner] = Object.entries(unitCounts)
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'))[0][0];
+      });
+      return map;
+    }
+
+    function getAllUnitOptions(suggestedUnit = '') {
+      const suggested = String(suggestedUnit || '').trim();
+      const uniqueUnits = [...new Set(tasks.map(t => String(t.unit || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+      const options = [];
+      if (suggested) options.push(suggested);
+      uniqueUnits.forEach(unit => { if (!options.includes(unit)) options.push(unit); });
+      if (!options.includes('其他:')) options.unshift('其他:');
+      return options;
+    }
+
+    function getSuggestedUnitForCurrentOwner() {
+      const owner = String(document.getElementById('f-owner')?.value || '').trim();
+      if (!owner || /^其他[:：]?/.test(owner)) return '';
+      return getOwnerUnitMap()[owner] || '';
+    }
+
+    function renderUnitDropdown(options, filterText = '', showAll = false) {
+      const dropdown = document.getElementById('unit-dropdown');
+      if (!dropdown) return;
+      const keyword = String(filterText || '').trim().toLowerCase();
+      const visibleOptions = showAll || !keyword
+        ? options
+        : options.filter(v => String(v).toLowerCase().includes(keyword));
+
+      dropdown.innerHTML = '';
+      if (visibleOptions.length === 0) {
+        dropdown.innerHTML = '<div class="px-3 py-2 text-xs text-slate-400">沒有符合的單位，可直接輸入或使用其他:</div>';
+      } else {
+        const suggested = getSuggestedUnitForCurrentOwner();
+        visibleOptions.forEach(unit => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none flex justify-between items-center';
+          item.innerHTML = `<span>${escapeHtml(unit)}</span>${unit === suggested ? '<span class="text-[10px] font-bold text-blue-600">建議</span>' : ''}`;
+          item.onmousedown = (e) => {
+            e.preventDefault();
+            document.getElementById('f-unit').value = unit;
+            handleOtherPrefixInput(document.getElementById('f-unit'));
+            hideUnitDropdown();
+          };
+          dropdown.appendChild(item);
+        });
+      }
+      dropdown.classList.remove('hidden');
+    }
+
+    function showUnitDropdown(showAll = true) {
+      updateOwnerUnitOptions();
+      const unitInput = document.getElementById('f-unit');
+      if (!unitInput || unitInput.disabled) return;
+      renderUnitDropdown(getAllUnitOptions(getSuggestedUnitForCurrentOwner()), unitInput.value, showAll);
+    }
+
+    function hideUnitDropdown() {
+      document.getElementById('unit-dropdown')?.classList.add('hidden');
+    }
+
+    function handleUnitInput(el) {
+      handleOtherPrefixInput(el);
+      renderUnitDropdown(getAllUnitOptions(getSuggestedUnitForCurrentOwner()), el.value, false);
+    }
+
+    function updateOwnerUnitOptions() {
+      setDatalistOptions('owner-options', tasks.map(t => t.owner));
+      const dropdown = document.getElementById('unit-dropdown');
+      if (dropdown && !dropdown.classList.contains('hidden')) {
+        renderUnitDropdown(getAllUnitOptions(getSuggestedUnitForCurrentOwner()), document.getElementById('f-unit')?.value || '', true);
+      }
+    }
+
+    function handleOtherPrefixInput(el) {
+      if (!el) return;
+      const value = String(el.value || '').trim();
+      if (value === '其他') el.value = '其他:';
+    }
+
+    function normalizeOtherInput(value, fieldName) {
+      const v = String(value || '').trim();
+      if (v === '其他') return { ok: false, value: '', message: `請在${fieldName}的「其他:」後面輸入內容` };
+      if (v === '其他:') return { ok: false, value: '', message: `請在${fieldName}的「其他:」後面輸入內容` };
+      if (/^其他[:：]/.test(v)) {
+        const text = v.replace(/^其他[:：]/, '').trim();
+        if (!text) return { ok: false, value: '', message: `請在${fieldName}的「其他:」後面輸入內容` };
+        return { ok: true, value: `其他:${text}` };
+      }
+      return { ok: true, value: v };
+    }
+
+    function handleOwnerInput(ownerValue) {
+      const owner = String(ownerValue || '').trim();
+      handleOtherPrefixInput(document.getElementById('f-owner'));
+      const unitInput = document.getElementById('f-unit');
+      if (!owner || !unitInput || /^其他[:：]?$/.test(owner)) return;
+      const unit = getOwnerUnitMap()[owner];
+      // 選到既有負責人時，自動帶入出現次數最多的建議單位；帶入後仍可直接手動修改。
+      if (unit && unitInput.value !== unit) unitInput.value = unit;
+      hideUnitDropdown();
+    }
+
+    function updateFilters() {
+      updateOwnerUnitOptions();
+
+      const ownerSelect = document.getElementById('filter-owner');
+      if (ownerSelect) {
+        const currentOwner = ownerSelect.value || 'all';
+        const uniqueOwners = [...new Set(tasks.map(t => t.owner))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        ownerSelect.innerHTML = '<option value="all">所有負責人</option>';
+        uniqueOwners.forEach(owner => {
+          const opt = document.createElement('option');
+          opt.value = owner; opt.textContent = owner; ownerSelect.appendChild(opt);
+        });
+        ownerSelect.value = uniqueOwners.includes(currentOwner) ? currentOwner : 'all';
+      }
+
+      const unitSelect = document.getElementById('filter-unit');
+      if (unitSelect) {
+        const currentUnit = unitSelect.value || 'all';
+        const uniqueUnits = [...new Set(tasks.map(t => t.unit))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        unitSelect.innerHTML = '<option value="all">所有單位</option>';
+        uniqueUnits.forEach(unit => {
+          const opt = document.createElement('option');
+          opt.value = unit; opt.textContent = unit; unitSelect.appendChild(opt);
+        });
+        unitSelect.value = uniqueUnits.includes(currentUnit) ? currentUnit : 'all';
+      }
+
+      const monthSelect = document.getElementById('filter-month');
+      if (monthSelect) {
+        const uniqueMonths = [...new Set(tasks.map(t => parseInt(String(t.createdAt || '').split('-')[1])))].filter(m => !isNaN(m)).sort((a, b) => a - b);
+        monthSelect.innerHTML = '<option value="all">所有月份</option>';
+        uniqueMonths.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = `${m}月`; monthSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function renderAll() {
+      const filters = {
+        month: document.getElementById('filter-month')?.value || 'all',
+        status: document.getElementById('filter-status')?.value || 'all',
+        factory: document.getElementById('filter-factory')?.value || 'all',
+        category: document.getElementById('filter-category')?.value || 'all',
+        owner: document.getElementById('filter-owner')?.value || 'all',
+        unit: document.getElementById('filter-unit')?.value || 'all',
+        source: document.getElementById('filter-source')?.value || 'all'
+      };
+
+      const filtered = tasks.filter(t => {
+        const sInfo = getStatusInfo(t);
+        const tMonth = parseInt(String(t.createdAt || '').split('-')[1]);
+        return (filters.month === 'all' || String(tMonth) === filters.month) &&
+          (filters.status === 'all' || sInfo.code === filters.status) &&
+          (filters.factory === 'all' || t.factory === filters.factory) &&
+          (filters.category === 'all' || (filters.category === '其他' ? String(t.category).startsWith('其他') : t.category === filters.category)) &&
+          (filters.owner === 'all' || t.owner === filters.owner) &&
+          (filters.unit === 'all' || t.unit === filters.unit) &&
+          (filters.source === 'all' || (filters.source === '其他' ? String(t.source).startsWith('其他') : t.source === filters.source));
+      });
+
+      document.getElementById('kpi-total').innerText = tasks.length;
+      document.getElementById('kpi-done').innerText = tasks.filter(t => t.progress >= 100).length;
+      document.getElementById('kpi-overdue').innerText = tasks.filter(t => getStatusInfo(t).code === 'overdue').length;
+      document.getElementById('kpi-active').innerText = tasks.filter(t => t.progress < 100 && getStatusInfo(t).code !== 'overdue').length;
+      document.getElementById('table-count').innerText = `${filtered.length} ITEMS`;
+
+      renderTable(filtered);
+      renderCharts(tasks, tasks);
+    }
+
+    function escapeHtml(s) { return String(s ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('main-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      data
+        .sort((a, b) => parseLocalDate(fixDate(b.createdAt) || getTodayStr()) - parseLocalDate(fixDate(a.createdAt) || getTodayStr()))
+        .forEach(t => {
+          const s = getStatusInfo(t);
+          const isDone = t.progress >= 100;
+          const m = parseInt(String(t.createdAt || '').split('-')[1]);
+          const displayCat = String(t.category).startsWith('其他:') ? String(t.category).replace('其他:', '') : t.category;
+          
+          const row = document.createElement('tr');
+          row.className = `hover:bg-slate-50/50 transition ${isDone ? 'opacity-60' : ''}`;
+          row.innerHTML = `
+            <td class="px-6 py-4">
+              <span class="inline-flex flex-col">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${s.bg} mb-1">
+                  <span class="status-dot ${s.dot}"></span>${s.label}
+                </span>
+                <span class="text-[10px] font-bold ${s.code === 'overdue' ? 'text-red-500' : (s.code === 'warning' ? 'text-amber-500' : 'text-slate-400')}">
+                  ${s.msg}
+                </span>
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-1 rounded text-[10px] font-black uppercase ${getCategoryStyle(t.category)}">${escapeHtml(displayCat)}</span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="font-bold text-slate-800">${escapeHtml(t.factory)}</div>
+              <div class="text-[10px] font-bold text-blue-600">${isNaN(m) ? '—' : `${m}月管制`}</div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="font-bold text-slate-700">${escapeHtml(t.owner || '—')}</div>
+              <div class="text-[10px] text-slate-500 font-bold truncate max-w-[120px]">${escapeHtml(t.unit || '未填單位')}</div>
+              <div class="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">${escapeHtml(t.source)}</div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="font-bold text-slate-800 line-clamp-1 ${isDone ? 'line-through text-slate-400' : ''}">${escapeHtml(t.task)}</div>
+              <div class="text-[11px] text-slate-400 line-clamp-1 mt-0.5">${escapeHtml(t.desc)}</div>
+            </td>
+            <td class="px-6 py-4 text-center font-mono text-xs text-slate-400">${escapeHtml(t.createdAt)}</td>
+            <td class="px-6 py-4 text-center font-mono text-xs font-bold text-slate-600">${escapeHtml(t.deadline)}</td>
+            <td class="px-6 py-4">
+              <div class="flex items-center space-x-2">
+                <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden w-16">
+                  <div class="bg-blue-600 h-full transition-all duration-500" style="width: ${t.progress}%"></div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400">${t.progress}%</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-center">
+              <div class="flex items-center justify-center space-x-1">
+                <button onclick="viewTask('${t.id}')" class="text-slate-500 hover:bg-slate-100 px-2 py-1 rounded transition font-bold text-xs">查看</button>
+                <button onclick="editTask('${t.id}')" class="text-blue-500 hover:bg-blue-50 px-2 py-1 rounded transition font-bold text-xs">編輯</button>
+                <button onclick="deleteTask('${t.id}')" class="text-red-500 hover:bg-red-50 px-2 py-1 rounded transition font-bold text-xs">刪除</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+    }
+
+    function renderCharts(allTasks, filtered) {
+      const canvasStatus = document.getElementById('statusChart');
+      const canvasFactory = document.getElementById('factoryChart');
+      if (!canvasStatus || !canvasFactory) return;
+
+      const counts = { done: 0, active: 0, warning: 0, overdue: 0 };
+      allTasks.forEach(t => counts[getStatusInfo(t).code]++);
+
+      if (statusChart) statusChart.destroy();
+      statusChart = new Chart(canvasStatus, {
+        type: 'doughnut',
+        data: {
+          labels: [`已完成 (${counts.done})`, `進行中 (${counts.active})`, `警告 (${counts.warning})`, `逾期 (${counts.overdue})`],
+          datasets: [{ data: [counts.done, counts.active, counts.warning, counts.overdue], backgroundColor: ['#3b82f6', '#10b981', '#fbbf24', '#ef4444'], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right' } } }
+      });
+
+      const facLabels = ['台北', '龍德', '彰化', '麥寮', '新港', '海外'];
+      const datasets = [
+        { label: '已完成', data: facLabels.map(f => allTasks.filter(t => t.factory === f && getStatusInfo(t).code === 'done').length), backgroundColor: '#3b82f6', stack: 's1' },
+        { label: '進行中', data: facLabels.map(f => allTasks.filter(t => t.factory === f && getStatusInfo(t).code === 'active').length), backgroundColor: '#10b981', stack: 's1' },
+        { label: '警告', data: facLabels.map(f => allTasks.filter(t => t.factory === f && getStatusInfo(t).code === 'warning').length), backgroundColor: '#fbbf24', stack: 's1' },
+        { label: '逾期', data: facLabels.map(f => allTasks.filter(t => t.factory === f && getStatusInfo(t).code === 'overdue').length), backgroundColor: '#ef4444', stack: 's1' }
+      ];
+
+      if (factoryChart) factoryChart.destroy();
+      factoryChart = new Chart(canvasFactory, {
+        type: 'bar',
+        data: { labels: facLabels, datasets },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          scales: { 
+            x: { stacked: true }, 
+            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } 
+          },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, font: { weight: 'bold' } } }
+          }
+        }
+      });
+    }
+
+    function viewTask(id) {
+      editTask(id);
+      document.getElementById('modal-title').innerText = "工作事項詳情 (唯讀模式)";
+      document.getElementById('btn-modal-save').classList.add('hidden');
+      
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      inputs.forEach(el => el.disabled = true);
+    }
+
+    function editTask(id) {
+      editingId = String(id);
+      const t = tasks.find(x => String(x.id) === String(id));
+      if (!t) return;
+
+      document.getElementById('modal-title').innerText = "編輯工作事項";
+      document.getElementById('btn-modal-save').classList.remove('hidden');
+      
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      inputs.forEach(el => el.disabled = false);
+
+      document.getElementById('f-factory').value = t.factory;
+      
+      const isOtherCat = String(t.category || '').startsWith('其他:');
+      document.getElementById('f-category').value = isOtherCat ? '其他' : t.category;
+      toggleOtherCategory(isOtherCat ? '其他' : t.category);
+      document.getElementById('f-category-other').value = isOtherCat ? String(t.category).replace('其他:', '') : '';
+
+      const isOtherSrc = String(t.source || '').startsWith('其他:');
+      document.getElementById('f-source').value = isOtherSrc ? '其他' : t.source;
+      toggleOtherSource(isOtherSrc ? '其他' : t.source);
+      document.getElementById('f-source-other').value = isOtherSrc ? String(t.source).replace('其他:', '') : '';
+
+      document.getElementById('f-task').value = t.task;
+      document.getElementById('f-desc').value = t.desc;
+      document.getElementById('f-work-progress').value = t.workProgress || '';
+      document.getElementById('f-close-note').value = t.closeNote || '';
+      document.getElementById('f-owner').value = t.owner;
+      document.getElementById('f-unit').value = t.unit || '';
+      document.getElementById('f-created').value = t.createdAt;
+      document.getElementById('f-deadline').value = t.deadline;
+      document.getElementById('f-progress').value = t.progress;
+      document.getElementById('f-progress-text').innerText = t.progress;
+      document.getElementById('f-is-done').checked = (t.progress >= 100);
+      lastManualProgress = t.progress;
+      updateOwnerUnitOptions();
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function saveTask() {
+      let catVal = document.getElementById('f-category').value;
+      if (catVal === '其他') {
+        const other = document.getElementById('f-category-other').value.trim();
+        catVal = other ? `其他:${other}` : '其他';
+      }
+
+      let srcVal = document.getElementById('f-source').value;
+      if (srcVal === '其他') {
+        const other = document.getElementById('f-source-other').value.trim();
+        srcVal = other ? `其他:${other}` : '其他';
+      }
+
+      const ownerInput = normalizeOtherInput(document.getElementById('f-owner').value, '負責人');
+      if (!ownerInput.ok) return alert(ownerInput.message);
+
+      const unitInput = normalizeOtherInput(document.getElementById('f-unit').value, '單位');
+      if (!unitInput.ok) return alert(unitInput.message);
+
+      const taskObj = {
+        id: editingId ? String(editingId) : String(Date.now()),
+        factory: document.getElementById('f-factory').value,
+        category: catVal,
+        source: srcVal,
+        task: document.getElementById('f-task').value,
+        desc: document.getElementById('f-desc').value,
+        owner: ownerInput.value,
+        unit: unitInput.value,
+        workProgress: document.getElementById('f-work-progress').value,
+        closeNote: document.getElementById('f-close-note').value,
+        createdAt: document.getElementById('f-created').value || getTodayStr(),
+        deadline: document.getElementById('f-deadline').value || getTodayStr(),
+        progress: parseInt(document.getElementById('f-progress').value)
+      };
+
+      if (!taskObj.task || !taskObj.owner) return alert("請填寫必填欄位");
+
+      if (editingId) {
+        const idx = tasks.findIndex(x => String(x.id) === String(editingId));
+        if (idx >= 0) tasks[idx] = { ...tasks[idx], ...taskObj };
+      } else { tasks.push(taskObj); }
+
+      saveDataToStorage(); closeModal(); updateFilters(); renderAll();
+      try { if (typeof window.__fs_upsert === "function") await window.__fs_upsert(taskObj); } catch (e) {}
+    }
+
+    async function deleteTask(id) {
+      if (!confirm('確定刪除？')) return;
+      tasks = tasks.filter(x => String(x.id) !== String(id));
+      saveDataToStorage(); updateFilters(); renderAll();
+      try { if (typeof window.__fs_delete === "function") await window.__fs_delete(id); } catch (e) {}
+    }
+
+    function closeModal() { 
+      document.getElementById('modal').classList.add('hidden'); 
+      editingId = null;
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      inputs.forEach(el => el.disabled = false);
+      document.getElementById('btn-modal-save').classList.remove('hidden');
+    }
+
+    function exportToExcel() {
+      const ws = XLSX.utils.json_to_sheet(tasks);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+      XLSX.writeFile(wb, `EHS_Tasks_${getTodayStr()}.xlsx`);
+    }
+
+    async function importFromExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const workbook = XLSX.read(e.target.result, { type: 'array' });
+        const imported = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        const importedTasks = normalizeTasks(imported);
+        tasks = importedTasks;
+        saveDataToStorage(); updateFilters(); renderAll();
+        if (typeof window.__fs_upsert === "function") {
+          for (const t of importedTasks) await window.__fs_upsert(t);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      event.target.value = '';
+    }
+
+    document.addEventListener('click', (event) => {
+      const unitArea = document.getElementById('unit-dropdown')?.parentElement;
+      if (unitArea && !unitArea.contains(event.target)) hideUnitDropdown();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDataFromStorage();
+      updateFilters();
+      renderAll();
+      document.getElementById('current-date').innerText = getTodayStr();
+      ['filter-month', 'filter-status', 'filter-factory', 'filter-category', 'filter-owner', 'filter-unit', 'filter-source'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', renderAll);
+      });
+      document.getElementById('btn-add')?.addEventListener('click', () => {
+        editingId = null;
+        document.getElementById('modal-title').innerText = "新增工作事項";
+        document.getElementById('btn-modal-save').classList.remove('hidden');
+        
+        const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+        inputs.forEach(el => el.disabled = false);
+
+        document.getElementById('f-task').value = "";
+        document.getElementById('f-desc').value = "";
+        document.getElementById('f-work-progress').value = '';
+        document.getElementById('f-close-note').value = '';
+        document.getElementById('f-owner').value = "";
+        document.getElementById('f-unit').value = "";
+        document.getElementById('f-created').value = getTodayStr();
+        document.getElementById('f-deadline').value = getTodayStr();
+        document.getElementById('f-progress').value = 0;
+        document.getElementById('f-progress-text').innerText = 0;
+        document.getElementById('f-is-done').checked = false;
+        document.getElementById('f-category').value = '工安';
+        toggleOtherCategory('工安');
+        document.getElementById('f-source').value = 'NOTES';
+        toggleOtherSource('NOTES');
+        updateOwnerUnitOptions();
+        document.getElementById('modal').classList.remove('hidden');
+      });
+    });
+  </script>
+</body>
+</html>

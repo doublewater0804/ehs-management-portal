@@ -8,6 +8,56 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Firebase：工時分析表雲端同步（共用既有 Firebase 專案，獨立 collection/doc） -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
+    };
+
+    window.__workhoursFirebaseReady = (async () => {
+      const app = initializeApp(firebaseConfig, "workhours-app");
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      await signInAnonymously(auth);
+
+      const stateRef = doc(db, "workhours_dashboard_v10", "shared_state");
+      window.__wh_getState = async () => {
+        const snap = await getDoc(stateRef);
+        return snap.exists() ? snap.data() : null;
+      };
+      window.__wh_saveState = async (state) => {
+        await setDoc(stateRef, {
+          ...state,
+          cloudVersion: "workhours-v10-firebase",
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      };
+      window.__wh_subscribe = (callback, onError) => {
+        return onSnapshot(stateRef, (snap) => {
+          callback(snap.exists() ? snap.data() : null);
+        }, onError);
+      };
+      return true;
+    })();
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
     body { font-family: 'Noto Sans TC', sans-serif; }
@@ -85,7 +135,8 @@
       <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 text-sm font-semibold hover:bg-sky-100 flex items-center gap-2 no-print"><i data-lucide="upload" class="w-4 h-4"></i>匯入</button>
       <button onclick="printReport()" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold hover:bg-slate-100 flex items-center gap-2 no-print"><i data-lucide="printer" class="w-4 h-4"></i>列印 / PDF</button>
       <button onclick="exportChartsPNG()" class="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-semibold hover:bg-indigo-100 flex items-center gap-2 no-print"><i data-lucide="image" class="w-4 h-4"></i>匯出圖表 PNG</button>
-      <button onclick="exportBackupJSON()" class="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 flex items-center gap-2 no-print"><i data-lucide="database-backup" class="w-4 h-4"></i>匯出備份檔</button>
+      <span id="cloudStatus" class="px-3 py-2 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 text-xs font-bold no-print">☁️ 雲端連線中…</span>
+      <button onclick="uploadLocalDataToCloud()" class="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 flex items-center gap-2 no-print"><i data-lucide="cloud-upload" class="w-4 h-4"></i>本機資料上傳雲端</button>
       <button onclick="exportExcel()" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold hover:bg-emerald-100 flex items-center gap-2 no-print"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>匯出 Excel</button>
     </div>
   </div>
@@ -432,6 +483,11 @@ let charts={};
 let selectedMonthlyPerson='';
 let selectedMonthlyPeople=[];
 let workCalendar={};
+let cloudReady=false;
+let applyingRemote=false;
+let remoteHasState=false;
+let unsubscribeWorkhoursCloud=null;
+let pendingCloudSaveTimer=null;
 const personColors=['#14b8a6','#3b82f6','#f59e0b','#8b5cf6','#06b6d4','#84cc16','#ec4899','#64748b','#ef4444','#0f766e'];
 const categoryColors=['#14b8a6','#3b82f6','#f59e0b','#8b5cf6','#06b6d4','#84cc16','#ec4899','#64748b'];
 
@@ -452,15 +508,107 @@ function colorForPerson(name){const idx=Math.max(0,people.indexOf(name));return 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('translate-y-20','opacity-0');setTimeout(()=>t.classList.add('translate-y-20','opacity-0'),2200)}
 function safe(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 
-function load(){
-  try{
-    const s=JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V9) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_0) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_2));
-    if(s){people=s.people||people; templates=s.templates||templates; dailyRecords=s.dailyRecords||[]; leaveRecords=s.leaveRecords||[]; selectedMonthlyPerson=s.selectedMonthlyPerson||''; selectedMonthlyPeople=s.selectedMonthlyPeople||[]; workCalendar=s.workCalendar||{};}
-  }catch(e){}
-  if(!dailyRecords.length) seedRecords();
+function currentState(){
+  return {
+    version:'V10-Firebase',
+    people,
+    templates,
+    dailyRecords,
+    leaveRecords,
+    selectedMonthlyPerson,
+    selectedMonthlyPeople,
+    workCalendar
+  };
 }
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify({people,templates,dailyRecords,leaveRecords,selectedMonthlyPerson,selectedMonthlyPeople,workCalendar}))}
-function seedRecords(){
+function applyState(s){
+  if(!s) return;
+  people=Array.isArray(s.people)?s.people:people;
+  templates=Array.isArray(s.templates)?s.templates:templates;
+  dailyRecords=Array.isArray(s.dailyRecords)?s.dailyRecords:[];
+  leaveRecords=Array.isArray(s.leaveRecords)?s.leaveRecords:[];
+  selectedMonthlyPerson=s.selectedMonthlyPerson||'';
+  selectedMonthlyPeople=Array.isArray(s.selectedMonthlyPeople)?s.selectedMonthlyPeople:[];
+  workCalendar=(s.workCalendar&&typeof s.workCalendar==='object')?s.workCalendar:{};
+}
+function readLocalState(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V9) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_0) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_2));
+  }catch(e){return null}
+}
+function load(){
+  const localState=readLocalState();
+  if(localState) applyState(localState);
+  if(!dailyRecords.length) seedRecords(false);
+}
+function setCloudStatus(text, ok=true){
+  const el=document.getElementById('cloudStatus');
+  if(!el) return;
+  el.textContent=text;
+  el.className=ok
+    ? 'px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold no-print'
+    : 'px-3 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold no-print';
+}
+function save(){
+  if(applyingRemote) return;
+  if(!cloudReady || !window.__wh_saveState){
+    setCloudStatus('☁️ 雲端尚未連線', false);
+    return;
+  }
+  clearTimeout(pendingCloudSaveTimer);
+  pendingCloudSaveTimer=setTimeout(async()=>{
+    try{
+      await window.__wh_saveState(currentState());
+      setCloudStatus('☁️ 已同步雲端', true);
+    }catch(e){
+      console.error(e);
+      setCloudStatus('☁️ 雲端儲存失敗', false);
+    }
+  },350);
+}
+async function initCloudSync(){
+  try{
+    await window.__workhoursFirebaseReady;
+    cloudReady=true;
+    setCloudStatus('☁️ 雲端已連線', true);
+    unsubscribeWorkhoursCloud=window.__wh_subscribe((remoteState)=>{
+      if(remoteState){
+        remoteHasState=true;
+        applyingRemote=true;
+        applyState(remoteState);
+        ensureSelectedMonthlyPerson();
+        ensureSelectedMonthlyPeople();
+        refreshAll();
+        applyingRemote=false;
+        setCloudStatus('☁️ 已同步雲端', true);
+      }else{
+        remoteHasState=false;
+        setCloudStatus('☁️ 雲端目前無資料，請先上傳本機資料', false);
+      }
+    },(err)=>{
+      console.error(err);
+      setCloudStatus('☁️ 雲端同步失敗', false);
+    });
+  }catch(e){
+    console.error(e);
+    setCloudStatus('☁️ 雲端連線失敗', false);
+  }
+}
+async function uploadLocalDataToCloud(){
+  if(!confirm('確定要將目前畫面中的工時資料上傳到雲端？\n\n提醒：這會成為多人共用的雲端資料。')) return;
+  try{
+    await window.__workhoursFirebaseReady;
+    cloudReady=true;
+    await window.__wh_saveState(currentState());
+    remoteHasState=true;
+    setCloudStatus('☁️ 本機資料已上傳雲端', true);
+    showToast('本機資料已上傳到 Firebase，其他電腦重新整理後即可同步');
+  }catch(e){
+    console.error(e);
+    setCloudStatus('☁️ 上傳雲端失敗', false);
+    showToast('上傳雲端失敗，請檢查 Firebase 權限或網路連線');
+  }
+}
+function seedRecords(shouldSave=true){
   const y=new Date().getFullYear(); const cats=['文書','查核','開會','臨時/其他']; const tasks=['空污費申報','責任區平時查核','晨會記錄','環保異常調查','外來函辦理','月報資料整理']; let id=1;
   for(let m=1;m<=12;m++){
     people.forEach((p,pi)=>{const count= m%3===1?4:3; for(let i=0;i<count;i++){const cat=cats[(i+pi+m)%cats.length]; dailyRecords.push({id:'r'+id++,date:`${y}-${pad(m)}-${pad(3+i*5)}`,person:p,task:tasks[(i+pi)%tasks.length],category:cat,nature:cat==='臨時/其他'?'臨時':'定期性',hours:+(2+(pi%3)*0.7+(m%4)*0.4+i*0.5).toFixed(1),desc:'示範資料，可刪除後改填實際內容'});}})
@@ -469,7 +617,7 @@ function seedRecords(){
     {id:'l1',date:`${y}-${pad(new Date().getMonth()+1)}-06`,person:'林冠宇',type:'請假',reason:'特休',hours:8,note:'示範資料'},
     {id:'l2',date:`${y}-${pad(new Date().getMonth()+1)}-14`,person:'林冠宇',type:'公出',reason:'廠區會議',hours:4,note:'示範資料'}
   ];
-  save();
+  if(shouldSave) save();
 }
 
 function monthLabel(ymStr=selectedMonth()){const [y,m]=ymStr.split('-'); return `${y}年${Number(m)}月`;}
@@ -1021,7 +1169,7 @@ function exportExcel(){
   XLSX.writeFile(wb,`人員工時負荷月報_${selectedMonth()}_${selected.length}人.xlsx`);
 }
 
-window.onload=()=>{document.getElementById('viewMonth').value=nowMonth(); document.getElementById('dailyDate').value=today(); const ld=document.getElementById('leaveDate'); if(ld) ld.value=today(); load(); refreshAll();}
+window.onload=()=>{document.getElementById('viewMonth').value=nowMonth(); document.getElementById('dailyDate').value=today(); const ld=document.getElementById('leaveDate'); if(ld) ld.value=today(); load(); refreshAll(); initCloudSync();}
 </script>
 </body>
 </html>

@@ -216,6 +216,8 @@
 </div>
 </div>
 <span class="hidden xl:inline-flex items-center rounded bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold">← 匯入功能集中於此</span>
+<span id="firebase-sync-status" class="inline-flex items-center rounded bg-slate-100 text-slate-600 px-3 py-2 text-xs font-bold">☁️ 雲端同步初始化</span>
+<button class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition text-sm font-bold" onclick="uploadLocalFlareDataToCloud()">本機資料上傳雲端</button>
 <button class="bg-blue-100 text-blue-700 px-4 py-2 rounded shadow-sm hover:bg-blue-200 transition text-sm" onclick="window.print()">列印報表</button>
 <button class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition text-sm" onclick="exportAllDataCSV()">匯出全部資料 CSV</button>
 <button class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded shadow-sm hover:bg-emerald-200 transition text-sm" onclick="exportIncludedDataCSV()">匯出納入統計 CSV</button>
@@ -617,6 +619,63 @@
 </div>
 </div>
 </div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+    authDomain: "esh-v85.firebaseapp.com",
+    projectId: "esh-v85",
+    storageBucket: "esh-v85.firebasestorage.app",
+    messagingSenderId: "1021350670476",
+    appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+    measurementId: "G-MMVQN63GDG"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const FLARE_DOC = doc(db, "flare_control", "global_state");
+
+  function updateStatus(text, type = "info") {
+    if (typeof window.setFirebaseSyncStatus === "function") window.setFirebaseSyncStatus(text, type);
+    const el = document.getElementById("firebase-sync-status");
+    if (el) el.textContent = text;
+  }
+
+  try {
+    updateStatus("☁️ Firebase 登入中…", "info");
+    await signInAnonymously(auth);
+
+    let firstSnapshot = true;
+    window.__flareCloudPush = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp() }, { merge: true });
+    };
+    window.__flareCloudUploadLocal = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp(), migratedAt: serverTimestamp() }, { merge: true });
+    };
+
+    onSnapshot(FLARE_DOC, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        if (data.state && typeof window.__applyFlareCloudState === "function") {
+          window.__applyFlareCloudState(data.state);
+        }
+      } else if (firstSnapshot) {
+        updateStatus("☁️ 雲端尚無資料，可按本機資料上傳雲端", "warn");
+      }
+      firstSnapshot = false;
+    }, (err) => {
+      console.error(err);
+      updateStatus("☁️ Firebase 同步失敗", "err");
+    });
+  } catch (err) {
+    console.error(err);
+    updateStatus("☁️ Firebase 登入失敗", "err");
+  }
+</script>
 <script>
         // 1. 工廠配置結構
         const factoryConfig = {
@@ -682,6 +741,119 @@
         let customFactoryAliasRules = loadCustomFactoryAliasRules();
         let pendingFactoryAliasMap = {};
         let lastImportContext = null;
+        let __flareApplyingRemote = false;
+        let __flareCloudSaveTimer = null;
+
+        function setFirebaseSyncStatus(text, type = 'info') {
+            const el = document.getElementById('firebase-sync-status');
+            if (!el) return;
+            const cls = {
+                info: 'inline-flex items-center rounded bg-slate-100 text-slate-600 px-3 py-2 text-xs font-bold',
+                ok: 'inline-flex items-center rounded bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold',
+                warn: 'inline-flex items-center rounded bg-amber-100 text-amber-700 px-3 py-2 text-xs font-bold',
+                err: 'inline-flex items-center rounded bg-red-100 text-red-700 px-3 py-2 text-xs font-bold'
+            };
+            el.className = cls[type] || cls.info;
+            el.textContent = text;
+        }
+        window.setFirebaseSyncStatus = setFirebaseSyncStatus;
+
+        function collectManualRemarksState() {
+            const out = {};
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('flare_manual_remarks_')) {
+                    out[key.replace('flare_manual_remarks_', '')] = localStorage.getItem(key) || '';
+                }
+            });
+            const currentYear = document.getElementById('view-year')?.value;
+            const currentValue = document.getElementById('manual-remarks')?.value;
+            if (currentYear && currentValue !== undefined) out[currentYear] = currentValue;
+            return out;
+        }
+
+        function applyManualRemarksState(manualRemarks = {}) {
+            clearManualRemarksStorage();
+            Object.entries(manualRemarks || {}).forEach(([year, value]) => {
+                localStorage.setItem(getManualRemarksKey(year), String(value || ''));
+            });
+        }
+
+        function getFlareCloudState() {
+            return {
+                events,
+                schedules,
+                excludedDays,
+                customFactoryAliasRules,
+                manualRemarks: collectManualRemarksState(),
+                schemaVersion: 1,
+                updatedAtLocal: new Date().toISOString()
+            };
+        }
+
+        function persistFlareStateToLocal() {
+            localStorage.setItem('flare_events_final', JSON.stringify(events));
+            localStorage.setItem('flare_schedules_final', JSON.stringify(schedules));
+            localStorage.setItem('flare_excluded_days_final', JSON.stringify(excludedDays));
+            localStorage.setItem(CUSTOM_FACTORY_ALIAS_STORAGE_KEY, JSON.stringify(customFactoryAliasRules));
+        }
+
+        function applyFlareCloudState(state = {}) {
+            __flareApplyingRemote = true;
+            try {
+                events = Array.isArray(state.events) ? state.events : [];
+                schedules = migrateSchedulesToMultiPeriods(state.schedules || {});
+                excludedDays = state.excludedDays || {};
+                customFactoryAliasRules = Array.isArray(state.customFactoryAliasRules) ? state.customFactoryAliasRules : [];
+                applyManualRemarksState(state.manualRemarks || {});
+                persistFlareStateToLocal();
+                renderFactoryAliasManager();
+                resetPendingFactoryAliases();
+                resetImportState();
+                resetScheduleImportState();
+                resetMaintenanceImportState();
+                renderAll();
+                setFirebaseSyncStatus('☁️ 已同步雲端', 'ok');
+            } finally {
+                __flareApplyingRemote = false;
+            }
+        }
+
+        function queueFlareCloudSave() {
+            if (__flareApplyingRemote) return;
+            if (typeof window.__flareCloudPush !== 'function') return;
+            clearTimeout(__flareCloudSaveTimer);
+            __flareCloudSaveTimer = setTimeout(() => {
+                setFirebaseSyncStatus('☁️ 雲端儲存中…', 'info');
+                window.__flareCloudPush(getFlareCloudState())
+                    .then(() => setFirebaseSyncStatus('☁️ 已儲存雲端', 'ok'))
+                    .catch((err) => {
+                        console.error(err);
+                        setFirebaseSyncStatus('☁️ 雲端儲存失敗', 'err');
+                    });
+            }, 600);
+        }
+
+        function uploadLocalFlareDataToCloud() {
+            if (typeof window.__flareCloudUploadLocal !== 'function') {
+                alert('Firebase 尚未初始化完成，請稍後再試。');
+                return;
+            }
+            if (!confirm('確定要將目前這台電腦的燃燒塔資料上傳到雲端嗎？雲端資料會被目前本機資料覆蓋。')) return;
+            setFirebaseSyncStatus('☁️ 本機資料上傳中…', 'info');
+            window.__flareCloudUploadLocal(getFlareCloudState())
+                .then(() => {
+                    setFirebaseSyncStatus('☁️ 本機資料已上傳雲端', 'ok');
+                    alert('已完成本機資料上傳雲端。');
+                })
+                .catch((err) => {
+                    console.error(err);
+                    setFirebaseSyncStatus('☁️ 上傳失敗', 'err');
+                    alert('上傳失敗：' + (err?.message || err));
+                });
+        }
+
+        window.__applyFlareCloudState = applyFlareCloudState;
+        window.__getFlareCloudState = getFlareCloudState;
 
         window.onload = () => {
             initYearSelector();
@@ -813,6 +985,7 @@
 
         function saveCustomFactoryAliasRules() {
             localStorage.setItem(CUSTOM_FACTORY_ALIAS_STORAGE_KEY, JSON.stringify(customFactoryAliasRules));
+            queueFlareCloudSave();
         }
 
         function getCustomFactoryAlias(rawName) {
@@ -1019,6 +1192,7 @@
                 const year = parseInt(document.getElementById('view-year').value);
                 localStorage.setItem(getManualRemarksKey(year), remarks.value);
                 updateManualRemarksPrint(remarks.value);
+                queueFlareCloudSave();
             });
         }
 
@@ -1136,10 +1310,12 @@
         function saveData() {
             localStorage.setItem('flare_events_final', JSON.stringify(events));
             localStorage.setItem('flare_schedules_final', JSON.stringify(schedules));
+            queueFlareCloudSave();
         }
 
         function saveExcludedDays() {
             localStorage.setItem('flare_excluded_days_final', JSON.stringify(excludedDays));
+            queueFlareCloudSave();
         }
 
         function normalizeScheduleRange(start, end) {

@@ -18,7 +18,7 @@
     <!-- 4. 引入 Firebase SDK -->
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
   import {
     getFirestore,
     collection,
@@ -47,7 +47,10 @@
     const COL_NAME = `${appId}_projects`;
     const PROJECTS_COL = collection(db, COL_NAME);
 
-    await signInAnonymously(auth);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    await signInWithPopup(auth, provider);
 
     window.__fb = { app, auth, db, PROJECTS_COL, COL_NAME };
 

@@ -316,7 +316,7 @@
   <!-- Firebase + Firestore Realtime Sync -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
       getFirestore,
       collection,
@@ -359,7 +359,10 @@
     async function bootRealtime() {
       setSyncState("登入中…", true);
       try {
-        await signInAnonymously(auth);
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        await signInWithPopup(auth, provider);
       } catch (e) {
         setSyncState("登入失敗", false);
         return;

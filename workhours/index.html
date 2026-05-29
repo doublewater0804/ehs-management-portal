@@ -12,7 +12,7 @@
   <!-- Firebase：工時分析表雲端同步（共用既有 Firebase 專案，獨立 collection/doc） -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
       getFirestore,
       doc,
@@ -36,7 +36,10 @@
       const app = initializeApp(firebaseConfig, "workhours-app");
       const auth = getAuth(app);
       const db = getFirestore(app);
-      await signInAnonymously(auth);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      await signInWithPopup(auth, provider);
 
       const stateRef = doc(db, "workhours_dashboard_v10", "shared_state");
       window.__wh_getState = async () => {

@@ -50,9 +50,9 @@
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    await signInWithPopup(auth, provider);
-
     window.__fb = { app, auth, db, PROJECTS_COL, COL_NAME };
+
+    await signInWithPopup(auth, provider);
 
     window.__fs_add = async (payload) => {
       const now = serverTimestamp();

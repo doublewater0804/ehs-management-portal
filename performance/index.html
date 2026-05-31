@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>個人工作績效 Dashboard</title>
+  <!-- Firebase：工作績效 Dashboard 雲端同步（共用 esh-v85 Firebase 專案） -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
+    };
+
+    window.__performanceFirebaseReady = (async () => {
+      const app = initializeApp(firebaseConfig, "performance-dashboard-app");
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      // 先掛到 window，方便 F12 Console 檢查目前登入者與 Firebase 狀態。
+      window.__pf = { app, auth, db };
+
+      await signInWithPopup(auth, provider);
+
+      await new Promise((resolve) => {
+        const unsub = onAuthStateChanged(auth, () => {
+          unsub();
+          resolve();
+        });
+      });
+
+      const stateRef = doc(db, "performance_dashboard_v1", "shared_state");
+      window.__pf.stateRef = stateRef;
+
+      window.__pf_getState = async () => {
+        const snap = await getDoc(stateRef);
+        return snap.exists() ? snap.data() : null;
+      };
+
+      window.__pf_saveState = async (state) => {
+        await setDoc(stateRef, {
+          ...state,
+          cloudVersion: "performance-dashboard-v1",
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email || null
+        }, { merge: true });
+      };
+
+      window.__pf_subscribe = (callback, onError) => {
+        return onSnapshot(stateRef, (snap) => {
+          callback(snap.exists() ? snap.data() : null);
+        }, onError);
+      };
+
+      window.__pf_signOut = async () => signOut(auth);
+      return true;
+    })();
+  </script>
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --muted2: #98a2b3;
+      --line: #e5eaf3;
+      --blue: #2d6cdf;
+      --blue2: #eef5ff;
+      --green: #2f9e69;
+      --green2: #eefaf4;
+      --red: #d64545;
+      --red2: #fff1f1;
+      --purple: #7657d6;
+      --purple2: #f5f1ff;
+      --amber: #e3a31c;
+      --amber2: #fff8e8;
+      --teal: #0f9b8e;
+      --teal2: #e9fbf8;
+      --shadow: 0 14px 36px rgba(25, 35, 70, .08);
+      --shadow-soft: 0 8px 22px rgba(25, 35, 70, .06);
+      --radius: 18px;
+      --sidebar: 252px;
+      --gap: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: "Inter", "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 8% 8%, rgba(45, 108, 223, .08), transparent 30%),
+        radial-gradient(circle at 92% 14%, rgba(118, 87, 214, .08), transparent 28%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button, input, select, textarea { font-family: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(1120px, 1fr);
+      gap: 0;
+      padding: 10px 14px;
+    }
+
+    .sidebar {
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(229,234,243,.95);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 16px 13px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 2px 6px 20px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #2f6adb, #83adff);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 24px;
+      box-shadow: inset 0 -7px 12px rgba(0,0,0,.12);
+    }
+
+    .brand h1 { margin: 0 0 4px; font-size: 17px; letter-spacing: .2px; }
+    .brand p { margin: 0; color: var(--muted); font-size: 12px; }
+    .collapse-dot { margin-left: auto; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; width: 27px; height: 27px; display: grid; place-items: center; font-weight: 800; background: #fff; }
+
+    .nav { display: flex; flex-direction: column; gap: 7px; }
+    .nav-item {
+      border: 0;
+      background: transparent;
+      color: #344054;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      border-radius: 14px;
+      font-weight: 800;
+      text-align: left;
+      transition: .18s ease;
+      position: relative;
+    }
+    .nav-item:hover { background: #f2f6ff; color: var(--blue); }
+    .nav-item.active { background: linear-gradient(90deg,#e6f0ff,#f5f8ff); color: var(--blue); }
+    .nav-item.active::before { content:""; position:absolute; left:-7px; top:10px; width:4px; height:28px; border-radius:99px; background:var(--blue); }
+    .nav-ico { width: 22px; height: 22px; display: grid; place-items: center; font-size: 19px; flex: 0 0 22px; }
+    .nav-text { display: flex; flex-direction: column; gap: 3px; line-height: 1.1; }
+    .nav-title { font-size: 14.5px; }
+    .nav-tag { width: max-content; padding: 2px 7px; border-radius: 999px; font-size: 10px; letter-spacing: .2px; font-weight: 900; }
+    .tag-manage { background: var(--teal2); color: #078477; }
+    .tag-fill { background: var(--blue2); color: var(--blue); }
+    .tag-maintain { background: var(--amber2); color: #c37b00; }
+
+    .tip {
+      margin-top: auto;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #f7fbff);
+      border-radius: 18px;
+      padding: 16px;
+      color: #475467;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .tip strong { display:flex; align-items:center; gap:8px; color:#263244; font-size:15px; margin-bottom:6px; }
+
+    .main {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+      padding: 10px 0;
+      overflow: hidden;
+    }
+
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .headline h2 { margin: 0; font-size: clamp(30px, 2.3vw, 36px); letter-spacing: -0.8px; line-height: 1.12; }
+    .headline p { margin: 7px 0 0; color: var(--muted); font-size: 15px; font-weight: 650; }
+    .actions { display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; }
+    .month-input, .btn {
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #d7deeb;
+      background: rgba(255,255,255,.95);
+      color: #1f2937;
+      padding: 0 13px;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: 0 5px 12px rgba(16,24,40,.04);
+    }
+    .btn { display: inline-flex; align-items: center; gap: 8px; justify-content:center; }
+    .btn.primary { background: linear-gradient(180deg, #2f73e6, #205dd2); color: #fff; border-color: #1e5bd0; box-shadow: 0 10px 20px rgba(37, 99, 215, .25); }
+    .btn.ghost { color: var(--blue); }
+    .btn.danger { color: var(--red); border-color: #ffd0d0; background: #fff8f8; box-shadow: none; }
+    .btn.small { height: 32px; border-radius: 10px; padding: 0 10px; font-size: 12px; }
+    .btn:active { transform: translateY(1px); }
+
+    .workflow-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 8px;
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 8px;
+      box-shadow: var(--shadow-soft);
+    }
+    .flow-card {
+      border: 1px solid #dce5f4;
+      background: rgba(255,255,255,.96);
+      border-radius: 13px;
+      padding: 9px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      min-height: 54px;
+      transition: .18s ease;
+    }
+    .flow-card:hover { border-color: #b6caf0; transform: translateY(-1px); }
+    .flow-card.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .flow-no { width: 22px; height: 22px; border-radius: 50%; background: var(--teal); color:#fff; display:grid; place-items:center; font-size: 12px; font-weight: 900; flex: 0 0 auto; }
+    .flow-card.active .flow-no { background:#fff; color:var(--teal); }
+    .flow-main { min-width: 0; }
+    .flow-title { font-size: 13.5px; font-weight: 950; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .flow-card.active .nav-tag { background: rgba(255,255,255,.18); color:#fff; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+    .card {
+      background: rgba(255,255,255,.93);
+      border: 1px solid rgba(229,234,243,.95);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-soft);
+    }
+    .kpi-card { padding: 18px 20px; display:flex; align-items:center; gap:18px; min-height: 112px; }
+    .kpi-icon { width: 62px; height:62px; border-radius:50%; display:grid; place-items:center; font-size:29px; flex:0 0 auto; }
+    .kpi-blue .kpi-icon { background: var(--blue2); color: var(--blue); }
+    .kpi-green .kpi-icon { background: var(--green2); color: var(--green); }
+    .kpi-red { border-color: rgba(214,69,69,.7); box-shadow: 0 13px 28px rgba(214,69,69,.11); }
+    .kpi-red .kpi-icon { background: var(--red2); color: var(--red); }
+    .kpi-purple .kpi-icon { background: var(--purple2); color: var(--purple); }
+    .kpi-label { margin:0; color:#263244; font-weight:950; font-size:16px; }
+    .kpi-value { display:flex; align-items:baseline; gap:5px; margin-top:5px; }
+    .kpi-value strong { font-size:42px; line-height:1; letter-spacing:-1px; }
+    .kpi-value span { font-size:15px; font-weight:950; }
+    .kpi-sub { margin-top:8px; color:var(--muted); font-size:13px; font-weight:850; }
+    .blue-t { color: var(--blue); } .green-t { color: var(--green); } .red-t { color: var(--red); } .purple-t { color: var(--purple); }
+
+    .dashboard-grid {
+      min-height: 0;
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.05fr 1.1fr 1.45fr;
+      grid-template-rows: minmax(220px, 0.94fr) minmax(235px, 1.06fr);
+      gap: var(--gap);
+      overflow: hidden;
+    }
+    .panel { padding: 16px 18px; min-height: 0; overflow: hidden; }
+    .panel-title { margin: 0 0 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:19.5px; font-weight:950; }
+    .muted { color: var(--muted); }
+    .mini-note { font-size:12.5px; color:var(--muted); font-weight:850; }
+
+    .distribution { display:grid; grid-template-columns: 170px 1fr; gap: 12px; align-items:center; height: calc(100% - 34px); }
+    .donut-wrap { display:grid; place-items:center; }
+    .donut {
+      width: 164px;
+      height: 164px;
+      border-radius: 50%;
+      position: relative;
+      background: conic-gradient(var(--blue) 0 30%, var(--green) 30% 55%, var(--purple) 55% 75%, var(--amber) 75% 90%, #7b8797 90% 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+      overflow: visible;
+    }
+    .donut::after { content:""; position:absolute; inset:48px; background:#fff; border-radius:50%; box-shadow: inset 0 3px 6px rgba(16,24,40,.05); z-index:2; }
+    .donut-label-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }
+    .donut-segment-label {
+      position:absolute;
+      transform:translate(-50%, -50%);
+      min-width:42px;
+      max-width:72px;
+      padding:2px 4px;
+      border-radius:8px;
+      background:rgba(255,255,255,.34);
+      color:#14213d;
+      text-align:center;
+      font-size:11px;
+      line-height:1.08;
+      font-weight:950;
+      text-shadow:0 1px 0 rgba(255,255,255,.8);
+      box-shadow:0 1px 2px rgba(15,23,42,.08);
+    }
+    .donut-segment-label span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .donut-segment-label strong { display:block; font-size:12px; }
+    .donut-center { position:absolute; inset:0; display:grid; place-items:center; z-index:4; text-align:center; font-weight:950; color:#24304a; pointer-events:none; }
+    .donut-center > div { max-width: 64px; line-height: 1.12; }
+    .donut-center #donutMain { font-size: 15px; font-weight: 950; white-space: normal; }
+    .donut-center span { display:block; color:var(--muted); font-size:11.5px; font-weight:850; margin-top:4px; }
+    .legend { display:flex; flex-direction:column; gap:7px; min-width:0; }
+    .legend-row { display:grid; grid-template-columns: 12px 1fr auto; align-items:center; gap:8px; font-size:14px; font-weight:950; color:#263244; min-width:0; }
+    .legend-dot { width:12px; height:12px; border-radius:50%; }
+    .legend-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .legend-value { color:#1f2937; }
+    .total { margin-top:6px; text-align:right; color:var(--muted); font-size:13px; font-weight:900; }
+
+    .progress-list { display:flex; flex-direction:column; gap:13px; padding-top: 2px; }
+    .progress-row { display:grid; grid-template-columns: 120px 1fr 48px; align-items:center; gap:12px; font-size:15px; font-weight:950; }
+    .bar { height:8px; background:#e7ebf2; border-radius:999px; overflow:hidden; }
+    .bar span { display:block; height:100%; background:linear-gradient(90deg,#2d6cdf,#4e8bf2); border-radius:inherit; }
+    .link { border:0; background:transparent; color:var(--blue); font-weight:900; margin-top:4px; padding:5px; }
+
+    .delayed { border-color: rgba(214,69,69,.35); background: linear-gradient(180deg, rgba(255,246,246,.95), rgba(255,255,255,.95)); }
+    .badge { padding: 4px 9px; border-radius: 999px; background: var(--red); color:#fff; font-size:12px; font-weight:950; }
+    .table { width:100%; border-collapse:collapse; font-size:14px; }
+    .table th { color:#5d6675; font-size:12.8px; text-align:left; font-weight:950; padding:9px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .table td { padding:9px 6px; border-bottom:1px solid #edf1f7; vertical-align:middle; font-weight:800; color:#27334a; line-height:1.35; }
+    .table tbody tr:hover { background:#f8fbff; }
+    .table-scroll { max-height: calc(100% - 42px); overflow:auto; padding-right:2px; }
+    .pill { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:4px 8px; font-size:11.5px; font-weight:950; white-space:nowrap; }
+    .pill.done { background:#dcf7e8; color:#16744a; }
+    .pill.progress { background:#eaf2ff; color:#215cca; }
+    .pill.delay { background:#ffe5e5; color:#c93030; }
+    .pill.neutral { background:#f2f4f7; color:#5f6a7a; }
+    .table .delete-row { border:0; background:#fff1f1; color:var(--red); border-radius:8px; font-weight:950; padding:5px 8px; }
+
+    .daily { grid-column: 1 / span 1; }
+    .report { grid-column: 2 / span 1; }
+    .annual { grid-column: 3 / span 1; }
+    .report-box {
+      height: calc(100% - 72px);
+      border: 1px solid #c7d8fb;
+      background: linear-gradient(180deg,#f8fbff,#eef5ff);
+      border-radius: 12px;
+      padding: 12px;
+      color:#1b3769;
+      line-height:1.72;
+      font-size: 15px;
+      font-weight:850;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+    .report-actions { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+    .modal-report-box { height: 100%; min-height: 330px; font-size: 16px; line-height: 1.82; }
+    .flash { animation: flash 1s ease; }
+    @keyframes flash { 0% { box-shadow:0 0 0 0 rgba(45,108,223,.28);} 50% { box-shadow:0 0 0 5px rgba(45,108,223,.16);} 100% { box-shadow:0 0 0 0 rgba(45,108,223,0);} }
+
+    .annual-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; height: calc(100% - 42px); }
+    .mini-card { border:1px solid #dce7f8; border-radius:13px; padding:12px 10px; background:#f9fbff; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
+    .mini-card:nth-child(2) { background:#f8fffb; border-color:#d8f0e2; }
+    .mini-card:nth-child(3) { background:#fff8f8; border-color:#ffd8d8; }
+    .mini-card:nth-child(4) { background:#fffaf0; border-color:#fae4ad; }
+    .mini-ico { font-size:26px; margin-bottom:6px; }
+    .mini-label { color:#506071; font-weight:950; font-size:13px; margin-bottom:4px; }
+    .mini-num { font-size:30px; line-height:1; font-weight:950; letter-spacing:-.8px; }
+    .spark { height:38px; display:flex; align-items:flex-end; gap:3px; margin-top:10px; }
+    .spark span { width:6px; border-radius:4px 4px 0 0; background:rgba(45,108,223,.55); }
+    .spark.green span { background:rgba(47,158,105,.55); }
+    .spark.red span { background:rgba(214,69,69,.55); }
+    .highlights { line-height:1.55; font-size:15px; font-weight:950; color:#384151; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.36);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+    }
+    .modal-backdrop.show { display:flex; }
+    .modal {
+      width: min(920px, 96vw);
+      max-height: 92vh;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(17,24,39,.24);
+      border: 1px solid #edf1f7;
+      display:flex;
+      flex-direction:column;
+    }
+    .modal.sm { width: min(650px, 96vw); }
+    .modal.sm.resizable { width: min(760px, 96vw); height: min(620px, 90vh); }
+
+    .modal.large { width: min(1080px, 96vw); height: min(690px, 92vh); }
+    .modal.xlarge { width: min(1260px, 96vw); height: min(760px, 92vh); }
+    .modal.resizable {
+      position: relative;
+      resize: both;
+      min-width: 640px;
+      min-height: 440px;
+      max-width: 98vw;
+      max-height: 96vh;
+    }
+    .modal.resizable::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+      opacity: .55;
+      background:
+        linear-gradient(135deg, transparent 0 50%, rgba(45,108,223,.5) 50% 58%, transparent 58% 100%),
+        linear-gradient(135deg, transparent 0 66%, rgba(45,108,223,.45) 66% 74%, transparent 74% 100%);
+    }
+    .modal.maximized {
+      width: calc(100vw - 36px) !important;
+      height: calc(100vh - 36px) !important;
+      max-width: none;
+      max-height: none;
+      resize: none;
+      border-radius: 18px;
+    }
+    .modal.maximized::after { display: none; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; border-bottom:1px solid var(--line); flex: 0 0 auto; }
+    .modal-title { margin:0; font-size:21px; font-weight:950; }
+    .modal-body { padding:18px 20px; overflow:auto; flex: 1 1 auto; min-height:0; }
+    .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:14px 20px 18px; border-top:1px solid var(--line); flex: 0 0 auto; }
+    .modal-actions { display:flex; align-items:center; gap:8px; }
+    .x { border:0; background:#f2f4f7; color:#344054; width:34px; height:34px; border-radius:10px; font-weight:950; font-size:16px; display:grid; place-items:center; }
+    .modal-max { color: var(--blue); background:#eef5ff; }
+    .modal-max:hover, .x:hover { filter: brightness(.97); }
+
+    .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    .field { display:flex; flex-direction:column; gap:7px; }
+    .field.full { grid-column:1 / -1; }
+    label { color:#344054; font-size:13px; font-weight:950; }
+    input, select, textarea {
+      border: 1px solid #d5deec;
+      border-radius: 12px;
+      padding: 11px 12px;
+      color:#1f2937;
+      background:#fff;
+      outline: none;
+      font-size:14px;
+    }
+    textarea { min-height:82px; resize:vertical; line-height:1.55; }
+    input:focus, select:focus, textarea:focus { border-color:#8db3ff; box-shadow:0 0 0 4px rgba(45,108,223,.12); }
+
+    .maintenance-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
+    .maint-card { border:1px solid var(--line); border-radius:16px; padding:14px; background:#fbfcff; min-height: 280px; display:flex; flex-direction:column; }
+    .maint-card h4 { margin:0 0 10px; font-size:16px; }
+    .add-inline { display:grid; grid-template-columns: minmax(0, 1fr) 82px; gap:8px; margin-bottom:10px; align-items:center; }
+    .add-inline input { min-width: 0; }
+    .add-inline .btn { min-width: 82px; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+    .tag-list { display:flex; flex-direction:column; gap:8px; overflow:auto; padding-right:4px; }
+    .tag-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 9px; border-radius:12px; background:#fff; border:1px solid #edf1f7; font-weight:850; font-size:13px; }
+    .tag-row button { border:0; background:#fff1f1; color:var(--red); border-radius:8px; height:26px; padding:0 8px; font-weight:950; }
+
+    .resize-handle {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      cursor: nwse-resize;
+      color: var(--blue);
+      background: rgba(238,245,255,.94);
+      border: 1px solid #c8d9fb;
+      box-shadow: 0 8px 18px rgba(37,99,215,.16);
+      font-size: 16px;
+      font-weight: 950;
+      z-index: 8;
+      user-select: none;
+    }
+    .modal.maximized .resize-handle { display: none; }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 70;
+      padding: 12px 15px;
+      border-radius: 14px;
+      background: #172033;
+      color: #fff;
+      box-shadow: 0 15px 36px rgba(0,0,0,.22);
+      font-weight: 850;
+      display: none;
+      max-width: 340px;
+      line-height: 1.45;
+    }
+    .toast.show { display:block; animation: slideUp .2s ease; }
+    @keyframes slideUp { from { transform: translateY(10px); opacity:.2; } to { transform: translateY(0); opacity:1; } }
+
+
+
+    .modal-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(120px, .8fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .modal-table-wrap {
+      height: calc(100% - 58px);
+      min-height: 260px;
+      overflow: auto;
+      border: 1px solid #edf1f7;
+      border-radius: 14px;
+      background: #fff;
+    }
+    .modal-table { min-width: 980px; font-size: 14px; }
+    .modal-table th { position: sticky; top: 0; z-index: 1; background: #fff; }
+    .td-strong { font-weight: 950 !important; color: #172033 !important; }
+    .action-group { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+    .mini-action {
+      border: 1px solid #d7deeb;
+      background: #fff;
+      color: #24304a;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-weight: 900;
+      font-size: 12.5px;
+    }
+    .mini-action.done { color: var(--green); border-color: #c7ead7; background: #f0fff6; }
+    .mini-action.danger { color: var(--red); border-color: #ffd1d1; background: #fff4f4; }
+    .panel-tools { display:inline-flex; align-items:center; gap:6px; }
+
+    .empty { color:var(--muted); font-weight:850; text-align:center; padding:18px 8px; }
+
+    @media (max-width: 1180px) {
+      body { overflow:auto; }
+      .app { height:auto; min-height:100vh; grid-template-columns:1fr; }
+      .main { overflow:visible; padding:8px 0; }
+      .workflow-strip { grid-template-columns: repeat(2, 1fr); }
+      .maintenance-grid { grid-template-columns: repeat(2, 1fr); }
+      .dashboard-grid { grid-template-columns:1fr; grid-template-rows:auto; overflow:visible; }
+      .daily,.report,.annual { grid-column:1; }
+      .kpi-grid { grid-template-columns: repeat(2,1fr); }
+      .annual-grid { grid-template-columns: repeat(2,1fr); }
+      .distribution { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="main">
+      <section class="topbar">
+        <div class="headline">
+          <h2>個人工作績效 Dashboard</h2>
+          <p>每月工作內容、工作分類、專案推動、月報輸出與年度累積</p>
+        </div>
+        <div class="actions">
+          <input class="month-input" type="month" id="monthPicker" aria-label="月份選擇" />
+          <button class="btn primary" id="addRecordBtn">＋ 新增紀錄</button>
+          <button class="btn ghost" id="exportBtn">⬇ 匯出</button>
+          <button class="btn ghost" id="importBtn">⬆ 匯入</button>
+          <input type="file" id="importFile" accept="application/json" hidden />
+        </div>
+      </section>
+
+      <section class="workflow-strip" aria-label="功能導覽">
+        <button class="flow-card active" data-action="focus-dashboard"><span class="flow-no">1</span><span class="flow-main"><span class="flow-title">儀表板總覽</span><span class="nav-tag tag-manage">管理檢視</span></span></button>
+        <button class="flow-card" data-action="open-add"><span class="flow-no">2</span><span class="flow-main"><span class="flow-title">每日填報</span><span class="nav-tag tag-fill">人員填報</span></span></button>
+        <button class="flow-card" data-action="open-work-list"><span class="flow-no">3</span><span class="flow-main"><span class="flow-title">工作紀錄</span><span class="nav-tag tag-fill">人員填報</span></span></button>
+        <button class="flow-card" data-action="generate-report"><span class="flow-no">4</span><span class="flow-main"><span class="flow-title">月報輸出</span><span class="nav-tag tag-manage">管理檢視</span></span></button>
+        <button class="flow-card" data-action="open-maintenance"><span class="flow-no">5</span><span class="flow-main"><span class="flow-title">資料維護中心</span><span class="nav-tag tag-maintain">資料維護</span></span></button>
+      </section>
+
+      <section class="kpi-grid" aria-label="本月KPI">
+        <article class="card kpi-card kpi-blue"><div class="kpi-icon">✓</div><div><p class="kpi-label">本月完成</p><div class="kpi-value blue-t"><strong id="completedCount">0</strong><span>件</span></div><div class="kpi-sub" id="completedSub">依本月紀錄統計</div></div></article>
+        <article class="card kpi-card kpi-green"><div class="kpi-icon">▶</div><div><p class="kpi-label">進行中</p><div class="kpi-value green-t"><strong id="progressCount">0</strong><span>件</span></div><div class="kpi-sub">尚未結案工作</div></div></article>
+        <article class="card kpi-card kpi-red"><div class="kpi-icon">⚠</div><div><p class="kpi-label">延遲件數</p><div class="kpi-value red-t"><strong id="delayCount">0</strong><span>件</span></div><div class="kpi-sub" id="delaySub">核心追蹤指標</div></div></article>
+        <article class="card kpi-card kpi-purple"><div class="kpi-icon">📁</div><div><p class="kpi-label">專案推動</p><div class="kpi-value purple-t"><strong id="projectCount">0</strong><span>個</span></div><div class="kpi-sub">依關聯專案統計</div></div></article>
+      </section>
+
+      <section class="dashboard-grid" id="dashboardRoot">
+        <article class="card panel" id="distributionPanel">
+          <h3 class="panel-title">本月工作分布 <span class="mini-note">依「工作分類」統計</span></h3>
+          <div class="distribution">
+            <div class="donut-wrap"><div class="donut" id="donutChart"><div class="donut-label-layer" id="donutLabels"></div><div class="donut-center"><div id="donutMain">0件</div><span id="donutSub">總計</span></div></div></div>
+            <div><div class="legend" id="categoryLegend"></div><div class="total" id="categoryTotal">總計：0 件</div></div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <h3 class="panel-title">專案進度 <button class="link" id="projectHintBtn">查看說明 ›</button></h3>
+          <div class="progress-list" id="projectProgressList"></div>
+        </article>
+
+        <article class="card panel delayed">
+          <h3 class="panel-title">延遲事項追蹤 <span class="badge" id="delayBadge">0 件</span><button class="link" id="openDelayListBtn">查看全部 ›</button></h3>
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>工作項目</th><th>負責人</th><th>分類</th><th>種類</th><th>狀態</th><th>預計完成日</th></tr></thead>
+              <tbody id="delayTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card panel daily">
+          <h3 class="panel-title">每日工作紀錄 <span class="panel-tools"><button class="link" id="openWorkListBtn">查看清單 ›</button><button class="link" id="quickAddBtn">新增 ›</button></span></h3>
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>日期</th><th>負責人</th><th>工作項目</th><th>分類</th><th>種類</th><th>狀態</th></tr></thead>
+              <tbody id="recordTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card panel report">
+          <h3 class="panel-title">自動月報產出 <span>📄</span><button class="link" id="expandReportBtn">展開月報 ›</button></h3>
+          <div class="report-box" id="reportPreview"></div>
+          <div class="report-actions">
+            <button class="btn primary" id="generateReportBtn">📄 產出月報</button>
+            <button class="btn ghost" id="copyReportBtn">📋 複製月報</button>
+          </div>
+        </article>
+
+        <article class="card panel annual">
+          <h3 class="panel-title">年度累積 <span class="mini-note" id="yearLabel">2026年</span></h3>
+          <div class="annual-grid">
+            <div class="mini-card"><div><div class="mini-ico blue-t">✓</div><div class="mini-label">年度完成工作</div><div class="mini-num blue-t"><span id="yearCompleted">0</span><small> 件</small></div></div><div class="spark" id="sparkCompleted"></div></div>
+            <div class="mini-card"><div><div class="mini-ico green-t">📁</div><div class="mini-label">年度專案數</div><div class="mini-num green-t"><span id="yearProjects">0</span><small> 個</small></div></div><div class="spark green" id="sparkProjects"></div></div>
+            <div class="mini-card"><div><div class="mini-ico red-t">⚠</div><div class="mini-label">年度延遲件數</div><div class="mini-num red-t"><span id="yearDelays">0</span><small> 件</small></div></div><div class="spark red" id="sparkDelays"></div></div>
+            <div class="mini-card"><div><div class="mini-ico" style="color:var(--amber)">🏆</div><div class="mini-label">主要成果亮點</div><div class="highlights" id="yearHighlights">流程優化<br>系統導入<br>改善追蹤</div></div></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="recordModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="recordModalTitle">
+    <div class="modal">
+      <div class="modal-header"><h3 class="modal-title" id="recordModalTitle">新增工作紀錄</h3><button class="x" data-close="record">×</button></div>
+      <form id="recordForm">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label for="recordDate">日期</label><input id="recordDate" type="date" required /></div>
+            <div class="field"><label for="recordOwner">負責人員</label><select id="recordOwner" required></select></div>
+            <div class="field full"><label for="recordTaskPreset">套用常用任務（可選）</label><select id="recordTaskPreset"><option value="">不套用常用任務</option></select></div>
+            <div class="field full"><label for="recordTitle">工作項目</label><input id="recordTitle" type="text" placeholder="例如：供應商評鑑資料彙整" required /></div>
+            <div class="field"><label for="recordCategory">工作分類</label><select id="recordCategory" required></select></div>
+            <div class="field"><label for="recordType">工作種類</label><select id="recordType" required></select></div>
+            <div class="field"><label for="recordStatus">狀態</label><select id="recordStatus"><option>已完成</option><option>進行中</option><option>延遲中</option><option>未開始</option></select></div>
+            <div class="field"><label for="recordDue">預計完成日</label><input id="recordDue" type="date" required /></div>
+            <div class="field"><label for="recordProject">關聯專案（可空白）</label><input id="recordProject" type="text" placeholder="例如：EHS流程優化" /></div>
+            <div class="field"><label for="recordPriority">重要程度</label><select id="recordPriority"><option>高</option><option selected>中</option><option>低</option></select></div>
+            <div class="field full"><label for="recordNote">成果或備註</label><textarea id="recordNote" placeholder="可記錄完成成果、卡關原因、下次處理方式"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn ghost" data-close="record">取消</button><button type="submit" class="btn primary" id="saveRecordBtn">儲存紀錄</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="maintenanceModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="maintenanceTitle">
+    <div class="modal large resizable" data-modal-name="maintenance">
+      <div class="modal-header"><h3 class="modal-title" id="maintenanceTitle">資料維護中心</h3><div class="modal-actions"><button class="x modal-max" data-maximize="maintenance" title="最大化 / 還原">⛶</button><button class="x" data-close="maintenance">×</button></div></div>
+      <div class="modal-body">
+        <p class="muted" style="margin-top:0;font-weight:850;line-height:1.6;">這裡相當於前端資料庫維護。GitHub Pages 版本會存到瀏覽器 localStorage，匯出 / 匯入 JSON 時會一併帶出。</p>
+        <div class="maintenance-grid">
+          <section class="maint-card"><h4>👥 人員管理</h4><div class="add-inline"><input id="newPerson" placeholder="新增人員名稱" /><button class="btn small primary" data-add="person">新增</button></div><div class="tag-list" id="personList"></div></section>
+          <section class="maint-card"><h4>🧭 工作分類</h4><div class="add-inline"><input id="newCategory" placeholder="例如：會議、稽核" /><button class="btn small primary" data-add="category">新增</button></div><div class="tag-list" id="categoryList"></div></section>
+          <section class="maint-card"><h4>🏷️ 工作種類</h4><div class="add-inline"><input id="newType" placeholder="例如：職安衛、環保" /><button class="btn small primary" data-add="type">新增</button></div><div class="tag-list" id="typeList"></div></section>
+          <section class="maint-card"><h4>⭐ 常用任務</h4><div class="add-inline"><input id="newTask" placeholder="例如：供應商資料更新" /><button class="btn small primary" data-add="task">新增</button></div><div class="tag-list" id="taskList"></div></section>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn ghost" data-close="maintenance">關閉</button></div>
+    </div>
+  </div>
+
+
+
+  <div class="modal-backdrop" id="workListModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="workListTitle">
+    <div class="modal xlarge resizable" data-modal-name="workList">
+      <div class="modal-header"><h3 class="modal-title" id="workListTitle">工作執行清單</h3><div class="modal-actions"><button class="x modal-max" data-maximize="workList" title="最大化 / 還原">⛶</button><button class="x" data-close="workList">×</button></div></div>
+      <div class="modal-body">
+        <div class="modal-toolbar">
+          <input id="workSearch" type="search" placeholder="搜尋工作項目 / 備註 / 專案" />
+          <select id="workOwnerFilter"></select>
+          <select id="workCategoryFilter"></select>
+          <select id="workTypeFilter"></select>
+          <select id="workStatusFilter">
+            <option value="all">全部狀態</option>
+            <option>未開始</option>
+            <option>進行中</option>
+            <option>已完成</option>
+            <option>延遲中</option>
+          </select>
+        </div>
+        <div class="modal-table-wrap">
+          <table class="table modal-table">
+            <thead><tr><th>日期</th><th>負責人</th><th>工作項目</th><th>分類</th><th>種類</th><th>狀態</th><th>預計完成日</th><th>重要</th><th>操作</th></tr></thead>
+            <tbody id="workListBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn ghost" id="clearMonthBtn">清空本月</button><button class="btn primary" id="addFromListBtn">＋ 新增紀錄</button><button class="btn ghost" data-close="workList">關閉</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="delayListModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="delayListTitle">
+    <div class="modal large resizable" data-modal-name="delayList">
+      <div class="modal-header"><h3 class="modal-title" id="delayListTitle">延遲事項管理清單</h3><div class="modal-actions"><button class="x modal-max" data-maximize="delayList" title="最大化 / 還原">⛶</button><button class="x" data-close="delayList">×</button></div></div>
+      <div class="modal-body">
+        <div class="modal-toolbar" style="grid-template-columns:minmax(190px,1.4fr) repeat(3,minmax(120px,.8fr));">
+          <input id="delaySearch" type="search" placeholder="搜尋延遲事項 / 負責人" />
+          <select id="delayOwnerFilter"></select>
+          <select id="delayCategoryFilter"></select>
+          <select id="delayTypeFilter"></select>
+        </div>
+        <div class="modal-table-wrap">
+          <table class="table modal-table">
+            <thead><tr><th>工作項目</th><th>負責人</th><th>分類</th><th>種類</th><th>延遲天數</th><th>預計完成日</th><th>操作</th></tr></thead>
+            <tbody id="delayListBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn ghost" data-close="delayList">關閉</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="reportModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+    <div class="modal sm resizable" data-modal-name="report">
+      <div class="modal-header"><h3 class="modal-title" id="reportModalTitle">月報產出結果</h3><div class="modal-actions"><button class="x modal-max" data-maximize="report" title="最大化 / 還原">⛶</button><button class="x" data-close="report">×</button></div></div>
+      <div class="modal-body"><div class="report-box modal-report-box" id="reportModalText"></div></div>
+      <div class="modal-footer"><button class="btn ghost" id="copyReportModalBtn">複製月報</button><button class="btn primary" data-close="report">完成</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = "personalWorkDashboardV3";
+    const COLORS = ["#2d6cdf", "#2f9e69", "#7657d6", "#e3a31c", "#7b8797", "#ef7c45", "#0f9b8e"];
+
+    const defaultState = {
+      selectedMonth: "2026-05",
+      settings: {
+        people: ["王小明", "陳小華", "林志豪", "鄭鎮杰"],
+        categories: ["會議", "稽核", "專案", "主管交辦", "其他"],
+        types: ["職安衛", "環保", "AI", "庶務", "其他"],
+        commonTasks: ["EHS風險評估更新", "AI管理導入需求討論", "教育訓練課程規劃", "設備巡檢與紀錄", "供應商資料更新"]
+      },
+      projects: [
+        { name: "EHS流程優化", progress: 72 },
+        { name: "AI管理導入", progress: 45 },
+        { name: "教育訓練規劃", progress: 88 },
+        { name: "稽核追蹤改善", progress: 60 }
+      ],
+      records: [
+        { id: "r1", date: "2026-05-19", owner: "鄭鎮杰", title: "EHS風險評估更新", category: "稽核", type: "職安衛", status: "已完成", due: "2026-05-19", project: "稽核追蹤改善", priority: "中", note: "完成風險資料更新與改善追蹤。" },
+        { id: "r2", date: "2026-05-18", owner: "王小明", title: "AI管理導入需求討論", category: "會議", type: "AI", status: "進行中", due: "2026-05-31", project: "AI管理導入", priority: "高", note: "彙整需求與導入流程討論。" },
+        { id: "r3", date: "2026-05-18", owner: "陳小華", title: "教育訓練課程規劃", category: "專案", type: "職安衛", status: "已完成", due: "2026-05-20", project: "教育訓練規劃", priority: "中", note: "完成課程規劃初稿。" },
+        { id: "r4", date: "2026-05-17", owner: "林志豪", title: "設備巡檢與紀錄", category: "稽核", type: "庶務", status: "已完成", due: "2026-05-17", project: "", priority: "中", note: "完成巡檢紀錄。" },
+        { id: "r5", date: "2026-05-16", owner: "鄭鎮杰", title: "供應商資料更新", category: "主管交辦", type: "環保", status: "進行中", due: "2026-06-05", project: "", priority: "低", note: "資料彙整中。" },
+        { id: "r6", date: "2026-05-12", owner: "鄭鎮杰", title: "安全稽核改善追蹤", category: "稽核", type: "職安衛", status: "延遲中", due: "2026-05-03", project: "稽核追蹤改善", priority: "高", note: "需追蹤改善證據。" },
+        { id: "r7", date: "2026-05-13", owner: "陳小華", title: "教育訓練教材更新", category: "專案", type: "職安衛", status: "延遲中", due: "2026-05-07", project: "教育訓練規劃", priority: "高", note: "等待教材內容確認。" },
+        { id: "r8", date: "2026-05-14", owner: "林志豪", title: "供應商評鑑資料彙整", category: "主管交辦", type: "環保", status: "延遲中", due: "2026-05-10", project: "", priority: "中", note: "資料未齊。" },
+        { id: "r9", date: "2026-05-08", owner: "王小明", title: "月度改善會議", category: "會議", type: "AI", status: "已完成", due: "2026-05-08", project: "AI管理導入", priority: "中", note: "完成會議紀錄。" },
+        { id: "r10", date: "2026-05-07", owner: "鄭鎮杰", title: "流程文件修訂", category: "專案", type: "庶務", status: "已完成", due: "2026-05-09", project: "EHS流程優化", priority: "中", note: "完成流程草案修訂。" },
+        { id: "r11", date: "2026-04-18", owner: "鄭鎮杰", title: "四月稽核缺失追蹤", category: "稽核", type: "職安衛", status: "已完成", due: "2026-04-20", project: "稽核追蹤改善", priority: "中", note: "已結案。" },
+        { id: "r12", date: "2026-01-12", owner: "陳小華", title: "年度教育訓練需求盤點", category: "專案", type: "職安衛", status: "已完成", due: "2026-01-20", project: "教育訓練規劃", priority: "中", note: "完成盤點。" }
+      ]
+    };
+
+    let state = loadState();
+    let editingRecordId = null;
+
+    const $ = (id) => document.getElementById(id);
+    const fmtDate = (s) => (s || "").replaceAll("-", "/");
+    const monthOf = (dateStr) => (dateStr || "").slice(0, 7);
+    const yearOf = (dateStr) => (dateStr || "").slice(0, 4);
+    const todayISO = () => new Date().toISOString().slice(0, 10);
+    const uid = () => "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return deepClone(defaultState);
+        const parsed = JSON.parse(raw);
+        return normalizeState(parsed);
+      } catch (e) {
+        console.warn(e);
+        return deepClone(defaultState);
+      }
+    }
+
+    function normalizeState(input) {
+      const base = deepClone(defaultState);
+      const normalized = {
+        selectedMonth: input.selectedMonth || base.selectedMonth,
+        settings: {
+          people: Array.isArray(input.settings?.people) ? input.settings.people : base.settings.people,
+          categories: Array.isArray(input.settings?.categories) ? input.settings.categories : base.settings.categories,
+          types: Array.isArray(input.settings?.types) ? input.settings.types : base.settings.types,
+          commonTasks: Array.isArray(input.settings?.commonTasks) ? input.settings.commonTasks : base.settings.commonTasks
+        },
+        projects: Array.isArray(input.projects) ? input.projects : base.projects,
+        records: Array.isArray(input.records) ? input.records.map(r => ({
+          id: r.id || uid(),
+          date: r.date || todayISO(),
+          owner: r.owner || r.person || base.settings.people[0],
+          title: r.title || r.name || "未命名工作",
+          category: r.category || (r.type === "專案工作" ? "專案" : "其他"),
+          type: (r.type && !["日常工作", "專案工作"].includes(r.type)) ? r.type : (r.workType || r.type2 || r.kind || base.settings.types[0]),
+          status: r.status || "進行中",
+          due: r.due || r.dueDate || r.date || todayISO(),
+          project: r.project || "",
+          priority: r.priority || "中",
+          note: r.note || ""
+        })) : base.records
+      };
+      ["people", "categories", "types", "commonTasks"].forEach(key => {
+        normalized.settings[key] = [...new Set(normalized.settings[key].filter(Boolean))];
+      });
+      return normalized;
+    }
+
+    let cloudSaveTimer = null;
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      scheduleCloudSave();
+    }
+
+    function scheduleCloudSave() {
+      if (window.__pf_suppressCloudSave || !window.__pf_saveState) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => {
+        window.__pf_saveState(state)
+          .then(() => console.info("Performance Dashboard 已同步至 Firebase"))
+          .catch((err) => {
+            console.error("Performance Dashboard Firebase 儲存失敗：", err);
+            showToast?.("雲端儲存失敗：" + (err?.message || err), 4200);
+          });
+      }, 500);
+    }
+
+    function initPerformanceCloudSync() {
+      if (!window.__performanceFirebaseReady) {
+        console.warn("Performance Dashboard Firebase 模組尚未載入，將使用本機儲存。 ");
+        return;
+      }
+
+      window.__performanceFirebaseReady
+        .then(async () => {
+          console.info("Performance Dashboard Firebase 已連線：", window.__pf?.auth?.currentUser?.email);
+          const cloudState = await window.__pf_getState();
+
+          if (cloudState && Array.isArray(cloudState.records)) {
+            window.__pf_suppressCloudSave = true;
+            state = normalizeState(cloudState);
+            render();
+            window.__pf_suppressCloudSave = false;
+            showToast?.("已載入 Firebase 雲端資料", 2200);
+          } else {
+            await window.__pf_saveState(state);
+            showToast?.("已建立 Firebase 雲端資料", 2200);
+          }
+
+          window.__pf_subscribe((cloudState) => {
+            if (!cloudState || !Array.isArray(cloudState.records)) return;
+            window.__pf_suppressCloudSave = true;
+            state = normalizeState(cloudState);
+            render();
+            window.__pf_suppressCloudSave = false;
+          }, (err) => {
+            console.error("Performance Dashboard Firebase 監聽失敗：", err);
+            showToast?.("雲端讀取失敗：" + (err?.message || err), 4200);
+          });
+        })
+        .catch((err) => {
+          console.error("Performance Dashboard Firebase 初始化失敗：", err);
+          alert("Firebase 連線失敗：" + (err?.message || err));
+        });
+    }
+
+    function isDelayed(record) {
+      if (record.status === "延遲中") return true;
+      if (record.status !== "已完成" && record.due && record.due < todayISO()) return true;
+      return false;
+    }
+
+    function selectedMonthRecords() { return state.records.filter(r => monthOf(r.date) === state.selectedMonth); }
+    function selectedYearRecords() { const y = state.selectedMonth.slice(0,4); return state.records.filter(r => yearOf(r.date) === y); }
+
+    function render() {
+      $("monthPicker").value = state.selectedMonth;
+      renderSelectOptions();
+      renderKPIs();
+      renderDistribution();
+      renderProjects();
+      renderTables();
+      renderAnnual();
+      renderMaintenanceLists();
+      renderReport(false);
+      saveState();
+    }
+
+    function renderSelectOptions() {
+      fillSelect("recordOwner", state.settings.people);
+      fillSelect("recordCategory", state.settings.categories);
+      fillSelect("recordType", state.settings.types);
+      fillTaskPreset();
+      fillFilterSelect("workOwnerFilter", "全部負責人", state.settings.people);
+      fillFilterSelect("workCategoryFilter", "全部分類", state.settings.categories);
+      fillFilterSelect("workTypeFilter", "全部種類", state.settings.types);
+      fillFilterSelect("delayOwnerFilter", "全部負責人", state.settings.people);
+      fillFilterSelect("delayCategoryFilter", "全部分類", state.settings.categories);
+      fillFilterSelect("delayTypeFilter", "全部種類", state.settings.types);
+    }
+
+    function fillSelect(id, items) {
+      const el = $(id);
+      if (!el) return;
+      el.innerHTML = items.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+    }
+
+    function fillTaskPreset() {
+      const el = $("recordTaskPreset");
+      if (!el) return;
+      const current = el.value || "";
+      el.innerHTML = `<option value="">不套用常用任務</option>` + state.settings.commonTasks.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+      if ([...el.options].some(o => o.value === current)) el.value = current;
+    }
+
+    function fillFilterSelect(id, allLabel, items) {
+      const el = $(id);
+      if (!el) return;
+      const current = el.value || "all";
+      el.innerHTML = `<option value="all">${escapeHtml(allLabel)}</option>` + items.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+      if ([...el.options].some(o => o.value === current)) el.value = current;
+    }
+
+    function renderKPIs() {
+      const records = selectedMonthRecords();
+      const completed = records.filter(r => r.status === "已完成").length;
+      const progressing = records.filter(r => r.status === "進行中" || r.status === "未開始").length;
+      const delayed = records.filter(isDelayed).length;
+      const projects = new Set(records.filter(r => r.category === "專案" || r.project).map(r => r.project || r.title));
+      $("completedCount").textContent = completed;
+      $("progressCount").textContent = progressing;
+      $("delayCount").textContent = delayed;
+      $("delayBadge").textContent = delayed + " 件";
+      $("projectCount").textContent = projects.size;
+      const total = records.length || 1;
+      $("completedSub").textContent = `完成率 ${Math.round(completed / total * 100)}%`;
+      $("delaySub").textContent = delayed ? "需優先追蹤改善" : "本月無延遲事項";
+    }
+
+    function renderDistribution() {
+      const records = selectedMonthRecords();
+      const counts = Object.fromEntries(state.settings.categories.map(c => [c, 0]));
+      records.forEach(r => { counts[r.category] = (counts[r.category] || 0) + 1; });
+      const entries = Object.entries(counts).filter(([,v]) => v > 0);
+      const total = entries.reduce((sum, [,v]) => sum + v, 0);
+      const donut = $("donutChart");
+      const labelLayer = $("donutLabels");
+      const legend = $("categoryLegend");
+      if (!total) {
+        donut.style.background = "conic-gradient(#e7ebf2 0 100%)";
+        labelLayer.innerHTML = "";
+        $("donutMain").textContent = "0件";
+        $("donutSub").textContent = "總計";
+        legend.innerHTML = `<div class="empty">本月尚無工作紀錄</div>`;
+        $("categoryTotal").textContent = "總計：0 件";
+        return;
+      }
+      let start = 0;
+      const segments = [];
+      const labels = [];
+      entries.forEach(([name, val], index) => {
+        const pct = val / total * 100;
+        const end = start + pct;
+        const color = COLORS[index % COLORS.length];
+        segments.push(`${color} ${start}% ${end}%`);
+
+        // 在圓環切片上標出「分類名稱 + 百分比」，避免只顯示單一最高占比。
+        const mid = start + pct / 2;
+        const angle = (mid * 3.6 - 90) * Math.PI / 180;
+        const radius = 58;
+        const x = 82 + radius * Math.cos(angle);
+        const y = 82 + radius * Math.sin(angle);
+        const roundedPct = Math.round(pct);
+        labels.push(`<div class="donut-segment-label" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px"><span>${escapeHtml(name)}</span><strong>${roundedPct}%</strong></div>`);
+        start = end;
+      });
+      donut.style.background = `conic-gradient(${segments.join(",")})`;
+      labelLayer.innerHTML = labels.join("");
+      $("donutMain").textContent = `${total}件`;
+      $("donutSub").textContent = "總計";
+      legend.innerHTML = entries.map(([name, val], index) => {
+        const pct = Math.round(val / total * 100);
+        return `<div class="legend-row"><span class="legend-dot" style="background:${COLORS[index % COLORS.length]}"></span><span class="legend-label">${escapeHtml(name)}</span><span class="legend-value">${pct}%（${val}件）</span></div>`;
+      }).join("");
+      $("categoryTotal").textContent = `總計：${total} 件`;
+    }
+
+    function renderProjects() {
+      const box = $("projectProgressList");
+      const monthRecords = selectedMonthRecords();
+      const byProject = new Map();
+      monthRecords.filter(r => r.project || r.category === "專案").forEach(r => {
+        const name = r.project || r.title;
+        if (!byProject.has(name)) byProject.set(name, { total: 0, done: 0 });
+        const item = byProject.get(name);
+        item.total += 1;
+        if (r.status === "已完成") item.done += 1;
+      });
+      const dynamicProjects = Array.from(byProject.entries()).map(([name, obj]) => ({ name, progress: Math.round(obj.done / obj.total * 100) }));
+      const list = dynamicProjects.length ? dynamicProjects : state.projects;
+      box.innerHTML = list.slice(0,5).map(p => `
+        <div class="progress-row">
+          <span>${escapeHtml(p.name)}</span>
+          <div class="bar"><span style="width:${Math.max(0, Math.min(100, p.progress))}%"></span></div>
+          <span>${Math.max(0, Math.min(100, p.progress))}%</span>
+        </div>`).join("");
+    }
+
+    function renderTables() {
+      const records = selectedMonthRecords().sort((a,b) => b.date.localeCompare(a.date));
+      const tbody = $("recordTableBody");
+      if (!records.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty">本月尚無工作紀錄，請點選「新增紀錄」。</div></td></tr>`;
+      } else {
+        tbody.innerHTML = records.slice(0, 6).map(r => `
+          <tr>
+            <td>${fmtDate(r.date).slice(5)}</td>
+            <td>${escapeHtml(r.owner)}</td>
+            <td>${escapeHtml(r.title)}</td>
+            <td>${escapeHtml(r.category)}</td>
+            <td>${escapeHtml(r.type)}</td>
+            <td>${statusPill(r)}</td>
+          </tr>`).join("");
+      }
+      const delays = records.filter(isDelayed);
+      const dbody = $("delayTableBody");
+      if (!delays.length) {
+        dbody.innerHTML = `<tr><td colspan="6"><div class="empty">本月沒有延遲事項。</div></td></tr>`;
+      } else {
+        dbody.innerHTML = delays.slice(0, 4).map(r => `
+          <tr>
+            <td>${escapeHtml(r.title)}</td>
+            <td>${escapeHtml(r.owner)}</td>
+            <td>${escapeHtml(r.category)}</td>
+            <td>${escapeHtml(r.type)}</td>
+            <td>${statusPill({...r, status:"延遲中"})}</td>
+            <td>${fmtDate(r.due)}</td>
+          </tr>`).join("");
+      }
+      renderWorkList();
+      renderDelayList();
+    }
+
+    function statusPill(record) {
+      if (isDelayed(record)) return `<span class="pill delay">延遲中</span>`;
+      if (record.status === "已完成") return `<span class="pill done">已完成</span>`;
+      if (record.status === "進行中") return `<span class="pill progress">進行中</span>`;
+      return `<span class="pill neutral">${escapeHtml(record.status)}</span>`;
+    }
+
+    function renderAnnual() {
+      const y = state.selectedMonth.slice(0, 4);
+      const records = selectedYearRecords();
+      const completed = records.filter(r => r.status === "已完成").length;
+      const delays = records.filter(isDelayed).length;
+      const projects = new Set(records.filter(r => r.project || r.category === "專案").map(r => r.project || r.title));
+      $("yearLabel").textContent = y + "年";
+      $("yearCompleted").textContent = completed;
+      $("yearDelays").textContent = delays;
+      $("yearProjects").textContent = projects.size;
+      const typeCounts = countBy(records, "type");
+      const highlights = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k);
+      $("yearHighlights").innerHTML = (highlights.length ? highlights : ["流程優化", "系統導入", "改善追蹤"]).map(escapeHtml).join("<br>");
+      renderSpark("sparkCompleted", monthlyCounts(records, r => r.status === "已完成"));
+      renderSpark("sparkProjects", monthlyProjectCounts(records));
+      renderSpark("sparkDelays", monthlyCounts(records, isDelayed));
+    }
+
+    function monthlyCounts(records, predicate) {
+      const counts = Array(12).fill(0);
+      records.forEach(r => { if (predicate(r)) counts[Number(r.date.slice(5,7))-1] += 1; });
+      return counts;
+    }
+
+    function monthlyProjectCounts(records) {
+      return Array.from({length:12}, (_, i) => {
+        const m = String(i+1).padStart(2,"0");
+        return new Set(records.filter(r => r.date.slice(5,7) === m && (r.project || r.category === "專案")).map(r => r.project || r.title)).size;
+      });
+    }
+
+    function renderSpark(id, values) {
+      const max = Math.max(1, ...values);
+      $(id).innerHTML = values.map(v => `<span style="height:${Math.max(5, Math.round(v / max * 34))}px"></span>`).join("");
+    }
+
+    function countBy(records, key) {
+      return records.reduce((acc, r) => { const k = r[key] || "未分類"; acc[k] = (acc[k] || 0) + 1; return acc; }, {});
+    }
+
+    function renderReport(animate = false) {
+      const text = buildReportText();
+      $("reportPreview").textContent = text;
+      if (animate) {
+        $("reportPreview").classList.remove("flash");
+        void $("reportPreview").offsetWidth;
+        $("reportPreview").classList.add("flash");
+      }
+      return text;
+    }
+
+    function buildReportText() {
+      const records = selectedMonthRecords();
+      const monthLabel = state.selectedMonth.replace("-", "年") + "月";
+      const total = records.length;
+      const completed = records.filter(r => r.status === "已完成").length;
+      const progressing = records.filter(r => r.status === "進行中" || r.status === "未開始").length;
+      const delays = records.filter(isDelayed);
+      const catSummary = topSummary(countBy(records, "category"));
+      const typeSummary = topSummary(countBy(records, "type"));
+      const ownerSummary = topSummary(countBy(records, "owner"));
+      const projectNames = Array.from(new Set(records.filter(r => r.project || r.category === "專案").map(r => r.project || r.title))).slice(0, 5);
+      return [
+        `${monthLabel}工作月報`,
+        `本月共記錄 ${total} 項工作，其中已完成 ${completed} 項、進行中 ${progressing} 項、延遲 ${delays.length} 項。`,
+        `工作分類方面，本月主要集中於${catSummary || "尚無明確分類"}。`,
+        `工作種類方面，主要包含${typeSummary || "尚無明確種類"}。`,
+        `負責人員分布方面，本月紀錄以${ownerSummary || "尚無人員資料"}為主。`,
+        projectNames.length ? `專案推動方面，持續追蹤 ${projectNames.join("、")} 等項目。` : `專案推動方面，本月尚無關聯專案紀錄。`,
+        delays.length ? `延遲事項需優先追蹤：${delays.slice(0, 4).map(r => `${r.title}（${r.owner}，預計${fmtDate(r.due)}）`).join("；")}。` : `本月沒有延遲事項，整體時程控管良好。`,
+        `下月建議持續追蹤未完成與延遲項目，並依工作分類與工作種類檢視是否有重複性工作可流程化或簡化。`
+      ].join("\n\n");
+    }
+
+    function topSummary(counts) {
+      const arr = Object.entries(counts).filter(([,v]) => v > 0).sort((a,b)=>b[1]-a[1]).slice(0, 3);
+      if (!arr.length) return "";
+      return arr.map(([k,v]) => `${k} ${v} 件`).join("、");
+    }
+
+
+
+    function matchesText(record, keyword) {
+      if (!keyword) return true;
+      const haystack = [record.title, record.note, record.project, record.owner, record.category, record.type, record.status].join(" ").toLowerCase();
+      return haystack.includes(keyword.toLowerCase());
+    }
+
+    function filterRecordByControls(record, prefix, includeStatus = true) {
+      const search = $(`${prefix}Search`)?.value?.trim() || "";
+      const owner = $(`${prefix}OwnerFilter`)?.value || "all";
+      const category = $(`${prefix}CategoryFilter`)?.value || "all";
+      const type = $(`${prefix}TypeFilter`)?.value || "all";
+      const status = includeStatus ? ($(`${prefix}StatusFilter`)?.value || "all") : "all";
+      return matchesText(record, search)
+        && (owner === "all" || record.owner === owner)
+        && (category === "all" || record.category === category)
+        && (type === "all" || record.type === type)
+        && (status === "all" || (status === "延遲中" ? isDelayed(record) : record.status === status));
+    }
+
+    function renderWorkList() {
+      const tbody = $("workListBody");
+      if (!tbody) return;
+      const list = selectedMonthRecords()
+        .filter(r => filterRecordByControls(r, "work", true))
+        .sort((a,b) => b.date.localeCompare(a.date));
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty">沒有符合條件的工作紀錄。</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(r => `
+        <tr>
+          <td>${fmtDate(r.date)}</td>
+          <td>${escapeHtml(r.owner)}</td>
+          <td class="td-strong">${escapeHtml(r.title)}</td>
+          <td>${escapeHtml(r.category)}</td>
+          <td>${escapeHtml(r.type)}</td>
+          <td>${statusPill(r)}</td>
+          <td>${fmtDate(r.due)}</td>
+          <td>${escapeHtml(r.priority)}</td>
+          <td><div class="action-group"><button class="mini-action" data-edit="${r.id}">編輯</button><button class="mini-action done" data-mark-complete="${r.id}">完成</button><button class="mini-action danger" data-delete="${r.id}">刪除</button></div></td>
+        </tr>`).join("");
+    }
+
+    function renderDelayList() {
+      const tbody = $("delayListBody");
+      if (!tbody) return;
+      const list = selectedMonthRecords()
+        .filter(isDelayed)
+        .filter(r => filterRecordByControls(r, "delay", false))
+        .sort((a,b) => (a.due || "").localeCompare(b.due || ""));
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty">沒有符合條件的延遲事項。</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(r => `
+        <tr>
+          <td class="td-strong">${escapeHtml(r.title)}</td>
+          <td>${escapeHtml(r.owner)}</td>
+          <td>${escapeHtml(r.category)}</td>
+          <td>${escapeHtml(r.type)}</td>
+          <td>${delayDays(r)} 天</td>
+          <td>${fmtDate(r.due)}</td>
+          <td><div class="action-group"><button class="mini-action" data-edit="${r.id}">編輯</button><button class="mini-action done" data-mark-complete="${r.id}">標記完成</button><button class="mini-action danger" data-delete="${r.id}">刪除</button></div></td>
+        </tr>`).join("");
+    }
+
+    function delayDays(record) {
+      if (!record.due) return 0;
+      const today = new Date(todayISO());
+      const due = new Date(record.due);
+      return Math.max(0, Math.ceil((today - due) / 86400000));
+    }
+
+    function markComplete(id) {
+      const rec = state.records.find(r => r.id === id);
+      if (!rec) return;
+      rec.status = "已完成";
+      initResizableModals();
+    render();
+      showToast(`已將「${rec.title}」標記為完成。`);
+    }
+
+    function openWorkListModal() {
+      renderSelectOptions();
+      renderWorkList();
+      openModal("workList");
+    }
+
+    function openDelayListModal() {
+      renderSelectOptions();
+      renderDelayList();
+      openModal("delayList");
+    }
+
+    function renderMaintenanceLists() {
+      renderMaintainList("personList", state.settings.people, "person");
+      renderMaintainList("categoryList", state.settings.categories, "category");
+      renderMaintainList("typeList", state.settings.types, "type");
+      renderMaintainList("taskList", state.settings.commonTasks, "task");
+    }
+
+    function renderMaintainList(id, list, kind) {
+      $(id).innerHTML = list.map(item => `<div class="tag-row"><span>${escapeHtml(item)}</span><button data-remove-${kind}="${escapeAttr(item)}">刪除</button></div>`).join("") || `<div class="empty">尚無資料</div>`;
+    }
+
+    function openModal(kind) { const el = $(`${kind}ModalBackdrop`); if (el) el.classList.add("show"); }
+    function closeModal(kind) { const el = $(`${kind}ModalBackdrop`); if (el) { el.classList.remove("show"); const modal = el.querySelector(".modal"); modal?.classList.remove("maximized"); const btn = el.querySelector("[data-maximize]"); if (btn) btn.textContent = "⛶"; } }
+
+    function toggleModalMaximize(kind) {
+      const el = $(`${kind}ModalBackdrop`);
+      const modal = el?.querySelector(".modal");
+      const btn = el?.querySelector("[data-maximize]");
+      if (!modal) return;
+      const isMax = modal.classList.toggle("maximized");
+      if (btn) btn.textContent = isMax ? "↙" : "⛶";
+    }
+
+    function openRecordModal(recordId = null) {
+      renderSelectOptions();
+      editingRecordId = recordId;
+      const rec = recordId ? state.records.find(r => r.id === recordId) : null;
+      $("recordModalTitle").textContent = rec ? "編輯工作紀錄" : "新增工作紀錄";
+      $("saveRecordBtn").textContent = rec ? "儲存修改" : "儲存紀錄";
+      $("recordDate").value = rec?.date || todayISO();
+      $("recordDue").value = rec?.due || todayISO();
+      $("recordTitle").value = rec?.title || "";
+      $("recordProject").value = rec?.project || "";
+      $("recordNote").value = rec?.note || "";
+      $("recordTaskPreset").value = "";
+      $("recordStatus").value = rec?.status || "已完成";
+      $("recordPriority").value = rec?.priority || "中";
+      if (rec) {
+        if (![...$("recordOwner").options].some(o => o.value === rec.owner)) $("recordOwner").insertAdjacentHTML("beforeend", `<option>${escapeHtml(rec.owner)}</option>`);
+        if (![...$("recordCategory").options].some(o => o.value === rec.category)) $("recordCategory").insertAdjacentHTML("beforeend", `<option>${escapeHtml(rec.category)}</option>`);
+        if (![...$("recordType").options].some(o => o.value === rec.type)) $("recordType").insertAdjacentHTML("beforeend", `<option>${escapeHtml(rec.type)}</option>`);
+        $("recordOwner").value = rec.owner;
+        $("recordCategory").value = rec.category;
+        $("recordType").value = rec.type;
+      } else {
+        $("recordOwner").value = state.settings.people[0] || "";
+        $("recordCategory").value = state.settings.categories[0] || "";
+        $("recordType").value = state.settings.types[0] || "";
+      }
+      openModal("record");
+      setTimeout(() => $("recordTitle").focus(), 50);
+    }
+
+    function saveRecordFromForm(e) {
+      e.preventDefault();
+      const rec = {
+        id: editingRecordId || uid(),
+        date: $("recordDate").value,
+        owner: $("recordOwner").value,
+        title: $("recordTitle").value.trim(),
+        category: $("recordCategory").value,
+        type: $("recordType").value,
+        status: $("recordStatus").value,
+        due: $("recordDue").value,
+        project: $("recordProject").value.trim(),
+        priority: $("recordPriority").value,
+        note: $("recordNote").value.trim()
+      };
+      if (!rec.title) return showToast("請輸入工作項目。");
+      const wasEditing = Boolean(editingRecordId);
+      if (wasEditing) {
+        state.records = state.records.map(r => r.id === editingRecordId ? rec : r);
+      } else {
+        state.records.push(rec);
+      }
+      state.selectedMonth = monthOf(rec.date);
+      editingRecordId = null;
+      closeModal("record");
+      initResizableModals();
+    render();
+      showToast(wasEditing ? "已更新工作紀錄。" : "工作紀錄已儲存，統計與月報已同步更新。");
+    }
+
+    function deleteRecord(id) {
+      const rec = state.records.find(r => r.id === id);
+      if (!rec) return;
+      if (!confirm(`確定刪除「${rec.title}」？`)) return;
+      state.records = state.records.filter(r => r.id !== id);
+      initResizableModals();
+    render();
+      showToast("已刪除工作紀錄。統計資料已更新。");
+    }
+
+    function addSetting(kind) {
+      const map = {
+        person: { input: "newPerson", arr: state.settings.people, label: "人員" },
+        category: { input: "newCategory", arr: state.settings.categories, label: "工作分類" },
+        type: { input: "newType", arr: state.settings.types, label: "工作種類" },
+        task: { input: "newTask", arr: state.settings.commonTasks, label: "常用任務" }
+      };
+      const target = map[kind];
+      const val = $(target.input).value.trim();
+      if (!val) return showToast(`請輸入${target.label}名稱。`);
+      if (target.arr.includes(val)) return showToast(`${target.label}已存在。`);
+      target.arr.push(val);
+      $(target.input).value = "";
+      initResizableModals();
+    render();
+      showToast(`已新增${target.label}：${val}`);
+    }
+
+    function removeSetting(kind, value) {
+      const refs = {
+        person: state.records.some(r => r.owner === value),
+        category: state.records.some(r => r.category === value),
+        type: state.records.some(r => r.type === value),
+        task: false
+      };
+      if (refs[kind]) {
+        if (!confirm(`「${value}」已有工作紀錄使用。刪除後，既有紀錄會保留文字，但新增表單將不再提供此選項。確定刪除？`)) return;
+      }
+      if (kind === "person") state.settings.people = state.settings.people.filter(x => x !== value);
+      if (kind === "category") state.settings.categories = state.settings.categories.filter(x => x !== value);
+      if (kind === "type") state.settings.types = state.settings.types.filter(x => x !== value);
+      if (kind === "task") state.settings.commonTasks = state.settings.commonTasks.filter(x => x !== value);
+      initResizableModals();
+    render();
+      showToast(`已刪除維護項目：${value}`);
+    }
+
+    function exportData() {
+      const payload = {
+        app: "personal-work-dashboard",
+        version: "5.0",
+        exportedAt: new Date().toISOString(),
+        ...state
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `個人工作績效Dashboard_${state.selectedMonth}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      showToast("資料已匯出 JSON。包含工作紀錄、人員、分類與種類設定。");
+    }
+
+    function importData(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const next = normalizeState(parsed);
+          if (!Array.isArray(next.records)) throw new Error("資料格式不正確");
+          state = next;
+          initResizableModals();
+    render();
+          showToast("匯入成功，Dashboard 已更新。", 2600);
+        } catch (err) {
+          console.error(err);
+          showToast("匯入失敗：請確認是本 Dashboard 匯出的 JSON 檔。", 3200);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function copyText(text) {
+      navigator.clipboard?.writeText(text).then(() => showToast("已複製月報文字。"))
+        .catch(() => {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+          showToast("已複製月報文字。");
+        });
+    }
+
+    function showReportModal() {
+      const text = renderReport(true);
+      $("reportModalText").textContent = text;
+      openModal("report");
+    }
+
+    function clearSelectedMonth() {
+      const records = selectedMonthRecords();
+      if (!records.length) return showToast("本月沒有可清空的紀錄。");
+      if (!confirm(`確定清空 ${state.selectedMonth} 的 ${records.length} 筆紀錄？`)) return;
+      state.records = state.records.filter(r => monthOf(r.date) !== state.selectedMonth);
+      initResizableModals();
+    render();
+      showToast("已清空本月工作紀錄。");
+    }
+
+    function handleAction(action) {
+      if (action === "open-add") openRecordModal();
+      if (action === "open-work-list") openWorkListModal();
+      if (action === "open-maintenance") openModal("maintenance");
+      if (action === "generate-report") showReportModal();
+      if (action === "focus-dashboard") showToast("目前已在儀表板總覽。", 1500);
+    }
+
+    function showToast(message, ms = 2200) {
+      const t = $("toast");
+      t.textContent = message;
+      t.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => t.classList.remove("show"), ms);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>'"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[ch]));
+    }
+    function escapeAttr(str) { return escapeHtml(str).replace(/`/g, "&#96;"); }
+
+
+    function initResizableModals() {
+      document.querySelectorAll(".modal.resizable").forEach(modal => {
+        if (!modal.querySelector(".resize-handle")) {
+          const handle = document.createElement("div");
+          handle.className = "resize-handle";
+          handle.title = "拖曳調整視窗大小";
+          handle.textContent = "↘";
+          modal.appendChild(handle);
+        }
+      });
+    }
+
+    document.addEventListener("pointerdown", (e) => {
+      const handle = e.target.closest(".resize-handle");
+      if (!handle) return;
+      const modal = handle.closest(".modal.resizable");
+      if (!modal || modal.classList.contains("maximized")) return;
+      e.preventDefault();
+      const rect = modal.getBoundingClientRect();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = rect.width;
+      const startH = rect.height;
+      const minW = parseInt(getComputedStyle(modal).minWidth, 10) || 640;
+      const minH = parseInt(getComputedStyle(modal).minHeight, 10) || 440;
+      const maxW = window.innerWidth - 28;
+      const maxH = window.innerHeight - 28;
+      modal.setPointerCapture?.(e.pointerId);
+      function onMove(ev) {
+        const nextW = Math.min(maxW, Math.max(minW, startW + ev.clientX - startX));
+        const nextH = Math.min(maxH, Math.max(minH, startH + ev.clientY - startY));
+        modal.style.width = `${nextW}px`;
+        modal.style.height = `${nextH}px`;
+      }
+      function onUp() {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+      }
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp, { once: true });
+    });
+
+    document.addEventListener("click", (e) => {
+      const actionEl = e.target.closest("[data-action]");
+      if (actionEl) handleAction(actionEl.dataset.action);
+      const closeEl = e.target.closest("[data-close]");
+      if (closeEl) closeModal(closeEl.dataset.close);
+      const maxEl = e.target.closest("[data-maximize]");
+      if (maxEl) toggleModalMaximize(maxEl.dataset.maximize);
+      const edit = e.target.closest("[data-edit]");
+      if (edit) { closeModal("workList"); closeModal("delayList"); openRecordModal(edit.dataset.edit); }
+      const complete = e.target.closest("[data-mark-complete]");
+      if (complete) markComplete(complete.dataset.markComplete);
+      const del = e.target.closest("[data-delete]");
+      if (del) deleteRecord(del.dataset.delete);
+      const add = e.target.closest("[data-add]");
+      if (add) addSetting(add.dataset.add);
+      const rp = e.target.closest("[data-remove-person]");
+      if (rp) removeSetting("person", rp.dataset.removePerson);
+      const rc = e.target.closest("[data-remove-category]");
+      if (rc) removeSetting("category", rc.dataset.removeCategory);
+      const rt = e.target.closest("[data-remove-type]");
+      if (rt) removeSetting("type", rt.dataset.removeType);
+      const rtask = e.target.closest("[data-remove-task]");
+      if (rtask) removeSetting("task", rtask.dataset.removeTask);
+    });
+
+    $("addRecordBtn").addEventListener("click", openRecordModal);
+    $("recordForm").addEventListener("submit", saveRecordFromForm);
+    $("monthPicker").addEventListener("change", (e) => { state.selectedMonth = e.target.value || state.selectedMonth; render(); });
+    $("exportBtn").addEventListener("click", exportData);
+    $("importBtn").addEventListener("click", () => $("importFile").click());
+    $("importFile").addEventListener("change", (e) => { importData(e.target.files[0]); e.target.value = ""; });
+    $("generateReportBtn").addEventListener("click", showReportModal);
+    $("expandReportBtn").addEventListener("click", showReportModal);
+    $("copyReportBtn").addEventListener("click", () => copyText($("reportPreview").textContent));
+    $("copyReportModalBtn").addEventListener("click", () => copyText($("reportModalText").textContent));
+    $("clearMonthBtn").addEventListener("click", clearSelectedMonth);
+    $("openWorkListBtn").addEventListener("click", openWorkListModal);
+    $("openDelayListBtn").addEventListener("click", openDelayListModal);
+    $("quickAddBtn").addEventListener("click", openRecordModal);
+    $("addFromListBtn").addEventListener("click", () => { closeModal("workList"); openRecordModal(); });
+    $("projectHintBtn").addEventListener("click", () => showToast("專案進度會優先依本月關聯專案紀錄計算；若本月無專案紀錄，則顯示預設範例專案。", 3300));
+    $("recordTaskPreset").addEventListener("change", (e) => {
+      if (e.target.value) $("recordTitle").value = e.target.value;
+    });
+
+    ["workSearch", "workOwnerFilter", "workCategoryFilter", "workTypeFilter", "workStatusFilter"].forEach(id => $(id).addEventListener("input", renderWorkList));
+    ["delaySearch", "delayOwnerFilter", "delayCategoryFilter", "delayTypeFilter"].forEach(id => $(id).addEventListener("input", renderDelayList));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") ["record", "maintenance", "report", "workList", "delayList"].forEach(closeModal);
+    });
+
+    ["recordModalBackdrop", "maintenanceModalBackdrop", "reportModalBackdrop", "workListModalBackdrop", "delayListModalBackdrop"].forEach(id => {
+      $(id).addEventListener("click", (e) => { if (e.target.id === id) e.target.classList.remove("show"); });
+    });
+
+    ["newPerson", "newCategory", "newType", "newTask"].forEach((id) => {
+      $(id).addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (id === "newPerson") addSetting("person");
+          if (id === "newCategory") addSetting("category");
+          if (id === "newType") addSetting("type");
+          if (id === "newTask") addSetting("task");
+        }
+      });
+    });
+
+    initResizableModals();
+    render();
+    initPerformanceCloudSync();
+  </script>
+</body>
+</html>

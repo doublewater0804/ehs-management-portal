@@ -177,6 +177,37 @@
             border: 0;
             padding: 0;
         }
+        /* 人工剔除放大視窗 */
+        .modal-backdrop {
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(2px);
+        }
+        .modal-table-wrap {
+            max-height: 44vh;
+            overflow: auto;
+            scrollbar-width: thin;
+        }
+        .modal-table-wrap::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        .modal-table-wrap::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        .modal-day-table th,
+        .modal-day-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 10px;
+            white-space: nowrap;
+        }
+        .modal-day-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            z-index: 1;
+        }
+
         /* 列印樣式優化 */
         .print-remark-content {
             display: none;
@@ -199,7 +230,7 @@
 <div class="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-6">
 <div>
 <h1 class="text-2xl font-bold text-gray-800 flex flex-wrap items-center gap-y-1">
-<select class="mr-2 border-b-2 border-blue-600 bg-transparent focus:outline-none no-print" id="view-year" onchange="renderAll()">
+<select class="mr-2 border-b-2 border-blue-600 bg-transparent focus:outline-none no-print" id="view-year" onchange="handleYearChange()">
 <!-- 年度選項由 JS 動態生成 -->
 </select>
 <span class="mr-1" id="display-year"></span>年廠區廢氣燃燒塔排放使用事件日數統計
@@ -518,7 +549,10 @@
 <button class="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition shadow" type="submit">儲存紀錄</button>
 </form>
 </div><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-orange-500">
-<h2 class="text-lg font-bold text-gray-800 mb-2 border-b pb-2">人工剔除使用日數</h2>
+<div class="flex items-center justify-between gap-2 mb-2 border-b pb-2">
+<h2 class="text-lg font-bold text-gray-800">人工剔除使用日數</h2>
+<button class="inline-flex items-center gap-1 rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700 hover:bg-orange-100 transition" id="open-exclusion-modal-btn" type="button" title="放大檢視人工剔除清單">⛶ 放大</button>
+</div>
 <p class="text-xs text-gray-500 mb-4 leading-relaxed">
                         以「工廠 + 日期」為單位人工剔除。資料不會被刪除，只是不納入定檢、非定檢、合計與區域總計。剔除原因可填可不填。
                     </p>
@@ -605,16 +639,85 @@
 </div>
 <!-- 備註欄位 -->
 <div class="mt-4 p-4 bg-white border border-black rounded shadow-sm min-h-[120px]">
-<h3 class="font-bold border-b mb-2 text-sm">備註：</h3>
+<div class="flex flex-wrap items-center justify-between gap-2 border-b mb-2 pb-2">
+<h3 class="font-bold text-sm">備註：</h3>
+<span class="inline-flex items-center rounded bg-slate-100 text-slate-500 px-2 py-1 text-[11px] font-bold no-print" id="manual-remarks-save-status">已載入</span>
+</div>
 <div class="screen-remark-editor no-print">
 <textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed focus:ring-2 focus:ring-blue-500" id="manual-remarks" placeholder="請手動輸入本年度非定檢原因、異常說明或補充事項..." rows="5"></textarea>
-<p class="mt-2 text-[11px] text-gray-400">此備註欄依年度自動儲存在瀏覽器；Excel 匯入不會寫入任何備註內容。</p>
+<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+<p class="text-[11px] text-gray-400">備註需按「儲存備註」後才會寫入瀏覽器與雲端；Excel 匯入不會寫入任何備註內容。</p>
+<div class="flex gap-2">
+<button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition" id="save-manual-remarks-btn" type="button">儲存備註</button>
+<button class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-200 transition" id="restore-manual-remarks-btn" type="button">還原已儲存內容</button>
+</div>
+</div>
 </div>
 <div class="print-remark-content text-[11px] text-gray-700 leading-relaxed" id="manual-remarks-print"></div>
 </div>
 <!-- 頁尾說明 (僅列印可見) -->
 <div class="mt-4 text-[10px] text-gray-400 hidden print:block text-right">
                     報表生成日期：<span id="print-date"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- 人工剔除使用日數放大視窗 -->
+<div class="fixed inset-0 z-50 hidden modal-backdrop no-print" id="exclusion-modal">
+<div class="flex min-h-full items-center justify-center p-4">
+<div class="w-[min(1180px,96vw)] max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200">
+<div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+<div>
+<h2 class="text-lg font-bold text-gray-800">人工剔除使用日數明細</h2>
+<p class="text-xs text-gray-500 mt-1" id="exclusion-modal-summary">本年度納入統計 0 天；已剔除 0 天。</p>
+</div>
+<button class="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-600 hover:bg-gray-200" id="close-exclusion-modal-btn" type="button">✕</button>
+</div>
+<div class="overflow-y-auto p-5 space-y-5" style="max-height: calc(92vh - 82px);">
+<section>
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-bold text-gray-700">納入統計清單</h3>
+<span class="text-xs text-gray-400" id="included-day-modal-count">0 天</span>
+</div>
+<div class="modal-table-wrap rounded border bg-white">
+<table class="modal-day-table w-full text-xs">
+<thead>
+<tr class="text-left text-gray-700">
+<th>日期</th>
+<th>工廠</th>
+<th>類型</th>
+<th>排放量</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="included-days-modal-body">
+<tr><td class="text-center text-gray-400 py-4" colspan="5">尚無資料</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-bold text-gray-700">已剔除清單</h3>
+<span class="text-xs text-gray-400" id="excluded-day-modal-count">0 天</span>
+</div>
+<div class="modal-table-wrap rounded border bg-white">
+<table class="modal-day-table w-full text-xs">
+<thead>
+<tr class="text-left text-gray-700">
+<th>日期</th>
+<th>工廠</th>
+<th>類型</th>
+<th>剔除原因</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="excluded-days-modal-body">
+<tr><td class="text-center text-gray-400 py-4" colspan="5">尚無剔除資料</td></tr>
+</tbody>
+</table>
+</div>
+</section>
 </div>
 </div>
 </div>
@@ -746,6 +849,8 @@
         let lastImportContext = null;
         let __flareApplyingRemote = false;
         let __flareCloudSaveTimer = null;
+        let manualRemarksDirty = false;
+        let manualRemarksLoadedYear = null;
 
         function setFirebaseSyncStatus(text, type = 'info') {
             const el = document.getElementById('firebase-sync-status');
@@ -768,9 +873,6 @@
                     out[key.replace('flare_manual_remarks_', '')] = localStorage.getItem(key) || '';
                 }
             });
-            const currentYear = document.getElementById('view-year')?.value;
-            const currentValue = document.getElementById('manual-remarks')?.value;
-            if (currentYear && currentValue !== undefined) out[currentYear] = currentValue;
             return out;
         }
 
@@ -868,6 +970,7 @@
             bindScheduleExcelImportEvents();
             bindMaintenanceCSVEvents();
             bindManualRemarksEvents();
+            bindExclusionModalEvents();
             bindSchedulePeriodEvents();
             bindFactoryAliasManagementEvents();
             renderFactoryAliasManager();
@@ -1188,22 +1291,133 @@
             return `flare_manual_remarks_${year}`;
         }
 
+        function bindExclusionModalEvents() {
+            const openBtn = document.getElementById('open-exclusion-modal-btn');
+            const closeBtn = document.getElementById('close-exclusion-modal-btn');
+            const modal = document.getElementById('exclusion-modal');
+            if (openBtn) openBtn.addEventListener('click', openExclusionModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeExclusionModal);
+            if (modal) {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) closeExclusionModal();
+                });
+            }
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') closeExclusionModal();
+            });
+        }
+
+        function openExclusionModal() {
+            const modal = document.getElementById('exclusion-modal');
+            if (!modal) return;
+            const year = parseInt(document.getElementById('view-year')?.value || new Date().getFullYear());
+            renderExclusionLists(year);
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeExclusionModal() {
+            const modal = document.getElementById('exclusion-modal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
         function bindManualRemarksEvents() {
             const remarks = document.getElementById('manual-remarks');
+            const saveBtn = document.getElementById('save-manual-remarks-btn');
+            const restoreBtn = document.getElementById('restore-manual-remarks-btn');
             if (!remarks) return;
+
             remarks.addEventListener('input', () => {
-                const year = parseInt(document.getElementById('view-year').value);
-                localStorage.setItem(getManualRemarksKey(year), remarks.value);
+                manualRemarksDirty = true;
                 updateManualRemarksPrint(remarks.value);
-                queueFlareCloudSave();
+                updateManualRemarksSaveStatus('尚未儲存', 'warn');
             });
+
+            if (saveBtn) saveBtn.addEventListener('click', saveManualRemarksForCurrentYear);
+            if (restoreBtn) restoreBtn.addEventListener('click', restoreManualRemarksForCurrentYear);
+
+            window.addEventListener('beforeunload', (event) => {
+                if (!manualRemarksDirty) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
+        }
+
+        function updateManualRemarksSaveStatus(text, type = 'saved') {
+            const el = document.getElementById('manual-remarks-save-status');
+            if (!el) return;
+            const cls = {
+                saved: 'inline-flex items-center rounded bg-emerald-100 text-emerald-700 px-2 py-1 text-[11px] font-bold no-print',
+                warn: 'inline-flex items-center rounded bg-amber-100 text-amber-700 px-2 py-1 text-[11px] font-bold no-print',
+                idle: 'inline-flex items-center rounded bg-slate-100 text-slate-500 px-2 py-1 text-[11px] font-bold no-print'
+            };
+            el.className = cls[type] || cls.idle;
+            el.textContent = text;
         }
 
         function loadManualRemarksForYear(year) {
             const remarks = document.getElementById('manual-remarks');
             const value = localStorage.getItem(getManualRemarksKey(year)) || '';
             if (remarks && remarks.value !== value) remarks.value = value;
+            manualRemarksLoadedYear = String(year);
+            manualRemarksDirty = false;
             updateManualRemarksPrint(value);
+            updateManualRemarksSaveStatus('已儲存', 'saved');
+        }
+
+        function loadManualRemarksForRender(year) {
+            const remarks = document.getElementById('manual-remarks');
+            const targetYear = String(year);
+            if (manualRemarksDirty && manualRemarksLoadedYear === targetYear) {
+                updateManualRemarksPrint(remarks?.value || '');
+                updateManualRemarksSaveStatus('尚未儲存', 'warn');
+                return;
+            }
+            loadManualRemarksForYear(year);
+        }
+
+        function saveManualRemarksForCurrentYear() {
+            const remarks = document.getElementById('manual-remarks');
+            const year = String(document.getElementById('view-year')?.value || '');
+            if (!remarks || !year) return;
+            localStorage.setItem(getManualRemarksKey(year), remarks.value);
+            manualRemarksLoadedYear = year;
+            manualRemarksDirty = false;
+            updateManualRemarksPrint(remarks.value);
+            updateManualRemarksSaveStatus('已儲存', 'saved');
+            queueFlareCloudSave();
+        }
+
+        function restoreManualRemarksForCurrentYear() {
+            const year = String(document.getElementById('view-year')?.value || '');
+            if (!year) return;
+            if (manualRemarksDirty && !confirm('備註尚未儲存，確定要還原成上次儲存的內容嗎？')) return;
+            loadManualRemarksForYear(year);
+        }
+
+        function hasUnsavedManualRemarks() {
+            return Boolean(manualRemarksDirty);
+        }
+
+        function confirmDiscardUnsavedManualRemarks(actionText = '離開') {
+            if (!hasUnsavedManualRemarks()) return true;
+            return confirm(`備註尚未儲存，${actionText}會放棄目前未儲存的備註內容。
+
+要繼續嗎？`);
+        }
+
+        function handleYearChange() {
+            const selector = document.getElementById('view-year');
+            if (!selector) return;
+            const previousYear = manualRemarksLoadedYear || String(new Date().getFullYear());
+            if (!confirmDiscardUnsavedManualRemarks('切換年度')) {
+                selector.value = previousYear;
+                return;
+            }
+            manualRemarksDirty = false;
+            renderAll();
         }
 
         function updateManualRemarksPrint(value) {
@@ -2444,43 +2658,61 @@
             return `<tr><td colspan="${colspan}" class="text-center text-gray-400 py-4">${escapeHtml(message)}</td></tr>`;
         }
 
+        function renderExclusionListRows(body, groups, mode, compact = true) {
+            if (!body) return;
+            const isIncluded = mode === 'included';
+            const emptyMessage = isIncluded ? '本年度尚無納入統計資料' : '本年度尚無人工剔除資料';
+            body.innerHTML = groups.length ? '' : emptyRow(5, emptyMessage);
+
+            groups.forEach(group => {
+                const tr = document.createElement('tr');
+                if (!isIncluded) tr.className = 'bg-orange-50';
+
+                if (isIncluded) {
+                    tr.innerHTML = `
+                        <td>${escapeHtml(group.date)}</td>
+                        <td>${escapeHtml(group.factory)}</td>
+                        <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
+                        <td title="同日資料筆數：${group.count}">${Number(group.totalAmount || 0).toLocaleString()}</td>
+                        <td><button onclick='excludeDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-orange-700 underline hover:text-orange-900">剔除</button></td>`;
+                } else {
+                    const reason = group.exclusion?.reason || '－';
+                    const reasonClass = compact ? 'max-w-[160px] truncate' : 'min-w-[280px] whitespace-normal break-words';
+                    tr.innerHTML = `
+                        <td>${escapeHtml(group.date)}</td>
+                        <td>${escapeHtml(group.factory)}</td>
+                        <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
+                        <td class="${reasonClass}" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
+                        <td><button onclick='restoreDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-blue-700 underline hover:text-blue-900">恢復</button></td>`;
+                }
+                body.appendChild(tr);
+            });
+        }
+
         function renderExclusionLists(year) {
             const includedBody = document.getElementById('included-days-body');
             const excludedBody = document.getElementById('excluded-days-body');
+            const includedModalBody = document.getElementById('included-days-modal-body');
+            const excludedModalBody = document.getElementById('excluded-days-modal-body');
             if (!includedBody || !excludedBody) return;
 
             const groups = getYearDayGroups(year);
             const includedGroups = groups.filter(g => !g.excluded);
             const excludedGroups = groups.filter(g => g.excluded);
 
-            includedBody.innerHTML = includedGroups.length ? '' : emptyRow(5, '本年度尚無納入統計資料');
-            includedGroups.forEach(group => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${escapeHtml(group.date)}</td>
-                    <td>${escapeHtml(group.factory)}</td>
-                    <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
-                    <td title="同日資料筆數：${group.count}">${Number(group.totalAmount || 0).toLocaleString()}</td>
-                    <td><button onclick='excludeDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-orange-700 underline hover:text-orange-900">剔除</button></td>`;
-                includedBody.appendChild(tr);
-            });
-
-            excludedBody.innerHTML = excludedGroups.length ? '' : emptyRow(5, '本年度尚無人工剔除資料');
-            excludedGroups.forEach(group => {
-                const reason = group.exclusion?.reason || '－';
-                const tr = document.createElement('tr');
-                tr.className = 'bg-orange-50';
-                tr.innerHTML = `
-                    <td>${escapeHtml(group.date)}</td>
-                    <td>${escapeHtml(group.factory)}</td>
-                    <td><span class="font-bold ${getTypeBadgeClass(group.types)}">${escapeHtml(getTypeLabel(group.types))}</span></td>
-                    <td class="max-w-[160px] truncate" title="${escapeHtml(reason)}">${escapeHtml(reason)}</td>
-                    <td><button onclick='restoreDay(${JSON.stringify(group.factory)}, ${JSON.stringify(group.date)})' class="text-blue-700 underline hover:text-blue-900">恢復</button></td>`;
-                excludedBody.appendChild(tr);
-            });
+            renderExclusionListRows(includedBody, includedGroups, 'included', true);
+            renderExclusionListRows(excludedBody, excludedGroups, 'excluded', true);
+            renderExclusionListRows(includedModalBody, includedGroups, 'included', false);
+            renderExclusionListRows(excludedModalBody, excludedGroups, 'excluded', false);
 
             document.getElementById('included-day-count').innerText = `${includedGroups.length} 天`;
             document.getElementById('excluded-day-count').innerText = `${excludedGroups.length} 天`;
+            const modalIncludedCount = document.getElementById('included-day-modal-count');
+            const modalExcludedCount = document.getElementById('excluded-day-modal-count');
+            const modalSummary = document.getElementById('exclusion-modal-summary');
+            if (modalIncludedCount) modalIncludedCount.innerText = `${includedGroups.length} 天`;
+            if (modalExcludedCount) modalExcludedCount.innerText = `${excludedGroups.length} 天`;
+            if (modalSummary) modalSummary.innerText = `本年度納入統計 ${includedGroups.length} 天；已剔除 ${excludedGroups.length} 天。`;
             document.getElementById('exclusion-panel-summary').innerHTML = `本年度納入統計 <span class="font-bold">${includedGroups.length}</span> 天；已剔除 <span class="font-bold">${excludedGroups.length}</span> 天。`;
             document.getElementById('excluded-days-summary').innerText = `目前統計已排除人工剔除使用日數：${excludedGroups.length} 天`;
         }
@@ -2534,7 +2766,7 @@
             
             const statsBody = document.getElementById('stats-body');
             statsBody.innerHTML = '';
-            loadManualRemarksForYear(year);
+            loadManualRemarksForRender(year);
             renderSchedulePeriodsList();
 
             let areaDayCounters = { "麥寮區": new Set(), "海豐區": new Set(), "HAC廠": new Set() };

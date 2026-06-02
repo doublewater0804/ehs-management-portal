@@ -456,7 +456,24 @@
   </section>
 
   <section id="page-people" class="page space-y-6">
-    <div class="soft-card p-6"><div class="inline-flex mb-2"><span class="tab-badge badge-maint">資料維護</span></div><h2 class="font-bold text-lg mb-4">人員管理</h2><form onsubmit="savePerson(event)" class="flex flex-col md:flex-row gap-3"><input id="personName" class="field md:w-80" placeholder="新增工作人員姓名" required /><button class="px-5 py-2 bg-teal-600 text-white rounded-xl font-bold">新增人員</button></form></div>
+    <div class="soft-card p-6">
+      <div class="inline-flex mb-2"><span class="tab-badge badge-maint">資料維護</span></div>
+      <h2 class="font-bold text-lg mb-4">人員管理</h2>
+      <form onsubmit="savePerson(event)" class="flex flex-col md:flex-row gap-3">
+        <input id="personName" class="field md:w-80" placeholder="新增工作人員姓名" required />
+        <button class="px-5 py-2 bg-teal-600 text-white rounded-xl font-bold">新增人員</button>
+      </form>
+      <div class="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h3 class="font-bold text-amber-900">資料清理</h3>
+          <p class="text-sm text-amber-800 mt-1">如果目前看到的是系統範例資料，可先一鍵清除範例填報；清除後人員狀態會變成「尚無紀錄」，即可刪除人員。</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button type="button" onclick="clearDemoRecords()" class="px-4 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-sm font-bold hover:bg-amber-100">一鍵清除範例填報資料</button>
+          <button type="button" onclick="clearAllEntryRecords()" class="px-4 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-sm font-bold hover:bg-rose-100">清空所有填報/請假紀錄</button>
+        </div>
+      </div>
+    </div>
     <div class="soft-card overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="text-left p-4">人員</th><th class="text-left p-4">顏色</th><th class="text-left p-4">狀態</th><th class="text-center p-4">動作</th></tr></thead><tbody id="peopleTable"></tbody></table></div>
   </section>
 </main>
@@ -553,8 +570,13 @@ function setCloudStatus(text, ok=true){
 }
 function save(){
   if(applyingRemote) return;
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState()));
+  }catch(e){
+    console.warn('本機備份失敗', e);
+  }
   if(!cloudReady || !window.__wh_saveState){
-    setCloudStatus('☁️ 雲端尚未連線', false);
+    setCloudStatus('☁️ 雲端尚未連線，本機已暫存', false);
     return;
   }
   clearTimeout(pendingCloudSaveTimer);
@@ -564,7 +586,7 @@ function save(){
       setCloudStatus('☁️ 已同步雲端', true);
     }catch(e){
       console.error(e);
-      setCloudStatus('☁️ 雲端儲存失敗', false);
+      setCloudStatus('☁️ 雲端儲存失敗，本機已暫存', false);
     }
   },350);
 }
@@ -1000,8 +1022,59 @@ function renderLeaveTable(){
 
 function savePerson(e){e.preventDefault(); const name=personName.value.trim(); if(name&&!people.includes(name)){people.push(name); personName.value=''; refreshAll(); showToast('已新增人員')}else showToast('人員已存在或名稱空白')}
 function quickAddPerson(){const name=prompt('請輸入新增工作人員姓名'); if(name&&name.trim()&&!people.includes(name.trim())){people.push(name.trim());refreshAll();dailyPerson.value=name.trim()}}
-function deletePerson(name){if(dailyRecords.some(r=>r.person===name)){alert('此人員已有填報紀錄，為避免月報資料遺失，請先保留。');return} if(confirm('確定刪除此人員？')){people=people.filter(p=>p!==name); if(selectedMonthlyPerson===name) selectedMonthlyPerson=''; refreshAll()}}
-function renderPeople(){document.getElementById('peopleTable').innerHTML=people.map(p=>`<tr class="border-t"><td class="p-4 font-bold">${safe(p)}</td><td class="p-4"><span class="inline-block w-6 h-3 rounded-full" style="background:${colorForPerson(p)}"></span></td><td class="p-4 text-slate-500">${dailyRecords.some(r=>r.person===p)?'已有填報紀錄':'尚無填報紀錄'}</td><td class="p-4 text-center"><button onclick="deletePerson('${safe(p)}')" class="text-rose-600">刪除</button></td></tr>`).join('')}
+function personRecordCounts(name){return {daily:dailyRecords.filter(r=>r.person===name).length, leave:leaveRecords.filter(r=>r.person===name).length};}
+function clearDemoRecords(){
+  const isDemoDaily=r=>String(r.desc||'').includes('示範資料') || String(r.id||'').startsWith('r');
+  const isDemoLeave=r=>String(r.note||'').includes('示範資料') || String(r.id||'').startsWith('l');
+  const dailyCount=dailyRecords.filter(isDemoDaily).length;
+  const leaveCount=leaveRecords.filter(isDemoLeave).length;
+  if(!dailyCount && !leaveCount){showToast('目前沒有偵測到範例填報資料'); return;}
+  if(!confirm(`確定清除範例資料？\n\n將刪除每日填報 ${dailyCount} 筆、請假/公出 ${leaveCount} 筆。\n人員名單與常用任務範本會保留。`)) return;
+  dailyRecords=dailyRecords.filter(r=>!isDemoDaily(r));
+  leaveRecords=leaveRecords.filter(r=>!isDemoLeave(r));
+  selectedMonthlyPerson=people[0]||'';
+  selectedMonthlyPeople=[...people];
+  refreshAll();
+  showToast(`已清除範例資料：每日 ${dailyCount} 筆、請假/公出 ${leaveCount} 筆`);
+}
+function clearAllEntryRecords(){
+  const dailyCount=dailyRecords.length;
+  const leaveCount=leaveRecords.length;
+  if(!dailyCount && !leaveCount){showToast('目前沒有任何填報或請假紀錄'); return;}
+  if(!confirm(`這會清空所有每日填報與請假/公出紀錄。\n\n每日填報：${dailyCount} 筆\n請假/公出：${leaveCount} 筆\n\n人員名單、常用任務與日曆設定會保留。是否繼續？`)) return;
+  if(!confirm('再次確認：清空後會同步到雲端，共用此頁面的其他人也會看到清空後的資料。確定清空？')) return;
+  dailyRecords=[];
+  leaveRecords=[];
+  selectedMonthlyPerson=people[0]||'';
+  selectedMonthlyPeople=[...people];
+  refreshAll();
+  showToast('已清空所有填報與請假/公出紀錄');
+}
+function deletePerson(name){
+  const counts=personRecordCounts(name);
+  if(counts.daily || counts.leave){
+    if(!confirm(`${name} 目前仍有紀錄：\n每日填報 ${counts.daily} 筆、請假/公出 ${counts.leave} 筆。\n\n是否連同該人員的相關紀錄一起刪除？`)) return;
+    dailyRecords=dailyRecords.filter(r=>r.person!==name);
+    leaveRecords=leaveRecords.filter(r=>r.person!==name);
+  }else if(!confirm(`確定刪除人員「${name}」？`)){
+    return;
+  }
+  people=people.filter(p=>p!==name);
+  selectedMonthlyPeople=selectedMonthlyPeople.filter(p=>p!==name);
+  if(selectedMonthlyPerson===name) selectedMonthlyPerson=selectedMonthlyPeople[0] || people[0] || '';
+  refreshAll();
+  showToast(`已刪除人員：${name}`);
+}
+function renderPeople(){
+  const tbody=document.getElementById('peopleTable');
+  if(!tbody) return;
+  tbody.innerHTML=people.map(p=>{
+    const counts=personRecordCounts(p);
+    const hasRecord=counts.daily || counts.leave;
+    const status=hasRecord ? `已有紀錄：每日 ${counts.daily} 筆、請假/公出 ${counts.leave} 筆` : '尚無紀錄';
+    return `<tr class="border-t"><td class="p-4 font-bold">${safe(p)}</td><td class="p-4"><span class="inline-block w-6 h-3 rounded-full" style="background:${colorForPerson(p)}"></span></td><td class="p-4 ${hasRecord?'text-amber-700':'text-slate-500'}">${status}</td><td class="p-4 text-center"><button onclick="deletePerson('${safe(p)}')" class="text-rose-600">刪除</button></td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="p-8 text-center text-slate-400">尚無人員資料</td></tr>';
+}
 
 function parseExcelDate(value){
   if(value instanceof Date) return value.toISOString().slice(0,10);

@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>環保例行工作 Dashboard｜Firebase版 V1.0</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGgf0A5MF0qPxQv1X8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    const stateRef = doc(db, "routine_work_dashboard", "shared_state");
+
+    window.__firebaseReady = Promise.resolve({
+      auth,
+      db,
+      signIn: () => signInWithPopup(auth, provider),
+      signOut: () => signOut(auth),
+      onAuth: (cb) => onAuthStateChanged(auth, cb),
+      listenState: (cb, errCb) => onSnapshot(
+        stateRef,
+        (snap) => cb(snap.exists() ? snap.data() : null),
+        errCb
+      ),
+      saveState: (state) => setDoc(stateRef, {
+        data: JSON.parse(JSON.stringify(state)),
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.email : "",
+        app: "routine-work-dashboard",
+        version: "firebase-v1.0"
+      }, { merge: true })
+    });
+  </script>
+  <style>
+    :root{
+      --bg:#f3f7fc; --panel:#fff; --text:#10233f; --muted:#64748b; --line:#dfe7f1;
+      --blue:#2563eb; --blue2:#eaf2ff; --green:#16a34a; --amber:#f59e0b; --purple:#8b5cf6;
+      --red:#ef4444; --gray:#94a3b8; --shadow:0 12px 30px rgba(15,35,66,.08); --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;
+      color:var(--text);
+      background:linear-gradient(120deg,#eef5ff,#f2fbf7);
+    }
+    button,input,select,textarea{font-family:inherit}
+    button{cursor:pointer}
+    .layout{display:grid;grid-template-columns:248px minmax(1080px,1fr);min-height:100vh}
+    aside{
+      background:rgba(255,255,255,.88);
+      border-right:1px solid var(--line);
+      padding:22px 14px;
+      position:sticky;top:0;height:100vh;
+    }
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:24px}
+    .logo{
+      width:42px;height:42px;border-radius:14px;
+      display:grid;place-items:center;color:#fff;font-size:22px;
+      background:linear-gradient(135deg,#22c55e,#2563eb);
+    }
+    .brand h1{font-size:19px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:4px 0 0}
+    .nav button{
+      width:100%;border:0;background:transparent;border-radius:14px;
+      padding:12px 14px;margin-bottom:6px;text-align:left;font-weight:900;color:#334155;
+    }
+    .nav button.active,.nav button:hover{background:var(--blue2);color:var(--blue)}
+    .help{
+      position:absolute;bottom:18px;left:14px;right:14px;
+      border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;
+      color:var(--muted);font-size:12px;line-height:1.65;
+    }
+    main{padding:26px 28px 40px;min-width:0}
+    .top{
+      display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px
+    }
+    .top h2{margin:0 0 8px;font-size:29px}.top p{margin:0;color:var(--muted);font-weight:800}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      height:42px;border:1px solid #d6e1ef;background:#fff;color:#25364d;
+      border-radius:12px;padding:0 14px;font-weight:950;box-shadow:0 7px 16px rgba(15,35,66,.05)
+    }
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.green{background:#ecfdf3;color:#15803d;border-color:#bbf7d0}
+    .btn.red{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+    .btn.small{height:32px;padding:0 10px;font-size:12px}
+    .cloud-status{
+      display:inline-flex;align-items:center;gap:7px;height:42px;border-radius:999px;
+      padding:0 12px;border:1px solid #d6e1ef;background:#fff;color:#475569;
+      font-size:12px;font-weight:950;box-shadow:0 7px 16px rgba(15,35,66,.05)
+    }
+    .cloud-dot{width:9px;height:9px;border-radius:999px;background:#94a3b8}
+    .cloud-dot.ok{background:#22c55e}.cloud-dot.warn{background:#f97316}.cloud-dot.err{background:#ef4444}
+    .cloud-user{font-size:12px;font-weight:900;color:#607089;margin-top:6px}
+    .cloud-banner{
+      display:none;margin-bottom:14px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;
+      border-radius:16px;padding:12px 14px;font-weight:900;line-height:1.6
+    }
+    .cloud-banner.show{display:block}
+    .card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+    .panel{padding:18px}.panel h3{margin:0 0 14px;font-size:17px}
+    .filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .field{display:flex;flex-direction:column;gap:7px}
+    .field label{font-size:12px;font-weight:950;color:#475569}
+    input,select,textarea{
+      border:1px solid #d6e1ef;border-radius:12px;background:#fff;color:#172033;
+      font-weight:850;padding:0 12px
+    }
+    input,select{height:42px} textarea{min-height:92px;padding:10px 12px;resize:vertical}
+    .section{display:none}.section.active{display:block}
+    .kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .kpi{
+      background:#fff;border:1px solid var(--line);border-radius:16px;padding:17px;
+      box-shadow:0 8px 20px rgba(15,35,66,.05)
+    }
+    .kpi .label{font-size:13px;color:#53657d;font-weight:950}
+    .kpi .num{font-size:26px;font-weight:1000;margin:9px 0 5px}
+    .kpi .sub{font-size:12px;color:#64748b;font-weight:850}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .chart-area{height:320px;position:relative}
+    .reminders{display:flex;flex-direction:column;gap:10px}
+    .reminder{
+      display:grid;grid-template-columns:8px 1fr auto;gap:10px;align-items:center;
+      padding:10px 0;border-bottom:1px solid #edf2f7
+    }
+    .bar{width:8px;height:42px;border-radius:999px}
+    .reminder b{display:block}.reminder small{color:var(--muted);font-weight:800}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:950}
+    .status-not{background:#f1f5f9;color:#475569}
+    .status-doing{background:#fff7ed;color:#c2410c}
+    .status-done{background:#ecfdf3;color:#15803d}
+    .status-pause{background:#f5f3ff;color:#7c3aed}
+    .status-due{background:#f5f3ff;color:#7c3aed}
+    .status-over{background:#fff1f2;color:#be123c}
+    .table-wrap{overflow:auto;max-width:100%;border-radius:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:#f8fafc;color:#475569;font-size:12px;text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+    td{padding:10px;border-bottom:1px solid #edf2f7;font-weight:800;white-space:nowrap}
+    tr:hover td{background:#fafcff}
+    .month-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+    .month-card{
+      background:#fff;cursor:pointer;transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;border:1px solid var(--line);border-radius:16px;padding:14px;min-height:190px;
+      box-shadow:0 7px 18px rgba(15,35,66,.05)
+    }
+    .month-card:hover{transform:translateY(-2px);border-color:#93c5fd;box-shadow:0 12px 24px rgba(37,99,235,.12)}
+    .month-card.active{border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    .month-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .month-head b{font-size:16px}
+    .month-card ul{margin:8px 0 0;padding-left:18px;color:#334155;font-size:13px;line-height:1.7}
+    .mini-stats{display:flex;gap:6px;flex-wrap:wrap}
+    .mini{border-radius:999px;padding:3px 7px;font-size:11px;font-weight:950}
+    .calendar-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .legend-inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:900;color:#334155}
+    .legend-inline span{display:inline-flex;align-items:center;gap:6px}
+        .legend-inline{background:#fff;border:1px solid #d8e3f0;border-radius:999px;padding:8px 12px;box-shadow:0 8px 18px rgba(15,35,66,.08)}
+    .legend-inline span{padding:3px 6px;border-radius:999px}
+    .legend-dot{width:14px;height:14px;border-radius:999px;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,35,66,.12)}
+    .legend-done{background:#22c55e}
+    .legend-doing{background:#f97316}
+    .legend-due{background:#8b5cf6}
+    .legend-over{background:#ef4444}
+    .mini-stats{margin-bottom:8px}
+    .mini{min-width:28px;text-align:center;border:1px solid transparent}
+    .mini.g{background:#dcfce7;color:#15803d;border-color:#86efac}
+    .mini.o{background:#ffedd5;color:#c2410c;border-color:#fdba74}
+    .mini.p{background:#ede9fe;color:#7c3aed;border-color:#c4b5fd}
+    .mini.r{background:#ffe4e6;color:#be123c;border-color:#fda4af}
+    .month-list{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px;color:#334155;font-size:13px;line-height:1.55}
+    .month-list li{display:flex;gap:7px;align-items:flex-start}
+    .cat-pill{display:inline-flex;align-items:center;justify-content:center;min-width:48px;max-width:64px;flex:0 0 auto;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:950;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .task-title{min-width:0;word-break:break-word}
+    .memo-card{margin-top:14px}
+    .memo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+    .memo-head h3{margin:0;font-size:17px}
+    .memo-sub{color:var(--muted);font-size:13px;font-weight:850;margin-bottom:10px}
+    .memo-actions{display:flex;gap:8px;align-items:center}
+    #monthMemo{width:100%;min-height:110px;border:1px solid #d6e1ef;border-radius:14px;padding:12px;font-weight:850;line-height:1.6;background:#fff}
+    .memo-count{text-align:right;color:#64748b;font-size:12px;font-weight:850;margin-top:6px}
+    .mini.g{background:#ecfdf3;color:#15803d}.mini.o{background:#fff7ed;color:#c2410c}
+    .mini.p{background:#f5f3ff;color:#7c3aed}.mini.r{background:#fff1f2;color:#be123c}
+    .list-tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .modal-back{display:none;position:fixed;inset:0;background:rgba(15,35,66,.45);z-index:50;align-items:center;justify-content:center;padding:20px}
+    .modal-back.show{display:flex}
+    .modal{width:min(1080px,96vw);max-height:92vh;overflow:hidden;background:#fff;border-radius:20px;display:flex;flex-direction:column}
+    .modal-head,.modal-foot{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .modal-foot{border-top:1px solid var(--line);border-bottom:0;justify-content:flex-end;gap:10px}
+    .modal-body{padding:18px 20px;overflow:auto}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .wide{grid-column:span 2}
+    .toast{display:none;position:fixed;right:20px;bottom:20px;background:#0f2342;color:#fff;border-radius:14px;padding:12px 16px;font-weight:900;z-index:90}
+    .toast.show{display:block}
+    @media(max-width:1250px){
+      .layout{grid-template-columns:1fr}.side{display:none}.kpis,.grid3,.grid2,.filters,.list-tools,.month-grid,.form-grid{grid-template-columns:1fr}.top{flex-direction:column}
+      .wide{grid-column:auto}
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand">
+      <div class="logo">🌿</div>
+      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.0</p></div>
+    </div>
+    <div class="nav" id="nav">
+      <button class="active" data-page="calendar">📅 年度行事曆</button>
+      <button data-page="month">🗓 本月工作</button>
+      <button data-page="tasks">📋 工作清單</button>
+      <button data-page="progress">📊 工作進度分析</button>
+      <button data-page="routine">⚙ 例行工作設定</button>
+      <button data-page="import">↗ 匯入與匯出</button>
+      <button data-page="settings">🛠 資料設定</button>
+    </div>
+    <div class="help">
+      <b>快速說明</b><br>
+      可由 Excel 匯入或人工新增工作；Firebase 版會在 Google 登入後同步到 Firestore，仍建議定期匯出 JSON 備份。
+    </div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <div>
+        <h2>環保例行工作 Dashboard</h2>
+        <p>掌握每月例行工作、截止日期、負責部門、負責人、完成率與逾期情形</p>
+      </div>
+      <div class="actions">
+        <span class="cloud-status" id="cloudStatus"><i class="cloud-dot warn" id="cloudDot"></i><span id="cloudText">Firebase 未登入</span></span>
+        <button class="btn primary" id="signInBtn" onclick="cloudSignIn()">Google 登入</button>
+        <button class="btn" id="signOutBtn" onclick="cloudSignOut()" style="display:none">登出</button>
+        <button class="btn" onclick="excelInput.click()">⬇ 匯入 Excel</button>
+        <button class="btn primary" onclick="openTaskModal()">＋ 新增工作</button>
+        <button class="btn green" onclick="exportJson()">匯出備份</button>
+        <button class="btn" onclick="jsonInput.click()">匯入備份</button>
+        <button class="btn" onclick="pushLocalToCloud()">本機→雲端</button>
+        <input id="excelInput" type="file" accept=".xlsx,.xls" hidden onchange="importExcel(event)">
+        <input id="jsonInput" type="file" accept=".json,application/json" hidden onchange="importJson(event)">
+      </div>
+    </div>
+
+    <div class="cloud-banner show" id="cloudBanner">
+      請先使用 Google 登入。登入成功後，資料會讀取 Firebase Firestore；可用「本機→雲端」把目前本機資料搬到 Firebase。
+    </div>
+
+    <div class="card panel" style="margin-bottom:14px">
+      <div class="filters">
+        <div class="field"><label>年度</label><select id="yearFilter" onchange="saveMemoBeforeRender()"></select></div>
+        <div class="field"><label>月份</label><select id="monthFilter" onchange="saveMemoBeforeRender()"></select></div>
+        <div class="field"><label>提醒範圍</label>
+          <select id="reminderFilter" onchange="renderAll()">
+            <option value="all">全部</option><option value="7">7天內</option><option value="14">14天內</option><option value="30">30天內</option><option value="over">已逾期</option>
+          </select>
+        </div>
+        <div class="field"><label>類別</label><select id="categoryFilter" onchange="renderAll()"></select></div>
+        <div class="field"><label>狀態</label><select id="statusFilter" onchange="renderAll()"></select></div>
+      </div>
+    </div>
+
+
+    <section id="page-month" class="section">
+      <div class="card panel"><h3>本月工作</h3><div class="table-wrap"><table id="monthPageTable"></table></div></div>
+    </section>
+
+    <section id="page-calendar" class="section active">
+      <div class="card panel">
+        <div class="calendar-title-row">
+          <h3 style="margin:0">年度行事曆</h3>
+          <div class="legend-inline" aria-label="狀態顏色說明">
+            <span title="綠色數字代表已完成工作件數"><i class="legend-dot legend-done"></i>已完成</span>
+            <span title="橘色數字代表進行中工作件數"><i class="legend-dot legend-doing"></i>進行中</span>
+            <span title="紫色數字代表即將到期工作件數"><i class="legend-dot legend-due"></i>即將到期</span>
+            <span title="紅色數字代表已逾期工作件數"><i class="legend-dot legend-over"></i>已逾期</span>
+          </div>
+        </div>
+        <div class="month-grid" id="calendarMonths"></div>
+      </div>
+      <div class="card panel memo-card">
+        <div class="memo-head">
+          <div>
+            <h3>備註</h3>
+            <div class="memo-sub" id="memoSub">可記錄本月追蹤事項、跨部門提醒、會議結論與補充說明。</div>
+          </div>
+          <div class="memo-actions">
+            <button class="btn" onclick="clearMemo()">清空</button>
+            <button class="btn primary" onclick="saveMemo()">儲存備註</button>
+          </div>
+        </div>
+        <textarea id="monthMemo" maxlength="1000" oninput="updateMemoCount()" placeholder="可在此記錄本月追蹤事項、跨部門提醒、會議結論與補充說明"></textarea>
+        <div class="memo-count" id="memoCount">0 / 1000</div>
+      </div>
+    </section>
+
+    <section id="page-tasks" class="section">
+      <div class="card panel">
+        <h3>工作清單</h3>
+        <div class="list-tools">
+          <input id="searchText" placeholder="搜尋工作名稱、負責人、部門" oninput="renderAll()">
+          <select id="listYear" onchange="renderAll()"></select>
+          <select id="listMonth" onchange="renderAll()"></select>
+          <select id="listCategory" onchange="renderAll()"></select>
+          <select id="listStatus" onchange="renderAll()"></select>
+          <button class="btn primary" onclick="openTaskModal()">新增工作</button>
+        </div>
+        <div class="table-wrap"><table id="allTaskTable"></table></div>
+      </div>
+    </section>
+
+    <section id="page-progress" class="section">
+      <div class="grid2">
+        <div class="card panel"><h3>每月工作量與完成率</h3><div class="chart-area"><canvas id="monthlyTrendChart"></canvas></div></div>
+        <div class="card panel"><h3>狀態統計</h3><div class="chart-area"><canvas id="progressChart"></canvas></div></div>
+      </div>
+    </section>
+
+
+    <section id="page-routine" class="section">
+      <div class="card panel">
+        <h3>例行工作設定</h3>
+        <p style="color:var(--muted);font-weight:800">可將工作設定為每季、每半年、每年，並產生指定年度工作。</p>
+        <div class="table-wrap"><table id="routineTable"></table></div>
+      </div>
+    </section>
+
+    <section id="page-import" class="section">
+      <div class="grid2">
+        <div class="card panel">
+          <h3>匯入 Excel</h3>
+          <p style="color:var(--muted);font-weight:800;line-height:1.8">支援目前這種「月份橫向、工作項目縱向」格式。系統會讀取 1月～12月欄位中的非空白內容，並建立工作。</p>
+          <button class="btn primary" onclick="excelInput.click()">選擇 Excel</button>
+        </div>
+        <div class="card panel">
+          <h3>備份與還原</h3>
+          <button class="btn green" onclick="exportJson()">匯出 JSON 備份</button>
+          <button class="btn" onclick="jsonInput.click()">匯入 JSON 備份</button>
+        </div>
+      </div>
+      <br>
+      <div class="card panel">
+        <h3>最近匯入紀錄</h3>
+        <div id="importHistory"></div>
+      </div>
+    </section>
+
+    <section id="page-settings" class="section">
+      <div class="grid2">
+        <div class="card panel">
+          <h3>類別設定</h3>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input id="newCategory" placeholder="新增類別，例如：廢棄物">
+            <button class="btn primary" onclick="addCategory()">新增</button>
+          </div>
+          <div id="categoryTags"></div>
+        </div>
+        <div class="card panel">
+          <h3>單位管理</h3>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input id="newDept" placeholder="新增單位">
+            <button class="btn primary" onclick="addDept()">新增</button>
+          </div>
+          <div class="table-wrap"><table id="deptTable"></table></div>
+        </div>
+      </div>
+      <br>
+      <div class="card panel">
+        <h3>人員管理</h3>
+        <div class="filters" style="grid-template-columns:1fr 1fr auto;margin-bottom:14px">
+          <div class="field">
+            <label>所屬單位</label>
+            <select id="personDeptSelect" onchange="renderSettings()"></select>
+          </div>
+          <div class="field">
+            <label>新增人員</label>
+            <input id="newPerson" placeholder="輸入人員姓名">
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button class="btn primary" onclick="addPersonFromSettings()">新增人員</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="peopleTable"></table></div>
+      </div>
+      <br>
+      <div class="card panel">
+        <h3>資料管理</h3>
+        <button class="btn red" onclick="clearData()">清除本機資料</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-back" id="taskModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle">新增工作</h3><button class="btn" onclick="closeTaskModal()">×</button></div>
+    <div class="modal-body">
+      <input id="editId" type="hidden">
+      <div class="form-grid">
+        <div class="field"><label>年度</label><input id="taskYear" type="number"></div>
+        <div class="field"><label>月份</label><select id="taskMonth"></select></div>
+        <div class="field"><label>類別</label><select id="taskCategory"></select></div>
+        <div class="field"><label>執行頻率</label>
+          <select id="taskFrequency">
+            <option>單次</option><option>每月</option><option>每季</option><option>每半年</option><option>每年</option>
+          </select>
+        </div>
+        <div class="field wide"><label>工作名稱</label><input id="taskName"></div>
+        <div class="field"><label>開始日期</label><input id="taskStart" type="date"></div>
+        <div class="field"><label>截止日期</label><input id="taskDeadline" type="date"></div>
+        <div class="field"><label>負責部門</label><select id="taskDept" onchange="handleTaskDeptChange()"></select></div>
+        <div class="field"><label>負責人</label><select id="taskOwner" onchange="handleTaskOwnerChange()"></select></div>
+        <div class="field"><label>狀態</label>
+          <select id="taskStatus">
+            <option>尚未開始</option><option>進行中</option><option>已完成</option><option>暫緩</option>
+          </select>
+        </div>
+        <div class="field"><label>完成日期</label><input id="taskCompleted" type="date"></div>
+        <div class="field"><label>提醒天數</label>
+          <select id="taskReminder"><option value="7">7天</option><option value="14">14天</option><option value="30">30天</option></select>
+        </div>
+        <div class="field wide"><label>備註</label><textarea id="taskNote"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeTaskModal()">取消</button><button class="btn primary" onclick="saveTask()">儲存</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY="envRoutineDashboardFirebaseCacheV10";
+const LEGACY_STORAGE_KEY="envRoutineDashboardV14";
+const STATUS_LIST=["全部","尚未開始","進行中","已完成","暫緩"];
+const DEFAULT_CATEGORIES=["空污費","水污費","碳費","ISO 14001","自願減量","永續報告","環保預算","其他"];
+const DEFAULT_DEPTS=["安衛處","環保處","管理部","轉型組","其他"];
+const CHART_COLORS=["#2563eb","#14b8a6","#22c55e","#f59e0b","#8b5cf6","#ef4444","#64748b","#06b6d4"];
+let charts={};
+let state=loadState();
+let cloudApi=null;
+let cloudUser=null;
+let cloudUnsubscribe=null;
+let cloudSaveTimer=null;
+let applyingRemote=false;
+let cloudLoaded=false;
+let lastCloudJson="";
+
+function demoTasks(){
+  return [
+    {id:uid(),year:2026,month:1,category:"空污費",name:"空污費申報",frequency:"每季",startDate:"2026-01-01",deadline:"2026-01-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:2,category:"空污費",name:"禁止化學武器公約相關化學物質申報",frequency:"每年",startDate:"2026-02-01",deadline:"2026-02-28",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:4,category:"空污費",name:"空污費申報",frequency:"每季",startDate:"2026-04-01",deadline:"2026-04-30",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:7,category:"空污費",name:"空污費申報",frequency:"每季",startDate:"2026-07-01",deadline:"2026-07-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:10,category:"空污費",name:"空污費申報及查驗結果追蹤",frequency:"每季",startDate:"2026-10-01",deadline:"2026-10-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:1,category:"水污費",name:"水污費繳納",frequency:"每半年",startDate:"2026-01-01",deadline:"2026-01-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:7,category:"水污費",name:"水污費繳納",frequency:"每半年",startDate:"2026-07-01",deadline:"2026-07-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:8,category:"水污費",name:"耗水費申報",frequency:"每年",startDate:"2026-08-01",deadline:"2026-08-31",dept:"環保處",owner:"",status:"尚未開始",completedDate:"",reminderDays:14,note:""},
+    {id:uid(),year:2026,month:9,category:"ISO 14001",name:"辦理 ISO14001 內稽作業",frequency:"每年",startDate:"2026-09-01",deadline:"2026-09-30",dept:"管理部",owner:"",status:"尚未開始",completedDate:"",reminderDays:30,note:""},
+    {id:uid(),year:2026,month:12,category:"ISO 14001",name:"ISO14001 外部定期追查",frequency:"每年",startDate:"2026-12-01",deadline:"2026-12-31",dept:"管理部",owner:"",status:"尚未開始",completedDate:"",reminderDays:30,note:""},
+    {id:uid(),year:2026,month:6,category:"自願減量",name:"自願減量申請",frequency:"每年",startDate:"2026-06-01",deadline:"2026-06-30",dept:"轉型組",owner:"",status:"尚未開始",completedDate:"",reminderDays:30,note:""},
+    {id:uid(),year:2026,month:5,category:"碳費",name:"申報平台輸入資料並提供轉型組",frequency:"每年",startDate:"2026-05-01",deadline:"2026-05-05",dept:"安衛處",owner:"",status:"尚未開始",completedDate:"",reminderDays:7,note:""},
+    {id:uid(),year:2026,month:5,category:"碳費",name:"碳費用及分攤比例報告提呈",frequency:"每年",startDate:"2026-05-01",deadline:"2026-05-10",dept:"轉型組",owner:"",status:"尚未開始",completedDate:"",reminderDays:7,note:""},
+    {id:uid(),year:2026,month:5,category:"碳費",name:"碳費繳費作業",frequency:"每年",startDate:"2026-05-01",deadline:"2026-05-15",dept:"安衛處",owner:"",status:"尚未開始",completedDate:"",reminderDays:7,note:""}
+  ];
+}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem("envRoutineDashboardV12") || localStorage.getItem("envRoutineDashboardV11") || localStorage.getItem("envRoutineDashboardV10");
+    if(raw) return normalize(JSON.parse(raw));
+  }catch(e){}
+  return normalize({tasks:demoTasks(),categories:[...DEFAULT_CATEGORIES],departments:[...DEFAULT_DEPTS],people:[],history:[]});
+}
+function normalize(s){
+  s.tasks=(s.tasks||[]).map(t=>{
+    const {proxy,...clean}=t;
+    return {...clean,dept:clean.dept||"其他",owner:clean.owner||""};
+  });
+  s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES])];
+  s.departments=[...new Set([...(s.departments||[]),...DEFAULT_DEPTS,...s.tasks.map(t=>t.dept).filter(Boolean)])];
+  s.people=Array.isArray(s.people)?s.people:[];
+  s.tasks.forEach(t=>{
+    if(t.owner && !s.people.some(p=>p.dept===t.dept && p.name===t.owner)){
+      s.people.push({dept:t.dept,name:t.owner});
+    }
+  });
+  s.people=s.people
+    .filter(p=>p&&p.dept&&p.name)
+    .filter((p,i,a)=>a.findIndex(x=>x.dept===p.dept&&x.name===p.name)===i);
+  s.history=s.history||[];
+  s.memos=s.memos||{};
+  return s;
+}
+function saveState(syncCloud=true){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  if(syncCloud) scheduleCloudSave();
+}
+function scheduleCloudSave(){
+  if(applyingRemote || !cloudApi || !cloudUser || !cloudLoaded) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>saveCloudNow(false),650);
+}
+async function saveCloudNow(force=false){
+  if(!cloudApi || !cloudUser){
+    updateCloudStatus("warn","Firebase 未登入");
+    toastMsg("請先 Google 登入");
+    return;
+  }
+  try{
+    const snapshot=JSON.stringify(state);
+    if(!force && snapshot===lastCloudJson) return;
+    updateCloudStatus("warn","雲端儲存中");
+    await cloudApi.saveState(state);
+    lastCloudJson=snapshot;
+    updateCloudStatus("ok","雲端已同步");
+  }catch(err){
+    console.error(err);
+    updateCloudStatus("err","雲端儲存失敗");
+    alert("Firebase 儲存失敗：" + (err.message || err));
+  }
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function fmtDate(d){return d||"—"}
+function today(){return new Date(new Date().toISOString().slice(0,10))}
+function daysUntil(dateStr){
+  if(!dateStr)return null;
+  const d=new Date(dateStr+"T00:00:00");
+  return Math.ceil((d-today())/86400000);
+}
+function toastMsg(t){toast.textContent=t;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),2200)}
+function showPage(page){
+  if(document.getElementById('monthMemo')){state.memos=state.memos||{};state.memos[memoKey()]=monthMemo.value.trim();saveState();}
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById("page-"+page).classList.add("active");
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  renderAll();
+}
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+
+function updateCloudStatus(type,text){
+  if(!document.getElementById("cloudText")) return;
+  cloudText.textContent=text;
+  cloudDot.className=`cloud-dot ${type||""}`;
+  if(type==="ok") cloudBanner.classList.remove("show");
+  else cloudBanner.classList.add("show");
+}
+async function setupFirebaseSync(){
+  if(!window.__firebaseReady){
+    updateCloudStatus("err","Firebase SDK 未載入");
+    return;
+  }
+  try{
+    cloudApi=await window.__firebaseReady;
+    cloudApi.onAuth((user)=>{
+      cloudUser=user;
+      signInBtn.style.display=user?"none":"inline-flex";
+      signOutBtn.style.display=user?"inline-flex":"none";
+      if(!user){
+        cloudLoaded=false;
+        if(cloudUnsubscribe){cloudUnsubscribe();cloudUnsubscribe=null;}
+        updateCloudStatus("warn","Firebase 未登入");
+        cloudBanner.innerHTML="請先使用 Google 登入。登入成功後，資料會讀取 Firebase Firestore；可用「本機→雲端」把目前本機資料搬到 Firebase。";
+        return;
+      }
+
+      updateCloudStatus("warn","雲端讀取中");
+      cloudBanner.innerHTML=`已登入：${user.email}。正在讀取 Firebase Firestore 資料。`;
+
+      if(cloudUnsubscribe) cloudUnsubscribe();
+      cloudUnsubscribe=cloudApi.listenState((remote)=>{
+        applyingRemote=true;
+        try{
+          if(remote && remote.data){
+            state=normalize(remote.data);
+            lastCloudJson=JSON.stringify(state);
+            cloudLoaded=true;
+            renderAll();
+            updateCloudStatus("ok","雲端已同步");
+            cloudBanner.classList.remove("show");
+          }else{
+            cloudLoaded=true;
+            lastCloudJson="";
+            updateCloudStatus("warn","雲端尚無資料");
+            cloudBanner.classList.add("show");
+            cloudBanner.innerHTML="Firebase 目前尚無資料。確認畫面資料正確後，請按右上角「本機→雲端」建立雲端資料。";
+          }
+        }finally{
+          applyingRemote=false;
+        }
+      },(err)=>{
+        console.error(err);
+        cloudLoaded=false;
+        updateCloudStatus("err","雲端讀取失敗");
+        cloudBanner.classList.add("show");
+        cloudBanner.innerHTML="Firebase 讀取失敗，請檢查 Firestore 規則、Google 登入帳號與 Authorized domains。";
+        alert("Firebase 讀取失敗：" + (err.message || err));
+      });
+    });
+  }catch(err){
+    console.error(err);
+    updateCloudStatus("err","Firebase 初始化失敗");
+    alert("Firebase 初始化失敗：" + (err.message || err));
+  }
+}
+async function cloudSignIn(){
+  try{
+    if(!cloudApi) cloudApi=await window.__firebaseReady;
+    await cloudApi.signIn();
+  }catch(err){
+    console.error(err);
+    updateCloudStatus("err","登入失敗");
+    alert("Google 登入失敗：" + (err.message || err));
+  }
+}
+async function cloudSignOut(){
+  try{
+    if(cloudApi) await cloudApi.signOut();
+  }catch(err){
+    console.error(err);
+    alert("登出失敗：" + (err.message || err));
+  }
+}
+async function pushLocalToCloud(){
+  if(!cloudUser){
+    await cloudSignIn();
+    if(!cloudUser) return;
+  }
+  if(!confirm("確定將目前畫面中的本機資料寫入 Firebase？這會覆蓋目前雲端共享資料。")) return;
+  cloudLoaded=true;
+  await saveCloudNow(true);
+  toastMsg("已將本機資料寫入 Firebase");
+}
+
+function taskDerivedStatus(t){
+  if(t.status==="已完成")return"已完成";
+  if(t.status==="暫緩")return"暫緩";
+  const d=daysUntil(t.deadline);
+  if(d!==null&&d<0)return"已逾期";
+  if(d!==null&&d<=Number(t.reminderDays||7))return"即將到期";
+  return t.status||"尚未開始";
+}
+function statusBadge(s){
+  const map={"尚未開始":"status-not","進行中":"status-doing","已完成":"status-done","暫緩":"status-pause","即將到期":"status-due","已逾期":"status-over"};
+  return `<span class="badge ${map[s]||"status-not"}">${s}</span>`;
+}
+function years(){
+  const ys=[...new Set(state.tasks.map(t=>Number(t.year)))].sort((a,b)=>a-b);
+  const now=new Date().getFullYear(); return ys.length?ys:[now];
+}
+function fillSelect(id,arr,keep=true){
+  const el=document.getElementById(id);if(!el)return;
+  const old=el.value;el.innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join("");
+  if(keep&&arr.map(String).includes(String(old)))el.value=old;
+}
+
+function peopleForDept(dept){
+  return state.people.filter(p=>p.dept===dept).map(p=>p.name).sort((a,b)=>a.localeCompare(b,"zh-Hant"));
+}
+function renderTaskDepartmentOptions(selected=""){
+  const current=selected||state.departments[0]||"其他";
+  taskDept.innerHTML=[
+    ...state.departments.map(d=>`<option value="${d}">${d}</option>`),
+    '<option value="__add_dept__">＋ 新增單位</option>'
+  ].join("");
+  taskDept.value=state.departments.includes(current)?current:(state.departments[0]||"其他");
+}
+function renderTaskOwnerOptions(dept,selected=""){
+  const names=peopleForDept(dept);
+  taskOwner.innerHTML=[
+    '<option value="">未指定</option>',
+    ...names.map(n=>`<option value="${n}">${n}</option>`),
+    '<option value="__add_person__">＋ 新增人員</option>'
+  ].join("");
+  taskOwner.value=names.includes(selected)?selected:"";
+}
+function handleTaskDeptChange(){
+  if(taskDept.value==="__add_dept__"){
+    const name=prompt("請輸入新增單位名稱：");
+    if(name&&name.trim()){
+      const dept=name.trim();
+      if(!state.departments.includes(dept)) state.departments.push(dept);
+      saveState();
+      renderTaskDepartmentOptions(dept);
+      renderTaskOwnerOptions(dept,"");
+      renderSettings();
+      toastMsg("已新增單位");
+    }else{
+      renderTaskDepartmentOptions(state.departments[0]||"其他");
+      renderTaskOwnerOptions(taskDept.value,"");
+    }
+    return;
+  }
+  renderTaskOwnerOptions(taskDept.value,"");
+}
+function handleTaskOwnerChange(){
+  if(taskOwner.value!=="__add_person__") return;
+  const dept=taskDept.value;
+  const name=prompt(`請輸入「${dept}」的人員姓名：`);
+  if(name&&name.trim()){
+    const person=name.trim();
+    if(!state.people.some(p=>p.dept===dept&&p.name===person)){
+      state.people.push({dept,name:person});
+    }
+    saveState();
+    renderTaskOwnerOptions(dept,person);
+    renderSettings();
+    toastMsg("已新增人員");
+  }else{
+    renderTaskOwnerOptions(dept,"");
+  }
+}
+
+function renderControls(){
+  const ys=years();
+  fillSelect("yearFilter",ys);fillSelect("listYear",["全部",...ys]);
+  const now=new Date();
+  if(!yearFilter.value)yearFilter.value=ys.includes(now.getFullYear())?now.getFullYear():ys.at(-1);
+  fillSelect("monthFilter",Array.from({length:12},(_,i)=>`${i+1}月`));
+  if(!monthFilter.value)monthFilter.value=`${now.getMonth()+1}月`;
+  fillSelect("categoryFilter",["全部",...state.categories]);
+  fillSelect("statusFilter",STATUS_LIST);
+  fillSelect("listMonth",["全部",...Array.from({length:12},(_,i)=>`${i+1}月`)]);
+  fillSelect("listCategory",["全部",...state.categories]);
+  fillSelect("listStatus",STATUS_LIST);
+  fillSelect("taskMonth",Array.from({length:12},(_,i)=>`${i+1}月`));
+  fillSelect("taskCategory",state.categories);
+  renderTaskDepartmentOptions(taskDept.value);
+  renderTaskOwnerOptions(taskDept.value,taskOwner.value);
+}
+function currentFilters(){
+  return {year:Number(yearFilter.value),month:Number(monthFilter.value.replace("月","")),category:categoryFilter.value,status:statusFilter.value,reminder:reminderFilter.value}
+}
+function filteredTasks(base=state.tasks, filters=currentFilters()){
+  return base.filter(t=>{
+    if(filters.year&&Number(t.year)!==Number(filters.year))return false;
+    if(filters.month&&Number(t.month)!==Number(filters.month))return false;
+    if(filters.category&&filters.category!=="全部"&&t.category!==filters.category)return false;
+    if(filters.status&&filters.status!=="全部"&&taskDerivedStatus(t)!==filters.status&&t.status!==filters.status)return false;
+    if(filters.reminder&&filters.reminder!=="all"){
+      const d=daysUntil(t.deadline);
+      if(filters.reminder==="over"&&!(d!==null&&d<0&&t.status!=="已完成"))return false;
+      if(filters.reminder!=="over"&&!(d!==null&&d>=0&&d<=Number(filters.reminder)&&t.status!=="已完成"))return false;
+    }
+    return true;
+  });
+}
+function renderAll(){
+  renderControls();
+  renderMonthPage();
+  renderCalendar();
+  renderTaskList();
+  renderProgress();
+  renderRoutine();
+  renderImportHistory();
+  renderSettings();
+  renderMemo();
+  saveState(false);
+}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+function taskRows(tasks){
+  return tasks.map(t=>`<tr>
+    <td>${t.category}</td><td>${t.name}</td><td>${fmtDate(t.deadline)}</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td>
+    <td>${statusBadge(taskDerivedStatus(t))}</td><td>${fmtDate(t.completedDate)}</td><td>${t.reminderDays||7}天</td>
+    <td><button class="btn small" onclick="editTask('${t.id}')">編輯</button> <button class="btn red small" onclick="deleteTask('${t.id}')">刪除</button></td>
+  </tr>`);
+}
+function renderTaskTable(id,tasks){
+  document.getElementById(id).innerHTML=`<thead><tr><th>類別</th><th>工作項目</th><th>截止日期</th><th>負責部門</th><th>負責人</th><th>狀態</th><th>完成日期</th><th>提醒</th><th>操作</th></tr></thead><tbody>${taskRows(tasks).join("")||'<tr><td colspan="9">目前沒有資料</td></tr>'}</tbody>`;
+}
+function categoryColor(category){
+  let hash=0;
+  for(let i=0;i<String(category).length;i++) hash=(hash*31+String(category).charCodeAt(i))>>>0;
+  const palette=[
+    ["#dbeafe","#1d4ed8"],["#dcfce7","#15803d"],["#fef3c7","#b45309"],["#ede9fe","#7c3aed"],
+    ["#cffafe","#0e7490"],["#ffe4e6","#be123c"],["#f1f5f9","#475569"],["#fae8ff","#a21caf"]
+  ];
+  return palette[hash%palette.length];
+}
+function categoryPill(category){
+  const [bg,fg]=categoryColor(category||"其他");
+  return `<span class="cat-pill" style="background:${bg};color:${fg}" title="${category||"其他"}">${category||"其他"}</span>`;
+}
+function renderMonthCards(id,year,activeMonth){
+  const el=document.getElementById(id);
+  el.innerHTML=Array.from({length:12},(_,i)=>{
+    const m=i+1,tasks=state.tasks.filter(t=>Number(t.year)===year&&Number(t.month)===m);
+    const done=tasks.filter(t=>t.status==="已完成").length,doing=tasks.filter(t=>t.status==="進行中").length,due=tasks.filter(t=>taskDerivedStatus(t)==="即將到期").length,over=tasks.filter(t=>taskDerivedStatus(t)==="已逾期").length;
+    return `<div class="month-card ${m===activeMonth?"active":""}" onclick="goToMonth(${m})" title="點擊查看 ${m} 月工作">
+      <div class="month-head"><b>${m}月</b><span>${tasks.length} 件</span></div>
+      <div class="mini-stats" aria-label="月份狀態統計">
+        <span class="mini g" title="已完成 ${done} 件">${done}</span>
+        <span class="mini o" title="進行中 ${doing} 件">${doing}</span>
+        <span class="mini p" title="即將到期 ${due} 件">${due}</span>
+        <span class="mini r" title="已逾期 ${over} 件">${over}</span>
+      </div>
+      <ul class="month-list">${tasks.slice(0,5).map(t=>`<li>${categoryPill(t.category)}<span class="task-title">${t.name}</span></li>`).join("")||"<li><span class='task-title'>無例行工作</span></li>"}</ul>
+      ${tasks.length>5?`<small>另有 ${tasks.length-5} 項</small>`:""}
+    </div>`;
+  }).join("");
+}
+function goToMonth(month){
+  monthFilter.value=`${month}月`;
+  showPage("month");
+}
+function renderMonthPage(){
+  const {year,month}=currentFilters();
+  renderTaskTable("monthPageTable",state.tasks.filter(t=>Number(t.year)===year&&Number(t.month)===month));
+}
+function renderCalendar(){renderMonthCards("calendarMonths",Number(yearFilter.value),Number(monthFilter.value.replace("月","")))}
+function saveMemoBeforeRender(){
+  if(document.getElementById('monthMemo')){state.memos=state.memos||{};state.memos[memoKey()]=monthMemo.value.trim();saveState();}
+  renderAll();
+}
+function memoKey(){
+  return `${Number(yearFilter.value)}-${String(Number(monthFilter.value.replace("月",""))).padStart(2,"0")}`;
+}
+function renderMemo(){
+  if(!document.getElementById("monthMemo")) return;
+  const y=Number(yearFilter.value);
+  const m=Number(monthFilter.value.replace("月",""));
+  memoSub.textContent=`${y} 年 ${m} 月備註：可記錄本月追蹤事項、跨部門提醒、會議結論與補充說明。`;
+  monthMemo.value=state.memos?.[memoKey()]||"";
+  updateMemoCount();
+}
+function updateMemoCount(){
+  if(!document.getElementById("monthMemo")) return;
+  memoCount.textContent=`${monthMemo.value.length} / 1000`;
+}
+function saveMemo(){
+  state.memos=state.memos||{};
+  state.memos[memoKey()]=monthMemo.value.trim();
+  saveState();
+  toastMsg("備註已儲存");
+}
+function clearMemo(){
+  if(!confirm("確定清空本月備註？")) return;
+  monthMemo.value="";
+  saveMemo();
+}
+
+function renderTaskList(){
+  const q=(searchText.value||"").toLowerCase();
+  let tasks=state.tasks.filter(t=>{
+    if(listYear.value&&listYear.value!=="全部"&&Number(t.year)!==Number(listYear.value))return false;
+    if(listMonth.value&&listMonth.value!=="全部"&&Number(t.month)!==Number(listMonth.value.replace("月","")))return false;
+    if(listCategory.value&&listCategory.value!=="全部"&&t.category!==listCategory.value)return false;
+    if(listStatus.value&&listStatus.value!=="全部"&&taskDerivedStatus(t)!==listStatus.value&&t.status!==listStatus.value)return false;
+    if(q&&!`${t.name} ${t.owner} ${t.dept}`.toLowerCase().includes(q))return false;
+    return true;
+  });
+  renderTaskTable("allTaskTable",tasks);
+}
+function renderProgress(){
+  const year=Number(yearFilter.value);
+  destroyChart("monthlyTrendChart");destroyChart("progressChart");
+  const months=Array.from({length:12},(_,i)=>`${i+1}月`);
+  const totals=months.map((_,i)=>state.tasks.filter(t=>Number(t.year)===year&&Number(t.month)===i+1).length);
+  const rates=months.map((_,i)=>{const ts=state.tasks.filter(t=>Number(t.year)===year&&Number(t.month)===i+1);return ts.length?ts.filter(t=>t.status==="已完成").length/ts.length*100:0});
+  charts.monthlyTrendChart=new Chart(document.getElementById("monthlyTrendChart"),{
+    data:{labels:months,datasets:[{type:"bar",label:"工作數",data:totals,backgroundColor:"#60a5fa",borderRadius:8,yAxisID:"y"},{type:"line",label:"完成率",data:rates,borderColor:"#16a34a",backgroundColor:"#16a34a",tension:.3,yAxisID:"y1"}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,max:100,position:"right",grid:{drawOnChartArea:false},ticks:{callback:v=>v+"%"}}}}
+  });
+  const all=state.tasks.filter(t=>Number(t.year)===year);
+  const labels=["尚未開始","進行中","已完成","暫緩","即將到期","已逾期"];
+  charts.progressChart=new Chart(document.getElementById("progressChart"),{
+    type:"pie",data:{labels,datasets:[{data:labels.map(s=>all.filter(t=>taskDerivedStatus(t)===s||t.status===s).length),backgroundColor:["#94a3b8","#f59e0b","#16a34a","#7c3aed","#8b5cf6","#ef4444"]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}}
+  });
+}
+function renderRoutine(){
+  const routines=state.tasks.filter(t=>t.frequency!=="單次");
+  routineTable.innerHTML=`<thead><tr><th>類別</th><th>工作名稱</th><th>頻率</th><th>月份</th><th>部門</th><th>負責人</th><th>操作</th></tr></thead><tbody>${
+    routines.map(t=>`<tr><td>${t.category}</td><td>${t.name}</td><td>${t.frequency}</td><td>${t.month}月</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td><td><button class="btn small" onclick="editTask('${t.id}')">編輯</button></td></tr>`).join("")||'<tr><td colspan="7">尚無例行工作</td></tr>'
+  }</tbody>`;
+}
+function renderImportHistory(){
+  importHistory.innerHTML=state.history.length?state.history.map(h=>`<div style="padding:10px;border-bottom:1px solid #edf2f7;font-weight:850">${h.file}<br><small>${h.time}｜新增 ${h.count} 筆</small></div>`).join(""):"尚無匯入紀錄";
+}
+function renderSettings(){
+  categoryTags.innerHTML=state.categories.map(c=>`<span class="badge status-not" style="margin:4px">${c}</span>`).join("");
+
+  deptTable.innerHTML=`<thead><tr><th>單位</th><th>人員數</th><th>操作</th></tr></thead><tbody>${
+    state.departments.map(d=>`<tr>
+      <td>${d}</td>
+      <td>${peopleForDept(d).length}</td>
+      <td>
+        <button class="btn small" onclick="renameDept('${escapeJs(d)}')">修改</button>
+        <button class="btn red small" onclick="deleteDept('${escapeJs(d)}')">刪除</button>
+      </td>
+    </tr>`).join("")
+  }</tbody>`;
+
+  const selected=personDeptSelect.value&&state.departments.includes(personDeptSelect.value)
+    ?personDeptSelect.value:(state.departments[0]||"其他");
+  fillSelect("personDeptSelect",state.departments);
+  personDeptSelect.value=selected;
+
+  const persons=peopleForDept(selected);
+  peopleTable.innerHTML=`<thead><tr><th>所屬單位</th><th>人員</th><th>操作</th></tr></thead><tbody>${
+    persons.map(name=>`<tr>
+      <td>${selected}</td>
+      <td>${name}</td>
+      <td>
+        <button class="btn small" onclick="renamePerson('${escapeJs(selected)}','${escapeJs(name)}')">修改</button>
+        <button class="btn red small" onclick="deletePerson('${escapeJs(selected)}','${escapeJs(name)}')">刪除</button>
+      </td>
+    </tr>`).join("")||'<tr><td colspan="3">此單位尚未建立人員</td></tr>'
+  }</tbody>`;
+}
+function escapeJs(value){
+  return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+
+function openTaskModal(task=null){
+  modalTitle.textContent=task?"編輯工作":"新增工作";
+  editId.value=task?.id||"";
+  taskYear.value=task?.year||Number(yearFilter.value)||new Date().getFullYear();
+  taskMonth.value=`${task?.month||Number(monthFilter.value.replace("月",""))||new Date().getMonth()+1}月`;
+  taskCategory.value=task?.category||state.categories[0];
+  taskFrequency.value=task?.frequency||"單次";
+  taskName.value=task?.name||"";
+  taskStart.value=task?.startDate||"";
+  taskDeadline.value=task?.deadline||"";
+  renderTaskDepartmentOptions(task?.dept||state.departments[0]);
+  renderTaskOwnerOptions(taskDept.value,task?.owner||"");
+  taskStatus.value=task?.status||"尚未開始";
+  taskCompleted.value=task?.completedDate||"";
+  taskReminder.value=String(task?.reminderDays||7);
+  taskNote.value=task?.note||"";
+  taskModal.classList.add("show");
+}
+function closeTaskModal(){taskModal.classList.remove("show")}
+function saveTask(){
+  if(!taskName.value.trim()){toastMsg("請輸入工作名稱");return}
+  if(!taskDeadline.value){toastMsg("請輸入截止日期");return}
+  const obj={
+    id:editId.value||uid(),year:Number(taskYear.value),month:Number(taskMonth.value.replace("月","")),
+    category:taskCategory.value,name:taskName.value.trim(),frequency:taskFrequency.value,
+    startDate:taskStart.value,deadline:taskDeadline.value,dept:taskDept.value,
+    owner:taskOwner.value||"",status:taskStatus.value,
+    completedDate:taskCompleted.value,reminderDays:Number(taskReminder.value),note:taskNote.value.trim()
+  };
+  const idx=state.tasks.findIndex(t=>t.id===obj.id);
+  if(idx>=0)state.tasks[idx]=obj;else state.tasks.push(obj);
+  if(obj.status==="已完成"&&!obj.completedDate)obj.completedDate=new Date().toISOString().slice(0,10);
+  saveState();closeTaskModal();renderAll();toastMsg("已儲存工作");
+}
+function editTask(id){const t=state.tasks.find(t=>t.id===id);if(t)openTaskModal(t)}
+function deleteTask(id){if(confirm("確定刪除這筆工作？")){state.tasks=state.tasks.filter(t=>t.id!==id);renderAll()}}
+function addCategory(){
+  const v=newCategory.value.trim();
+  if(!v)return;
+  if(!state.categories.includes(v))state.categories.push(v);
+  newCategory.value="";
+  renderAll();
+}
+function addDept(){
+  const v=newDept.value.trim();
+  if(!v)return;
+  if(state.departments.includes(v)){toastMsg("此單位已存在");return}
+  state.departments.push(v);
+  newDept.value="";
+  saveState();
+  renderAll();
+  personDeptSelect.value=v;
+  renderSettings();
+  toastMsg("已新增單位");
+}
+function addPersonFromSettings(){
+  const dept=personDeptSelect.value;
+  const name=newPerson.value.trim();
+  if(!dept||!name)return;
+  if(state.people.some(p=>p.dept===dept&&p.name===name)){toastMsg("此人員已存在");return}
+  state.people.push({dept,name});
+  newPerson.value="";
+  saveState();
+  renderAll();
+  personDeptSelect.value=dept;
+  renderSettings();
+  toastMsg("已新增人員");
+}
+function renameDept(oldName){
+  const next=prompt("請輸入新的單位名稱：",oldName);
+  if(!next||!next.trim()||next.trim()===oldName)return;
+  const name=next.trim();
+  if(state.departments.includes(name)){toastMsg("新的單位名稱已存在");return}
+  state.departments=state.departments.map(d=>d===oldName?name:d);
+  state.people.forEach(p=>{if(p.dept===oldName)p.dept=name});
+  state.tasks.forEach(t=>{if(t.dept===oldName)t.dept=name});
+  saveState();renderAll();toastMsg("已修改單位名稱");
+}
+function deleteDept(name){
+  const usedByTask=state.tasks.some(t=>t.dept===name);
+  const hasPeople=state.people.some(p=>p.dept===name);
+  if(usedByTask||hasPeople){
+    alert("此單位仍有工作資料或人員資料，請先更換負責資料或刪除所屬人員。");
+    return;
+  }
+  if(confirm(`確定刪除單位「${name}」？`)){
+    state.departments=state.departments.filter(d=>d!==name);
+    saveState();renderAll();toastMsg("已刪除單位");
+  }
+}
+function renamePerson(dept,oldName){
+  const next=prompt("請輸入新的人員姓名：",oldName);
+  if(!next||!next.trim()||next.trim()===oldName)return;
+  const name=next.trim();
+  if(state.people.some(p=>p.dept===dept&&p.name===name)){toastMsg("此人員姓名已存在");return}
+  state.people.forEach(p=>{if(p.dept===dept&&p.name===oldName)p.name=name});
+  state.tasks.forEach(t=>{if(t.dept===dept&&t.owner===oldName)t.owner=name});
+  saveState();renderAll();personDeptSelect.value=dept;renderSettings();toastMsg("已修改人員姓名");
+}
+function deletePerson(dept,name){
+  if(state.tasks.some(t=>t.dept===dept&&t.owner===name)){
+    alert("此人員仍有工作資料，請先更換該工作的負責人。");
+    return;
+  }
+  if(confirm(`確定刪除「${dept}／${name}」？`)){
+    state.people=state.people.filter(p=>!(p.dept===dept&&p.name===name));
+    saveState();renderAll();personDeptSelect.value=dept;renderSettings();toastMsg("已刪除人員");
+  }
+}
+
+function inferCategory(text,current=""){
+  const map=[
+    ["空污","空污費"],["水污","水污費"],["耗水","水污費"],["碳費","碳費"],
+    ["ISO14001","ISO 14001"],["ISO 14001","ISO 14001"],["自願減量","自願減量"],
+    ["永續報告","永續報告"],["預算","環保預算"]
+  ];
+  for(const [k,v] of map)if(text.includes(k))return v;
+  return current||"其他";
+}
+function extractDeadline(year,month,text){
+  const m=text.match(/(\d{1,2})\/(\d{1,2})/);
+  if(m)return `${year}-${String(m[1]).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+  const day=text.match(/(\d{1,2})日前|(\d{1,2})前/);
+  if(day)return `${year}-${String(month).padStart(2,"0")}-${String(day[1]||day[2]).padStart(2,"0")}`;
+  const end=text.match(/(\d{1,2})\/E/i);
+  if(end){
+    const mm=Number(end[1]),last=new Date(year,mm,0).getDate();
+    return `${year}-${String(mm).padStart(2,"0")}-${last}`;
+  }
+  const last=new Date(year,month,0).getDate();
+  return `${year}-${String(month).padStart(2,"0")}-${last}`;
+}
+function importExcel(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+    let added=[];
+    wb.SheetNames.forEach(name=>{
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:false,defval:""});
+      if(!rows.length)return;
+      const header=rows.find(r=>r.some(c=>/1月/.test(String(c))))||rows[0];
+      const monthCols={};
+      header.forEach((c,i)=>{const m=String(c).match(/(\d{1,2})月/);if(m)monthCols[i]=Number(m[1])});
+      const importYear=Number(yearFilter.value)||new Date().getFullYear();
+      let currentCategory="";
+      rows.forEach((row,ri)=>{
+        if(ri===0)return;
+        const first=String(row[0]||"").trim();
+        if(first)currentCategory=inferCategory(first,currentCategory);
+        Object.entries(monthCols).forEach(([ci,m])=>{
+          const text=String(row[Number(ci)]||"").trim();
+          if(!text)return;
+          const category=inferCategory(text,currentCategory);
+          const pieces=text.split(/\n|；|;/).map(s=>s.trim()).filter(Boolean);
+          pieces.forEach(piece=>{
+            added.push({
+              id:uid(),year:importYear,month:m,category,name:piece,frequency:"單次",
+              startDate:`${importYear}-${String(m).padStart(2,"0")}-01`,
+              deadline:extractDeadline(importYear,m,piece),dept:"其他",owner:"",
+              status:"尚未開始",completedDate:"",reminderDays:14,note:`Excel 匯入：${name}`
+            });
+          });
+        });
+      });
+    });
+    state.tasks.push(...added);
+    state.history.unshift({file:file.name,time:new Date().toLocaleString("zh-TW"),count:added.length});
+    state.history=state.history.slice(0,10);
+    saveState();renderAll();toastMsg(`匯入完成：新增 ${added.length} 筆`);
+    event.target.value="";
+  };
+  reader.readAsArrayBuffer(file);
+}
+function exportJson(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="環保例行工作Dashboard備份_Firebase_V1.0.json";a.click();
+}
+function importJson(event){
+  const file=event.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{try{state=normalize(JSON.parse(e.target.result));saveState();renderAll();toastMsg("備份匯入完成")}catch(err){toastMsg("JSON格式錯誤")}};
+  r.readAsText(file);
+}
+function clearData(){
+  if(!confirm("確定清除本機所有工作資料？"))return;
+  state=normalize({tasks:[],categories:[...DEFAULT_CATEGORIES],departments:[...DEFAULT_DEPTS],people:[],history:[],memos:{}});
+  saveState();renderAll();toastMsg("已清除");
+}
+
+renderAll();
+setupFirebaseSync();
+</script>
+</body>
+</html>

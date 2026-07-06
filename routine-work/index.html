@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>環保例行工作 Dashboard｜Firebase版 V1.0</title>
+  <title>環保例行工作 Dashboard｜Firebase版 V1.1</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script type="module">
@@ -57,7 +57,7 @@
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser ? auth.currentUser.email : "",
         app: "routine-work-dashboard",
-        version: "firebase-v1.0"
+        version: "firebase-v1.1"
       }, { merge: true })
     });
   </script>
@@ -200,6 +200,13 @@
     .month-list li{display:flex;gap:7px;align-items:flex-start}
     .cat-pill{display:inline-flex;align-items:center;justify-content:center;min-width:48px;max-width:64px;flex:0 0 auto;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:950;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .task-title{min-width:0;word-break:break-word}
+    .setting-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 120px auto;gap:8px;margin-bottom:12px;align-items:center}
+    .color-input{width:100%;height:42px;padding:4px;border-radius:12px}
+    .color-swatch{display:inline-flex;align-items:center;gap:8px}
+    .swatch-dot{width:18px;height:18px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,35,66,.18);display:inline-block}
+    .category-table input[type=color]{width:52px;height:32px;padding:3px;border-radius:10px}
+    .category-name-cell{display:flex;align-items:center;gap:8px}
+    .use-count{font-weight:1000;color:#0f2342}
     .memo-card{margin-top:14px}
     .memo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
     .memo-head h3{margin:0;font-size:17px}
@@ -231,7 +238,7 @@
   <aside>
     <div class="brand">
       <div class="logo">🌿</div>
-      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.0</p></div>
+      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.1</p></div>
     </div>
     <div class="nav" id="nav">
       <button class="active" data-page="calendar">📅 年度行事曆</button>
@@ -375,11 +382,12 @@
       <div class="grid2">
         <div class="card panel">
           <h3>類別設定</h3>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div class="setting-toolbar">
             <input id="newCategory" placeholder="新增類別，例如：廢棄物">
+            <input id="newCategoryColor" class="color-input" type="color" value="#2563eb" title="選擇類別顏色">
             <button class="btn primary" onclick="addCategory()">新增</button>
           </div>
-          <div id="categoryTags"></div>
+          <div class="table-wrap"><table id="categoryTable" class="category-table"></table></div>
         </div>
         <div class="card panel">
           <h3>單位管理</h3>
@@ -456,12 +464,17 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY="envRoutineDashboardFirebaseCacheV10";
-const LEGACY_STORAGE_KEY="envRoutineDashboardV14";
+const STORAGE_KEY="envRoutineDashboardFirebaseCacheV11";
+const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV10";
 const STATUS_LIST=["全部","尚未開始","進行中","已完成","暫緩"];
 const DEFAULT_CATEGORIES=["空污費","水污費","碳費","ISO 14001","自願減量","永續報告","環保預算","其他"];
 const DEFAULT_DEPTS=["安衛處","環保處","管理部","轉型組","其他"];
 const CHART_COLORS=["#2563eb","#14b8a6","#22c55e","#f59e0b","#8b5cf6","#ef4444","#64748b","#06b6d4"];
+const DEFAULT_CATEGORY_COLORS=["#2563eb","#16a34a","#8b5cf6","#f59e0b","#0e7490","#be123c","#64748b","#a21caf"];
+const DEFAULT_CATEGORY_COLOR_MAP={
+  "空污費":"#2563eb","水污費":"#16a34a","碳費":"#8b5cf6","ISO 14001":"#f59e0b",
+  "自願減量":"#0e7490","永續報告":"#be123c","環保預算":"#64748b","其他":"#475569"
+};
 let charts={};
 let state=loadState();
 let cloudApi=null;
@@ -502,7 +515,15 @@ function normalize(s){
     const {proxy,...clean}=t;
     return {...clean,dept:clean.dept||"其他",owner:clean.owner||""};
   });
-  s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES])];
+  s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES,...s.tasks.map(t=>t.category).filter(Boolean)])];
+  s.categoryMeta=s.categoryMeta||{};
+  s.categories.forEach((c,i)=>{
+    if(!s.categoryMeta[c]) s.categoryMeta[c]={color:DEFAULT_CATEGORY_COLOR_MAP[c]||DEFAULT_CATEGORY_COLORS[i%DEFAULT_CATEGORY_COLORS.length],order:i};
+    if(!s.categoryMeta[c].color) s.categoryMeta[c].color=DEFAULT_CATEGORY_COLOR_MAP[c]||DEFAULT_CATEGORY_COLORS[i%DEFAULT_CATEGORY_COLORS.length];
+    if(typeof s.categoryMeta[c].order!=="number") s.categoryMeta[c].order=i;
+  });
+  Object.keys(s.categoryMeta).forEach(c=>{if(!s.categories.includes(c)) delete s.categoryMeta[c]});
+  s.categories.sort((a,b)=>(s.categoryMeta[a]?.order??999)-(s.categoryMeta[b]?.order??999)||a.localeCompare(b,"zh-Hant"));
   s.departments=[...new Set([...(s.departments||[]),...DEFAULT_DEPTS,...s.tasks.map(t=>t.dept).filter(Boolean)])];
   s.people=Array.isArray(s.people)?s.people:[];
   s.tasks.forEach(t=>{
@@ -793,18 +814,25 @@ function taskRows(tasks){
 function renderTaskTable(id,tasks){
   document.getElementById(id).innerHTML=`<thead><tr><th>類別</th><th>工作項目</th><th>截止日期</th><th>負責部門</th><th>負責人</th><th>狀態</th><th>完成日期</th><th>提醒</th><th>操作</th></tr></thead><tbody>${taskRows(tasks).join("")||'<tr><td colspan="9">目前沒有資料</td></tr>'}</tbody>`;
 }
+function hexToRgba(hex,alpha=.14){
+  const clean=String(hex||"#64748b").replace("#","");
+  const full=clean.length===3?clean.split("").map(x=>x+x).join(""):clean.padEnd(6,"0").slice(0,6);
+  const r=parseInt(full.slice(0,2),16),g=parseInt(full.slice(2,4),16),b=parseInt(full.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function categoryMeta(category){
+  const c=category||"其他";
+  state.categoryMeta=state.categoryMeta||{};
+  if(!state.categoryMeta[c]) state.categoryMeta[c]={color:DEFAULT_CATEGORY_COLOR_MAP[c]||"#64748b",order:state.categories.indexOf(c)};
+  return state.categoryMeta[c];
+}
 function categoryColor(category){
-  let hash=0;
-  for(let i=0;i<String(category).length;i++) hash=(hash*31+String(category).charCodeAt(i))>>>0;
-  const palette=[
-    ["#dbeafe","#1d4ed8"],["#dcfce7","#15803d"],["#fef3c7","#b45309"],["#ede9fe","#7c3aed"],
-    ["#cffafe","#0e7490"],["#ffe4e6","#be123c"],["#f1f5f9","#475569"],["#fae8ff","#a21caf"]
-  ];
-  return palette[hash%palette.length];
+  const color=categoryMeta(category).color||"#64748b";
+  return [hexToRgba(color,.14),color,hexToRgba(color,.32)];
 }
 function categoryPill(category){
-  const [bg,fg]=categoryColor(category||"其他");
-  return `<span class="cat-pill" style="background:${bg};color:${fg}" title="${category||"其他"}">${category||"其他"}</span>`;
+  const [bg,fg,border]=categoryColor(category||"其他");
+  return `<span class="cat-pill" style="background:${bg};color:${fg};border:1px solid ${border}" title="${category||"其他"}">${category||"其他"}</span>`;
 }
 function renderMonthCards(id,year,activeMonth){
   const el=document.getElementById(id);
@@ -903,12 +931,29 @@ function renderImportHistory(){
   importHistory.innerHTML=state.history.length?state.history.map(h=>`<div style="padding:10px;border-bottom:1px solid #edf2f7;font-weight:850">${h.file}<br><small>${h.time}｜新增 ${h.count} 筆</small></div>`).join(""):"尚無匯入紀錄";
 }
 function renderSettings(){
-  categoryTags.innerHTML=state.categories.map(c=>`<span class="badge status-not" style="margin:4px">${c}</span>`).join("");
+  if(document.getElementById("categoryTable")){
+    categoryTable.innerHTML=`<thead><tr><th>類別名稱</th><th>使用件數</th><th>顏色</th><th>操作</th></tr></thead><tbody>${
+      state.categories.map(c=>{
+        const count=categoryUsage(c);
+        const color=categoryMeta(c).color||"#64748b";
+        return `<tr>
+          <td><div class="category-name-cell"><span class="swatch-dot" style="background:${color}"></span><b>${c}</b></div></td>
+          <td><span class="use-count">${count}</span> 件</td>
+          <td><input type="color" value="${color}" title="變更 ${c} 類別顏色" onchange="setCategoryColor('${escapeJs(c)}',this.value)"></td>
+          <td>
+            <button class="btn small" onclick="renameCategory('${escapeJs(c)}')">修改</button>
+            <button class="btn red small" onclick="deleteCategory('${escapeJs(c)}')">刪除</button>
+          </td>
+        </tr>`;
+      }).join("")
+    }</tbody>`;
+  }
 
-  deptTable.innerHTML=`<thead><tr><th>單位</th><th>人員數</th><th>操作</th></tr></thead><tbody>${
+  deptTable.innerHTML=`<thead><tr><th>單位</th><th>人員數</th><th>工作使用數</th><th>操作</th></tr></thead><tbody>${
     state.departments.map(d=>`<tr>
       <td>${d}</td>
       <td>${peopleForDept(d).length}</td>
+      <td><span class="use-count">${deptUsage(d)}</span> 件</td>
       <td>
         <button class="btn small" onclick="renameDept('${escapeJs(d)}')">修改</button>
         <button class="btn red small" onclick="deleteDept('${escapeJs(d)}')">刪除</button>
@@ -935,6 +980,54 @@ function renderSettings(){
 }
 function escapeJs(value){
   return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+
+function categoryUsage(category){
+  return state.tasks.filter(t=>t.category===category).length;
+}
+function deptUsage(dept){
+  return state.tasks.filter(t=>t.dept===dept).length;
+}
+function nextCategoryOrder(){
+  return Math.max(-1,...state.categories.map(c=>state.categoryMeta?.[c]?.order??-1))+1;
+}
+function renameCategory(oldName){
+  const next=prompt("請輸入新的類別名稱：",oldName);
+  if(!next||!next.trim()||next.trim()===oldName)return;
+  const name=next.trim();
+  if(state.categories.includes(name)){toastMsg("新的類別名稱已存在");return}
+  state.categories=state.categories.map(c=>c===oldName?name:c);
+  state.tasks.forEach(t=>{if(t.category===oldName)t.category=name});
+  state.categoryMeta=state.categoryMeta||{};
+  state.categoryMeta[name]={...(state.categoryMeta[oldName]||{}),color:state.categoryMeta[oldName]?.color||"#64748b"};
+  delete state.categoryMeta[oldName];
+  state=normalize(state);
+  saveState();renderAll();toastMsg("已修改類別名稱");
+}
+function setCategoryColor(name,color){
+  state.categoryMeta=state.categoryMeta||{};
+  state.categoryMeta[name]=state.categoryMeta[name]||{order:state.categories.indexOf(name)};
+  state.categoryMeta[name].color=color;
+  saveState();renderAll();toastMsg("已更新類別顏色");
+}
+function deleteCategory(name){
+  const count=categoryUsage(name);
+  const others=state.categories.filter(c=>c!==name);
+  if(count>0){
+    if(!others.length){alert("此類別仍有工作使用，且沒有其他類別可以合併。");return;}
+    const target=prompt(`類別「${name}」目前有 ${count} 筆工作使用。\n請輸入要合併到哪個類別：\n\n${others.join("、")}`,others[0]);
+    if(!target||!target.trim())return;
+    const mergeTo=target.trim();
+    if(!others.includes(mergeTo)){alert("找不到指定的合併類別，請重新操作。");return;}
+    if(!confirm(`確定將「${name}」的 ${count} 筆工作合併到「${mergeTo}」，並刪除「${name}」？`))return;
+    state.tasks.forEach(t=>{if(t.category===name)t.category=mergeTo});
+  }else{
+    if(!confirm(`確定刪除未使用的類別「${name}」？`))return;
+  }
+  state.categories=state.categories.filter(c=>c!==name);
+  if(state.categoryMeta) delete state.categoryMeta[name];
+  state=normalize(state);
+  saveState();renderAll();toastMsg("已刪除類別");
 }
 
 function openTaskModal(task=null){
@@ -976,9 +1069,12 @@ function deleteTask(id){if(confirm("確定刪除這筆工作？")){state.tasks=s
 function addCategory(){
   const v=newCategory.value.trim();
   if(!v)return;
-  if(!state.categories.includes(v))state.categories.push(v);
+  if(state.categories.includes(v)){toastMsg("此類別已存在");return}
+  state.categoryMeta=state.categoryMeta||{};
+  state.categories.push(v);
+  state.categoryMeta[v]={color:newCategoryColor?.value||"#2563eb",order:nextCategoryOrder()};
   newCategory.value="";
-  renderAll();
+  saveState();renderAll();toastMsg("已新增類別");
 }
 function addDept(){
   const v=newDept.value.trim();
@@ -1114,7 +1210,7 @@ function importExcel(event){
 function exportJson(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="環保例行工作Dashboard備份_Firebase_V1.0.json";a.click();
+  a.download="環保例行工作Dashboard備份_Firebase_V1.1.json";a.click();
 }
 function importJson(event){
   const file=event.target.files[0];if(!file)return;

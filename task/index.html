@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>環安衛工作管理系統 v8.8 (View Detail Mode)</title>
+  <title>環安衛工作管理系統 v8.9 (Structured Progress Logs)</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,6 +19,12 @@
     @media print { .no-print { display: none; } }
     #save-indicator { transition: opacity 0.5s; }
     .modal-checkbox { width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: #2563eb; }
+    .progress-log-card { border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.75rem; background: #fff; }
+    .progress-log-card:hover { background: #f8fafc; }
+    .progress-log-meta { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+    .progress-chip { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .progress-log-actions { display: flex; gap: 0.35rem; margin-left: auto; }
+    .progress-summary { margin-top: .35rem; padding-left: .55rem; border-left: 3px solid #bfdbfe; color: #475569; }
   </style>
 </head>
 
@@ -33,7 +39,7 @@
           <div>
             <h1 class="text-xl font-bold text-slate-900 tracking-tight">環安衛工作管理系統</h1>
             <p class="text-[10px] text-slate-400 uppercase tracking-widest leading-none">
-              EHS Task Supervisory System v8.8 • Firestore Realtime
+              EHS Task Supervisory System v8.9 • Firestore Realtime
             </p>
           </div>
         </div>
@@ -234,8 +240,46 @@
           </div>
 
           <div class="col-span-2">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">辦理進度（文字）</label>
-            <textarea id="f-work-progress" rows="2" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：已發函/已會勘/改善中/待回覆..."></textarea>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">辦理進度紀錄</label>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">日期</label>
+                  <input type="date" id="f-log-date" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">人員</label>
+                  <input type="text" id="f-log-person" list="progress-person-options" autocomplete="off" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="可選既有負責人或手動輸入" />
+                  <datalist id="progress-person-options"></datalist>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">類型</label>
+                  <select id="f-log-type" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option>工作日報</option><option>電話確認</option><option>Email</option><option>公文</option>
+                    <option>會議</option><option>現場確認</option><option>待辦事項</option><option>主管指示</option><option>其他</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">內容</label>
+                <textarea id="f-log-content" rows="3" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="請輸入本次辦理進度、聯繫結果、下一步事項..."></textarea>
+              </div>
+              <div class="flex justify-between items-center">
+                <div class="text-[11px] text-slate-400 font-bold">新紀錄會依日期由新到舊顯示；人員可從既有負責人帶出，也可自行輸入。</div>
+                <button type="button" id="btn-add-progress-log" onclick="addProgressLogFromModal()" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">新增進度</button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="flex justify-between items-center mb-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase">進度歷程</label>
+                <span class="text-[11px] text-slate-400 font-bold" id="progress-log-count">0 筆</span>
+              </div>
+              <div id="progress-log-list" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl p-2 bg-white"></div>
+            </div>
+            <div id="legacy-progress-container" class="mt-4 hidden">
+              <label class="block text-xs font-bold text-amber-600 uppercase mb-2">舊版文字紀錄（保留原資料，不自動拆解）</label>
+              <textarea id="f-work-progress" rows="4" class="w-full border border-amber-200 bg-amber-50/40 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-amber-400" placeholder="舊版辦理進度文字會保留於此"></textarea>
+            </div>
           </div>
 
           <div class="col-span-2">
@@ -402,6 +446,7 @@
         task: task.task || "",
         desc: task.desc || "",
         workProgress: task.workProgress || "",
+        progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : [],
         closeNote: task.closeNote || "",
         createdAt: task.createdAt || new Date().toISOString().split("T")[0],
         deadline: task.deadline || new Date().toISOString().split("T")[0],
@@ -428,6 +473,7 @@
     let factoryChart = null;
     let editingId = null;
     let lastManualProgress = 0;
+    let modalProgressLogs = [];
 
     const getTodayStr = () => new Date().toISOString().split('T')[0];
     const fixDate = (v) => {
@@ -438,6 +484,35 @@
       return null;
     };
     const parseLocalDate = (yyyy_mm_dd) => new Date(`${yyyy_mm_dd}T00:00:00`);
+
+    function uid(prefix = 'id') {
+      return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function normalizeProgressLogs(logs) {
+      return (Array.isArray(logs) ? logs : [])
+        .map((log) => ({
+          id: String(log?.id || uid('log')),
+          date: fixDate(log?.date) || getTodayStr(),
+          person: String(log?.person || '').trim(),
+          type: String(log?.type || '其他').trim() || '其他',
+          content: String(log?.content || '').trim()
+        }))
+        .filter(log => log.content || log.person || log.type)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
+    }
+
+    function latestProgressLog(task) {
+      const logs = normalizeProgressLogs(task?.progressLogs);
+      return logs.length ? logs[0] : null;
+    }
+
+    function progressLogSummary(task) {
+      const latest = latestProgressLog(task);
+      if (!latest) return '';
+      const content = latest.content.length > 70 ? latest.content.slice(0, 70) + '…' : latest.content;
+      return `${latest.date}｜${latest.person || '未填人員'}｜${latest.type}：${content}`;
+    }
 
     function normalizeTask(t, i = 0) {
       const today = getTodayStr();
@@ -451,6 +526,7 @@
         task: t?.task || '',
         desc: t?.desc || '',
         workProgress: t?.workProgress || '',
+        progressLogs: normalizeProgressLogs(t?.progressLogs),
         closeNote: t?.closeNote || '',
         createdAt: fixDate(t?.createdAt) || today,
         deadline: fixDate(t?.deadline) || today,
@@ -635,6 +711,7 @@
 
     function updateOwnerUnitOptions() {
       setDatalistOptions('owner-options', tasks.map(t => t.owner));
+      setDatalistOptions('progress-person-options', [...tasks.map(t => t.owner), ...tasks.flatMap(t => (t.progressLogs || []).map(log => log.person))], false);
       const dropdown = document.getElementById('unit-dropdown');
       if (dropdown && !dropdown.classList.contains('hidden')) {
         renderUnitDropdown(getAllUnitOptions(getSuggestedUnitForCurrentOwner()), document.getElementById('f-unit')?.value || '', true);
@@ -783,6 +860,7 @@
             <td class="px-6 py-4">
               <div class="font-bold text-slate-800 line-clamp-1 ${isDone ? 'line-through text-slate-400' : ''}">${escapeHtml(t.task)}</div>
               <div class="text-[11px] text-slate-400 line-clamp-1 mt-0.5">${escapeHtml(t.desc)}</div>
+              ${progressLogSummary(t) ? `<div class="progress-summary text-[11px] line-clamp-2">${escapeHtml(progressLogSummary(t))}</div>` : ''}
             </td>
             <td class="px-6 py-4 text-center font-mono text-xs text-slate-400">${escapeHtml(t.createdAt)}</td>
             <td class="px-6 py-4 text-center font-mono text-xs font-bold text-slate-600">${escapeHtml(t.deadline)}</td>
@@ -850,6 +928,87 @@
       });
     }
 
+    function resetProgressLogForm(defaultPerson = '') {
+      const d = document.getElementById('f-log-date');
+      const p = document.getElementById('f-log-person');
+      const type = document.getElementById('f-log-type');
+      const c = document.getElementById('f-log-content');
+      if (d) d.value = getTodayStr();
+      if (p) p.value = defaultPerson || document.getElementById('f-owner')?.value || '';
+      if (type) type.value = '工作日報';
+      if (c) c.value = '';
+      updateOwnerUnitOptions();
+    }
+
+    function renderProgressLogList(readonly = false) {
+      const list = document.getElementById('progress-log-list');
+      const count = document.getElementById('progress-log-count');
+      if (!list) return;
+      modalProgressLogs = normalizeProgressLogs(modalProgressLogs);
+      if (count) count.innerText = `${modalProgressLogs.length} 筆`;
+      if (!modalProgressLogs.length) {
+        list.innerHTML = '<div class="text-xs text-slate-400 p-3">尚無結構化進度紀錄。舊版文字若有資料，會保留在下方「舊版文字紀錄」。</div>';
+        return;
+      }
+      list.innerHTML = modalProgressLogs.map(log => `
+        <div class="progress-log-card">
+          <div class="progress-log-meta">
+            <span class="progress-chip">${escapeHtml(log.date)}</span>
+            <span class="progress-chip">${escapeHtml(log.person || '未填人員')}</span>
+            <span class="progress-chip">${escapeHtml(log.type || '其他')}</span>
+            <div class="progress-log-actions ${readonly ? 'hidden' : ''}">
+              <button type="button" onclick="editProgressLog('${escapeJs(log.id)}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">修改</button>
+              <button type="button" onclick="deleteProgressLog('${escapeJs(log.id)}')" class="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold">刪除</button>
+            </div>
+          </div>
+          <div class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${escapeHtml(log.content)}</div>
+        </div>
+      `).join('');
+    }
+
+    function addProgressLogFromModal() {
+      const date = document.getElementById('f-log-date')?.value || getTodayStr();
+      const person = String(document.getElementById('f-log-person')?.value || '').trim();
+      const type = String(document.getElementById('f-log-type')?.value || '其他').trim() || '其他';
+      const content = String(document.getElementById('f-log-content')?.value || '').trim();
+      if (!content) return alert('請輸入進度內容');
+      modalProgressLogs.unshift({ id: uid('log'), date, person, type, content });
+      modalProgressLogs = normalizeProgressLogs(modalProgressLogs);
+      resetProgressLogForm(person || document.getElementById('f-owner')?.value || '');
+      renderProgressLogList(false);
+    }
+
+    function editProgressLog(id) {
+      const log = modalProgressLogs.find(x => String(x.id) === String(id));
+      if (!log) return;
+      const date = prompt('請輸入日期（YYYY-MM-DD）：', log.date);
+      if (!date) return;
+      const fixedDate = fixDate(date);
+      if (!fixedDate) return alert('日期格式需為 YYYY-MM-DD');
+      const person = prompt('請輸入人員：', log.person || '');
+      if (person === null) return;
+      const type = prompt('請輸入類型：', log.type || '其他');
+      if (type === null) return;
+      const content = prompt('請輸入內容：', log.content || '');
+      if (content === null) return;
+      log.date = fixedDate;
+      log.person = String(person).trim();
+      log.type = String(type).trim() || '其他';
+      log.content = String(content).trim();
+      modalProgressLogs = normalizeProgressLogs(modalProgressLogs);
+      renderProgressLogList(false);
+    }
+
+    function deleteProgressLog(id) {
+      if (!confirm('確定刪除這筆進度紀錄？')) return;
+      modalProgressLogs = modalProgressLogs.filter(log => String(log.id) !== String(id));
+      renderProgressLogList(false);
+    }
+
+    function escapeJs(value){
+      return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+    }
+
     function viewTask(id) {
       editTask(id);
       document.getElementById('modal-title').innerText = "工作事項詳情 (唯讀模式)";
@@ -857,6 +1016,8 @@
       
       const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
       inputs.forEach(el => el.disabled = true);
+      document.getElementById('btn-add-progress-log')?.classList.add('hidden');
+      renderProgressLogList(true);
     }
 
     function editTask(id) {
@@ -884,8 +1045,12 @@
 
       document.getElementById('f-task').value = t.task;
       document.getElementById('f-desc').value = t.desc;
+      modalProgressLogs = normalizeProgressLogs(t.progressLogs || []);
       document.getElementById('f-work-progress').value = t.workProgress || '';
+      document.getElementById('legacy-progress-container')?.classList.toggle('hidden', !String(t.workProgress || '').trim());
       document.getElementById('f-close-note').value = t.closeNote || '';
+      resetProgressLogForm(t.owner || '');
+      renderProgressLogList(false);
       document.getElementById('f-owner').value = t.owner;
       document.getElementById('f-unit').value = t.unit || '';
       document.getElementById('f-created').value = t.createdAt;
@@ -895,6 +1060,7 @@
       document.getElementById('f-is-done').checked = (t.progress >= 100);
       lastManualProgress = t.progress;
       updateOwnerUnitOptions();
+      document.getElementById('btn-add-progress-log')?.classList.remove('hidden');
       document.getElementById('modal').classList.remove('hidden');
     }
 
@@ -926,7 +1092,8 @@
         desc: document.getElementById('f-desc').value,
         owner: ownerInput.value,
         unit: unitInput.value,
-        workProgress: document.getElementById('f-work-progress').value,
+        workProgress: document.getElementById('f-work-progress')?.value || '',
+        progressLogs: normalizeProgressLogs(modalProgressLogs),
         closeNote: document.getElementById('f-close-note').value,
         createdAt: document.getElementById('f-created').value || getTodayStr(),
         deadline: document.getElementById('f-deadline').value || getTodayStr(),
@@ -954,13 +1121,21 @@
     function closeModal() { 
       document.getElementById('modal').classList.add('hidden'); 
       editingId = null;
+      modalProgressLogs = [];
       const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
       inputs.forEach(el => el.disabled = false);
       document.getElementById('btn-modal-save').classList.remove('hidden');
+      document.getElementById('btn-add-progress-log')?.classList.remove('hidden');
     }
 
     function exportToExcel() {
-      const ws = XLSX.utils.json_to_sheet(tasks);
+      const exportRows = tasks.map(t => ({
+        ...t,
+        latestProgress: progressLogSummary(t),
+        progressLogsText: normalizeProgressLogs(t.progressLogs).map(log => `${log.date}｜${log.person || '未填人員'}｜${log.type}｜${log.content}`).join('\n'),
+        progressLogsCount: normalizeProgressLogs(t.progressLogs).length
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Tasks");
       XLSX.writeFile(wb, `EHS_Tasks_${getTodayStr()}.xlsx`);
@@ -1007,8 +1182,12 @@
 
         document.getElementById('f-task').value = "";
         document.getElementById('f-desc').value = "";
+        modalProgressLogs = [];
         document.getElementById('f-work-progress').value = '';
+        document.getElementById('legacy-progress-container')?.classList.add('hidden');
         document.getElementById('f-close-note').value = '';
+        resetProgressLogForm('');
+        renderProgressLogList(false);
         document.getElementById('f-owner').value = "";
         document.getElementById('f-unit').value = "";
         document.getElementById('f-created').value = getTodayStr();
@@ -1025,5 +1204,6 @@
       });
     });
   </script>
+<!-- Updated: structured progress logs v8.9 -->
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>環保例行工作 Dashboard｜Firebase版 V1.2</title>
+  <title>環保例行工作 Dashboard｜Firebase版 V1.3</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script type="module">
@@ -57,7 +57,7 @@
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser ? auth.currentUser.email : "",
         app: "routine-work-dashboard",
-        version: "firebase-v1.2"
+        version: "firebase-v1.3"
       }, { merge: true })
     });
   </script>
@@ -253,7 +253,7 @@
   <aside>
     <div class="brand">
       <div class="logo">🌿</div>
-      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.2</p></div>
+      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.3</p></div>
     </div>
     <div class="nav" id="nav">
       <button class="active" data-page="calendar">📅 年度行事曆</button>
@@ -448,7 +448,7 @@
       <input id="editId" type="hidden">
       <div class="form-grid">
         <div class="field"><label>年度</label><input id="taskYear" type="number"></div>
-        <div class="field"><label>月份</label><select id="taskMonth"></select></div>
+        <div class="field"><label>月份</label><select id="taskMonth" onchange="handleTaskMonthChange()"></select></div>
         <div class="field"><label>類別</label><select id="taskCategory"></select></div>
         <div class="field"><label>執行頻率</label>
           <select id="taskFrequency" onchange="toggleRepeatMonthsPanel()">
@@ -457,7 +457,7 @@
         </div>
         <div class="repeat-panel" id="repeatMonthsPanel">
           <div class="repeat-head">
-            <b>自訂月份</b>
+            <b>執行月份</b>
             <div class="repeat-tools">
               <button type="button" class="btn small" onclick="selectAllRepeatMonths()">全選</button>
               <button type="button" class="btn small" onclick="clearRepeatMonths()">清除</button>
@@ -465,7 +465,7 @@
           </div>
           <div class="repeat-month-grid" id="repeatMonthGrid"></div>
           <div class="repeat-note">
-            勾選月份後按儲存，系統會批次建檔；重複判斷採「年度＋月份＋工作名稱＋負責人」。完成日期會留空，截止日遇小月會自動改為該月最後一天。
+            可依執行頻率自動帶入月份，也可選「自訂月份」手動勾選。儲存後會依勾選月份自動建立到年度行事曆；重複判斷採「年度＋月份＋工作名稱＋負責人」。完成日期會留空，截止日遇小月會自動改為該月最後一天。
           </div>
         </div>
         <div class="field wide"><label>工作名稱</label><input id="taskName"></div>
@@ -492,8 +492,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY="envRoutineDashboardFirebaseCacheV12";
-const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV11";
+const STORAGE_KEY="envRoutineDashboardFirebaseCacheV13";
+const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV12";
 const STATUS_LIST=["全部","尚未開始","進行中","已完成","暫緩"];
 const DEFAULT_CATEGORIES=["空污費","水污費","碳費","ISO 14001","自願減量","永續報告","環保預算","其他"];
 const DEFAULT_DEPTS=["安衛處","環保處","管理部","轉型組","其他"];
@@ -533,7 +533,7 @@ function demoTasks(){
 }
 function loadState(){
   try{
-    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem("envRoutineDashboardV12") || localStorage.getItem("envRoutineDashboardV11") || localStorage.getItem("envRoutineDashboardV10");
+    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem("envRoutineDashboardFirebaseCacheV11") || localStorage.getItem("envRoutineDashboardV12") || localStorage.getItem("envRoutineDashboardV11") || localStorage.getItem("envRoutineDashboardV10");
     if(raw) return normalize(JSON.parse(raw));
   }catch(e){}
   return normalize({tasks:demoTasks(),categories:[...DEFAULT_CATEGORIES],departments:[...DEFAULT_DEPTS],people:[],history:[]});
@@ -541,7 +541,9 @@ function loadState(){
 function normalize(s){
   s.tasks=(s.tasks||[]).map(t=>{
     const {proxy,...clean}=t;
-    return {...clean,dept:clean.dept||"其他",owner:clean.owner||"",repeatMonths:Array.isArray(clean.repeatMonths)?clean.repeatMonths.map(Number).filter(m=>m>=1&&m<=12):[]};
+    const monthsSource=Array.isArray(clean.repeatMonths)?clean.repeatMonths:(Array.isArray(clean.executionMonths)?clean.executionMonths:[]);
+    const repeatMonths=monthsSource.map(Number).filter(m=>m>=1&&m<=12);
+    return {...clean,dept:clean.dept||"其他",owner:clean.owner||"",repeatMonths,executionMonths:repeatMonths};
   });
   s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES,...s.tasks.map(t=>t.category).filter(Boolean)])];
   s.categoryMeta=s.categoryMeta||{};
@@ -621,14 +623,39 @@ function setSelectedRepeatMonths(months=[]){
 }
 function selectAllRepeatMonths(){document.querySelectorAll(".repeat-month-check").forEach(el=>el.checked=true)}
 function clearRepeatMonths(){document.querySelectorAll(".repeat-month-check").forEach(el=>el.checked=false)}
-function toggleRepeatMonthsPanel(){
+function monthsForFrequency(frequency,baseMonth){
+  const m=Number(baseMonth)||1;
+  if(frequency==="每月") return Array.from({length:12},(_,i)=>i+1);
+  if(frequency==="每季") return Array.from({length:4},(_,i)=>((m-1+i*3)%12)+1).sort((a,b)=>a-b);
+  if(frequency==="每半年") return [m,((m+5)%12)+1].sort((a,b)=>a-b);
+  if(frequency==="每年") return [m];
+  if(frequency==="自訂月份") return getSelectedRepeatMonths().length?getSelectedRepeatMonths():[m];
+  return [m];
+}
+function updateRepeatMonthChecks(){
   if(!document.getElementById("repeatMonthsPanel")) return;
-  const isCustom=taskFrequency.value==="自訂月份";
-  repeatMonthsPanel.classList.toggle("show",isCustom);
-  if(isCustom && getSelectedRepeatMonths().length===0){
-    setSelectedRepeatMonths([monthFromSelectValue(taskMonth.value)]);
+  const freq=taskFrequency.value;
+  const baseMonth=monthFromSelectValue(taskMonth.value);
+  const isCustom=freq==="自訂月份";
+  const tools=repeatMonthsPanel.querySelector(".repeat-tools");
+  if(tools) tools.style.display=isCustom?"flex":"none";
+  document.querySelectorAll(".repeat-month-check").forEach(el=>{el.disabled=!isCustom;});
+  if(!isCustom){
+    setSelectedRepeatMonths(monthsForFrequency(freq,baseMonth));
+  }else if(getSelectedRepeatMonths().length===0){
+    setSelectedRepeatMonths([baseMonth]);
   }
 }
+function handleTaskMonthChange(){
+  updateRepeatMonthChecks();
+}
+function toggleRepeatMonthsPanel(){
+  if(!document.getElementById("repeatMonthsPanel")) return;
+  const show=taskFrequency.value!=="單次";
+  repeatMonthsPanel.classList.toggle("show",show);
+  updateRepeatMonthChecks();
+}
+
 
 function fmtDate(d){return d||"—"}
 function today(){return new Date(new Date().toISOString().slice(0,10))}
@@ -869,15 +896,19 @@ function renderAll(){
   saveState(false);
 }
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+function repeatMonthsText(t){
+  const months=(Array.isArray(t.repeatMonths)&&t.repeatMonths.length?t.repeatMonths:[t.month]).map(Number).filter(m=>m>=1&&m<=12).sort((a,b)=>a-b);
+  return [...new Set(months)].map(m=>`${m}月`).join("、")||"—";
+}
 function taskRows(tasks){
   return tasks.map(t=>`<tr>
-    <td>${t.category}</td><td>${t.name}</td><td>${fmtDate(t.deadline)}</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td>
+    <td>${t.category}</td><td>${t.name}</td><td>${t.month}月</td><td>${repeatMonthsText(t)}</td><td>${fmtDate(t.deadline)}</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td>
     <td>${statusBadge(taskDerivedStatus(t))}</td><td>${fmtDate(t.completedDate)}</td><td>${t.reminderDays||7}天</td>
     <td><button class="btn small" onclick="editTask('${t.id}')">編輯</button> <button class="btn red small" onclick="deleteTask('${t.id}')">刪除</button></td>
   </tr>`);
 }
 function renderTaskTable(id,tasks){
-  document.getElementById(id).innerHTML=`<thead><tr><th>類別</th><th>工作項目</th><th>截止日期</th><th>負責部門</th><th>負責人</th><th>狀態</th><th>完成日期</th><th>提醒</th><th>操作</th></tr></thead><tbody>${taskRows(tasks).join("")||'<tr><td colspan="9">目前沒有資料</td></tr>'}</tbody>`;
+  document.getElementById(id).innerHTML=`<thead><tr><th>類別</th><th>工作項目</th><th>月份</th><th>執行月份</th><th>截止日期</th><th>負責部門</th><th>負責人</th><th>狀態</th><th>完成日期</th><th>提醒</th><th>操作</th></tr></thead><tbody>${taskRows(tasks).join("")||'<tr><td colspan="11">目前沒有資料</td></tr>'}</tbody>`;
 }
 function hexToRgba(hex,alpha=.14){
   const clean=String(hex||"#64748b").replace("#","");
@@ -988,8 +1019,8 @@ function renderProgress(){
 }
 function renderRoutine(){
   const routines=state.tasks.filter(t=>t.frequency!=="單次");
-  routineTable.innerHTML=`<thead><tr><th>類別</th><th>工作名稱</th><th>頻率</th><th>月份</th><th>部門</th><th>負責人</th><th>操作</th></tr></thead><tbody>${
-    routines.map(t=>`<tr><td>${t.category}</td><td>${t.name}</td><td>${t.frequency}</td><td>${t.month}月</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td><td><button class="btn small" onclick="editTask('${t.id}')">編輯</button></td></tr>`).join("")||'<tr><td colspan="7">尚無例行工作</td></tr>'
+  routineTable.innerHTML=`<thead><tr><th>類別</th><th>工作名稱</th><th>頻率</th><th>月份</th><th>執行月份</th><th>部門</th><th>負責人</th><th>操作</th></tr></thead><tbody>${
+    routines.map(t=>`<tr><td>${t.category}</td><td>${t.name}</td><td>${t.frequency}</td><td>${t.month}月</td><td>${repeatMonthsText(t)}</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td><td><button class="btn small" onclick="editTask('${t.id}')">編輯</button></td></tr>`).join("")||'<tr><td colspan="8">尚無例行工作</td></tr>'
   }</tbody>`;
 }
 function renderImportHistory(){
@@ -1121,18 +1152,22 @@ function saveTask(){
   if(!taskName.value.trim()){toastMsg("請輸入工作名稱");return}
   if(!taskDeadline.value){toastMsg("請輸入截止日期");return}
 
+  const selectedMonths=taskFrequency.value==="單次"
+    ? [monthFromSelectValue(taskMonth.value)]
+    : monthsForFrequency(taskFrequency.value,monthFromSelectValue(taskMonth.value));
+  if(taskFrequency.value!=="單次"&&!selectedMonths.length){toastMsg("請至少勾選一個執行月份");return}
+
   const base={
     id:editId.value||uid(),year:Number(taskYear.value),month:monthFromSelectValue(taskMonth.value),
     category:taskCategory.value,name:taskName.value.trim(),frequency:taskFrequency.value,
     startDate:taskStart.value,deadline:taskDeadline.value,dept:taskDept.value,
     owner:taskOwner.value||"",status:taskStatus.value,
     completedDate:taskCompleted.value,reminderDays:Number(taskReminder.value),note:taskNote.value.trim(),
-    repeatMonths:taskFrequency.value==="自訂月份"?getSelectedRepeatMonths():[]
+    repeatMonths:selectedMonths,executionMonths:selectedMonths
   };
 
-  if(!editId.value && taskFrequency.value==="自訂月份"){
-    const months=getSelectedRepeatMonths();
-    if(!months.length){toastMsg("請至少勾選一個月份");return}
+  if(!editId.value && taskFrequency.value!=="單次"){
+    const months=[...new Set(selectedMonths)].sort((a,b)=>a-b);
     const startDay=dayFromDate(base.startDate,1);
     const deadlineDay=dayFromDate(base.deadline,31);
     let added=0, skipped=0;
@@ -1148,10 +1183,11 @@ function saveTask(){
         ...base,
         id:uid(),
         month:Number(m),
-        startDate:buildDateByDay(base.year,m,startDay),
+        startDate:base.startDate?buildDateByDay(base.year,m,startDay):"",
         deadline:buildDateByDay(base.year,m,deadlineDay),
         completedDate:"",
-        repeatMonths:months
+        repeatMonths:months,
+        executionMonths:months
       });
       added++;
     });
@@ -1160,9 +1196,9 @@ function saveTask(){
     return;
   }
 
+  if(base.status==="已完成"&&!base.completedDate)base.completedDate=new Date().toISOString().slice(0,10);
   const idx=state.tasks.findIndex(t=>t.id===base.id);
   if(idx>=0)state.tasks[idx]=base;else state.tasks.push(base);
-  if(base.status==="已完成"&&!base.completedDate)base.completedDate=new Date().toISOString().slice(0,10);
   saveState();closeTaskModal();renderAll();toastMsg("已儲存工作");
 }
 function editTask(id){const t=state.tasks.find(t=>t.id===id);if(t)openTaskModal(t)}
@@ -1294,7 +1330,7 @@ function importExcel(event){
               id:uid(),year:importYear,month:m,category,name:piece,frequency:"單次",
               startDate:`${importYear}-${String(m).padStart(2,"0")}-01`,
               deadline:extractDeadline(importYear,m,piece),dept:"其他",owner:"",
-              status:"尚未開始",completedDate:"",reminderDays:14,note:`Excel 匯入：${name}`
+              status:"尚未開始",completedDate:"",reminderDays:14,note:`Excel 匯入：${name}`,repeatMonths:[m],executionMonths:[m]
             });
           });
         });
@@ -1311,7 +1347,7 @@ function importExcel(event){
 function exportJson(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="環保例行工作Dashboard備份_Firebase_V1.2.json";a.click();
+  a.download="環保例行工作Dashboard備份_Firebase_V1.3.json";a.click();
 }
 function importJson(event){
   const file=event.target.files[0];if(!file)return;

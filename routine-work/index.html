@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>環保例行工作 Dashboard｜Firebase版 V1.1</title>
+  <title>環保例行工作 Dashboard｜Firebase版 V1.2</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script type="module">
@@ -57,7 +57,7 @@
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser ? auth.currentUser.email : "",
         app: "routine-work-dashboard",
-        version: "firebase-v1.1"
+        version: "firebase-v1.2"
       }, { merge: true })
     });
   </script>
@@ -207,6 +207,21 @@
     .category-table input[type=color]{width:52px;height:32px;padding:3px;border-radius:10px}
     .category-name-cell{display:flex;align-items:center;gap:8px}
     .use-count{font-weight:1000;color:#0f2342}
+    .repeat-panel{
+      grid-column:span 4;border:1px solid #bfdbfe;background:#eff6ff;border-radius:16px;
+      padding:14px;display:none
+    }
+    .repeat-panel.show{display:block}
+    .repeat-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .repeat-head b{font-size:14px;color:#1e3a8a}
+    .repeat-tools{display:flex;gap:8px;flex-wrap:wrap}
+    .repeat-month-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+    .repeat-month{
+      display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #d6e1ef;border-radius:12px;
+      padding:9px 10px;font-size:13px;font-weight:950;color:#334155
+    }
+    .repeat-month input{width:16px;height:16px;accent-color:var(--blue)}
+    .repeat-note{margin-top:10px;color:#64748b;font-size:12px;font-weight:850;line-height:1.6}
     .memo-card{margin-top:14px}
     .memo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
     .memo-head h3{margin:0;font-size:17px}
@@ -238,7 +253,7 @@
   <aside>
     <div class="brand">
       <div class="logo">🌿</div>
-      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.1</p></div>
+      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.2</p></div>
     </div>
     <div class="nav" id="nav">
       <button class="active" data-page="calendar">📅 年度行事曆</button>
@@ -436,9 +451,22 @@
         <div class="field"><label>月份</label><select id="taskMonth"></select></div>
         <div class="field"><label>類別</label><select id="taskCategory"></select></div>
         <div class="field"><label>執行頻率</label>
-          <select id="taskFrequency">
-            <option>單次</option><option>每月</option><option>每季</option><option>每半年</option><option>每年</option>
+          <select id="taskFrequency" onchange="toggleRepeatMonthsPanel()">
+            <option>單次</option><option>每月</option><option>每季</option><option>每半年</option><option>每年</option><option>自訂月份</option>
           </select>
+        </div>
+        <div class="repeat-panel" id="repeatMonthsPanel">
+          <div class="repeat-head">
+            <b>自訂月份</b>
+            <div class="repeat-tools">
+              <button type="button" class="btn small" onclick="selectAllRepeatMonths()">全選</button>
+              <button type="button" class="btn small" onclick="clearRepeatMonths()">清除</button>
+            </div>
+          </div>
+          <div class="repeat-month-grid" id="repeatMonthGrid"></div>
+          <div class="repeat-note">
+            勾選月份後按儲存，系統會批次建檔；重複判斷採「年度＋月份＋工作名稱＋負責人」。完成日期會留空，截止日遇小月會自動改為該月最後一天。
+          </div>
         </div>
         <div class="field wide"><label>工作名稱</label><input id="taskName"></div>
         <div class="field"><label>開始日期</label><input id="taskStart" type="date"></div>
@@ -464,8 +492,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY="envRoutineDashboardFirebaseCacheV11";
-const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV10";
+const STORAGE_KEY="envRoutineDashboardFirebaseCacheV12";
+const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV11";
 const STATUS_LIST=["全部","尚未開始","進行中","已完成","暫緩"];
 const DEFAULT_CATEGORIES=["空污費","水污費","碳費","ISO 14001","自願減量","永續報告","環保預算","其他"];
 const DEFAULT_DEPTS=["安衛處","環保處","管理部","轉型組","其他"];
@@ -513,7 +541,7 @@ function loadState(){
 function normalize(s){
   s.tasks=(s.tasks||[]).map(t=>{
     const {proxy,...clean}=t;
-    return {...clean,dept:clean.dept||"其他",owner:clean.owner||""};
+    return {...clean,dept:clean.dept||"其他",owner:clean.owner||"",repeatMonths:Array.isArray(clean.repeatMonths)?clean.repeatMonths.map(Number).filter(m=>m>=1&&m<=12):[]};
   });
   s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES,...s.tasks.map(t=>t.category).filter(Boolean)])];
   s.categoryMeta=s.categoryMeta||{};
@@ -567,6 +595,41 @@ async function saveCloudNow(force=false){
   }
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function lastDayOfMonth(year,month){return new Date(Number(year),Number(month),0).getDate()}
+function buildDateByDay(year,month,day){
+  const d=Math.min(Math.max(Number(day)||1,1),lastDayOfMonth(year,month));
+  return `${Number(year)}-${String(Number(month)).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+function dayFromDate(dateStr,fallback=1){
+  const m=String(dateStr||"").match(/^\d{4}-\d{2}-(\d{2})$/);
+  return m?Number(m[1]):fallback;
+}
+function monthFromSelectValue(v){return Number(String(v||"").replace("月",""))||1}
+function initRepeatMonthGrid(){
+  if(!document.getElementById("repeatMonthGrid")) return;
+  repeatMonthGrid.innerHTML=Array.from({length:12},(_,i)=>{
+    const m=i+1;
+    return `<label class="repeat-month"><input type="checkbox" class="repeat-month-check" value="${m}">${m}月</label>`;
+  }).join("");
+}
+function getSelectedRepeatMonths(){
+  return [...document.querySelectorAll(".repeat-month-check:checked")].map(el=>Number(el.value)).sort((a,b)=>a-b);
+}
+function setSelectedRepeatMonths(months=[]){
+  const selected=new Set((months||[]).map(Number));
+  document.querySelectorAll(".repeat-month-check").forEach(el=>{el.checked=selected.has(Number(el.value));});
+}
+function selectAllRepeatMonths(){document.querySelectorAll(".repeat-month-check").forEach(el=>el.checked=true)}
+function clearRepeatMonths(){document.querySelectorAll(".repeat-month-check").forEach(el=>el.checked=false)}
+function toggleRepeatMonthsPanel(){
+  if(!document.getElementById("repeatMonthsPanel")) return;
+  const isCustom=taskFrequency.value==="自訂月份";
+  repeatMonthsPanel.classList.toggle("show",isCustom);
+  if(isCustom && getSelectedRepeatMonths().length===0){
+    setSelectedRepeatMonths([monthFromSelectValue(taskMonth.value)]);
+  }
+}
+
 function fmtDate(d){return d||"—"}
 function today(){return new Date(new Date().toISOString().slice(0,10))}
 function daysUntil(dateStr){
@@ -773,6 +836,8 @@ function renderControls(){
   fillSelect("taskCategory",state.categories);
   renderTaskDepartmentOptions(taskDept.value);
   renderTaskOwnerOptions(taskDept.value,taskOwner.value);
+  initRepeatMonthGrid();
+  toggleRepeatMonthsPanel();
 }
 function currentFilters(){
   return {year:Number(yearFilter.value),month:Number(monthFilter.value.replace("月","")),category:categoryFilter.value,status:statusFilter.value,reminder:reminderFilter.value}
@@ -1034,7 +1099,7 @@ function openTaskModal(task=null){
   modalTitle.textContent=task?"編輯工作":"新增工作";
   editId.value=task?.id||"";
   taskYear.value=task?.year||Number(yearFilter.value)||new Date().getFullYear();
-  taskMonth.value=`${task?.month||Number(monthFilter.value.replace("月",""))||new Date().getMonth()+1}月`;
+  taskMonth.value=`${task?.month||monthFromSelectValue(monthFilter.value)||new Date().getMonth()+1}月`;
   taskCategory.value=task?.category||state.categories[0];
   taskFrequency.value=task?.frequency||"單次";
   taskName.value=task?.name||"";
@@ -1046,22 +1111,58 @@ function openTaskModal(task=null){
   taskCompleted.value=task?.completedDate||"";
   taskReminder.value=String(task?.reminderDays||7);
   taskNote.value=task?.note||"";
+  initRepeatMonthGrid();
+  setSelectedRepeatMonths(task?.repeatMonths?.length?task.repeatMonths:[monthFromSelectValue(taskMonth.value)]);
+  toggleRepeatMonthsPanel();
   taskModal.classList.add("show");
 }
 function closeTaskModal(){taskModal.classList.remove("show")}
 function saveTask(){
   if(!taskName.value.trim()){toastMsg("請輸入工作名稱");return}
   if(!taskDeadline.value){toastMsg("請輸入截止日期");return}
-  const obj={
-    id:editId.value||uid(),year:Number(taskYear.value),month:Number(taskMonth.value.replace("月","")),
+
+  const base={
+    id:editId.value||uid(),year:Number(taskYear.value),month:monthFromSelectValue(taskMonth.value),
     category:taskCategory.value,name:taskName.value.trim(),frequency:taskFrequency.value,
     startDate:taskStart.value,deadline:taskDeadline.value,dept:taskDept.value,
     owner:taskOwner.value||"",status:taskStatus.value,
-    completedDate:taskCompleted.value,reminderDays:Number(taskReminder.value),note:taskNote.value.trim()
+    completedDate:taskCompleted.value,reminderDays:Number(taskReminder.value),note:taskNote.value.trim(),
+    repeatMonths:taskFrequency.value==="自訂月份"?getSelectedRepeatMonths():[]
   };
-  const idx=state.tasks.findIndex(t=>t.id===obj.id);
-  if(idx>=0)state.tasks[idx]=obj;else state.tasks.push(obj);
-  if(obj.status==="已完成"&&!obj.completedDate)obj.completedDate=new Date().toISOString().slice(0,10);
+
+  if(!editId.value && taskFrequency.value==="自訂月份"){
+    const months=getSelectedRepeatMonths();
+    if(!months.length){toastMsg("請至少勾選一個月份");return}
+    const startDay=dayFromDate(base.startDate,1);
+    const deadlineDay=dayFromDate(base.deadline,31);
+    let added=0, skipped=0;
+    months.forEach(m=>{
+      const exists=state.tasks.some(t=>
+        Number(t.year)===base.year &&
+        Number(t.month)===Number(m) &&
+        String(t.name||"").trim()===base.name &&
+        String(t.owner||"")===String(base.owner||"")
+      );
+      if(exists){skipped++;return;}
+      state.tasks.push({
+        ...base,
+        id:uid(),
+        month:Number(m),
+        startDate:buildDateByDay(base.year,m,startDay),
+        deadline:buildDateByDay(base.year,m,deadlineDay),
+        completedDate:"",
+        repeatMonths:months
+      });
+      added++;
+    });
+    saveState();closeTaskModal();renderAll();
+    toastMsg(`已建立 ${added} 筆工作，略過 ${skipped} 筆重複工作`);
+    return;
+  }
+
+  const idx=state.tasks.findIndex(t=>t.id===base.id);
+  if(idx>=0)state.tasks[idx]=base;else state.tasks.push(base);
+  if(base.status==="已完成"&&!base.completedDate)base.completedDate=new Date().toISOString().slice(0,10);
   saveState();closeTaskModal();renderAll();toastMsg("已儲存工作");
 }
 function editTask(id){const t=state.tasks.find(t=>t.id===id);if(t)openTaskModal(t)}
@@ -1210,7 +1311,7 @@ function importExcel(event){
 function exportJson(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="環保例行工作Dashboard備份_Firebase_V1.1.json";a.click();
+  a.download="環保例行工作Dashboard備份_Firebase_V1.2.json";a.click();
 }
 function importJson(event){
   const file=event.target.files[0];if(!file)return;

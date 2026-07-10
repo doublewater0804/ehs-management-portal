@@ -9,7 +9,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {getFirestore,doc,setDoc,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-const firebaseConfig={apiKey:"AIzaSyBGgf0A5MF0qPxQv1X8tACski48bMYI_DU",authDomain:"esh-v85.firebaseapp.com",projectId:"esh-v85",storageBucket:"esh-v85.firebasestorage.app",messagingSenderId:"1021350670476",appId:"1:1021350670476:web:afd5bc96ff28c910f48ba9",measurementId:"G-MMVQN63GDG"};
+const firebaseConfig={apiKey:"AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",authDomain:"esh-v85.firebaseapp.com",projectId:"esh-v85",storageBucket:"esh-v85.firebasestorage.app",messagingSenderId:"1021350670476",appId:"1:1021350670476:web:afd5bc96ff28c910f48ba9",measurementId:"G-MMVQN63GDG"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
 const stateRef=doc(db,"environmental_fine_dashboard","shared_state");

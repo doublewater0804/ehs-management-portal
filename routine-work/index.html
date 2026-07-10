@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>環保例行工作 Dashboard｜Firebase版 V1.4</title>
+  <title>環保例行工作 Dashboard｜Firebase版 V1.3</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script type="module">
@@ -24,7 +24,7 @@
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBGgf0A5MF0qPxQv1X8tACski48bMYI_DU",
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
       authDomain: "esh-v85.firebaseapp.com",
       projectId: "esh-v85",
       storageBucket: "esh-v85.firebasestorage.app",
@@ -57,7 +57,7 @@
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser ? auth.currentUser.email : "",
         app: "routine-work-dashboard",
-        version: "firebase-v1.4"
+        version: "firebase-v1.3"
       }, { merge: true })
     });
   </script>
@@ -253,7 +253,7 @@
   <aside>
     <div class="brand">
       <div class="logo">🌿</div>
-      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.4</p></div>
+      <div><h1>環保例行工作<br>Dashboard</h1><p>Firebase版 V1.3</p></div>
     </div>
     <div class="nav" id="nav">
       <button class="active" data-page="calendar">📅 年度行事曆</button>
@@ -492,8 +492,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY="envRoutineDashboardFirebaseCacheV14";
-const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV13";
+const STORAGE_KEY="envRoutineDashboardFirebaseCacheV13";
+const LEGACY_STORAGE_KEY="envRoutineDashboardFirebaseCacheV12";
 const STATUS_LIST=["全部","尚未開始","進行中","已完成","暫緩"];
 const DEFAULT_CATEGORIES=["空污費","水污費","碳費","ISO 14001","自願減量","永續報告","環保預算","其他"];
 const DEFAULT_DEPTS=["安衛處","環保處","管理部","轉型組","其他"];
@@ -533,7 +533,7 @@ function demoTasks(){
 }
 function loadState(){
   try{
-    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem("envRoutineDashboardFirebaseCacheV12") || localStorage.getItem("envRoutineDashboardFirebaseCacheV11") || localStorage.getItem("envRoutineDashboardV12") || localStorage.getItem("envRoutineDashboardV11") || localStorage.getItem("envRoutineDashboardV10");
+    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem("envRoutineDashboardFirebaseCacheV11") || localStorage.getItem("envRoutineDashboardV12") || localStorage.getItem("envRoutineDashboardV11") || localStorage.getItem("envRoutineDashboardV10");
     if(raw) return normalize(JSON.parse(raw));
   }catch(e){}
   return normalize({tasks:demoTasks(),categories:[...DEFAULT_CATEGORIES],departments:[...DEFAULT_DEPTS],people:[],history:[]});
@@ -541,27 +541,10 @@ function loadState(){
 function normalize(s){
   s.tasks=(s.tasks||[]).map(t=>{
     const {proxy,...clean}=t;
-    const month=Number(clean.month)||1;
     const monthsSource=Array.isArray(clean.repeatMonths)?clean.repeatMonths:(Array.isArray(clean.executionMonths)?clean.executionMonths:[]);
-    let repeatMonths=monthsSource.map(Number).filter(m=>m>=1&&m<=12);
-    if(!repeatMonths.length) repeatMonths=[month];
-    repeatMonths=[...new Set(repeatMonths)].sort((a,b)=>a-b);
-    const isRoutine=(clean.frequency&&clean.frequency!=="單次") || repeatMonths.length>1;
-    const routineGroupId=isRoutine
-      ? (clean.routineGroupId || stableRoutineGroupId(clean,repeatMonths))
-      : (clean.routineGroupId || "");
-    return {
-      ...clean,
-      month,
-      dept:clean.dept||"其他",
-      owner:clean.owner||"",
-      frequency:clean.frequency||"單次",
-      repeatMonths,
-      executionMonths:repeatMonths,
-      routineGroupId
-    };
+    const repeatMonths=monthsSource.map(Number).filter(m=>m>=1&&m<=12);
+    return {...clean,dept:clean.dept||"其他",owner:clean.owner||"",repeatMonths,executionMonths:repeatMonths};
   });
-  s.tasks=repairRoutineTasks(s.tasks);
   s.categories=[...new Set([...(s.categories||[]),...DEFAULT_CATEGORIES,...s.tasks.map(t=>t.category).filter(Boolean)])];
   s.categoryMeta=s.categoryMeta||{};
   s.categories.forEach((c,i)=>{
@@ -584,66 +567,6 @@ function normalize(s){
   s.history=s.history||[];
   s.memos=s.memos||{};
   return s;
-}
-function stableRoutineGroupId(task,months=[]){
-  const raw=[task.year,task.category||"",task.name||"",task.dept||"",task.owner||"",task.frequency||"單次",months.join(",")].join("|");
-  return "rg_"+hashText(raw);
-}
-function hashText(text){
-  let h=0;
-  for(let i=0;i<String(text).length;i++) h=((h<<5)-h+String(text).charCodeAt(i))|0;
-  return Math.abs(h).toString(36);
-}
-function taskExecutionMonths(t){
-  const source=Array.isArray(t.repeatMonths)&&t.repeatMonths.length?t.repeatMonths:(Array.isArray(t.executionMonths)&&t.executionMonths.length?t.executionMonths:[t.month]);
-  return [...new Set(source.map(Number).filter(m=>m>=1&&m<=12))].sort((a,b)=>a-b);
-}
-function repairRoutineTasks(tasks){
-  const list=[...(tasks||[])];
-  const groups=new Map();
-  list.forEach(t=>{
-    if(t.routineGroupId && taskExecutionMonths(t).length>1){
-      if(!groups.has(t.routineGroupId)) groups.set(t.routineGroupId,[]);
-      groups.get(t.routineGroupId).push(t);
-    }
-  });
-  groups.forEach(group=>{
-    const months=[...new Set(group.flatMap(t=>taskExecutionMonths(t)))].sort((a,b)=>a-b);
-    if(months.length<=1) return;
-    const source=group.find(t=>taskExecutionMonths(t).length>1)||group[0];
-    const startDay=dayFromDate(source.startDate,1);
-    const deadlineDay=dayFromDate(source.deadline,31);
-    group.forEach(t=>{
-      t.repeatMonths=months;
-      t.executionMonths=months;
-      t.routineGroupId=source.routineGroupId;
-    });
-    months.forEach(m=>{
-      if(group.some(t=>Number(t.month)===Number(m))) return;
-      const created={
-        ...source,
-        id:uid(),
-        month:Number(m),
-        startDate:source.startDate?buildDateByDay(source.year,m,startDay):"",
-        deadline:source.deadline?buildDateByDay(source.year,m,deadlineDay):"",
-        status:"尚未開始",
-        completedDate:"",
-        note:"",
-        repeatMonths:months,
-        executionMonths:months,
-        routineGroupId:source.routineGroupId
-      };
-      list.push(created);
-      group.push(created);
-    });
-  });
-  return list;
-}
-function routineGroupTasks(groupId){
-  return state.tasks.filter(t=>groupId && t.routineGroupId===groupId);
-}
-function isRoutineTask(t){
-  return !!(t && (t.routineGroupId || (t.frequency&&t.frequency!=="單次") || taskExecutionMonths(t).length>1));
 }
 function saveState(syncCloud=true){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
@@ -1095,19 +1018,9 @@ function renderProgress(){
   });
 }
 function renderRoutine(){
-  const routines=state.tasks.filter(t=>t.frequency!=="單次" || taskExecutionMonths(t).length>1 || t.routineGroupId);
-  const groups=[];
-  const seen=new Set();
-  routines.forEach(t=>{
-    const key=t.routineGroupId||t.id;
-    if(seen.has(key)) return;
-    seen.add(key);
-    const group=t.routineGroupId?state.tasks.filter(x=>x.routineGroupId===t.routineGroupId):[t];
-    const months=[...new Set(group.flatMap(x=>taskExecutionMonths(x)))].sort((a,b)=>a-b);
-    groups.push({task:t,group,months});
-  });
-  routineTable.innerHTML=`<thead><tr><th>類別</th><th>工作名稱</th><th>頻率</th><th>執行月份</th><th>筆數</th><th>部門</th><th>負責人</th><th>操作</th></tr></thead><tbody>${
-    groups.map(g=>`<tr><td>${g.task.category}</td><td>${g.task.name}</td><td>${g.task.frequency}</td><td>${g.months.map(m=>`${m}月`).join("、")}</td><td>${g.group.length} 筆</td><td>${g.task.dept||"—"}</td><td>${g.task.owner||"—"}</td><td><button class="btn small" onclick="editTask('${g.task.id}')">編輯</button></td></tr>`).join("")||'<tr><td colspan="8">尚無例行工作</td></tr>'
+  const routines=state.tasks.filter(t=>t.frequency!=="單次");
+  routineTable.innerHTML=`<thead><tr><th>類別</th><th>工作名稱</th><th>頻率</th><th>月份</th><th>執行月份</th><th>部門</th><th>負責人</th><th>操作</th></tr></thead><tbody>${
+    routines.map(t=>`<tr><td>${t.category}</td><td>${t.name}</td><td>${t.frequency}</td><td>${t.month}月</td><td>${repeatMonthsText(t)}</td><td>${t.dept||"—"}</td><td>${t.owner||"—"}</td><td><button class="btn small" onclick="editTask('${t.id}')">編輯</button></td></tr>`).join("")||'<tr><td colspan="8">尚無例行工作</td></tr>'
   }</tbody>`;
 }
 function renderImportHistory(){
@@ -1230,16 +1143,21 @@ function openTaskModal(task=null){
   taskReminder.value=String(task?.reminderDays||7);
   taskNote.value=task?.note||"";
   initRepeatMonthGrid();
-  setSelectedRepeatMonths(task?taskExecutionMonths(task):[monthFromSelectValue(taskMonth.value)]);
+  setSelectedRepeatMonths(task?.repeatMonths?.length?task.repeatMonths:[monthFromSelectValue(taskMonth.value)]);
   toggleRepeatMonthsPanel();
   taskModal.classList.add("show");
 }
 function closeTaskModal(){taskModal.classList.remove("show")}
-function buildTaskBaseFromForm(){
+function saveTask(){
+  if(!taskName.value.trim()){toastMsg("請輸入工作名稱");return}
+  if(!taskDeadline.value){toastMsg("請輸入截止日期");return}
+
   const selectedMonths=taskFrequency.value==="單次"
     ? [monthFromSelectValue(taskMonth.value)]
     : monthsForFrequency(taskFrequency.value,monthFromSelectValue(taskMonth.value));
-  return {
+  if(taskFrequency.value!=="單次"&&!selectedMonths.length){toastMsg("請至少勾選一個執行月份");return}
+
+  const base={
     id:editId.value||uid(),year:Number(taskYear.value),month:monthFromSelectValue(taskMonth.value),
     category:taskCategory.value,name:taskName.value.trim(),frequency:taskFrequency.value,
     startDate:taskStart.value,deadline:taskDeadline.value,dept:taskDept.value,
@@ -1247,144 +1165,44 @@ function buildTaskBaseFromForm(){
     completedDate:taskCompleted.value,reminderDays:Number(taskReminder.value),note:taskNote.value.trim(),
     repeatMonths:selectedMonths,executionMonths:selectedMonths
   };
-}
-function createTaskForMonth(base,month,months,groupId,options={}){
-  const startDay=dayFromDate(base.startDate,1);
-  const deadlineDay=dayFromDate(base.deadline,31);
-  return {
-    ...base,
-    id:options.id||uid(),
-    month:Number(month),
-    startDate:base.startDate?buildDateByDay(base.year,month,startDay):"",
-    deadline:base.deadline?buildDateByDay(base.year,month,deadlineDay):"",
-    status:options.status!==undefined?options.status:base.status,
-    completedDate:options.completedDate!==undefined?options.completedDate:base.completedDate,
-    note:options.note!==undefined?options.note:base.note,
-    repeatMonths:months,
-    executionMonths:months,
-    routineGroupId:groupId||""
-  };
-}
-function askRoutineEditScope(){
-  const ans=prompt("這是例行工作，請選擇修改範圍：\n1：只修改本月\n2：修改整組例行工作\n0：取消", "1");
-  if(ans===null || ans==="0") return "cancel";
-  if(ans==="2") return "group";
-  if(ans==="1") return "single";
-  toastMsg("未選擇有效範圍，已取消");
-  return "cancel";
-}
-function askRoutineDeleteScope(){
-  const ans=prompt("這是例行工作，請選擇刪除範圍：\n1：只刪除本月\n2：刪除整組例行工作\n0：取消", "1");
-  if(ans===null || ans==="0") return "cancel";
-  if(ans==="2") return "group";
-  if(ans==="1") return "single";
-  toastMsg("未選擇有效範圍，已取消");
-  return "cancel";
-}
-function saveTask(){
-  if(!taskName.value.trim()){toastMsg("請輸入工作名稱");return}
-  if(!taskDeadline.value){toastMsg("請輸入截止日期");return}
 
-  const base=buildTaskBaseFromForm();
-  const months=[...new Set(base.repeatMonths.map(Number).filter(m=>m>=1&&m<=12))].sort((a,b)=>a-b);
-  if(base.frequency!=="單次"&&!months.length){toastMsg("請至少勾選一個執行月份");return}
-  if(base.status==="已完成"&&!base.completedDate)base.completedDate=new Date().toISOString().slice(0,10);
-
-  const original=editId.value?state.tasks.find(t=>t.id===editId.value):null;
-  if(!original){
-    if(base.frequency!=="單次"){
-      const groupId=uid();
-      let added=0, skipped=0;
-      months.forEach(m=>{
-        const exists=state.tasks.some(t=>
-          Number(t.year)===base.year &&
-          Number(t.month)===Number(m) &&
-          String(t.name||"").trim()===base.name &&
-          String(t.owner||"")===String(base.owner||"")
-        );
-        if(exists){skipped++;return;}
-        const isBaseMonth=Number(m)===Number(base.month);
-        state.tasks.push(createTaskForMonth(base,m,months,groupId,{
-          status:isBaseMonth?base.status:"尚未開始",
-          completedDate:isBaseMonth?base.completedDate:"",
-          note:isBaseMonth?base.note:""
-        }));
-        added++;
-      });
-      saveState();closeTaskModal();renderAll();
-      toastMsg(`已建立 ${added} 筆工作，略過 ${skipped} 筆重複工作`);
-      return;
-    }
-    state.tasks.push({...base,repeatMonths:[base.month],executionMonths:[base.month],routineGroupId:""});
-    saveState();closeTaskModal();renderAll();toastMsg("已儲存工作");
-    return;
-  }
-
-  const originalIsRoutine=isRoutineTask(original) && routineGroupTasks(original.routineGroupId).length>1;
-  let scope="single";
-  if(originalIsRoutine) scope=askRoutineEditScope();
-  if(scope==="cancel") return;
-
-  if(scope==="group"){
-    const groupId=original.routineGroupId || uid();
-    const group=routineGroupTasks(original.routineGroupId);
-    const existingByMonth=new Map(group.map(t=>[Number(t.month),t]));
-    state.tasks=state.tasks.filter(t=>t.routineGroupId!==original.routineGroupId || months.includes(Number(t.month)));
-    let updated=0, added=0;
+  if(!editId.value && taskFrequency.value!=="單次"){
+    const months=[...new Set(selectedMonths)].sort((a,b)=>a-b);
+    const startDay=dayFromDate(base.startDate,1);
+    const deadlineDay=dayFromDate(base.deadline,31);
+    let added=0, skipped=0;
     months.forEach(m=>{
-      const existing=existingByMonth.get(Number(m));
-      if(existing){
-        const isEditedMonth=existing.id===original.id;
-        const updatedTask=createTaskForMonth(base,m,months,groupId,{
-          id:existing.id,
-          status:isEditedMonth?base.status:existing.status,
-          completedDate:isEditedMonth?base.completedDate:existing.completedDate,
-          note:isEditedMonth?base.note:existing.note
-        });
-        const idx=state.tasks.findIndex(t=>t.id===existing.id);
-        if(idx>=0) state.tasks[idx]=updatedTask;
-        else state.tasks.push(updatedTask);
-        updated++;
-      }else{
-        state.tasks.push(createTaskForMonth(base,m,months,groupId,{status:"尚未開始",completedDate:"",note:""}));
-        added++;
-      }
+      const exists=state.tasks.some(t=>
+        Number(t.year)===base.year &&
+        Number(t.month)===Number(m) &&
+        String(t.name||"").trim()===base.name &&
+        String(t.owner||"")===String(base.owner||"")
+      );
+      if(exists){skipped++;return;}
+      state.tasks.push({
+        ...base,
+        id:uid(),
+        month:Number(m),
+        startDate:base.startDate?buildDateByDay(base.year,m,startDay):"",
+        deadline:buildDateByDay(base.year,m,deadlineDay),
+        completedDate:"",
+        repeatMonths:months,
+        executionMonths:months
+      });
+      added++;
     });
-    saveState();closeTaskModal();renderAll();toastMsg(`已更新整組例行工作：更新 ${updated} 筆，新增 ${added} 筆`);
+    saveState();closeTaskModal();renderAll();
+    toastMsg(`已建立 ${added} 筆工作，略過 ${skipped} 筆重複工作`);
     return;
   }
 
-  const idx=state.tasks.findIndex(t=>t.id===original.id);
-  if(idx>=0){
-    const keepMonths=taskExecutionMonths(original);
-    state.tasks[idx]={
-      ...base,
-      id:original.id,
-      month:original.month,
-      repeatMonths:keepMonths,
-      executionMonths:keepMonths,
-      routineGroupId:original.routineGroupId||""
-    };
-  }
-  saveState();closeTaskModal();renderAll();toastMsg("已儲存本月工作");
+  if(base.status==="已完成"&&!base.completedDate)base.completedDate=new Date().toISOString().slice(0,10);
+  const idx=state.tasks.findIndex(t=>t.id===base.id);
+  if(idx>=0)state.tasks[idx]=base;else state.tasks.push(base);
+  saveState();closeTaskModal();renderAll();toastMsg("已儲存工作");
 }
 function editTask(id){const t=state.tasks.find(t=>t.id===id);if(t)openTaskModal(t)}
-function deleteTask(id){
-  const t=state.tasks.find(x=>x.id===id);
-  if(!t) return;
-  const originalIsRoutine=isRoutineTask(t) && routineGroupTasks(t.routineGroupId).length>1;
-  if(originalIsRoutine){
-    const scope=askRoutineDeleteScope();
-    if(scope==="cancel") return;
-    if(scope==="group"){
-      state.tasks=state.tasks.filter(x=>x.routineGroupId!==t.routineGroupId);
-      saveState();renderAll();toastMsg("已刪除整組例行工作");
-      return;
-    }
-  }else if(!confirm("確定刪除這筆工作？")) return;
-  state.tasks=state.tasks.filter(x=>x.id!==id);
-  saveState();renderAll();toastMsg("已刪除本月工作");
-}
+function deleteTask(id){if(confirm("確定刪除這筆工作？")){state.tasks=state.tasks.filter(t=>t.id!==id);renderAll()}}
 function addCategory(){
   const v=newCategory.value.trim();
   if(!v)return;
@@ -1529,7 +1347,7 @@ function importExcel(event){
 function exportJson(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="環保例行工作Dashboard備份_Firebase_V1.4.json";a.click();
+  a.download="環保例行工作Dashboard備份_Firebase_V1.3.json";a.click();
 }
 function importJson(event){
   const file=event.target.files[0];if(!file)return;

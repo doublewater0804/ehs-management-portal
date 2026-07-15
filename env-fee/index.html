@@ -1,0 +1,1783 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>環保規費 Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --navy:#073a67;--navy2:#052b4d;--blue:#287be6;--teal:#0aa39a;
+  --green:#65b934;--orange:#ff8615;--red:#d64545;--purple:#6757d9;
+  --bg:#f4f8fc;--card:#fff;--line:#d7e2ee;--text:#172334;--muted:#64748b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);font-family:"Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;color:var(--text)}
+button,select,input,textarea{font:inherit}
+.app{min-height:100vh;display:grid;grid-template-columns:220px 1fr}
+.sidebar{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;padding:24px 14px;position:sticky;top:0;height:100vh}
+.brand{font-size:26px;font-weight:800;text-align:center;margin-bottom:32px}
+.brand:after{content:"";display:block;width:42px;height:3px;background:#8ab6dc;margin:12px auto;border-radius:9px}
+.nav-section{border-radius:12px;overflow:hidden;margin-bottom:22px;border:1px solid rgba(255,255,255,.18)}
+.nav-head{padding:14px 16px;font-weight:800;font-size:18px;display:flex;gap:10px;align-items:center;cursor:pointer}
+.nav-head.blue{background:linear-gradient(90deg,#0870de,#1e86ee)}
+.nav-head.teal{background:linear-gradient(90deg,#039c94,#13b2a8)}
+.nav-head.inactive{filter:saturate(.55) brightness(.8)}
+.nav-items{padding:8px;background:rgba(0,0,0,.08)}
+.nav-item{display:block;width:100%;border:0;background:transparent;color:#fff;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.16)}
+.action-btn{width:100%;border:0;border-radius:12px;background:linear-gradient(135deg,#ff9b17,#ff6f00);color:#fff;padding:18px 12px;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 8px 18px rgba(255,111,0,.25)}
+.action-btn span{font-size:28px;vertical-align:middle;margin-right:6px}
+.main{padding:22px;min-width:0}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.header h1{margin:0;font-size:30px;color:#0d2743}
+.header small{color:var(--muted)}
+.filters{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:16px;margin-bottom:16px;box-shadow:0 4px 12px rgba(20,55,90,.04)}
+.filters.compare{grid-template-columns:repeat(3,minmax(220px,1fr))}
+.filter label{font-weight:700;margin-right:8px}
+.filter select{width:100%;margin-top:7px;padding:9px 10px;border:1px solid #cbd7e4;border-radius:8px;background:#fff}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.kpis.compare{grid-template-columns:repeat(4,1fr)}
+.kpi{background:#fff;border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:14px;padding:15px;box-shadow:0 5px 14px rgba(17,50,80,.05)}
+.kpi-title{font-weight:800;color:var(--accent);font-size:15px;min-height:40px}
+.kpi-value{font-size:27px;font-weight:900;margin:8px 0}
+.kpi-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:5px}
+.kpi-meta strong{color:var(--accent)}
+.grid-two{display:grid;grid-template-columns:1.25fr .85fr;gap:14px;margin-bottom:14px}
+.grid-compare{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-bottom:14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:visible;box-shadow:0 5px 14px rgba(17,50,80,.05)}
+.panel-title{padding:12px 15px;font-weight:900;font-size:18px;color:#0d4e91;background:linear-gradient(90deg,#f3f8fd,#fff);border-radius:14px 14px 0 0}
+.panel-body{padding:16px}
+.chart{height:285px;position:relative;padding-top:34px}
+.legend{display:flex;gap:18px;justify-content:center;font-size:13px;color:var(--muted);margin-top:8px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px}
+.bar-chart{height:230px;display:flex;align-items:flex-end;justify-content:space-around;border-left:1px solid #bdc9d6;border-bottom:1px solid #bdc9d6;padding:10px 12px 0;margin:6px 15px 0 38px;position:relative}
+.trend-host{height:230px;border-left:1px solid #bdc9d6;border-bottom:1px solid #bdc9d6;margin:6px 15px 0 38px;position:relative;overflow-x:auto;overflow-y:hidden}
+.trend-bars{position:absolute;left:12px;top:18px;height:170px;display:flex;align-items:flex-end;gap:14px;z-index:2}
+.trend-svg{position:absolute;left:12px;top:18px;height:170px;z-index:1;pointer-events:none}
+.trend-seq-item{width:44px;flex:0 0 44px;height:170px;position:relative}
+.trend-seq-bar{position:absolute;left:0;bottom:0;width:100%;height:var(--bar-px);background:var(--bar-color);border-radius:8px 8px 0 0}
+.trend-seq-point{position:absolute;left:50%;bottom:calc(var(--bar-px) - 4px);transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid var(--bar-color);box-shadow:0 0 0 2px rgba(255,255,255,.75)}
+.trend-seq-item .bar-total-label{position:absolute;left:50%;top:auto;bottom:calc(var(--bar-px) + 8px);transform:translateX(-50%);white-space:nowrap}
+.trend-seq-item .year-label{position:absolute;left:50%;bottom:-32px;transform:translateX(-50%);width:64px;text-align:center;font-size:12px;line-height:1.2}
+.trend-click-panel{cursor:pointer}
+.trend-click-panel:hover{box-shadow:0 8px 22px rgba(17,50,80,.14)}
+.expand-hint{float:right;font-size:12px;color:#64748b;font-weight:600}
+.trend-modal-card{width:min(1400px,96vw);height:min(820px,92vh)}
+.trend-modal-card .modal-body{height:calc(100% - 58px);padding:18px}
+.trend-modal-chart{height:100%;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px}
+.trend-modal-chart .trend-host{height:520px;margin:20px 24px 0 58px}
+.trend-modal-chart .trend-bars{height:420px;top:30px}
+.trend-modal-chart .trend-svg{height:420px;top:30px}
+.trend-modal-chart .trend-seq-item{height:420px;width:56px;flex-basis:56px}
+.trend-modal-chart .trend-seq-item .year-label{bottom:-38px;width:90px;font-size:13px}
+.trend-modal-chart .bar-total-label{font-size:13px}
+.trend-range-filter select{border-color:#f59e0b;background:#fffdf5}
+
+.bar-stack{width:12%;height:var(--h);display:flex;flex-direction:column-reverse;position:relative;cursor:default}
+.bar-total-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;font-weight:800;color:#24364b;background:#fff;padding:2px 5px;border-radius:4px;box-shadow:0 1px 5px rgba(0,0,0,.10)}
+.bar-stack[data-tooltip]:hover:after{content:attr(data-tooltip);position:absolute;left:50%;bottom:calc(100% + 22px);transform:translateX(-50%);z-index:15;min-width:210px;white-space:pre-line;text-align:left;background:#102a43;color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.65;box-shadow:0 8px 24px rgba(0,0,0,.24);pointer-events:none}
+.bar-stack[data-tooltip]:hover:before{content:"";position:absolute;left:50%;bottom:calc(100% + 12px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#102a43;z-index:16}
+.seg{width:100%}
+.seg.air{background:var(--teal)}
+.seg.soil{background:var(--green)}
+.seg.water{background:#3d8eea}
+.year-label{position:absolute;bottom:-28px;width:130%;left:-15%;text-align:center;font-size:12px;color:#475569}
+.donut-wrap{display:flex;align-items:center;justify-content:center;gap:18px;height:230px}
+.donut{width:170px;height:170px;border-radius:50%;background:conic-gradient(var(--teal) 0 var(--a),var(--green) var(--a) var(--b),#3d8eea var(--b) 100%);position:relative}
+.donut:after{content:"";position:absolute;inset:43px;border-radius:50%;background:#fff}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:2;font-weight:800}
+.donut-legend div{margin:12px 0;font-size:14px}
+.hbar-row{display:grid;grid-template-columns:64px 1fr 95px;align-items:center;gap:8px;margin:13px 0;font-size:13px}
+.hbar-track{height:14px;background:#e7eef5;border-radius:8px;overflow:hidden}
+.hbar-fill{height:100%;background:linear-gradient(90deg,#0b9c94,#26b9ae);border-radius:8px}
+.soil-flow{display:flex;align-items:center;justify-content:space-around;gap:12px;min-height:190px}
+.flow-box{flex:1;border:1px solid #8fcfc9;background:#f2fffd;border-radius:12px;padding:24px 10px;text-align:center}
+.flow-box.refund{border-color:#f0c16f;background:#fff9eb}
+.flow-box b{display:block;font-size:17px;margin-bottom:12px}
+.flow-box strong{font-size:24px}
+.operator{font-size:34px;font-weight:900;color:#455568}
+.compare-bars{display:flex;align-items:flex-end;justify-content:center;gap:120px;height:240px;border-left:1px solid #bdc9d6;border-bottom:1px solid #bdc9d6;margin:10px 36px 42px 55px;padding:0 80px}
+.compare-col{width:110px;height:var(--h);background:linear-gradient(180deg,#3e90ef,#1f70cf);position:relative;border-radius:8px 8px 0 0}
+.compare-col.secondary{background:linear-gradient(180deg,#98a8b8,#708091)}
+.compare-col span{position:absolute;bottom:-32px;width:220px;left:50%;transform:translateX(-50%);text-align:center;font-weight:700;white-space:nowrap;font-size:13px}
+.compare-col b{position:absolute;top:-28px;width:160px;left:-25px;text-align:center}
+.table-panel{margin-bottom:12px}
+table{width:100%;border-collapse:collapse}
+th{background:#07549a;color:#fff;padding:10px}
+td{padding:10px;border-bottom:1px dashed #d6e0ea;text-align:center}
+tr.total td{font-weight:900;color:#074f96;background:#eef6ff}
+.reason{border:1px solid #ccd8e5;border-radius:6px;padding:6px;width:95%}
+.note{font-size:13px;color:#526273;margin:12px 2px}
+.page.hidden,.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(2,20,38,.56);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modal-card{background:#fff;width:min(1050px,96vw);max-height:92vh;overflow:auto;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.modal-head{background:var(--navy);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:2}
+.modal-head button{border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer}
+.modal-body{padding:20px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{border:1px solid #cbd7e4;background:#fff;padding:9px 16px;border-radius:8px;cursor:pointer}
+.tab.active{background:#0876d8;color:#fff;border-color:#0876d8}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.form-group label{display:block;font-weight:700;margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px;border:1px solid #cbd7e4;border-radius:8px}
+.form-group.full{grid-column:1/-1}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.btn{border:0;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700}
+.btn.secondary{background:#e8eef5}
+.btn.primary{background:#0876d8;color:#fff}
+.btn.danger{background:#d64545;color:#fff}
+.mgmt-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.mgmt-table-wrap{overflow:auto}
+.mgmt-table td,.mgmt-table th{white-space:nowrap}
+.small-btn{border:0;border-radius:6px;padding:6px 9px;cursor:pointer;margin:0 2px}
+.small-btn.edit{background:#e5f1ff;color:#07549a}
+.small-btn.delete{background:#ffe9e9;color:#a52020}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px}
+.badge.ok{background:#e8f7ee;color:#287a44}
+
+.badge.pending{background:#fff1dc;color:#a35b00}
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.io-card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 5px 14px rgba(17,50,80,.05);overflow:hidden}
+.io-card h2{margin:0;padding:14px 16px;background:linear-gradient(90deg,#f3f8fd,#fff);font-size:19px;color:#0d4e91}
+.io-body{padding:18px}
+.io-row{margin-bottom:14px}
+.io-row label{display:block;font-weight:700;margin-bottom:6px}
+.io-row input,.io-row select{width:100%;padding:10px;border:1px solid #cbd7e4;border-radius:8px;background:#fff}
+.io-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.io-status{margin-top:12px;padding:10px 12px;border-radius:8px;background:#f4f7fb;color:#475569;font-size:13px}
+.io-status.ok{background:#e9f8ef;color:#216d3b}
+.io-status.error{background:#fff0f0;color:#a12b2b}
+.preview-wrap{margin-top:16px;overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:10px}
+.preview-table{min-width:900px;font-size:12px}
+.preview-table th{position:sticky;top:0}
+.help-box{background:#fff9e8;border:1px solid #f0d28a;border-radius:10px;padding:12px;line-height:1.6;font-size:13px}
+@media(max-width:950px){.io-grid{grid-template-columns:1fr}}
+.stats-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 5px 14px rgba(17,50,80,.05);overflow:auto}
+.stats-title{font-size:22px;font-weight:900;color:#0d4e91;margin:2px 0 12px}.stats-controls{display:grid;grid-template-columns:repeat(2,minmax(180px,260px));gap:14px;margin-bottom:14px}.stats-control label{display:block;font-weight:700;margin-bottom:6px}.stats-control select{width:100%;padding:9px 10px;border:1px solid #cbd7e4;border-radius:8px;background:#fff}
+.stats-table{min-width:1180px;border-collapse:collapse;width:100%;font-size:14px}
+.stats-table th,.stats-table td{border:1px solid #1f2937;padding:8px 10px;text-align:center;vertical-align:middle}
+.stats-table thead th{background:#f8fbff;color:#111827;font-weight:800}
+.stats-table .section{font-weight:800;background:#f7fafc}
+.stats-table .subtotal{font-weight:800;background:#eef4f8}
+.stats-table .grand-total{font-weight:900;background:#dfe7ee}
+.stats-table .year-head{font-size:16px;background:#f4f7fb}
+.stats-table .blank{background:#fff}
+.stats-notes{margin-top:10px;font-size:13px;line-height:1.7;color:#1f2937}
+@media print{
+  #statsPage .stats-wrap{box-shadow:none;border:0;padding:0}
+  .stats-table{font-size:10px;min-width:0}
+  .stats-table th,.stats-table td{padding:4px 5px}
+}
+
+@media(max-width:1100px){
+ .app{grid-template-columns:190px 1fr}.kpis,.kpis.compare{grid-template-columns:repeat(2,1fr)}
+ .grid-two,.grid-compare{grid-template-columns:1fr}.filters,.filters.compare{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:760px){
+ .app{grid-template-columns:1fr}.sidebar{position:static;height:auto}
+ .filters,.filters.compare,.kpis,.kpis.compare{grid-template-columns:1fr}
+}
+@media print{
+ @page{size:A4 landscape;margin:8mm}
+ body{background:#fff}.app{grid-template-columns:150px 1fr}.sidebar{height:auto;position:static}
+ .main{padding:10px}.action-btn,.filters{display:none}.panel,.kpi{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">工作列</div>
+
+  <div class="nav-section">
+    <div class="nav-head blue" id="annualNavHead">▥ 1. 當年度</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-head inactive" id="statsNavHead" style="background:linear-gradient(90deg,#6b46c1,#8b5cf6)">▦ 2. 統計表</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-head teal inactive" id="compareNavHead">⌁ 3. 比較分析</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-head inactive" id="ioNavHead" style="background:linear-gradient(90deg,#b45309,#f59e0b)">⇅ 4. 匯入／匯出</div>
+  </div>
+
+  <button class="action-btn" id="openManager"><span>＋</span>新增／修改<br>環保規費項目</button>
+</aside>
+
+<main class="main">
+  <div class="header">
+    <h1>環保規費 Dashboard</h1>
+    <small>A4 橫式／彩色版</small>
+  </div>
+
+  <!-- 當年度頁 -->
+  <section id="annualPage" class="page">
+    <section class="filters">
+      <div class="filter"><label>年度</label><select id="annualYear"></select></div>
+      <div class="filter"><label>廠區</label>
+        <select id="annualSite">
+          <option value="all">全部廠區</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>台醋</option><option>新港</option>
+        </select>
+      </div>
+      <div class="filter"><label>金額單位</label>
+        <select id="annualUnit"><option value="1">新台幣（元）</option><option value="1000">新台幣（千元）</option><option value="10000">新台幣（萬元）</option></select>
+      </div>
+    </section>
+
+    <section class="kpis" id="annualKpi"></section>
+
+    <section class="grid-two">
+      <div class="panel" id="annualOverview">
+        <div class="panel-title" id="annualOverviewTitle">當年度總覽</div>
+        <div class="panel-body">
+          <div class="chart"><div class="bar-chart" id="annualTrend"></div></div>
+          <div class="legend"><span><i class="dot" style="background:#0aa39a"></i>空污費</span><span><i class="dot" style="background:#65b934"></i>土污費</span><span><i class="dot" style="background:#3d8eea"></i>水污費</span></div>
+        </div>
+      </div>
+      <div class="panel" id="annualComposition">
+        <div class="panel-title" id="annualCompositionTitle">本年度費用組成</div>
+        <div class="panel-body"><div class="donut-wrap"><div class="donut" id="annualDonut"><div class="donut-center"><span>合計</span><strong id="annualDonutTotal"></strong></div></div><div class="donut-legend" id="annualDonutLegend"></div></div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title" style="color:#087f78">土污費拆解</div>
+      <div class="panel-body soil-flow">
+        <div class="flow-box"><b>原始費用</b><strong id="annualSoilGross"></strong><small><br>全公司申報金額</small></div>
+        <div class="operator">−</div>
+        <div class="flow-box refund"><b>退費／扣抵</b><strong id="annualSoilRefund"></strong><small><br>全公司退費或扣抵</small></div>
+        <div class="operator">＝</div>
+        <div class="flow-box"><b>淨支出</b><strong id="annualSoilNet"></strong><small><br>全公司實際負擔</small></div>
+      </div>
+    </section>
+
+    <div class="note">ⓘ 選擇單一廠區時，土污費不納入總額、圖表及費用組成；水污費依該廠區上、下半年申報資料加總。</div>
+  </section>
+
+  <!-- 比較分析頁 -->
+  <section id="comparePage" class="page hidden">
+    <section class="filters compare">
+      <div class="filter"><label>規費項目</label>
+        <select id="compareType"><option value="air">空污費</option><option value="soil">土污費</option><option value="water">水污費</option></select>
+      </div>
+      <div class="filter"><label>年度</label><select id="compareYear"></select></div>
+      <div class="filter"><label>期間</label><select id="comparePeriod"></select></div>
+      <div class="filter"><label>比較方式</label>
+        <select id="compareMode">
+          <option value="qoq">本期 vs 上期</option>
+          <option value="yoyq">本期 vs 去年同期</option>
+          <option value="ytd">本年累計 vs 去年同期</option>
+        </select>
+      </div>
+      <div class="filter"><label>範圍／廠區</label>
+        <select id="compareSite"><option value="all">全公司</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>台醋</option><option>新港</option></select>
+      </div>
+      <div class="filter"><label>趨勢口徑</label>
+        <select id="trendBasis">
+          <option value="full">各年度全年總費用</option>
+          <option value="samePeriod">各年度累計至相同期間</option>
+          <option value="sequential">逐期趨勢（連續期間）</option>
+        </select>
+      </div>
+
+      <div class="filter trend-range-filter hidden" id="trendStartWrap">
+        <label>趨勢起始期間</label>
+        <select id="trendStart"></select>
+      </div>
+      <div class="filter trend-range-filter hidden" id="trendEndWrap">
+        <label>趨勢結束期間</label>
+        <select id="trendEnd"></select>
+      </div>
+    </section>
+
+    <section class="kpis compare" id="compareKpis"></section>
+
+    <section class="grid-compare">
+      <div class="panel">
+        <div class="panel-title" id="compareChartTitle">本期與比較期</div>
+        <div class="panel-body"><div class="compare-bars" id="compareBars"></div></div>
+      </div>
+      <div class="panel trend-click-panel" id="compareTrendPanel" title="點選可放大圖表">
+        <div class="panel-title">
+          <span id="compareTrendTitle">歷期趨勢</span>
+          <span class="expand-hint">⛶ 點選放大</span>
+        </div>
+        <div class="panel-body"><div class="chart"><div class="bar-chart" id="compareTrend"></div></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="compareSitePanel">
+      <div class="panel-title">各廠區比較</div>
+      <div class="panel-body" id="compareSiteBars"></div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-title">管理摘要／差異原因</div>
+      <div class="panel-body" style="padding:8px">
+        <table>
+          <thead><tr><th>項目</th><th>本期</th><th>比較期</th><th>差異</th><th>差異率</th><th>備註／原因</th></tr></thead>
+          <tbody id="compareSummary"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="note">ⓘ 比較分析以統計表的季度／半年明細為唯一資料來源；土污費僅提供全公司比較。</div>
+  </section>
+
+  <!-- 統計表頁 -->
+  <section id="statsPage" class="page hidden">
+    <div class="stats-wrap">
+      <div class="stats-title">環保規費統計表</div>
+
+      <div class="stats-controls">
+        <div class="stats-control">
+          <label>左側年度</label>
+          <select id="statsYearLeft"></select>
+        </div>
+        <div class="stats-control">
+          <label>右側年度</label>
+          <select id="statsYearRight"></select>
+        </div>
+      </div>
+
+      <div id="statsTableContainer"></div>
+
+      <div class="stats-notes">
+        註：1. 土污費以全公司進行申報繳納。<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;2. 水污費為每半年申報繳納。<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;3. 彰化廠每季僅有 VOC 排放量產生，因排放量未達 1 公噸，依規定無須繳納空污費。
+      </div>
+    </div>
+  </section>
+
+  <!-- 匯入／匯出頁 -->
+  <section id="ioPage" class="page hidden">
+    <div class="io-grid">
+      <div class="io-card">
+        <h2>匯入環保規費資料</h2>
+        <div class="io-body">
+          <div class="help-box">
+            支援 Excel（.xlsx）與 CSV。必要欄位：年度、期間、規費類型、範圍／廠區、原始金額。<br>
+            選用欄位：退費／扣抵、申報狀態、備註。
+          </div>
+
+          <div class="io-row" style="margin-top:14px">
+            <label>選擇檔案</label>
+            <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+          </div>
+
+          <div class="io-actions">
+            <button class="btn primary" id="previewImport">預覽與驗證</button>
+            <button class="btn secondary" id="commitImport" disabled>確認匯入</button>
+          </div>
+
+          <div id="importStatus" class="io-status">尚未選擇檔案。</div>
+          <div id="importPreview" class="preview-wrap hidden"></div>
+        </div>
+      </div>
+
+      <div class="io-card">
+        <h2>匯出環保規費資料</h2>
+        <div class="io-body">
+          <div class="io-row">
+            <label>起始年度</label>
+            <select id="exportStartYear"></select>
+          </div>
+          <div class="io-row">
+            <label>結束年度</label>
+            <select id="exportEndYear"></select>
+          </div>
+          <div class="io-row">
+            <label>規費類型</label>
+            <select id="exportType">
+              <option value="all">全部規費</option>
+              <option value="air">空污費</option>
+              <option value="soil">土污費</option>
+              <option value="water">水污費</option>
+            </select>
+          </div>
+
+          <div class="io-actions">
+            <button class="btn secondary" id="exportCsv">匯出 CSV</button>
+            <button class="btn primary" id="exportXlsx">匯出 Excel（.xlsx）</button>
+          </div>
+
+          <div id="exportStatus" class="io-status">匯出內容以統計表季度／半年資料為準。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+
+<!-- 趨勢圖放大視窗 -->
+<div class="modal hidden" id="trendModal">
+  <div class="modal-card trend-modal-card">
+    <div class="modal-head">
+      <b id="trendModalTitle">趨勢圖</b>
+      <button id="closeTrendModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="trendModalChart" class="trend-modal-chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 完整資料管理 -->
+<div class="modal hidden" id="managerModal">
+  <div class="modal-card">
+    <div class="modal-head"><b>環保規費資料管理</b><button id="closeManager">×</button></div>
+    <div class="modal-body">
+      <div class="tabs">
+        <button class="tab active" data-tab="list">資料清單</button>
+        <button class="tab" data-tab="form">新增／編輯資料</button>
+      </div>
+
+      <section id="managerList">
+        <div class="mgmt-filters">
+          <select id="mfYear"><option value="">全部年度</option></select>
+          <select id="mfType"><option value="">全部類型</option><option value="air">空污費</option><option value="soil">土污費</option><option value="water">水污費</option></select>
+          <select id="mfSite"><option value="">全部範圍</option><option>全公司</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>台醋</option><option>新港</option></select>
+          <select id="mfStatus"><option value="">全部狀態</option><option>已申報</option><option>尚未申報</option></select>
+        </div>
+        <div class="mgmt-table-wrap">
+          <table class="mgmt-table">
+            <thead><tr><th>年度</th><th>期間</th><th>類型</th><th>範圍</th><th>原始金額</th><th>退費／扣抵</th><th>淨支出</th><th>狀態</th><th>備註</th><th>操作</th></tr></thead>
+            <tbody id="managerRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="managerForm" class="hidden">
+        <form id="feeForm">
+          <input type="hidden" id="editId">
+          <div class="form-grid">
+            <div class="form-group"><label>年度</label><input type="number" id="fYear" min="2016" max="2100" required></div>
+            <div class="form-group"><label>期間</label><select id="fPeriod"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option><option>上半年</option><option>下半年</option><option>全年</option></select></div>
+            <div class="form-group"><label>規費類型</label><select id="fType"><option value="air">空污費</option><option value="soil">土污費</option><option value="water">水污費</option></select></div>
+            <div class="form-group"><label>範圍／廠區</label><select id="fSite"><option>全公司</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>台醋</option><option>新港</option></select></div>
+            <div class="form-group"><label>原始金額</label><input type="number" id="fAmount" min="0" step="1" required></div>
+            <div class="form-group"><label>退費／扣抵</label><input type="number" id="fRefund" min="0" step="1" value="0"></div>
+            <div class="form-group"><label>申報狀態</label><select id="fStatus"><option>已申報</option><option>尚未申報</option></select></div>
+            <div class="form-group full"><label>備註／差異原因</label><textarea id="fNote" rows="3"></textarea></div>
+          </div>
+          <div class="modal-actions"><button type="button" class="btn secondary" id="clearForm">清除</button><button class="btn primary">儲存資料</button></div>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA={
+  2019:{air:36099897,soil:91141149,water:6235307,total:133476353,sites:{龍德:4716917,彰化:75730,麥寮:24876223,台醋:369934,新港:6061093},waterSites:{龍德:3425950,彰化:33753,麥寮:2248663,台醋:0,新港:526941},waterSiteH:{龍德:[1610773,1815177],彰化:[30522,3231],麥寮:[1071765,1176898],台醋:[0,0],新港:[304624,222317]}},
+  2020:{air:31858923,soil:91502166,water:5084676,total:128445765,sites:{龍德:3447925,彰化:58531,麥寮:22770847,台醋:319979,新港:5261641},waterSites:{龍德:2470272,彰化:37221,麥寮:1939444,台醋:0,新港:637739},waterSiteH:{龍德:[1248403,1221869],彰化:[15798,21423],麥寮:[1034668,904776],台醋:[0,0],新港:[377551,260188]}},
+  2021:{air:33065384,soil:93882669,water:4216563,total:131164616,sites:{龍德:3751383,彰化:8812,麥寮:23389279,台醋:371208,新港:5544702},waterSites:{龍德:1964393,彰化:31043,麥寮:1454322,台醋:0,新港:766805},waterSiteH:{龍德:[955174,1009219],彰化:[17607,13436],麥寮:[811986,642336],台醋:[0,0],新港:[357511,409294]}},
+  2022:{air:29977010,soil:86483563,water:3929761,total:120390334,sites:{龍德:2925004,彰化:9898,麥寮:21850030,台醋:367623,新港:4824455},waterSites:{龍德:1395569,彰化:42837,麥寮:1918794,台醋:0,新港:558601},waterSiteH:{龍德:[852389,543180],彰化:[21869,20968],麥寮:[1186694,732100],台醋:[0,0],新港:[355336,203265]}},
+  2023:{air:28035326,soil:91910781,water:2716821,total:122662928,sites:{龍德:1882654,彰化:1222,麥寮:20868039,台醋:685795,新港:4597616},waterSites:{龍德:624657,彰化:18663,麥寮:1538664,台醋:0,新港:534837},waterSiteH:{龍德:[355563,269094],彰化:[9016,9647],麥寮:[864035,674629],台醋:[0,0],新港:[208520,326317]}},
+  2024:{air:29519023,soil:91910782,water:2727689,total:124157494,sites:{龍德:2014535,彰化:0,麥寮:22048427,台醋:675635,新港:4780426},waterSites:{龍德:741772,彰化:21705,麥寮:1564924,台醋:0,新港:399288},waterSiteH:{龍德:[355563,386209],彰化:[9016,12689],麥寮:[864035,700889],台醋:[0,0],新港:[208520,190768]}},
+  2025:{air:20380590,soil:75487534,water:2146153,total:98014277,sites:{龍德:1928578,彰化:0,麥寮:13346279,台醋:418252,新港:4687481},waterSites:{龍德:628361,彰化:32838,麥寮:725653,台醋:0,新港:759301},waterSiteH:{龍德:[266851,361510],彰化:[12174,20664],麥寮:[355205,370448],台醋:[0,0],新港:[378735,380566]},
+    quarters:[24266057,20699442,26666844,26381934],airQ:[5065388,4626888,4896362,5791952],soilQ:[19200669,15059589,21770482,19456794],waterH:[1012965,1133188]},
+  2026:{air:5947793,soil:22682643,water:0,total:28630436,sites:{龍德:492815,彰化:0,麥寮:3880547,台醋:69553,新港:1504878},waterSites:{龍德:0,彰化:0,麥寮:0,台醋:0,新港:0},waterSiteH:{龍德:[0,0],彰化:[0,0],麥寮:[0,0],台醋:[0,0],新港:[0,0]},
+    quarters:[28630436,null,null,null],airQ:[5947793,null,null,null],soilQ:[22682643,null,null,null],waterH:[null,null]}
+};
+const TYPE_NAMES={air:'空污費',soil:'土污費',water:'水污費'};
+const TYPE_COLORS={air:'#0aa39a',soil:'#65b934',water:'#3d8eea'};
+let unit=1,currentPage='annual';
+let annualYear=2026,annualSite='all';
+let compareYear=2026,compareType='air',compareMode='qoq',compareSite='all',trendBasis='full',comparePeriod=0,trendStartKey='',trendEndKey='';
+
+const fmt=n=>n===null||n===undefined?'尚未申報':Math.round(n/unit).toLocaleString('zh-TW');
+const pct=(a,b)=>!b?'—':((a-b)/b*100).toFixed(1)+'%';
+const signed=n=>(n>0?'+':'')+fmt(n);
+const unitName=()=>unit===1?'元':unit===1000?'千元':'萬元';
+const fmtUnit=n=>`${fmt(n)} ${unitName()}`;
+const shareText=(value,total)=>total>0?`（${(value/total*100).toFixed(1)}%）`:'（0.0%）';
+
+function init(){
+ populateYears();
+ bindNavigation();
+ bindAnnual();
+ bindCompare();
+ updateComparePeriodOptions();
+ updateTrendRangeVisibility();
+ updateTrendRangeOptions();
+ setupTrendModal();
+ setupManager();
+ initStats();
+ initImportExport();
+ renderAnnual();
+ renderCompare();
+}
+
+function populateYears(){
+ const years=Object.keys(DATA).map(Number).sort((a,b)=>b-a);
+ ['annualYear','compareYear'].forEach(id=>{
+   const el=document.getElementById(id);
+   years.forEach(y=>el.add(new Option(y,y)));
+ });
+ annualYear=compareYear=years[0];
+ annualYearEl().value=annualYear;
+ compareYearEl().value=compareYear;
+
+ const mf=document.getElementById('mfYear');
+ years.forEach(y=>mf.add(new Option(y,y)));
+}
+
+function annualYearEl(){return document.getElementById('annualYear')}
+function compareYearEl(){return document.getElementById('compareYear')}
+
+function bindNavigation(){
+ document.getElementById('annualNavHead').onclick=()=>showPage('annual');
+ document.getElementById('statsNavHead').onclick=()=>showPage('stats');
+ document.getElementById('compareNavHead').onclick=()=>showPage('compare');
+ document.getElementById('ioNavHead').onclick=()=>showPage('io');
+}
+
+function showPage(page){
+ currentPage=page;
+ document.getElementById('annualPage').classList.toggle('hidden',page!=='annual');
+ document.getElementById('comparePage').classList.toggle('hidden',page!=='compare');
+ document.getElementById('statsPage').classList.toggle('hidden',page!=='stats');
+ document.getElementById('ioPage').classList.toggle('hidden',page!=='io');
+ document.getElementById('annualNavHead').classList.toggle('inactive',page!=='annual');
+ document.getElementById('compareNavHead').classList.toggle('inactive',page!=='compare');
+ document.getElementById('statsNavHead').classList.toggle('inactive',page!=='stats');
+ document.getElementById('ioNavHead').classList.toggle('inactive',page!=='io');
+ if(page==='annual') renderAnnual();
+ else if(page==='compare'){renderCompare();}
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function markCompareMenu(){
+ document.querySelectorAll('.compare-page-btn').forEach(x=>x.classList.toggle('active',x.dataset.mode===compareMode));
+}
+
+function bindAnnual(){
+ annualYearEl().onchange=e=>{annualYear=+e.target.value;renderAnnual()};
+ document.getElementById('annualSite').onchange=e=>{annualSite=e.target.value;renderAnnual()};
+ document.getElementById('annualUnit').onchange=e=>{unit=+e.target.value;renderAnnual();renderCompare()};
+}
+
+function bindCompare(){
+ compareYearEl().onchange=e=>{
+   compareYear=+e.target.value;
+   updateComparePeriodOptions();
+   updateTrendRangeOptions();
+   renderCompare();
+ };
+ document.getElementById('compareType').onchange=e=>{
+   compareType=e.target.value;
+   applyCompareSiteRules();
+   updateComparePeriodOptions();
+   updateTrendRangeOptions();
+   renderCompare();
+ };
+ document.getElementById('comparePeriod').onchange=e=>{
+   comparePeriod=+e.target.value;
+   renderCompare();
+ };
+ document.getElementById('compareMode').onchange=e=>{
+   compareMode=e.target.value;
+   renderCompare();
+ };
+ document.getElementById('compareSite').onchange=e=>{compareSite=e.target.value;updateComparePeriodOptions();updateTrendRangeOptions();renderCompare()};
+ document.getElementById('trendBasis').onchange=e=>{
+   trendBasis=e.target.value;
+   updateTrendRangeVisibility();
+   updateTrendRangeOptions();
+   renderCompareTrend();
+ };
+ document.getElementById('trendStart').onchange=e=>{
+   trendStartKey=e.target.value;
+   enforceTrendRange();
+   renderCompareTrend();
+ };
+ document.getElementById('trendEnd').onchange=e=>{
+   trendEndKey=e.target.value;
+   enforceTrendRange();
+   renderCompareTrend();
+ };
+}
+
+function renderAnnual(){
+ const d=DATA[annualYear];
+ const isAll=annualSite==='all';
+ const siteName=isAll?'全部廠區':annualSite;
+ const air=isAll?d.air:(d.sites?.[annualSite]??0);
+ const soil=isAll?d.soil:0;
+ const water=isAll?d.water:(d.waterSites?.[annualSite]??0);
+ const total=air+soil+water;
+
+ document.getElementById('annualOverviewTitle').textContent=
+   isAll?`${annualYear}年全部廠區歷年環保規費`:`${annualYear}年${siteName}廠歷年環保規費`;
+ document.getElementById('annualCompositionTitle').textContent=
+   `${annualYear}年度費用組成－${siteName}`;
+
+ const cards=[
+   ['本年度累計環保規費',total,'#287be6',isAll?'全公司年度合計':`${siteName}廠區可拆分費用合計`],
+   ['空污費',air,'#0aa39a',siteName]
+ ];
+ if(isAll){
+   cards.push(['土污費淨支出',soil,'#52a832','全公司資料']);
+ }
+ cards.push(['水污費',water,'#287be6',isAll?'全公司資料':`${siteName}廠區資料`]);
+
+ document.getElementById('annualKpi').innerHTML=cards.map(c=>`
+   <div class="kpi" style="--accent:${c[2]}">
+     <div class="kpi-title">${c[0]}</div>
+     <div class="kpi-value">${fmt(c[1])}</div>
+     <div class="kpi-meta"><span>範圍</span><strong>${c[3]}</strong></div>
+   </div>`).join('');
+
+ document.getElementById('annualKpi').style.gridTemplateColumns=`repeat(${cards.length},1fr)`;
+
+ renderAnnualTrend();
+ renderAnnualDonut({air,soil,water,total});
+
+ const soilPanel=document.getElementById('annualSoilGross')?.closest('.panel');
+ if(soilPanel) soilPanel.classList.toggle('hidden',!isAll);
+
+ document.getElementById('annualSoilGross').textContent=fmt(d.soil);
+ document.getElementById('annualSoilRefund').textContent=fmt(0);
+ document.getElementById('annualSoilNet').textContent=fmt(d.soil);
+}
+
+function renderAnnualTrend(){
+ const years=Object.keys(DATA).map(Number).filter(y=>y<=annualYear).slice(-6);
+ const isAll=annualSite==='all';
+ const siteName=isAll?'全部廠區':annualSite;
+
+ const vals=years.map(y=>{
+   const d=DATA[y];
+   return {
+     year:y,
+     air:isAll?d.air:(d.sites?.[annualSite]??0),
+     soil:isAll?d.soil:0,
+     water:isAll?d.water:(d.waterSites?.[annualSite]??0)
+   };
+ });
+
+ const max=Math.max(...vals.map(v=>v.air+v.soil+v.water),1);
+
+ document.getElementById('annualTrend').innerHTML=vals.map(v=>{
+   const total=v.air+v.soil+v.water;
+   const h=total/max*100;
+   const a=total?v.air/total*100:0;
+   const s=total?v.soil/total*100:0;
+   const w=total?v.water/total*100:0;
+
+   const tooltip=isAll
+     ?`${v.year}年－全部廠區
+空污費：${fmtUnit(v.air)} ${shareText(v.air,total)}
+土污費：${fmtUnit(v.soil)} ${shareText(v.soil,total)}
+水污費：${fmtUnit(v.water)} ${shareText(v.water,total)}
+合計：${fmtUnit(total)}`
+     :`${v.year}年－${siteName}
+空污費：${fmtUnit(v.air)} ${shareText(v.air,total)}
+水污費：${fmtUnit(v.water)} ${shareText(v.water,total)}
+合計：${fmtUnit(total)}`;
+
+   return `<div class="bar-stack" style="--h:${h}%" data-tooltip="${tooltip}">
+     <div class="bar-total-label">${fmtUnit(total)}</div>
+     <div class="seg air" style="height:${a}%"></div>
+     <div class="seg soil" style="height:${s}%"></div>
+     <div class="seg water" style="height:${w}%"></div>
+     <div class="year-label">${v.year}年${v.year===annualYear?'<br><small>累計</small>':''}</div>
+   </div>`;
+ }).join('');
+}
+
+function renderAnnualDonut(d){
+ const total=d.total||1,a=d.air/total*100,b=a+d.soil/total*100;
+ const donut=document.getElementById('annualDonut');
+ donut.style.setProperty('--a',a+'%');
+ donut.style.setProperty('--b',b+'%');
+ document.getElementById('annualDonutTotal').textContent=fmt(d.total);
+ document.getElementById('annualDonutLegend').innerHTML=[
+   ['air','空污費',d.air],['soil','土污費',d.soil],['water','水污費',d.water]
+ ].map(([k,n,v])=>`<div><i class="dot" style="background:${TYPE_COLORS[k]}"></i>${n} ${(v/total*100).toFixed(1)}%</div>`).join('');
+}
+
+
+function updateComparePeriodOptions(){
+ const select=document.getElementById('comparePeriod');
+ const arr=getStatsPeriodArray(compareYear,compareType,compareSite);
+ const labels=compareType==='water'?['上半年','下半年']:['Q1','Q2','Q3','Q4'];
+
+ select.innerHTML='';
+ labels.forEach((label,idx)=>{
+   const value=arr?.[idx];
+   const status=(value===null||value===undefined)?'（尚未申報）':'';
+   select.add(new Option(label+status,idx));
+ });
+
+ const latest=arr?arr.findLastIndex(v=>v!==null&&v!==undefined):-1;
+ comparePeriod=latest>=0?latest:0;
+ select.value=String(comparePeriod);
+}
+
+function getPeriodValue(d,type,site,idx){
+ const arr=getPeriodArray(d,type,site);
+ return arr ? arr[idx] : null;
+}
+
+function getCumulativeValue(d,type,site,idx){
+ const arr=getPeriodArray(d,type,site);
+ if(!arr)return null;
+ const selected=arr.slice(0,idx+1);
+ if(selected.every(v=>v===null||v===undefined))return null;
+ return selected.reduce((sum,v)=>sum+(v??0),0);
+}
+
+function applyCompareSiteRules(){
+ const site=document.getElementById('compareSite');
+ if(compareType==='soil'){
+   compareSite='all';site.value='all';site.disabled=true;
+ }else{
+   site.disabled=false;
+ }
+}
+
+
+function getStatsPeriodArray(year,type,site='all'){
+ const d=STATS_DATA[year];
+ if(!d)return null;
+
+ if(type==='air'){
+   if(site==='all'){
+     return [0,1,2,3].map(i=>
+       Object.values(d.air).reduce((sum,arr)=>sum+(arr?.[i]??0),0)
+     );
+   }
+   return d.air?.[site] ? [...d.air[site]] : null;
+ }
+
+ if(type==='soil'){
+   return d.soil ? [...d.soil] : null;
+ }
+
+ if(type==='water'){
+   if(site==='all'){
+     return [0,1].map(i=>
+       Object.values(d.water).reduce((sum,arr)=>sum+(arr?.[i]??0),0)
+     );
+   }
+   return d.water?.[site] ? [...d.water[site]] : null;
+ }
+
+ return null;
+}
+
+function getStatsPeriodValue(year,type,site,idx){
+ const arr=getStatsPeriodArray(year,type,site);
+ return arr ? arr[idx] : null;
+}
+
+function getStatsCumulativeValue(year,type,site,idx){
+ const arr=getStatsPeriodArray(year,type,site);
+ if(!arr)return null;
+ const selected=arr.slice(0,idx+1);
+ if(selected.every(v=>v===null||v===undefined))return null;
+ return selected.reduce((sum,v)=>sum+(v??0),0);
+}
+
+function getStatsAnnualValue(year,type,site='all'){
+ const arr=getStatsPeriodArray(year,type,site);
+ if(!arr)return null;
+ if(arr.every(v=>v===null||v===undefined))return null;
+ return arr.reduce((sum,v)=>sum+(v??0),0);
+}
+
+function getComparePair(){
+ const idx=comparePeriod;
+ const currentPeriodLabel=periodLabel(compareType,idx);
+
+ if(compareMode==='ytd'){
+   return {
+     current:getStatsCumulativeValue(compareYear,compareType,compareSite,idx),
+     previous:getStatsCumulativeValue(compareYear-1,compareType,compareSite,idx),
+     currentLabel:compareType==='water'
+       ?`${compareYear} ${idx===0?'上半年':'全年'}累計`
+       :`${compareYear} Q1～Q${idx+1}累計`,
+     previousLabel:compareType==='water'
+       ?`${compareYear-1} ${idx===0?'上半年':'全年'}同期累計`
+       :`${compareYear-1} Q1～Q${idx+1}同期累計`
+   };
+ }
+
+ if(compareMode==='qoq'){
+   let previous=null;
+   let previousLabel='無上期資料';
+
+   if(idx>0){
+     previous=getStatsPeriodValue(compareYear,compareType,compareSite,idx-1);
+     previousLabel=`${compareYear} ${periodLabel(compareType,idx-1)}`;
+   }else{
+     const prevIdx=compareType==='water'?1:3;
+     previous=getStatsPeriodValue(compareYear-1,compareType,compareSite,prevIdx);
+     previousLabel=`${compareYear-1} ${periodLabel(compareType,prevIdx)}`;
+   }
+
+   return {
+     current:getStatsPeriodValue(compareYear,compareType,compareSite,idx),
+     previous,
+     currentLabel:`${compareYear} ${currentPeriodLabel}（本期）`,
+     previousLabel
+   };
+ }
+
+ return {
+   current:getStatsPeriodValue(compareYear,compareType,compareSite,idx),
+   previous:getStatsPeriodValue(compareYear-1,compareType,compareSite,idx),
+   currentLabel:`${compareYear} ${currentPeriodLabel}`,
+   previousLabel:`${compareYear-1} ${currentPeriodLabel}`
+ };
+}
+
+function getTypeValue(d,type,site){
+ if(!d)return null;
+ if(type==='air'&&site!=='all')return d.sites?.[site]??0;
+ if(type==='water'&&site!=='all')return d.waterSites?.[site]??0;
+ return d[type];
+}
+function getPeriodArray(d,type,site='all'){
+ if(!d)return null;
+ if(type==='air')return d.airQ||null;
+ if(type==='soil')return d.soilQ||null;
+ if(type==='water'){
+   if(site!=='all')return d.waterSiteH?.[site]||null;
+   return d.waterH||null;
+ }
+}
+function periodLabel(type,idx){
+ if(type==='water')return idx===0?'上半年':'下半年';
+ return `Q${idx+1}`;
+}
+
+function renderCompare(){
+ applyCompareSiteRules();
+ const pair=getComparePair();
+ const hasCurrent=pair.current!==null&&pair.current!==undefined;
+ const hasPrevious=pair.previous!==null&&pair.previous!==undefined;
+ const diff=(hasCurrent&&hasPrevious)?pair.current-pair.previous:null;
+ const rate=(hasCurrent&&hasPrevious)?pct(pair.current,pair.previous):'—';
+
+ const cards=[
+   ['本期',pair.current,'#287be6',pair.currentLabel],
+   ['比較期',pair.previous,'#64748b',pair.previousLabel],
+   ['差異金額',diff,diff===null?'#64748b':diff>=0?'#d64545':'#0a9b63',diff===null?'資料不足':diff>=0?'增加':'減少'],
+   ['差異率',rate,rate==='—'?'#64748b':rate.startsWith('-')?'#0a9b63':'#d64545',TYPE_NAMES[compareType]]
+ ];
+
+ document.getElementById('compareKpis').innerHTML=cards.map((c,i)=>`
+   <div class="kpi" style="--accent:${c[2]}">
+     <div class="kpi-title">${c[0]}</div>
+     <div class="kpi-value">${i===3?c[1]:(c[1]===null||c[1]===undefined?'尚未申報':fmt(c[1]))}</div>
+     <div class="kpi-meta"><span>說明</span><strong>${c[3]}</strong></div>
+   </div>`).join('');
+
+ renderCompareBars(pair);
+ renderCompareTrend();
+ renderCompareSites();
+ renderCompareSummary(pair);
+}
+
+function renderCompareBars(pair){
+ const hasPrevious=pair.previous!==null&&pair.previous!==undefined;
+ const max=Math.max(pair.current||0,hasPrevious?(pair.previous||0):0,1);
+
+ document.getElementById('compareChartTitle').textContent=`${TYPE_NAMES[compareType]}：本期與比較期`;
+
+ const currentBar=`
+   <div class="compare-col" style="--h:${(pair.current||0)/max*100}%">
+     <b>${fmt(pair.current)}</b>
+     <span>${pair.currentLabel}</span>
+   </div>`;
+
+ const previousBar=hasPrevious
+   ?`<div class="compare-col secondary" style="--h:${(pair.previous||0)/max*100}%">
+       <b>${fmt(pair.previous)}</b>
+       <span>${pair.previousLabel}</span>
+     </div>`
+   :`<div style="width:180px;text-align:center;align-self:flex-end;margin-bottom:8px;color:#64748b;font-weight:800">
+       <div style="font-size:18px;margin-bottom:8px">尚未申報</div>
+       <div style="font-size:13px;font-weight:500;white-space:nowrap">${pair.previousLabel}</div>
+     </div>`;
+
+ document.getElementById('compareBars').innerHTML=currentBar+previousBar;
+}
+
+
+function buildSequentialItems(){
+ const years=Object.keys(STATS_DATA).map(Number).filter(y=>y<=compareYear).sort((a,b)=>a-b);
+ const items=[];
+
+ years.forEach(y=>{
+   const arr=getStatsPeriodArray(y,compareType,compareSite);
+   if(!arr)return;
+   arr.forEach((value,i)=>{
+     const key=`${y}-${i}`;
+     const shortLabel=compareType==='water'
+       ?`${y}${i===0?'上':'下'}`
+       :`${y}Q${i+1}`;
+     const fullLabel=compareType==='water'
+       ?`${y} ${i===0?'上半年':'下半年'}`
+       :`${y} Q${i+1}`;
+     items.push({key,year:y,period:i,value,shortLabel,fullLabel});
+   });
+ });
+ return items;
+}
+
+function updateTrendRangeVisibility(){
+ const show=trendBasis==='sequential';
+ document.getElementById('trendStartWrap').classList.toggle('hidden',!show);
+ document.getElementById('trendEndWrap').classList.toggle('hidden',!show);
+}
+
+function updateTrendRangeOptions(){
+ const items=buildSequentialItems();
+ const start=document.getElementById('trendStart');
+ const end=document.getElementById('trendEnd');
+
+ start.innerHTML='';
+ end.innerHTML='';
+
+ items.forEach(item=>{
+   const status=(item.value===null||item.value===undefined)?'（尚未申報）':'';
+   start.add(new Option(item.fullLabel+status,item.key));
+   end.add(new Option(item.fullLabel+status,item.key));
+ });
+
+ if(!items.length)return;
+
+ const validItems=items.filter(x=>x.value!==null&&x.value!==undefined);
+ const defaultStart=validItems.length ? validItems[0].key : items[0].key;
+ const defaultEnd=validItems.length ? validItems[validItems.length-1].key : items[items.length-1].key;
+
+ if(!items.some(x=>x.key===trendStartKey))trendStartKey=defaultStart;
+ if(!items.some(x=>x.key===trendEndKey))trendEndKey=defaultEnd;
+
+ start.value=trendStartKey;
+ end.value=trendEndKey;
+ enforceTrendRange();
+}
+
+function enforceTrendRange(){
+ const items=buildSequentialItems();
+ const startIndex=items.findIndex(x=>x.key===trendStartKey);
+ const endIndex=items.findIndex(x=>x.key===trendEndKey);
+
+ if(startIndex<0||endIndex<0)return;
+ if(startIndex>endIndex){
+   const temp=trendStartKey;
+   trendStartKey=trendEndKey;
+   trendEndKey=temp;
+   document.getElementById('trendStart').value=trendStartKey;
+   document.getElementById('trendEnd').value=trendEndKey;
+ }
+}
+
+function getSelectedSequentialItems(){
+ const items=buildSequentialItems();
+ const startIndex=items.findIndex(x=>x.key===trendStartKey);
+ const endIndex=items.findIndex(x=>x.key===trendEndKey);
+ if(startIndex<0||endIndex<0)return items;
+ return items.slice(startIndex,endIndex+1);
+}
+
+function buildSequentialTrendHtml(items,expanded=false){
+ const valid=items.filter(x=>x.value!==null&&x.value!==undefined);
+ const plotH=expanded?420:170;
+ const barW=expanded?56:44;
+ const gap=expanded?18:14;
+ const max=Math.max(...valid.map(x=>x.value||0),1);
+ const totalW=Math.max(items.length*barW + Math.max(items.length-1,0)*gap, expanded?1000:520);
+
+ const points=items.map((it,i)=>{
+   const hasValue=it.value!==null&&it.value!==undefined;
+   const barPx=hasValue?(it.value/max)*plotH:0;
+   const x=i*(barW+gap)+barW/2;
+   const y=plotH-barPx+4;
+   return {x,y,barPx,hasValue,...it};
+ });
+
+ const linePoints=[];
+ let current=[];
+ points.forEach(p=>{
+   if(p.hasValue)current.push(`${p.x},${p.y}`);
+   else if(current.length){linePoints.push(current.join(' '));current=[]}
+ });
+ if(current.length)linePoints.push(current.join(' '));
+
+ const polylines=linePoints.map(pointsText=>
+   `<polyline points="${pointsText}" fill="none" stroke="${TYPE_COLORS[compareType]}" stroke-width="${expanded?3:2.5}" stroke-linejoin="round" stroke-linecap="round"></polyline>`
+ ).join('');
+
+ const dots=points.filter(p=>p.hasValue).map(p=>
+   `<circle cx="${p.x}" cy="${p.y}" r="${expanded?4:3.5}" fill="${TYPE_COLORS[compareType]}"></circle>`
+ ).join('');
+
+ return `
+   <div class="trend-host" style="${expanded?`height:${plotH+90}px`:''}">
+     <svg class="trend-svg" width="${totalW}" viewBox="0 0 ${totalW} ${plotH}">
+       ${polylines}${dots}
+     </svg>
+     <div class="trend-bars" style="width:${totalW}px">
+       ${points.map(p=>`
+         <div class="trend-seq-item" style="--bar-px:${p.barPx}px;--bar-color:${TYPE_COLORS[compareType]}">
+           <div class="bar-total-label">${p.hasValue?fmt(p.value):'尚未申報'}</div>
+           ${p.hasValue?'<div class="trend-seq-bar"></div><div class="trend-seq-point"></div>':''}
+           <div class="year-label">${p.shortLabel}</div>
+         </div>
+       `).join('')}
+     </div>
+   </div>`;
+}
+
+function setupTrendModal(){
+ const modal=document.getElementById('trendModal');
+ document.getElementById('compareTrendPanel').onclick=e=>{
+   if(e.target.closest('select'))return;
+   openTrendModal();
+ };
+ document.getElementById('closeTrendModal').onclick=()=>modal.classList.add('hidden');
+ modal.onclick=e=>{if(e.target===modal)modal.classList.add('hidden')};
+}
+
+function openTrendModal(){
+ const modal=document.getElementById('trendModal');
+ const title=document.getElementById('compareTrendTitle').textContent;
+ document.getElementById('trendModalTitle').textContent=title;
+ const container=document.getElementById('trendModalChart');
+
+ if(trendBasis==='sequential'){
+   container.innerHTML=buildSequentialTrendHtml(getSelectedSequentialItems(),true);
+ }else{
+   container.innerHTML=document.getElementById('compareTrend').outerHTML;
+   const chart=container.querySelector('#compareTrend');
+   if(chart){
+     chart.removeAttribute('id');
+     chart.style.height='520px';
+     chart.style.margin='20px 30px 50px 58px';
+   }
+ }
+ modal.classList.remove('hidden');
+}
+
+function renderCompareTrend(){
+ let host=document.getElementById('compareTrend');
+ if(host && host.querySelector('.trend-host')){
+   host.className='bar-chart';
+   host.innerHTML='';
+ }
+
+ const years=Object.keys(STATS_DATA).map(Number).filter(y=>y<=compareYear).sort((a,b)=>a-b);
+ const idx=comparePeriod;
+
+ if(trendBasis==='sequential'){
+   const items=getSelectedSequentialItems();
+   const rangeLabel=items.length
+     ?`${items[0].fullLabel}～${items[items.length-1].fullLabel}`
+     :'無資料';
+
+   host.className='trend-host';
+   document.getElementById('compareTrendTitle').textContent=
+     `${TYPE_NAMES[compareType]}趨勢變化－${compareType==='water'?'逐期':'逐季'}趨勢（${rangeLabel}）`;
+
+   host.outerHTML=`<div id="compareTrend">${buildSequentialTrendHtml(items,false)}</div>`;
+   return;
+ }
+
+ const vals=years.slice(-6).map(y=>{
+   const value=trendBasis==='full'
+     ?getStatsAnnualValue(y,compareType,compareSite)
+     :getStatsCumulativeValue(y,compareType,compareSite,idx);
+   return {year:y,value};
+ });
+
+ const max=Math.max(...vals.map(v=>v.value||0),1);
+ const basisLabel=trendBasis==='full'
+   ?'全年總費用'
+   :(compareType==='water'
+      ?`累計至${idx===0?'上半年':'下半年'}`
+      :`累計至Q${idx+1}`);
+
+ document.getElementById('compareTrendTitle').textContent=
+   `${TYPE_NAMES[compareType]}歷年趨勢－${basisLabel}`;
+
+ host.className='bar-chart';
+ host.innerHTML=vals.map(v=>{
+   const hasValue=v.value!==null&&v.value!==undefined;
+   return `
+   <div class="bar-stack" style="--h:${hasValue?(v.value||0)/max*100:0}%">
+     <div class="bar-total-label">${hasValue?fmt(v.value):'尚未申報'}</div>
+     ${hasValue?`<div class="seg ${compareType}" style="height:100%;background:${TYPE_COLORS[compareType]}"></div>`:''}
+     <div class="year-label">${v.year}年</div>
+   </div>`;
+ }).join('');
+}
+
+function renderCompareSites(){
+ const panel=document.getElementById('compareSitePanel');
+ if(compareType!=='air'||compareSite!=='all'){
+   panel.classList.add('hidden');return;
+ }
+ panel.classList.remove('hidden');
+
+ const air=STATS_DATA[compareYear]?.air||{};
+ const entries=Object.entries(air).map(([site,arr])=>[site,sumOrPending(arr)]);
+ const max=Math.max(...entries.map(x=>x[1]||0),1);
+
+ document.getElementById('compareSiteBars').innerHTML=entries.map(([n,v])=>`
+   <div class="hbar-row">
+     <b>${n}</b>
+     <div class="hbar-track"><div class="hbar-fill" style="width:${(v||0)/max*100}%"></div></div>
+     <span>${v===null?'尚未申報':fmt(v)}</span>
+   </div>`).join('');
+}
+
+function renderCompareSummary(pair){
+ const hasCurrent=pair.current!==null&&pair.current!==undefined;
+ const hasPrevious=pair.previous!==null&&pair.previous!==undefined;
+ const diff=(hasCurrent&&hasPrevious)?pair.current-pair.previous:null;
+ const rate=(hasCurrent&&hasPrevious)?pct(pair.current,pair.previous):'—';
+
+ document.getElementById('compareSummary').innerHTML=`
+   <tr>
+     <td>${TYPE_NAMES[compareType]}</td>
+     <td>${hasCurrent?fmt(pair.current):'尚未申報'}</td>
+     <td>${hasPrevious?fmt(pair.previous):'尚未申報'}</td>
+     <td>${diff===null?'—':signed(diff)}</td>
+     <td>${rate}</td>
+     <td><input class="reason" placeholder="填寫差異原因"></td>
+   </tr>`;
+}
+
+
+const STATS_DATA={
+  2019:{
+    air:{
+      龍德:[1188038,1155248,1181129,1192502],
+      彰化:[13935,12989,18270,30536],
+      麥寮:[6556114,6175482,5903661,6244966],
+      台醋:[93771,82317,89632,104214],
+      新港:[1760435,1561827,1463740,1275091]
+    },
+    soil:[36622719,30392825,32738204,31387401],
+    water:{
+      龍德:[1610773,1815177],
+      彰化:[30522,3231],
+      麥寮:[1071765,1176898],
+      新港:[304624,222317]
+    }
+  },
+  2020:{
+    air:{
+      龍德:[932226,853169,785192,877338],
+      彰化:[16803,16663,13290,11775],
+      麥寮:[6043030,5956518,5618927,5152372],
+      台醋:[74518,85668,76742,83051],
+      新港:[1428860,1414298,1240397,1178086]
+    },
+    soil:[34532423,29892238,27932251,29126164],
+    water:{
+      龍德:[1248403,1221869],
+      彰化:[15798,21423],
+      麥寮:[1034668,904776],
+      新港:[377551,260188]
+    }
+  },
+  2021:{
+    air:{
+      龍德:[918043,943724,911853,977763],
+      彰化:[20522,18764,26331,23239],
+      麥寮:[5985942,5700195,5956917,5746225],
+      台醋:[100929,91264,88931,90084],
+      新港:[1464834,1359118,1374251,1342499]
+    },
+    soil:[34851903,31428144,28973621,27929001],
+    water:{
+      龍德:[955174,1009219],
+      彰化:[17607,13436],
+      麥寮:[811986,642336],
+      新港:[357511,409294]
+    }
+  },
+  2022:{
+    air:{
+      龍德:[825518,718503,699787,681205],
+      彰化:[21145,21155,24989,26008],
+      麥寮:[5432659,5549978,5369291,5498102],
+      台醋:[91804,89389,90017,96413],
+      新港:[1397810,1221664,1133763,1071218]
+    },
+    soil:[21797162,22458059,21243460,20984882],
+    water:{
+      龍德:[852389,543180],
+      彰化:[21869,20968],
+      麥寮:[1186694,732100],
+      新港:[355336,203265]
+    }
+  },
+  2023:{
+    air:{
+      龍德:[527420,438785,461960,454489],
+      彰化:[0,0,1222,0],
+      麥寮:[3268817,3126262,3285953,11157007],
+      台醋:[108325,48987,55306,473177],
+      新港:[1160826,1012854,1093143,1330793]
+    },
+    soil:[22176947,21945863,21972469,25815502],
+    water:{
+      龍德:[355563,269094],
+      彰化:[9016,9647],
+      麥寮:[864035,674629],
+      新港:[208520,326317]
+    }
+  },
+  2024:{
+    air:{
+      龍德:[527420,438785,461960,586370],
+      彰化:[0,0,0,0],
+      麥寮:[3268817,3126262,3285953,12367395],
+      台醋:[108325,48987,55306,463017],
+      新港:[1160826,1012854,1093143,1513603]
+    },
+    soil:[21770482,19456794,23000000,27683506],
+    water:{
+      龍德:[355563,386209],
+      彰化:[9016,12689],
+      麥寮:[864035,700889],
+      新港:[208520,190768]
+    }
+  },
+  2025:{
+    air:{
+      龍德:[527420,438785,461960,500413],
+      彰化:[0,0,0,0],
+      麥寮:[3268817,3126262,3285953,3665247],
+      台醋:[108325,48987,55306,205634],
+      新港:[1160826,1012854,1093143,1420658]
+    },
+    soil:[19200669,15059589,21770482,19456794],
+    water:{
+      龍德:[266851,361510],
+      彰化:[12174,20664],
+      麥寮:[355205,370448],
+      新港:[378735,380566]
+    }
+  },
+  2026:{
+    air:{
+      龍德:[492815,null,null,null],
+      彰化:[0,null,null,null],
+      麥寮:[3880547,null,null,null],
+      台醋:[69553,null,null,null],
+      新港:[1504878,null,null,null]
+    },
+    soil:[22682643,null,null,null],
+    water:{
+      龍德:[null,null],
+      彰化:[null,null],
+      麥寮:[null,null],
+      新港:[null,null]
+    }
+  }
+};
+
+function initStats(){
+ const years=Object.keys(STATS_DATA).map(Number).sort((a,b)=>b-a);
+ const left=document.getElementById('statsYearLeft');
+ const right=document.getElementById('statsYearRight');
+
+ years.forEach(y=>{
+   left.add(new Option(y,y));
+   right.add(new Option(y,y));
+ });
+
+ left.value=2025;
+ right.value=2026;
+
+ left.onchange=renderStatsTable;
+ right.onchange=renderStatsTable;
+
+ renderStatsTable();
+}
+
+function sumValues(arr){
+ return arr.reduce((s,v)=>s+(v??0),0);
+}
+function sumOrPending(arr){
+ return arr.every(v=>v===null||v===undefined)?null:sumValues(arr);
+}
+
+function displayStatsValue(v, blankWhenNull=false){
+ if(v===null || v===undefined) return '尚未申報';
+ return Number(v).toLocaleString('zh-TW');
+}
+
+function getStatsYearTotal(yearData){
+ const airTotal=Object.values(yearData.air).reduce((s,a)=>s+sumValues(a),0);
+ const soilTotal=sumValues(yearData.soil);
+ const waterTotal=Object.values(yearData.water).reduce((s,a)=>s+sumValues(a),0);
+ return airTotal+soilTotal+waterTotal;
+}
+
+function renderStatsTable(){
+ const y1=+document.getElementById('statsYearLeft').value;
+ const y2=+document.getElementById('statsYearRight').value;
+ const d1=STATS_DATA[y1];
+ const d2=STATS_DATA[y2];
+ const sites=['龍德','彰化','麥寮','台醋','新港'];
+
+ const airRows=sites.map((site,idx)=>{
+   const a1=d1.air[site]||[0,0,0,0];
+   const a2=d2.air[site]||[0,0,0,0];
+   return `
+   <tr>
+     ${idx===0?'<td rowspan="6" class="section">空污費</td>':''}
+     <td>${site==='台醋'?'（台醋）':site}</td>
+     ${a1.map(v=>`<td>${displayStatsValue(v,true)}</td>`).join('')}
+     <td>${displayStatsValue(sumOrPending(a1))}</td>
+     ${a2.map(v=>`<td>${displayStatsValue(v,true)}</td>`).join('')}
+     <td>${displayStatsValue(sumOrPending(a2))}</td>
+   </tr>`;
+ }).join('');
+
+ const air1Q=[0,1,2,3].map(i=>sites.reduce((s,site)=>s+(d1.air[site]?.[i]??0),0));
+ const air2Q=[0,1,2,3].map(i=>sites.reduce((s,site)=>s+(d2.air[site]?.[i]??0),0));
+
+ const waterSites=['龍德','彰化','麥寮','新港'];
+ const waterRows=waterSites.map((site,idx)=>{
+   const w1=d1.water[site]||[null,null];
+   const w2=d2.water[site]||[null,null];
+   return `
+   <tr>
+     ${idx===0?'<td rowspan="5" class="section">水污費<sup>[註2]</sup></td>':''}
+     <td>${site}</td>
+     <td colspan="2">${displayStatsValue(w1[0],true)}</td>
+     <td colspan="2">${displayStatsValue(w1[1],true)}</td>
+     <td>${displayStatsValue(sumOrPending(w1))}</td>
+     <td colspan="2">${displayStatsValue(w2[0],true)}</td>
+     <td colspan="2">${displayStatsValue(w2[1],true)}</td>
+     <td>${displayStatsValue(sumOrPending(w2))}</td>
+   </tr>`;
+ }).join('');
+
+ const water1H=[0,1].map(i=>waterSites.reduce((s,site)=>s+(d1.water[site]?.[i]??0),0));
+ const water2H=[0,1].map(i=>waterSites.reduce((s,site)=>s+(d2.water[site]?.[i]??0),0));
+
+ const totalQuarter1=[0,1,2,3].map(i=>air1Q[i]+(d1.soil[i]??0)+(i===0?water1H[0]:i===2?water1H[1]:0));
+ const totalQuarter2=[0,1,2,3].map(i=>air2Q[i]+(d2.soil[i]??0)+(i===0?water2H[0]:i===2?water2H[1]:0));
+
+ document.getElementById('statsTableContainer').innerHTML=`
+ <table class="stats-table">
+   <thead>
+     <tr>
+       <th rowspan="2" style="width:90px">項目</th>
+       <th rowspan="2" style="width:90px">廠區</th>
+       <th colspan="5" class="year-head">${y1}年</th>
+       <th colspan="5" class="year-head">${y2}年</th>
+     </tr>
+     <tr>
+       <th>第一季</th><th>第二季</th><th>第三季</th><th>第四季</th><th>總計</th>
+       <th>第一季</th><th>第二季</th><th>第三季</th><th>第四季</th><th>總計</th>
+     </tr>
+   </thead>
+   <tbody>
+     ${airRows}
+     <tr class="subtotal">
+       <td>合計</td>
+       ${air1Q.map(v=>`<td>${displayStatsValue(v)}</td>`).join('')}
+       <td>${displayStatsValue(sumValues(air1Q))}</td>
+       ${air2Q.map(v=>`<td>${displayStatsValue(v)}</td>`).join('')}
+       <td>${displayStatsValue(sumValues(air2Q))}</td>
+     </tr>
+
+     <tr>
+       <td class="section">土污費<sup>[註1]</sup></td>
+       <td>全公司</td>
+       ${d1.soil.map(v=>`<td>${displayStatsValue(v,true)}</td>`).join('')}
+       <td>${displayStatsValue(sumValues(d1.soil))}</td>
+       ${d2.soil.map(v=>`<td>${displayStatsValue(v,true)}</td>`).join('')}
+       <td>${displayStatsValue(sumValues(d2.soil))}</td>
+     </tr>
+
+     <tr>
+       <td rowspan="5" class="section">水污費<sup>[註2]</sup></td>
+       <td>廠區</td>
+       <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
+       <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
+     </tr>
+     ${waterRows.replace('<td rowspan="5" class="section">水污費<sup>[註2]</sup></td>','')}
+     <tr class="subtotal">
+       <td></td><td>合計</td>
+       <td colspan="2">${displayStatsValue(water1H[0])}</td>
+       <td colspan="2">${displayStatsValue(water1H[1])}</td>
+       <td>${displayStatsValue(sumValues(water1H))}</td>
+       <td colspan="2">${displayStatsValue(water2H[0])}</td>
+       <td colspan="2">${displayStatsValue(water2H[1])}</td>
+       <td>${displayStatsValue(sumValues(water2H))}</td>
+     </tr>
+
+     <tr class="grand-total">
+       <td colspan="2">環保規費申報總額</td>
+       ${totalQuarter1.map(v=>`<td>${displayStatsValue(v)}</td>`).join('')}
+       <td>${displayStatsValue(getStatsYearTotal(d1))}</td>
+       ${totalQuarter2.map(v=>`<td>${displayStatsValue(v)}</td>`).join('')}
+       <td>${displayStatsValue(getStatsYearTotal(d2))}</td>
+     </tr>
+   </tbody>
+ </table>`;
+}
+
+
+let pendingImportRows=[];
+
+function initImportExport(){
+ const years=Object.keys(STATS_DATA).map(Number).sort((a,b)=>a-b);
+ const start=document.getElementById('exportStartYear');
+ const end=document.getElementById('exportEndYear');
+
+ years.forEach(y=>{
+   start.add(new Option(y,y));
+   end.add(new Option(y,y));
+ });
+ start.value=years[0];
+ end.value=years[years.length-1];
+
+ document.getElementById('previewImport').onclick=previewImportFile;
+ document.getElementById('commitImport').onclick=commitImportRows;
+ document.getElementById('exportCsv').onclick=()=>exportData('csv');
+ document.getElementById('exportXlsx').onclick=()=>exportData('xlsx');
+}
+
+function normalizeHeader(h){
+ return String(h??'').trim().replace(/\s+/g,'').toLowerCase();
+}
+
+function mapImportRow(row){
+ const normalized={};
+ Object.entries(row).forEach(([k,v])=>normalized[normalizeHeader(k)]=v);
+
+ const pick=(...names)=>{
+   for(const n of names){
+     const key=normalizeHeader(n);
+     if(key in normalized)return normalized[key];
+   }
+   return '';
+ };
+
+ const typeRaw=String(pick('規費類型','項目','類型')).trim();
+ const type=typeRaw.includes('空')?'air':typeRaw.includes('土')?'soil':typeRaw.includes('水')?'water':'';
+ const site=String(pick('範圍／廠區','範圍/廠區','廠區','範圍')).trim()||'全公司';
+ const amount=Number(String(pick('原始金額','金額','申報金額')).replace(/,/g,''));
+ const refund=Number(String(pick('退費／扣抵','退費/扣抵','退費','扣抵')).replace(/,/g,''))||0;
+
+ return {
+   year:Number(pick('年度','年')),
+   period:String(pick('期間','季度','申報期間')).trim(),
+   type,
+   site,
+   amount,
+   refund,
+   status:String(pick('申報狀態','狀態')).trim()||'已申報',
+   note:String(pick('備註','備註／原因','原因')).trim()
+ };
+}
+
+function validateImportRow(r,index){
+ const errors=[];
+ if(!Number.isInteger(r.year)||r.year<2016||r.year>2100)errors.push('年度錯誤');
+ if(!r.period)errors.push('缺少期間');
+ if(!r.type)errors.push('規費類型錯誤');
+ if(!r.site)errors.push('缺少範圍／廠區');
+ if(!Number.isFinite(r.amount)||r.amount<0)errors.push('原始金額錯誤');
+
+ const validPeriods=r.type==='water'?['上半年','下半年']:['Q1','Q2','Q3','Q4'];
+ if(r.period && !validPeriods.includes(r.period))errors.push(`期間應為 ${validPeriods.join('、')}`);
+ if(r.type==='soil'&&r.site!=='全公司')errors.push('土污費範圍必須為全公司');
+
+ return {row:index+2,errors};
+}
+
+async function previewImportFile(){
+ const file=document.getElementById('importFile').files[0];
+ const status=document.getElementById('importStatus');
+ const preview=document.getElementById('importPreview');
+ const commit=document.getElementById('commitImport');
+
+ pendingImportRows=[];
+ commit.disabled=true;
+
+ if(!file){
+   status.className='io-status error';
+   status.textContent='請先選擇 Excel 或 CSV 檔案。';
+   return;
+ }
+
+ try{
+   let rawRows=[];
+
+   if(file.name.toLowerCase().endsWith('.csv')){
+     const text=await file.text();
+     rawRows=parseCsv(text);
+   }else{
+     if(typeof XLSX==='undefined')throw new Error('Excel 元件尚未載入，請確認網路連線後重試。');
+     const buffer=await file.arrayBuffer();
+     const workbook=XLSX.read(buffer,{type:'array'});
+     const sheet=workbook.Sheets[workbook.SheetNames[0]];
+     rawRows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+   }
+
+   const rows=rawRows.map(mapImportRow);
+   const validations=rows.map(validateImportRow);
+   const invalid=validations.filter(v=>v.errors.length);
+
+   renderImportPreview(rows,validations);
+   preview.classList.remove('hidden');
+
+   if(!rows.length){
+     status.className='io-status error';
+     status.textContent='檔案中沒有可匯入資料。';
+   }else if(invalid.length){
+     status.className='io-status error';
+     status.textContent=`共 ${rows.length} 筆，其中 ${invalid.length} 筆驗證失敗，請修正後重新匯入。`;
+   }else{
+     pendingImportRows=rows;
+     commit.disabled=false;
+     status.className='io-status ok';
+     status.textContent=`共 ${rows.length} 筆資料，欄位驗證通過，可以確認匯入。`;
+   }
+ }catch(err){
+   status.className='io-status error';
+   status.textContent=`讀取失敗：${err.message}`;
+ }
+}
+
+function parseCsv(text){
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(line=>line.trim());
+ if(!lines.length)return [];
+ const parseLine=line=>{
+   const result=[];let cur='',quoted=false;
+   for(let i=0;i<line.length;i++){
+     const ch=line[i];
+     if(ch==='"'){
+       if(quoted&&line[i+1]==='"'){cur+='"';i++}
+       else quoted=!quoted;
+     }else if(ch===','&&!quoted){result.push(cur);cur=''}
+     else cur+=ch;
+   }
+   result.push(cur);
+   return result;
+ };
+ const headers=parseLine(lines[0]);
+ return lines.slice(1).map(line=>{
+   const values=parseLine(line),obj={};
+   headers.forEach((h,i)=>obj[h]=values[i]??'');
+   return obj;
+ });
+}
+
+function renderImportPreview(rows,validations){
+ const columns=['年度','期間','規費類型','範圍／廠區','原始金額','退費／扣抵','申報狀態','備註','驗證結果'];
+ document.getElementById('importPreview').innerHTML=`
+   <table class="preview-table">
+     <thead><tr>${columns.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+     <tbody>${rows.map((r,i)=>`
+       <tr>
+         <td>${r.year||''}</td><td>${r.period}</td><td>${TYPE_NAMES[r.type]||''}</td>
+         <td>${r.site}</td><td>${Number.isFinite(r.amount)?r.amount.toLocaleString():''}</td>
+         <td>${r.refund.toLocaleString()}</td><td>${r.status}</td><td>${r.note}</td>
+         <td style="color:${validations[i].errors.length?'#b91c1c':'#15803d'}">
+           ${validations[i].errors.length?validations[i].errors.join('；'):'通過'}
+         </td>
+       </tr>`).join('')}
+     </tbody>
+   </table>`;
+}
+
+function commitImportRows(){
+ if(!pendingImportRows.length)return;
+
+ const records=getRecords();
+ pendingImportRows.forEach(r=>{
+   records.push({
+     id:crypto.randomUUID(),
+     year:r.year,period:r.period,type:r.type,site:r.site,
+     amount:r.amount,refund:r.refund,status:r.status,note:r.note
+   });
+ });
+ saveRecords(records);
+
+ document.getElementById('importStatus').className='io-status ok';
+ document.getElementById('importStatus').textContent=`已成功匯入 ${pendingImportRows.length} 筆資料至瀏覽器本機資料庫。`;
+ pendingImportRows=[];
+ document.getElementById('commitImport').disabled=true;
+}
+
+function buildExportRows(){
+ const start=+document.getElementById('exportStartYear').value;
+ const end=+document.getElementById('exportEndYear').value;
+ const typeFilter=document.getElementById('exportType').value;
+ const from=Math.min(start,end),to=Math.max(start,end);
+ const rows=[];
+
+ for(let year=from;year<=to;year++){
+   const d=STATS_DATA[year];
+   if(!d)continue;
+
+   if(typeFilter==='all'||typeFilter==='air'){
+     Object.entries(d.air).forEach(([site,arr])=>{
+       arr.forEach((amount,i)=>rows.push({
+         年度:year,期間:`Q${i+1}`,規費類型:'空污費','範圍／廠區':site,
+         原始金額:amount, '退費／扣抵':0, 淨支出:amount,
+         申報狀態:amount===null?'尚未申報':'已申報',備註:''
+       }));
+     });
+   }
+
+   if(typeFilter==='all'||typeFilter==='soil'){
+     d.soil.forEach((amount,i)=>rows.push({
+       年度:year,期間:`Q${i+1}`,規費類型:'土污費','範圍／廠區':'全公司',
+       原始金額:amount,'退費／扣抵':0,淨支出:amount,
+       申報狀態:amount===null?'尚未申報':'已申報',備註:''
+     }));
+   }
+
+   if(typeFilter==='all'||typeFilter==='water'){
+     Object.entries(d.water).forEach(([site,arr])=>{
+       arr.forEach((amount,i)=>rows.push({
+         年度:year,期間:i===0?'上半年':'下半年',規費類型:'水污費','範圍／廠區':site,
+         原始金額:amount,'退費／扣抵':0,淨支出:amount,
+         申報狀態:amount===null?'尚未申報':'已申報',備註:''
+       }));
+     });
+   }
+ }
+ return rows;
+}
+
+function exportData(format){
+ const rows=buildExportRows();
+ const status=document.getElementById('exportStatus');
+ if(!rows.length){
+   status.className='io-status error';
+   status.textContent='選定範圍沒有可匯出的資料。';
+   return;
+ }
+
+ const stamp=new Date().toISOString().slice(0,10);
+ if(format==='csv'){
+   const headers=Object.keys(rows[0]);
+   const escape=v=>{
+     const s=v===null||v===undefined?'':String(v);
+     return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+   };
+   const csv='\uFEFF'+[headers.join(','),...rows.map(r=>headers.map(h=>escape(r[h])).join(','))].join('\n');
+   downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`環保規費資料_${stamp}.csv`);
+   status.className='io-status ok';
+   status.textContent=`已匯出 ${rows.length} 筆 CSV 資料。`;
+ }else{
+   if(typeof XLSX==='undefined'){
+     status.className='io-status error';
+     status.textContent='Excel 元件尚未載入，請確認網路連線後重試。';
+     return;
+   }
+   const ws=XLSX.utils.json_to_sheet(rows);
+   const wb=XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb,ws,'環保規費資料');
+   XLSX.writeFile(wb,`環保規費資料_${stamp}.xlsx`);
+   status.className='io-status ok';
+   status.textContent=`已匯出 ${rows.length} 筆 Excel 資料。`;
+ }
+}
+
+function downloadBlob(blob,filename){
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function setupManager(){
+ const modal=document.getElementById('managerModal');
+ const close=()=>modal.classList.add('hidden');
+ document.getElementById('openManager').onclick=()=>{modal.classList.remove('hidden');showManagerTab('list');renderManagerRows()};
+ document.getElementById('closeManager').onclick=close;
+
+ document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>showManagerTab(tab.dataset.tab));
+ ['mfYear','mfType','mfSite','mfStatus'].forEach(id=>document.getElementById(id).onchange=renderManagerRows);
+ document.getElementById('clearForm').onclick=resetManagerForm;
+ document.getElementById('fType').onchange=enforceFormSiteRule;
+
+ document.getElementById('feeForm').onsubmit=e=>{
+   e.preventDefault();
+   const records=getRecords();
+   const id=document.getElementById('editId').value||crypto.randomUUID();
+   const item={
+     id,year:+fYear.value,period:fPeriod.value,type:fType.value,site:fSite.value,
+     amount:+fAmount.value,refund:+fRefund.value,status:fStatus.value,note:fNote.value
+   };
+   const idx=records.findIndex(x=>x.id===id);
+   if(idx>=0)records[idx]=item; else records.push(item);
+   saveRecords(records);
+   alert('資料已儲存。');
+   resetManagerForm();
+   showManagerTab('list');
+   renderManagerRows();
+ };
+}
+
+function showManagerTab(tab){
+ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));
+ document.getElementById('managerList').classList.toggle('hidden',tab!=='list');
+ document.getElementById('managerForm').classList.toggle('hidden',tab!=='form');
+}
+
+function getRecords(){return JSON.parse(localStorage.getItem('envFeeRecords')||'[]')}
+function saveRecords(r){localStorage.setItem('envFeeRecords',JSON.stringify(r))}
+function renderManagerRows(){
+ const fy=mfYear.value,ft=mfType.value,fs=mfSite.value,fst=mfStatus.value;
+ const rows=getRecords().filter(r=>(!fy||String(r.year)===fy)&&(!ft||r.type===ft)&&(!fs||r.site===fs)&&(!fst||r.status===fst));
+ managerRows.innerHTML=rows.length?rows.map(r=>`
+   <tr>
+     <td>${r.year}</td><td>${r.period}</td><td>${TYPE_NAMES[r.type]}</td><td>${r.site}</td>
+     <td>${Number(r.amount).toLocaleString()}</td><td>${Number(r.refund).toLocaleString()}</td><td>${(r.amount-r.refund).toLocaleString()}</td>
+     <td><span class="badge ${r.status==='已申報'?'ok':'pending'}">${r.status}</span></td>
+     <td>${r.note||''}</td>
+     <td><button class="small-btn edit" onclick="editRecord('${r.id}')">編輯</button><button class="small-btn delete" onclick="deleteRecord('${r.id}')">刪除</button></td>
+   </tr>`).join(''):`<tr><td colspan="10">尚無自訂資料</td></tr>`;
+}
+
+function editRecord(id){
+ const r=getRecords().find(x=>x.id===id);if(!r)return;
+ editId.value=r.id;fYear.value=r.year;fPeriod.value=r.period;fType.value=r.type;fSite.value=r.site;fAmount.value=r.amount;fRefund.value=r.refund;fStatus.value=r.status;fNote.value=r.note||'';
+ enforceFormSiteRule();showManagerTab('form');
+}
+function deleteRecord(id){
+ if(!confirm('確定刪除此筆資料？'))return;
+ saveRecords(getRecords().filter(x=>x.id!==id));renderManagerRows();
+}
+function resetManagerForm(){
+ feeForm.reset();editId.value='';fYear.value=new Date().getFullYear();fRefund.value=0;enforceFormSiteRule();
+}
+function enforceFormSiteRule(){
+ if(fType.value==='soil'){fSite.value='全公司';fSite.disabled=true}else fSite.disabled=false;
+}
+
+init();
+</script>
+</body>
+</html>
+

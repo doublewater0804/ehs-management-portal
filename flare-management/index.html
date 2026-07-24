@@ -11,11 +11,12 @@
   <!-- Markdown 解析與安全清理 -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
-  <!-- Firebase Compat：填入設定後即可啟用 Firestore / Storage -->
+  <!-- Firebase Compat：Google 登入與 Firestore -->
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <!-- Supabase Storage：使用 Firebase ID Token 驗證 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js"></script>
 
   <style>
     :root{
@@ -176,7 +177,7 @@
         <div class="field"><label>核准文號（可手動輸入）</label><input id="approvalNumber" placeholder="未辨識"></div>
       </div>
       <div class="hint" style="margin-top:6px">系統會先從核定公文自動擷取；如顯示未辨識，可直接手動補填或修正。</div>
-      <div class="path-preview">Firebase Storage 路徑：<span id="markdownPathPreview">markdown/{廠處}/{設備}/latest.md</span></div>
+      <div class="path-preview">Firestore 文件位置：<span id="markdownPathPreview">firestore/plantMarkdown/{廠處}__{設備}</span></div>
       <div class="modal-actions"><button class="btn ghost" data-close="markdownModal" type="button">取消</button><button class="btn purple" id="uploadMarkdownBtn" type="button">上傳並設為最新版</button></div>
     </div>
   </section>
@@ -216,10 +217,10 @@
 
 <script>
 /* =========================================================
-   Firebase 設定
-   1. 建立 Firebase 專案
-   2. 啟用 Firestore Database 與 Storage
-   3. 將下方內容換成 Firebase 控制台提供的 Web App 設定
+   雲端設定
+   - Firebase Authentication：Google 登入
+   - Firestore：表單、Excel 與 Markdown 文字資料
+   - Supabase Storage：圖片檔案
    ========================================================= */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
@@ -230,8 +231,17 @@ const FIREBASE_CONFIG = {
   appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9"
 };
 
+const SUPABASE_CONFIG = {
+  url: "https://hoehgbqkumatqbnhqjhu.supabase.co",
+  publishableKey: "sb_publishable_WZmqi3Q2ytEtcQJdDhMIbw_6Wiclner",
+  bucket: "ehs-images"
+};
+
 const LOCAL_DATA_KEY = 'flare_platform_data';
-const LOCAL_MIGRATION_MARKER_PREFIX = 'flare_platform_firebase_migrated_v2';
+const LOCAL_MIGRATION_MARKER_PREFIX = 'flare_platform_cloud_migrated_v3';
+const SUPABASE_SIGNED_URL_SECONDS = 12 * 60 * 60;
+const FIRESTORE_MARKDOWN_MAX_BYTES = 850000;
+const IMAGE_PLACEHOLDER = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520"><rect width="900" height="520" fill="#eef4fb"/><text x="450" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#62748b">圖片暫時無法載入</text><text x="450" y="292" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8092a8">請重新登入或重新整理頁面</text></svg>`);
 
 const state = {
   workbookBuffer: null,
@@ -249,8 +259,9 @@ const state = {
   chapterBaseWidth: 1100,
   chapterBaseHeight: 1,
   firebaseEnabled: false,
+  supabaseReady: false,
   db: null,
-  storage: null,
+  supabase: null,
   auth: null,
   user: null,
   localSnapshot: null
@@ -290,7 +301,7 @@ const CHAPTER_DEFS = [
   {n:'八',label:'主管機關規定',full:'八、其它主管機關規定之項目'}
 ];
 function markdownKey(plant,equipment){ return `${plant}::${equipment}`; }
-function markdownStoragePath(plant,equipment){ return `markdown/${safeId(plant)}/${safeId(equipment)}/latest.md`; }
+function markdownStoragePath(plant,equipment){ return `firestore/plantMarkdown/${safeId(`${plant}__${equipment}`)}`; }
 function comparableCode(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/O/g,'0'); }
 const CHAPTER_PAGE_RANGES = {
   '一':[4,7],
@@ -547,7 +558,7 @@ function approvalDisplayText(info){
 }
 
 function hasFirebaseConfig(){ return Object.values(FIREBASE_CONFIG).every(Boolean); }
-function firebaseErrorText(error,prefix='Firebase 操作失敗'){
+function firebaseErrorText(error,prefix='Firebase／Firestore 操作失敗'){
   const code=error?.code||'unknown';
   const detail=error?.message||String(error||'未知錯誤');
   const known={
@@ -560,17 +571,90 @@ function firebaseErrorText(error,prefix='Firebase 操作失敗'){
   };
   return `${prefix}：${known[code]||detail}\n錯誤碼：${code}${known[code]?`\n${detail}`:''}`;
 }
+function hasSupabaseConfig(){
+  return !!(SUPABASE_CONFIG.url&&SUPABASE_CONFIG.publishableKey&&SUPABASE_CONFIG.bucket&&window.supabase?.createClient);
+}
+function supabaseErrorText(error,prefix='Supabase Storage 操作失敗'){
+  const detail=error?.message||error?.error_description||String(error||'未知錯誤');
+  const status=error?.status||error?.statusCode||'';
+  return `${prefix}：${detail}${status?`\nHTTP 狀態：${status}`:''}`;
+}
+function withTimeout(promise,ms,label='雲端操作'){
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error(`${label}逾時（${Math.round(ms/1000)} 秒）`)),ms);
+    Promise.resolve(promise).then(
+      value=>{clearTimeout(timer);resolve(value);},
+      error=>{clearTimeout(timer);reject(error);}
+    );
+  });
+}
+async function initSupabaseForUser(user){
+  if(!hasSupabaseConfig())throw new Error('Supabase 設定或程式庫未載入');
+  const tokenResult=await withTimeout(user.getIdTokenResult(true),20000,'更新 Firebase 登入權杖');
+  if(tokenResult?.claims?.role!=='authenticated'){
+    throw new Error('此 Firebase 帳號尚未設定 role: authenticated，Supabase Storage 將拒絕存取');
+  }
+  state.supabase=window.supabase.createClient(
+    SUPABASE_CONFIG.url,
+    SUPABASE_CONFIG.publishableKey,
+    {
+      accessToken: async()=>{
+        const current=state.auth?.currentUser;
+        return current?(await current.getIdToken(false)):null;
+      }
+    }
+  );
+  const {error}=await withTimeout(
+    state.supabase.storage.from(SUPABASE_CONFIG.bucket).list('',{limit:1}),
+    20000,
+    '連線 Supabase Storage'
+  );
+  if(error)throw error;
+  state.supabaseReady=true;
+}
+function requireSupabase(){
+  if(!state.supabaseReady||!state.supabase)throw new Error('Supabase Storage 尚未完成登入連線');
+  return state.supabase.storage.from(SUPABASE_CONFIG.bucket);
+}
+async function uploadSupabaseObject(path,file,{contentType='',upsert=false}={}){
+  const options={cacheControl:'3600',upsert};
+  if(contentType)options.contentType=contentType;
+  const {data,error}=await withTimeout(requireSupabase().upload(path,file,options),60000,'上傳圖片');
+  if(error)throw error;
+  return data;
+}
+async function signedSupabaseUrl(path,expiresIn=SUPABASE_SIGNED_URL_SECONDS){
+  if(!path)return '';
+  const {data,error}=await withTimeout(requireSupabase().createSignedUrl(path,expiresIn),20000,'建立圖片讀取網址');
+  if(error)throw error;
+  return data?.signedUrl||'';
+}
+async function removeSupabaseObject(path){
+  if(!path)return;
+  const {error}=await withTimeout(requireSupabase().remove([path]),30000,'刪除圖片');
+  if(error)throw error;
+}
+async function hydrateCloudImage(record){
+  const item={...record};
+  if(item.storageProvider==='supabase'&&item.storagePath){
+    try{item.url=await signedSupabaseUrl(item.storagePath);}
+    catch(error){console.error('Supabase 圖片網址建立失敗',item.storagePath,error);item.url='';item.storageError=error?.message||String(error);}
+  }
+  return item;
+}
+function markdownByteLength(content){return new TextEncoder().encode(String(content||'')).length;}
+
 function createAuthGate(){
   let gate=$('firebaseAuthGate');
   if(gate)return gate;
   gate=document.createElement('div');
   gate.id='firebaseAuthGate'; gate.className='firebase-auth-gate';
   gate.innerHTML=`<section class="firebase-auth-card" role="dialog" aria-modal="true" aria-labelledby="firebaseAuthTitle">
-    <h2 id="firebaseAuthTitle">Firebase 雲端資料登入</h2>
-    <p>此模組需要先完成 Google 登入，才會讀取及同步 Firestore 與 Storage。第一次登入時，會將本瀏覽器既有資料安全合併至 Firebase。</p>
+    <h2 id="firebaseAuthTitle">雲端資料登入</h2>
+    <p>此模組需要先完成 Google 登入，才會讀取 Firestore，並透過 Supabase Storage 同步圖片。第一次登入時，會將本瀏覽器既有資料安全合併至雲端。</p>
     <div class="firebase-auth-status" id="firebaseAuthStatus">正在確認既有登入狀態…</div>
     <button class="btn" type="button" id="firebaseLoginBtn" disabled>使用 Google 登入並讀取雲端資料</button>
-    <div class="firebase-auth-note">登入視窗只會在按下按鈕後開啟，以相容 iPad Safari／Chrome。既有雲端同名資料不會被本機資料覆蓋。</div>
+    <div class="firebase-auth-note">登入視窗只會在按下按鈕後開啟，以相容 iPad Safari／Chrome。既有雲端同名資料不會被本機資料覆蓋。圖片上傳失敗時也不會讓登入畫面永久卡住。</div>
   </section>`;
   document.body.appendChild(gate);
   return gate;
@@ -620,9 +704,10 @@ async function migrateLocalDataToFirebase(localData,user){
   if(localStorage.getItem(markerKey))return {migrated:false,summary:'本機資料已完成遷移'};
 
   $('cloudStatus').textContent='● 正在合併本機資料…';
-  setAuthGate('登入成功，正在將本瀏覽器既有資料合併至 Firebase…',{busy:true});
+  setAuthGate('登入成功，正在將本瀏覽器既有資料合併至 Firestore 與 Supabase…',{busy:true});
 
   let plantsAdded=0,imagesAdded=0,markdownAdded=0,skipped=0;
+  const warnings=[];
   const localPlants=localData.plants&&typeof localData.plants==='object'?localData.plants:{};
   const existingPlants=await state.db.collection('flarePlants').get();
   const existingPlantIds=new Set(existingPlants.docs.map(d=>d.id));
@@ -651,69 +736,89 @@ async function migrateLocalDataToFirebase(localData,user){
   },{merge:true});
 
   for(const [index,img] of (Array.isArray(localData.images)?localData.images:[]).entries()){
-    const sourceId=String(img.id||`${img.plant||'plant'}_${img.fileName||img.name||index}`);
-    const docId=`local_${safeId(sourceId)}`;
-    const docRef=state.db.collection('plantImages').doc(docId);
-    if((await docRef.get()).exists){skipped++;continue;}
-    let url=String(img.url||''), storagePath=String(img.storagePath||'');
-    if(url.startsWith('data:')){
-      const fileName=String(img.fileName||img.name||`image_${index+1}`).replace(/[^\w.\-\u4e00-\u9fff]/g,'_');
-      storagePath=`plant-images/${safeId(img.plant||'未分類')}/migrated_${safeId(sourceId)}_${fileName}`;
-      const ref=state.storage.ref(storagePath);
-      await ref.put(dataUrlToBlob(url));
-      url=await ref.getDownloadURL();
+    try{
+      const sourceId=String(img.id||`${img.plant||'plant'}_${img.fileName||img.name||index}`);
+      const docId=`local_${safeId(sourceId)}`;
+      const docRef=state.db.collection('plantImages').doc(docId);
+      if((await docRef.get()).exists){skipped++;continue;}
+      let url=String(img.url||''), storagePath=String(img.storagePath||''), storageProvider=String(img.storageProvider||'');
+      if(url.startsWith('data:')){
+        const fileName=String(img.fileName||img.name||`image_${index+1}`).replace(/[^\w.\-\u4e00-\u9fff]/g,'_');
+        storagePath=`plant-images/${safeId(img.plant||'未分類')}/migrated_${safeId(sourceId)}_${fileName}`;
+        const blob=dataUrlToBlob(url);
+        await uploadSupabaseObject(storagePath,blob,{contentType:blob.type||'image/jpeg'});
+        storageProvider='supabase';
+        url='';
+      }
+      if(!url&&!storagePath){skipped++;continue;}
+      await docRef.set({
+        plant:img.plant||'',type:img.type||'其他',name:img.name||img.fileName||'未命名圖片',fileName:img.fileName||'',
+        size:img.size||0,url:storageProvider==='supabase'?'':url,storagePath,storageProvider:storageProvider||(url?'external':''),
+        createdAtText:img.createdAtText||nowText(),migratedFromLocal:true,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+      imagesAdded++;
+    }catch(error){
+      skipped++;warnings.push(`圖片「${img?.name||img?.fileName||index+1}」：${error?.message||error}`);console.error('本機圖片遷移失敗',error);
     }
-    if(!url){skipped++;continue;}
-    await docRef.set({
-      plant:img.plant||'',type:img.type||'其他',name:img.name||img.fileName||'未命名圖片',fileName:img.fileName||'',
-      size:img.size||0,url,storagePath,createdAtText:img.createdAtText||nowText(),migratedFromLocal:true,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    },{merge:true});
-    imagesAdded++;
   }
 
   for(const [key,doc] of Object.entries(localData.markdownDocs||{})){
-    const plant=doc?.plant||String(key).split('::')[0]||'';
-    const equipment=doc?.equipment||String(key).split('::')[1]||'';
-    if(!plant||!equipment){skipped++;continue;}
-    const docId=safeId(`${plant}__${equipment}`), docRef=state.db.collection('plantMarkdown').doc(docId);
-    if((await docRef.get()).exists){skipped++;continue;}
-    const content=String(doc?.content||'');
-    let url=String(doc?.url||''), storagePath=String(doc?.storagePath||markdownStoragePath(plant,equipment));
-    if(content){
-      const ref=state.storage.ref(storagePath);
-      await ref.put(new Blob([content],{type:'text/markdown;charset=utf-8'}),{contentType:'text/markdown; charset=utf-8'});
-      url=await ref.getDownloadURL();
+    try{
+      const plant=doc?.plant||String(key).split('::')[0]||'';
+      const equipment=doc?.equipment||String(key).split('::')[1]||'';
+      if(!plant||!equipment){skipped++;continue;}
+      const docId=safeId(`${plant}__${equipment}`), docRef=state.db.collection('plantMarkdown').doc(docId);
+      if((await docRef.get()).exists){skipped++;continue;}
+      const content=String(doc?.content||'');
+      if(!content){skipped++;continue;}
+      if(markdownByteLength(content)>FIRESTORE_MARKDOWN_MAX_BYTES)throw new Error('Markdown 超過 850 KB，無法直接存入 Firestore');
+      await docRef.set({
+        plant,equipment,fileName:doc?.fileName||`${plant}_${equipment}.md`,content,url:'',storagePath:`firestore/plantMarkdown/${docId}`,storageProvider:'firestore',
+        chapterCount:doc?.chapterCount||chapterCount(parseMarkdownChapters(content)),parseMode:doc?.parseMode||markdownFormatInfo(content),
+        approvalAuthority:doc?.approvalAuthority||'',approvalDate:doc?.approvalDate||'',approvalNumber:doc?.approvalNumber||'',
+        updatedAtText:doc?.updatedAtText||nowText(),migratedFromLocal:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+      markdownAdded++;
+    }catch(error){
+      skipped++;warnings.push(`Markdown「${doc?.fileName||key}」：${error?.message||error}`);console.error('本機 Markdown 遷移失敗',error);
     }
-    if(!content&&!url){skipped++;continue;}
-    await docRef.set({
-      plant,equipment,fileName:doc?.fileName||`${plant}_${equipment}.md`,url,storagePath,
-      chapterCount:doc?.chapterCount||chapterCount(parseMarkdownChapters(content)),parseMode:doc?.parseMode||markdownFormatInfo(content),
-      approvalAuthority:doc?.approvalAuthority||'',approvalDate:doc?.approvalDate||'',approvalNumber:doc?.approvalNumber||'',
-      updatedAtText:doc?.updatedAtText||nowText(),migratedFromLocal:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    },{merge:true});
-    markdownAdded++;
   }
 
-  localStorage.setItem(markerKey,new Date().toISOString());
+  if(!warnings.length)localStorage.setItem(markerKey,new Date().toISOString());
+  if(warnings.length)toast(`部分本機資料未遷移（${warnings.length} 筆），可在 Console 查看原因`,true);
   return {migrated:true,summary:`新增 ${plantsAdded} 個廠處、${imagesAdded} 張圖片、${markdownAdded} 份 Markdown；略過 ${skipped} 筆既有或無效資料`};
 }
 async function beginAuthenticatedFirebase(user){
   state.user=user; state.firebaseEnabled=true;
-  $('cloudStatus').textContent=`● Firebase 已登入：${user.email||'Google 帳號'}`;
+  let storageError=null;
+  setAuthGate('登入成功，正在連線 Supabase Storage…',{busy:true});
+  try{await initSupabaseForUser(user);}
+  catch(error){
+    storageError=error; state.supabaseReady=false; state.supabase=null;
+    console.error('Supabase Storage 初始化失敗',error);
+  }
+  $('cloudStatus').textContent=storageError
+    ?`● Firestore 已登入／Supabase 失敗：${user.email||'Google 帳號'}`
+    :`● Firestore＋Supabase 已登入：${user.email||'Google 帳號'}`;
   $('cloudStatus').title='點擊可切換 Google 帳號';
   $('cloudStatus').style.cursor='pointer';
   $('cloudStatus').onclick=async()=>{
     if(!confirm(`目前帳號：${user.email||user.uid}\n是否登出並切換帳號？`))return;
     await state.auth.signOut(); location.reload();
   };
-  $('storageMode').textContent='Firebase 雲端'; $('firebaseNote').style.display='none';
+  $('storageMode').textContent=storageError?'Firestore（Supabase 圖片暫時離線）':'Firestore＋Supabase Storage';
+  $('firebaseNote').style.display='none';
   let migrationResult={migrated:false,summary:''};
   try{migrationResult=await migrateLocalDataToFirebase(state.localSnapshot,user);}
-  catch(error){console.error('本機資料遷移失敗',error);toast(firebaseErrorText(error,'本機資料遷移未完成；稍後重新整理可重試'),true);}
+  catch(error){
+    console.error('本機資料遷移失敗',error);
+    toast(`${error?.message||'本機資料遷移未完成'}\n稍後重新整理可重試`,true);
+  }
   await loadCloudData();
   setAuthGate('',{hidden:true});
-  if(migrationResult.migrated)toast(`本機資料已合併至 Firebase：${migrationResult.summary}`);
+  if(storageError)toast(supabaseErrorText(storageError,'Supabase Storage 連線失敗；Firestore 資料仍可使用'),true);
+  if(migrationResult.migrated)toast(`本機資料已合併至雲端：${migrationResult.summary}`);
 }
 async function initFirebase(){
   if(!hasFirebaseConfig())return;
@@ -724,7 +829,6 @@ async function initFirebase(){
     state.auth=firebase.auth();
     state.db=firebase.firestore();
     try{state.db.settings({experimentalAutoDetectLongPolling:true,useFetchStreams:false});}catch(e){console.warn('Firestore 相容設定未套用',e);}
-    state.storage=firebase.storage();
     try{await state.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}
     catch(e){console.warn('Firebase 登入持久化設定失敗',e);}
 
@@ -739,17 +843,19 @@ async function initFirebase(){
     state.auth.onAuthStateChanged(async user=>{
       if(!user){
         state.firebaseEnabled=false;
-        $('cloudStatus').textContent='● Firebase 尚未登入';
+        state.supabaseReady=false; state.supabase=null;
+        $('cloudStatus').textContent='● 雲端尚未登入';
         $('storageMode').textContent='等待 Google 登入';
-        setAuthGate('尚未登入 Firebase，請按下方按鈕。',{busy:false});
+        setAuthGate('尚未登入，請按下方按鈕使用 Google 登入。',{busy:false});
         return;
       }
       try{await beginAuthenticatedFirebase(user);}
       catch(error){
-        console.error('Firebase 初始化或資料讀取失敗',error);
-        $('cloudStatus').textContent='● Firebase 讀取失敗';
-        setAuthGate(firebaseErrorText(error,'Firebase 資料讀取失敗'),{error:true,busy:false});
-        toast(firebaseErrorText(error,'Firebase 資料讀取失敗'),true);
+        console.error('雲端初始化或資料讀取失敗',error);
+        $('cloudStatus').textContent='● 雲端連線失敗';
+        const message=error?.message?.includes('Supabase')||error?.status?supabaseErrorText(error,'Supabase Storage 連線失敗'):firebaseErrorText(error,'Firestore 資料讀取失敗');
+        setAuthGate(message,{error:true,busy:false});
+        toast(error?.message||'雲端資料讀取失敗',true);
       }
     },error=>{
       console.error(error);
@@ -772,7 +878,7 @@ function saveLocal(){
     });
     localStorage.setItem(LOCAL_DATA_KEY,JSON.stringify({plants:state.plants,images:state.images,markdownDocs,workbookName:state.workbookName,updatedAt:nowText()}));
   }
-  catch(e){ toast('本機儲存空間不足；大型圖片或 Markdown 請改用 Firebase',true); }
+  catch(e){ toast('本機儲存空間不足；請登入後使用 Firestore 與 Supabase Storage',true); }
 }
 function loadLocal(){
   try{ const d=readLocalSnapshot(); if(!d)return; state.plants=d.plants||{}; state.images=d.images||[]; state.markdownDocs=d.markdownDocs||{}; state.workbookName=d.workbookName||''; state.localSnapshot=d; }
@@ -802,14 +908,14 @@ async function loadCloudData(){
   if(metaSnap?.exists)state.workbookName=metaSnap.data().workbookName||state.workbookName||'';
 
   const imgs=await state.db.collection('plantImages').orderBy('createdAt','desc').get();
-  state.images=[]; imgs.forEach(doc=>state.images.push({id:doc.id,...doc.data()}));
+  state.images=await Promise.all(imgs.docs.map(async doc=>hydrateCloudImage({id:doc.id,...doc.data()})));
 
   const mdSnap=await state.db.collection('plantMarkdown').get();
   state.markdownDocs={};
   await Promise.all(mdSnap.docs.map(async doc=>{
     const d=doc.data(); let content=d.content||'';
-    if(!content&&d.url){ try{const r=await fetch(d.url);if(r.ok)content=await r.text();}catch(e){console.warn('Markdown 下載失敗',e);} }
-    const updated=d.updatedAt?.toDate?d.updatedAt.toDate().toLocaleString('zh-TW',{hour12:false}):(d.updatedAtText||'Firebase');
+    if(!content&&d.url){ try{const r=await fetch(d.url);if(r.ok)content=await r.text();}catch(e){console.warn('舊版 Markdown 下載失敗',e);} }
+    const updated=d.updatedAt?.toDate?d.updatedAt.toDate().toLocaleString('zh-TW',{hour12:false}):(d.updatedAtText||'Firestore');
     state.markdownDocs[markdownKey(d.plant,d.equipment)]={...d,content,updatedAtText:updated,id:doc.id};
   }));
   const names=Object.keys(state.plants);
@@ -856,12 +962,14 @@ async function uploadImage(){
     let record={id:crypto.randomUUID(),plant,type,name,fileName:file.name,size:file.size,createdAtText:nowText()};
     if(state.firebaseEnabled){
       const path=`plant-images/${safeId(plant)}/${Date.now()}_${file.name.replace(/[^\w.\-\u4e00-\u9fff]/g,'_')}`;
-      const ref=state.storage.ref(path); await ref.put(file); record.url=await ref.getDownloadURL(); record.storagePath=path;
-      const doc=await state.db.collection('plantImages').add({...record,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); record.id=doc.id;
+      await uploadSupabaseObject(path,file,{contentType:file.type||'image/jpeg'});
+      record.storagePath=path; record.storageProvider='supabase'; record.url=await signedSupabaseUrl(path);
+      const cloudRecord={...record,url:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+      const doc=await state.db.collection('plantImages').add(cloudRecord); record.id=doc.id;
     }else{ record.url=await fileToDataUrl(file); state.images.unshift(record); saveLocal(); }
     if(state.firebaseEnabled) state.images.unshift(record);
-    state.selectedPlant=plant; state.selectedImageId=record.id; state.imageFile=null; $('imageInput').value=''; $('imageName').value=''; $('imageFileLabel').textContent='拖放圖片到此處，或點擊選擇檔案'; renderAll(); closeModal('imageModal'); toast('圖片上傳完成');
-  }catch(e){ console.error(e); toast('圖片上傳失敗：'+e.message,true); }
+    state.selectedPlant=plant; state.selectedImageId=record.id; state.imageFile=null; $('imageInput').value=''; $('imageName').value=''; $('imageFileLabel').textContent='拖放圖片到此處，或點擊選擇檔案'; renderAll(); closeModal('imageModal'); toast('圖片已上傳至 Supabase Storage');
+  }catch(e){ console.error(e); toast(supabaseErrorText(e,'圖片上傳失敗'),true); }
 }
 function fileToDataUrl(file){ return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);}); }
 
@@ -899,16 +1007,17 @@ async function uploadMarkdown(){
   if(!plant) return toast('請選擇廠處',true); if(!equipment) return toast('請選擇設備',true); if(!file||!content) return toast('請選擇 Markdown 檔案',true);
   const chapters=parseMarkdownChapters(content), count=chapterCount(chapters), parseMode=markdownFormatInfo(content);
   if(!count) return toast('無法辨識章節；請確認檔案為一般章節版或完整逐字核定版',true);
+  if(state.firebaseEnabled&&markdownByteLength(content)>FIRESTORE_MARKDOWN_MAX_BYTES)return toast('Markdown 超過 850 KB；目前版本無法直接存入 Firestore',true);
   try{
-    const updatedAtText=nowText(), storagePath=markdownStoragePath(plant,equipment);
+    const updatedAtText=nowText();
     const approvalAuthority=cleanApprovalValue($('approvalAuthority').value);
     const approvalDate=cleanApprovalValue($('approvalDate').value);
     const approvalNumber=cleanApprovalValue($('approvalNumber').value);
-    const record={plant,equipment,fileName:file.name,content,updatedAtText,storagePath,chapterCount:count,parseMode,approvalAuthority,approvalDate,approvalNumber};
+    const docId=safeId(`${plant}__${equipment}`);
+    const storagePath=`firestore/plantMarkdown/${docId}`;
+    const record={plant,equipment,fileName:file.name,content,updatedAtText,storagePath,storageProvider:'firestore',chapterCount:count,parseMode,approvalAuthority,approvalDate,approvalNumber};
     if(state.firebaseEnabled){
-      const ref=state.storage.ref(storagePath); await ref.put(file,{contentType:'text/markdown; charset=utf-8'}); record.url=await ref.getDownloadURL();
-      const docId=safeId(`${plant}__${equipment}`);
-      await state.db.collection('plantMarkdown').doc(docId).set({plant,equipment,fileName:file.name,url:record.url,storagePath,chapterCount:count,parseMode,approvalAuthority,approvalDate,approvalNumber,updatedAtText,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      await state.db.collection('plantMarkdown').doc(docId).set({plant,equipment,fileName:file.name,content,url:'',storagePath,storageProvider:'firestore',chapterCount:count,parseMode,approvalAuthority,approvalDate,approvalNumber,updatedAtText,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
       record.id=docId;
     }
     state.markdownDocs[markdownKey(plant,equipment)]=record;
@@ -916,14 +1025,17 @@ async function uploadMarkdown(){
     state.selectedPlant=plant; state.selectedEquipment=equipment;
     state.markdownFile=null; state.markdownText=''; $('markdownInput').value=''; $('markdownFileLabel').textContent='拖放 Markdown 檔案到此處，或點擊選擇檔案'; fillApprovalInputs();
     closeModal('markdownModal'); renderAll();
-    toast(state.firebaseEnabled?`Markdown 已更新：${plant}／${equipment}（${count}/8 章）`:`Markdown 已載入本次工作階段：${plant}／${equipment}（${count}/8 章）`);
+    toast(state.firebaseEnabled?`Markdown 已存入 Firestore：${plant}／${equipment}（${count}/8 章）`:`Markdown 已載入本次工作階段：${plant}／${equipment}（${count}/8 章）`);
   }catch(e){ console.error(e); toast('Markdown 上傳失敗：'+e.message,true); }
 }
 
 async function deleteSelectedImage(){
   const img=state.images.find(x=>x.id===state.selectedImageId); if(!img||!confirm(`確定刪除「${img.name}」？`)) return;
   try{
-    if(state.firebaseEnabled){ if(img.storagePath) await state.storage.ref(img.storagePath).delete().catch(()=>{}); await state.db.collection('plantImages').doc(img.id).delete(); }
+    if(state.firebaseEnabled){
+      if(img.storageProvider==='supabase'&&img.storagePath)await removeSupabaseObject(img.storagePath).catch(error=>console.warn('Supabase 圖片刪除失敗，仍繼續刪除 Firestore 紀錄',error));
+      await state.db.collection('plantImages').doc(img.id).delete();
+    }
     state.images=state.images.filter(x=>x.id!==img.id); state.selectedImageId=''; if(!state.firebaseEnabled) saveLocal(); renderAll(); toast('圖片已刪除');
   }catch(e){toast('刪除失敗：'+e.message,true)}
 }
@@ -951,12 +1063,12 @@ async function downloadSelectedMarkdown(){
   }catch(e){ toast(e.message||'Markdown 下載失敗',true); }
 }
 function serializableImages(){
-  return (state.images||[]).map(({id,plant,type,name,fileName,url,storagePath,createdAtText})=>({id,plant,type,name,fileName,url,storagePath,createdAtText}));
+  return (state.images||[]).map(({id,plant,type,name,fileName,url,storagePath,storageProvider,createdAtText})=>({id,plant,type,name,fileName,url,storagePath,storageProvider,createdAtText}));
 }
 function serializableMarkdownDocs(){
   const docs={};
   Object.entries(state.markdownDocs||{}).forEach(([key,doc])=>{
-    docs[key]={id:doc.id||'',plant:doc.plant||'',equipment:doc.equipment||'',fileName:doc.fileName||'',content:doc.content||'',url:doc.url||'',storagePath:doc.storagePath||'',chapterCount:doc.chapterCount||0,parseMode:doc.parseMode||'',approvalAuthority:doc.approvalAuthority||'',approvalDate:doc.approvalDate||'',approvalNumber:doc.approvalNumber||'',updatedAtText:doc.updatedAtText||''};
+    docs[key]={id:doc.id||'',plant:doc.plant||'',equipment:doc.equipment||'',fileName:doc.fileName||'',content:doc.content||'',url:doc.url||'',storagePath:doc.storagePath||'',storageProvider:doc.storageProvider||'',chapterCount:doc.chapterCount||0,parseMode:doc.parseMode||'',approvalAuthority:doc.approvalAuthority||'',approvalDate:doc.approvalDate||'',approvalNumber:doc.approvalNumber||'',updatedAtText:doc.updatedAtText||''};
   });
   return docs;
 }
@@ -1070,7 +1182,7 @@ function renderChapterNav(){
     return;
   }
   if(!doc.content){
-    nav.innerHTML='<span class="chapter-placeholder">此大型 Markdown 未存入瀏覽器，請重新上傳；正式共用請設定 Firebase</span>';
+    nav.innerHTML='<span class="chapter-placeholder">找不到 Markdown 文字內容，請重新上傳檔案</span>';
     status.textContent=`計畫書：${doc.fileName||'—'}｜更新：${doc.updatedAtText||'—'}｜內容需重新載入`;
     approval.textContent=approvalDisplayText(approvalInfoForDoc(doc));
     return;
@@ -1156,7 +1268,8 @@ function renderComparisonTable(){
 function renderGallery(){
   const imgs=state.images.filter(x=>x.plant===state.selectedPlant); if(!imgs.length){$('galleryArea').innerHTML='<div class="empty">此廠處尚未上傳圖片</div>';$('deleteImageBtn').disabled=true;return;}
   if(!imgs.some(x=>x.id===state.selectedImageId)) state.selectedImageId=imgs[0].id; const current=imgs.find(x=>x.id===state.selectedImageId)||imgs[0];
-  $('galleryArea').innerHTML=`<div class="gallery"><div><div class="preview" id="mainImagePreview" title="可用水平與垂直捲軸查看；點擊圖片可放大"><img id="mainPreviewImage" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}"></div><div class="meta"><span>圖片類型：<b>${escapeHtml(current.type)}</b></span><span>圖片名稱：<b>${escapeHtml(current.name)}</b></span><span>檔案名稱：${escapeHtml(current.fileName||'—')}</span><span>上傳時間：${escapeHtml(current.createdAtText||'Firebase')}</span></div></div><div class="thumbs">${imgs.map(i=>`<div class="thumb ${i.id===current.id?'active':''}" data-id="${i.id}"><img src="${escapeHtml(i.url)}" alt=""><span>${escapeHtml(i.name)}</span></div>`).join('')}</div></div>`;
+  const currentUrl=current.url||IMAGE_PLACEHOLDER;
+  $('galleryArea').innerHTML=`<div class="gallery"><div><div class="preview" id="mainImagePreview" title="可用水平與垂直捲軸查看；點擊圖片可放大"><img id="mainPreviewImage" src="${escapeHtml(currentUrl)}" alt="${escapeHtml(current.name)}"></div><div class="meta"><span>圖片類型：<b>${escapeHtml(current.type)}</b></span><span>圖片名稱：<b>${escapeHtml(current.name)}</b></span><span>檔案名稱：${escapeHtml(current.fileName||'—')}</span><span>上傳時間：${escapeHtml(current.createdAtText||'雲端')}</span>${current.storageError?`<span style="color:#c0392b">讀取錯誤：${escapeHtml(current.storageError)}</span>`:''}</div></div><div class="thumbs">${imgs.map(i=>`<div class="thumb ${i.id===current.id?'active':''}" data-id="${i.id}"><img src="${escapeHtml(i.url||IMAGE_PLACEHOLDER)}" alt=""><span>${escapeHtml(i.name)}</span></div>`).join('')}</div></div>`;
   const preview=$('mainImagePreview'), image=$('mainPreviewImage');
   const sizeScrollableImage=()=>{
     if(!image.naturalWidth||!preview.clientWidth||!preview.clientHeight)return;
@@ -1167,9 +1280,10 @@ function renderGallery(){
     preview.scrollTop=Math.max(0,(image.offsetHeight-preview.clientHeight)/2);
   };
   if(image.complete) requestAnimationFrame(sizeScrollableImage); else image.addEventListener('load',sizeScrollableImage,{once:true});
-  image.onclick=()=>openLightbox(current.url,current.name);
+  image.onclick=()=>openLightbox(currentUrl,current.name);
   $('galleryArea').querySelectorAll('.thumb').forEach(t=>t.onclick=()=>{state.selectedImageId=t.dataset.id;renderGallery();}); $('deleteImageBtn').disabled=false;
 }
+
 function openLightbox(url,name){ $('lightboxImage').src=url; $('lightboxImage').alt=name||'圖片放大預覽'; $('imageLightbox').classList.add('show'); $('imageLightbox').setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; }
 function closeLightbox(){ $('imageLightbox').classList.remove('show'); $('imageLightbox').setAttribute('aria-hidden','true'); $('lightboxImage').src=''; if(!document.querySelector('.modal-backdrop.show')) document.body.style.overflow=''; }
 $('lightboxClose').onclick=closeLightbox;

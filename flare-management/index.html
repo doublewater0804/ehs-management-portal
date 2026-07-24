@@ -743,9 +743,18 @@ async function migrateLocalDataToFirebase(localData,user){
       if((await docRef.get()).exists){skipped++;continue;}
       let url=String(img.url||''), storagePath=String(img.storagePath||''), storageProvider=String(img.storageProvider||'');
       if(url.startsWith('data:')){
-        const fileName=String(img.fileName||img.name||`image_${index+1}`).replace(/[^\w.\-\u4e00-\u9fff]/g,'_');
-        storagePath=`plant-images/${safeId(img.plant||'未分類')}/migrated_${safeId(sourceId)}_${fileName}`;
+        const fileName=String(img.fileName||img.name||`image_${index+1}`);
         const blob=dataUrlToBlob(url);
+        const plantKey=String(img.plant||'plant')
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^A-Za-z0-9._-]+/g,'-')
+          .replace(/^-+|-+$/g,'')||'plant';
+        const ext=(
+          (fileName.match(/\.([A-Za-z0-9]{1,10})$/)||[])[1]||
+          (blob.type.split('/')[1]||'img')
+        ).replace(/[^A-Za-z0-9]/g,'').toLowerCase()||'img';
+        storagePath=`plant-images/${plantKey}/migrated_${Date.now()}_${crypto.randomUUID()}.${ext}`;
         await uploadSupabaseObject(storagePath,blob,{contentType:blob.type||'image/jpeg'});
         storageProvider='supabase';
         url='';
@@ -961,7 +970,15 @@ async function uploadImage(){
   try{
     let record={id:crypto.randomUUID(),plant,type,name,fileName:file.name,size:file.size,createdAtText:nowText()};
     if(state.firebaseEnabled){
-      const path=`plant-images/${safeId(plant)}/${Date.now()}_${file.name.replace(/[^\w.\-\u4e00-\u9fff]/g,'_')}`;
+      const plantKey=String(plant)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^A-Za-z0-9._-]+/g,'-')
+        .replace(/^-+|-+$/g,'')||'plant';
+      const ext=((String(file.name).match(/\.([A-Za-z0-9]{1,10})$/)||[])[1]||'img')
+        .replace(/[^A-Za-z0-9]/g,'')
+        .toLowerCase()||'img';
+      const path=`plant-images/${plantKey}/${Date.now()}_${crypto.randomUUID()}.${ext}`;
       await uploadSupabaseObject(path,file,{contentType:file.type||'image/jpeg'});
       record.storagePath=path; record.storageProvider='supabase'; record.url=await signedSupabaseUrl(path);
       const cloudRecord={...record,url:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()};

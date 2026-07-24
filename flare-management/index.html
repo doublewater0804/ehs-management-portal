@@ -13,6 +13,7 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <!-- Firebase Compat：填入設定後即可啟用 Firestore / Storage -->
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
@@ -55,6 +56,9 @@
     .drop{border:1px dashed #79a7ef;border-radius:13px;min-height:150px;display:grid;place-items:center;text-align:center;padding:16px;background:#f5f9ff;cursor:pointer}.drop.drag{background:#eaf2ff;border-color:var(--blue)}
     .form-row{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:12px;margin-bottom:12px}.field label{display:block;color:#556b86;font-size:13px;margin-bottom:6px}.field input,.field select{width:100%;padding:11px 12px;border-radius:9px;border:1px solid #c6d5e6;background:#fff;color:var(--text);outline:none}.field input:focus,.field select:focus{border-color:#6d9dff;box-shadow:0 0 0 3px rgba(47,109,246,.12)}
     .firebase-note{margin-top:10px;padding:10px;border-radius:9px;background:#fff7df;border:1px solid #f0d28c;color:#8a6516;font-size:13px}
+    .firebase-auth-gate{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,24,48,.68);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .firebase-auth-gate[hidden]{display:none}.firebase-auth-card{width:min(460px,100%);background:#fff;border:1px solid rgba(255,255,255,.65);border-radius:20px;padding:24px;box-shadow:0 28px 80px rgba(8,24,48,.32)}
+    .firebase-auth-card h2{margin:0 0 8px;font-size:22px}.firebase-auth-card p{margin:0 0 14px;color:var(--muted);line-height:1.7}.firebase-auth-status{padding:10px 12px;margin-bottom:14px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:13px;line-height:1.55;white-space:pre-line;word-break:break-word}.firebase-auth-status.error{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}.firebase-auth-card .btn{width:100%;min-height:46px}.firebase-auth-note{margin-top:10px;text-align:center;color:#8a99ab;font-size:11px;line-height:1.55}
     .modal-backdrop{position:fixed;inset:0;background:rgba(8,24,48,.45);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal-backdrop.show{display:flex}.modal{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 28px 80px rgba(25,55,95,.25)}.modal.modal-wide{width:min(1180px,96vw);height:min(880px,92vh);display:flex;flex-direction:column;overflow:hidden}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex:0 0 auto}.modal-head h2{margin:0;font-size:21px}.modal-close{border:0;background:#eef4fb;color:var(--text);width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:20px}.modal-body{padding:20px}.modal-wide .modal-body{overflow:auto;flex:1;min-height:0}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
     .markdown-upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.approval-input-grid{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:12px;margin-top:12px}.approval-status{margin-top:5px;color:#315071;font-size:12px;white-space:normal}.path-preview{margin-top:10px;padding:10px 12px;border:1px solid #cbd9e9;border-radius:9px;background:#f4f8fd;color:#315071;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;word-break:break-all}.markdown-detected{margin-top:10px;color:#315071;font-size:13px}.markdown-meta{padding:10px 20px;background:#f5f9ff;border-bottom:1px solid var(--line);color:#526b88;font-size:13px}.markdown-content{color:#162f50;line-height:1.75;font-size:15px}.markdown-content h1{font-size:26px;text-align:left;letter-spacing:0;margin:4px 0 18px;color:#0b2e5b;border-bottom:2px solid #dce6f2;padding-bottom:8px}.markdown-content h2{font-size:21px;margin:26px 0 12px;color:#123c70;border-left:4px solid var(--blue);padding-left:10px}.markdown-content h3{font-size:18px;margin:22px 0 10px}.markdown-content table{width:100%;max-width:100%;border-collapse:collapse;margin:14px 0 22px;font-size:13px;display:block;overflow-x:auto}.markdown-content th,.markdown-content td{position:static;width:auto!important;border:1px solid #ccd9e8;padding:6px 10px;text-align:left;vertical-align:top;background:#fff;word-break:break-word}.markdown-content th{background:#eaf2ff;color:#173a64;font-weight:700}.markdown-content tr:nth-child(even) td{background:#f6f9fc}.markdown-content tr:hover td{background:#e8f0fe}.markdown-content pre{overflow:auto;background:#f5f8fb;color:#1b365a;padding:16px;border:1px solid #d6e2f0;border-radius:10px;font-size:12px;line-height:1.6;font-family:"Cascadia Code","Consolas","Courier New",monospace}.markdown-content code{font-family:"Cascadia Code","Consolas","Courier New",monospace;background:#eef3f9;padding:2px 6px;border-radius:5px;font-size:13px;color:#bc3154}.markdown-content pre code{background:transparent;padding:0;color:inherit;font-size:inherit}.markdown-content blockquote{margin:14px 0;padding:10px 14px;border-left:4px solid #8bb2ff;background:#f4f8fd;color:#405a78}.markdown-content ul,.markdown-content ol{padding-left:24px}.markdown-content hr{border:none;border-top:1px solid #dce6f2;margin:24px 0}.markdown-empty{padding:50px;text-align:center;color:var(--muted)}
     .tool-btn:disabled{opacity:.48;cursor:not-allowed;background:#f4f6f9}.tool-btn:disabled:hover{border-color:var(--line);background:#f4f6f9}
@@ -134,7 +138,7 @@
       <div class="drop" id="excelDrop"><div><div style="font-size:37px">☁️</div><b>拖放 Excel 檔案到此處</b><div class="hint">支援 .xlsx / .xls</div><br><button class="btn" type="button">選擇 Excel 檔案</button></div></div>
       <input id="excelInput" type="file" accept=".xlsx,.xls" hidden>
       <div class="hint" style="margin-top:10px">系統會讀取「彙整」工作表，依第 2 列的「廠處」分類，並保留各設備欄位資料。</div>
-      <div class="firebase-note" id="firebaseNote">目前為測試模式：資料保存在此瀏覽器。正式上線前，請在 HTML 內填入 Firebase 設定。</div>
+      <div class="firebase-note" id="firebaseNote">尚未登入 Firebase；登入後將讀取雲端資料，並於第一次登入時自動合併此瀏覽器既有資料。</div>
     </div>
   </section>
 </div>
@@ -218,13 +222,16 @@
    3. 將下方內容換成 Firebase 控制台提供的 Web App 設定
    ========================================================= */
 const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+  authDomain: "esh-v85.firebaseapp.com",
+  projectId: "esh-v85",
+  storageBucket: "esh-v85.firebasestorage.app",
+  messagingSenderId: "1021350670476",
+  appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9"
 };
+
+const LOCAL_DATA_KEY = 'flare_platform_data';
+const LOCAL_MIGRATION_MARKER_PREFIX = 'flare_platform_firebase_migrated_v2';
 
 const state = {
   workbookBuffer: null,
@@ -243,7 +250,10 @@ const state = {
   chapterBaseHeight: 1,
   firebaseEnabled: false,
   db: null,
-  storage: null
+  storage: null,
+  auth: null,
+  user: null,
+  localSnapshot: null
 };
 
 const $ = id => document.getElementById(id);
@@ -537,15 +547,220 @@ function approvalDisplayText(info){
 }
 
 function hasFirebaseConfig(){ return Object.values(FIREBASE_CONFIG).every(Boolean); }
+function firebaseErrorText(error,prefix='Firebase 操作失敗'){
+  const code=error?.code||'unknown';
+  const detail=error?.message||String(error||'未知錯誤');
+  const known={
+    'auth/popup-blocked':'瀏覽器阻擋了 Google 登入視窗。請再按一次登入按鈕。',
+    'auth/popup-closed-by-user':'Google 登入視窗已關閉，請重新登入。',
+    'auth/unauthorized-domain':'Firebase 尚未授權此 GitHub Pages 網域。',
+    'auth/web-storage-unsupported':'瀏覽器無法保存登入狀態；請勿使用私密瀏覽，並確認未封鎖所有 Cookie。',
+    'auth/network-request-failed':'Firebase 網路連線失敗，請檢查網路、VPN、DNS 或內容阻擋器。',
+    'permission-denied':'Firebase 規則拒絕目前帳號存取資料。'
+  };
+  return `${prefix}：${known[code]||detail}\n錯誤碼：${code}${known[code]?`\n${detail}`:''}`;
+}
+function createAuthGate(){
+  let gate=$('firebaseAuthGate');
+  if(gate)return gate;
+  gate=document.createElement('div');
+  gate.id='firebaseAuthGate'; gate.className='firebase-auth-gate';
+  gate.innerHTML=`<section class="firebase-auth-card" role="dialog" aria-modal="true" aria-labelledby="firebaseAuthTitle">
+    <h2 id="firebaseAuthTitle">Firebase 雲端資料登入</h2>
+    <p>此模組需要先完成 Google 登入，才會讀取及同步 Firestore 與 Storage。第一次登入時，會將本瀏覽器既有資料安全合併至 Firebase。</p>
+    <div class="firebase-auth-status" id="firebaseAuthStatus">正在確認既有登入狀態…</div>
+    <button class="btn" type="button" id="firebaseLoginBtn" disabled>使用 Google 登入並讀取雲端資料</button>
+    <div class="firebase-auth-note">登入視窗只會在按下按鈕後開啟，以相容 iPad Safari／Chrome。既有雲端同名資料不會被本機資料覆蓋。</div>
+  </section>`;
+  document.body.appendChild(gate);
+  return gate;
+}
+function setAuthGate(message,{error=false,busy=false,hidden=false}={}){
+  const gate=createAuthGate(), status=$('firebaseAuthStatus'), button=$('firebaseLoginBtn');
+  gate.hidden=hidden;
+  if(status){ status.textContent=message||''; status.classList.toggle('error',error); }
+  if(button)button.disabled=busy;
+}
+function readLocalSnapshot(){
+  try{return JSON.parse(localStorage.getItem(LOCAL_DATA_KEY)||'null');}
+  catch(e){console.warn('本機資料讀取失敗',e);return null;}
+}
+function hasMeaningfulLocalData(data){
+  return !!data && (
+    Object.keys(data.plants||{}).length ||
+    (Array.isArray(data.images)&&data.images.length) ||
+    Object.keys(data.markdownDocs||{}).length ||
+    String(data.workbookName||'').trim()
+  );
+}
+function stableLocalFingerprint(data){
+  const compact=JSON.stringify({
+    workbookName:data?.workbookName||'',
+    plants:data?.plants||{},
+    images:(data?.images||[]).map(x=>({id:x.id||'',plant:x.plant||'',name:x.name||'',fileName:x.fileName||'',urlLength:String(x.url||'').length,createdAtText:x.createdAtText||''})),
+    markdownDocs:Object.fromEntries(Object.entries(data?.markdownDocs||{}).map(([k,v])=>[k,{fileName:v?.fileName||'',contentLength:String(v?.content||'').length,updatedAtText:v?.updatedAtText||''}]))
+  });
+  let hash=2166136261;
+  for(let i=0;i<compact.length;i++){hash^=compact.charCodeAt(i);hash=Math.imul(hash,16777619);}
+  return (hash>>>0).toString(16).padStart(8,'0');
+}
+function dataUrlToBlob(dataUrl){
+  const parts=String(dataUrl||'').split(',');
+  if(parts.length<2)throw new Error('圖片 Data URL 格式錯誤');
+  const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'application/octet-stream';
+  const binary=parts[0].includes(';base64')?atob(parts[1]):decodeURIComponent(parts[1]);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+}
+async function migrateLocalDataToFirebase(localData,user){
+  if(!hasMeaningfulLocalData(localData))return {migrated:false,summary:'無既有本機資料'};
+  const fingerprint=stableLocalFingerprint(localData);
+  const markerKey=`${LOCAL_MIGRATION_MARKER_PREFIX}:${FIREBASE_CONFIG.projectId}:${user.uid}:${fingerprint}`;
+  if(localStorage.getItem(markerKey))return {migrated:false,summary:'本機資料已完成遷移'};
+
+  $('cloudStatus').textContent='● 正在合併本機資料…';
+  setAuthGate('登入成功，正在將本瀏覽器既有資料合併至 Firebase…',{busy:true});
+
+  let plantsAdded=0,imagesAdded=0,markdownAdded=0,skipped=0;
+  const localPlants=localData.plants&&typeof localData.plants==='object'?localData.plants:{};
+  const existingPlants=await state.db.collection('flarePlants').get();
+  const existingPlantIds=new Set(existingPlants.docs.map(d=>d.id));
+  const plantWrites=[];
+  for(const [plant,data] of Object.entries(localPlants)){
+    const id=safeId(plant);
+    if(existingPlantIds.has(id)){skipped++;continue;}
+    plantWrites.push({ref:state.db.collection('flarePlants').doc(id),data:{name:plant,equipments:data.equipments||[],sourceSheet:data.sourceSheet||'彙整',migratedFromLocal:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}});
+  }
+  for(let i=0;i<plantWrites.length;i+=450){
+    const batch=state.db.batch();
+    plantWrites.slice(i,i+450).forEach(x=>batch.set(x.ref,x.data,{merge:true}));
+    await batch.commit(); plantsAdded+=plantWrites.slice(i,i+450).length;
+  }
+
+  const metaRef=state.db.collection('flareMeta').doc('latest');
+  const metaSnap=await metaRef.get();
+  const meta=metaSnap.exists?metaSnap.data():{};
+  const combinedNames=[...new Set([...(Array.isArray(meta.plantNames)?meta.plantNames:[]),...Object.keys(localPlants)])];
+  await metaRef.set({
+    workbookName:meta.workbookName||localData.workbookName||'',
+    plantNames:combinedNames,
+    lastLocalMigrationAt:firebase.firestore.FieldValue.serverTimestamp(),
+    lastLocalMigrationUser:user.email||user.uid,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+
+  for(const [index,img] of (Array.isArray(localData.images)?localData.images:[]).entries()){
+    const sourceId=String(img.id||`${img.plant||'plant'}_${img.fileName||img.name||index}`);
+    const docId=`local_${safeId(sourceId)}`;
+    const docRef=state.db.collection('plantImages').doc(docId);
+    if((await docRef.get()).exists){skipped++;continue;}
+    let url=String(img.url||''), storagePath=String(img.storagePath||'');
+    if(url.startsWith('data:')){
+      const fileName=String(img.fileName||img.name||`image_${index+1}`).replace(/[^\w.\-\u4e00-\u9fff]/g,'_');
+      storagePath=`plant-images/${safeId(img.plant||'未分類')}/migrated_${safeId(sourceId)}_${fileName}`;
+      const ref=state.storage.ref(storagePath);
+      await ref.put(dataUrlToBlob(url));
+      url=await ref.getDownloadURL();
+    }
+    if(!url){skipped++;continue;}
+    await docRef.set({
+      plant:img.plant||'',type:img.type||'其他',name:img.name||img.fileName||'未命名圖片',fileName:img.fileName||'',
+      size:img.size||0,url,storagePath,createdAtText:img.createdAtText||nowText(),migratedFromLocal:true,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    imagesAdded++;
+  }
+
+  for(const [key,doc] of Object.entries(localData.markdownDocs||{})){
+    const plant=doc?.plant||String(key).split('::')[0]||'';
+    const equipment=doc?.equipment||String(key).split('::')[1]||'';
+    if(!plant||!equipment){skipped++;continue;}
+    const docId=safeId(`${plant}__${equipment}`), docRef=state.db.collection('plantMarkdown').doc(docId);
+    if((await docRef.get()).exists){skipped++;continue;}
+    const content=String(doc?.content||'');
+    let url=String(doc?.url||''), storagePath=String(doc?.storagePath||markdownStoragePath(plant,equipment));
+    if(content){
+      const ref=state.storage.ref(storagePath);
+      await ref.put(new Blob([content],{type:'text/markdown;charset=utf-8'}),{contentType:'text/markdown; charset=utf-8'});
+      url=await ref.getDownloadURL();
+    }
+    if(!content&&!url){skipped++;continue;}
+    await docRef.set({
+      plant,equipment,fileName:doc?.fileName||`${plant}_${equipment}.md`,url,storagePath,
+      chapterCount:doc?.chapterCount||chapterCount(parseMarkdownChapters(content)),parseMode:doc?.parseMode||markdownFormatInfo(content),
+      approvalAuthority:doc?.approvalAuthority||'',approvalDate:doc?.approvalDate||'',approvalNumber:doc?.approvalNumber||'',
+      updatedAtText:doc?.updatedAtText||nowText(),migratedFromLocal:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    markdownAdded++;
+  }
+
+  localStorage.setItem(markerKey,new Date().toISOString());
+  return {migrated:true,summary:`新增 ${plantsAdded} 個廠處、${imagesAdded} 張圖片、${markdownAdded} 份 Markdown；略過 ${skipped} 筆既有或無效資料`};
+}
+async function beginAuthenticatedFirebase(user){
+  state.user=user; state.firebaseEnabled=true;
+  $('cloudStatus').textContent=`● Firebase 已登入：${user.email||'Google 帳號'}`;
+  $('cloudStatus').title='點擊可切換 Google 帳號';
+  $('cloudStatus').style.cursor='pointer';
+  $('cloudStatus').onclick=async()=>{
+    if(!confirm(`目前帳號：${user.email||user.uid}\n是否登出並切換帳號？`))return;
+    await state.auth.signOut(); location.reload();
+  };
+  $('storageMode').textContent='Firebase 雲端'; $('firebaseNote').style.display='none';
+  let migrationResult={migrated:false,summary:''};
+  try{migrationResult=await migrateLocalDataToFirebase(state.localSnapshot,user);}
+  catch(error){console.error('本機資料遷移失敗',error);toast(firebaseErrorText(error,'本機資料遷移未完成；稍後重新整理可重試'),true);}
+  await loadCloudData();
+  setAuthGate('',{hidden:true});
+  if(migrationResult.migrated)toast(`本機資料已合併至 Firebase：${migrationResult.summary}`);
+}
 async function initFirebase(){
-  if(!hasFirebaseConfig()) return;
+  if(!hasFirebaseConfig())return;
+  state.localSnapshot=readLocalSnapshot();
+  createAuthGate();
   try{
-    firebase.initializeApp(FIREBASE_CONFIG);
-    state.db=firebase.firestore(); state.storage=firebase.storage(); state.firebaseEnabled=true;
-    $('cloudStatus').textContent='● Firebase 已連線';
-    $('storageMode').textContent='Firebase'; $('firebaseNote').style.display='none';
-    await loadCloudData();
-  }catch(e){ console.error(e); toast('Firebase 連線失敗，已切換本機模式',true); }
+    if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+    state.auth=firebase.auth();
+    state.db=firebase.firestore();
+    try{state.db.settings({experimentalAutoDetectLongPolling:true,useFetchStreams:false});}catch(e){console.warn('Firestore 相容設定未套用',e);}
+    state.storage=firebase.storage();
+    try{await state.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}
+    catch(e){console.warn('Firebase 登入持久化設定失敗',e);}
+
+    const provider=new firebase.auth.GoogleAuthProvider();
+    const loginButton=$('firebaseLoginBtn');
+    loginButton.onclick=async()=>{
+      setAuthGate('正在開啟 Google 登入視窗…',{busy:true});
+      try{await state.auth.signInWithPopup(provider);}
+      catch(error){console.error(error);setAuthGate(firebaseErrorText(error,'Google 登入失敗'),{error:true,busy:false});}
+    };
+
+    state.auth.onAuthStateChanged(async user=>{
+      if(!user){
+        state.firebaseEnabled=false;
+        $('cloudStatus').textContent='● Firebase 尚未登入';
+        $('storageMode').textContent='等待 Google 登入';
+        setAuthGate('尚未登入 Firebase，請按下方按鈕。',{busy:false});
+        return;
+      }
+      try{await beginAuthenticatedFirebase(user);}
+      catch(error){
+        console.error('Firebase 初始化或資料讀取失敗',error);
+        $('cloudStatus').textContent='● Firebase 讀取失敗';
+        setAuthGate(firebaseErrorText(error,'Firebase 資料讀取失敗'),{error:true,busy:false});
+        toast(firebaseErrorText(error,'Firebase 資料讀取失敗'),true);
+      }
+    },error=>{
+      console.error(error);
+      setAuthGate(firebaseErrorText(error,'Firebase 登入狀態檢查失敗'),{error:true,busy:false});
+    });
+  }catch(error){
+    console.error(error);
+    $('cloudStatus').textContent='● Firebase 初始化失敗';
+    setAuthGate(firebaseErrorText(error,'Firebase 初始化失敗'),{error:true,busy:false});
+    toast(firebaseErrorText(error,'Firebase 初始化失敗'),true);
+  }
 }
 
 function saveLocal(){
@@ -555,40 +770,53 @@ function saveLocal(){
       const content=String(doc?.content||'');
       markdownDocs[key]={...doc,content:content.length<=LOCAL_MARKDOWN_CONTENT_LIMIT?content:'',contentStoredLocally:content.length<=LOCAL_MARKDOWN_CONTENT_LIMIT};
     });
-    localStorage.setItem('flare_platform_data',JSON.stringify({plants:state.plants,images:state.images,markdownDocs,workbookName:state.workbookName,updatedAt:nowText()}));
+    localStorage.setItem(LOCAL_DATA_KEY,JSON.stringify({plants:state.plants,images:state.images,markdownDocs,workbookName:state.workbookName,updatedAt:nowText()}));
   }
   catch(e){ toast('本機儲存空間不足；大型圖片或 Markdown 請改用 Firebase',true); }
 }
 function loadLocal(){
-  try{ const d=JSON.parse(localStorage.getItem('flare_platform_data')||'null'); if(!d)return; state.plants=d.plants||{}; state.images=d.images||[]; state.markdownDocs=d.markdownDocs||{}; state.workbookName=d.workbookName||''; }
+  try{ const d=readLocalSnapshot(); if(!d)return; state.plants=d.plants||{}; state.images=d.images||[]; state.markdownDocs=d.markdownDocs||{}; state.workbookName=d.workbookName||''; state.localSnapshot=d; }
   catch(e){ console.warn(e); }
 }
 
 async function syncPlantsToFirebase(){
   if(!state.firebaseEnabled) return saveLocal();
-  const batch=state.db.batch();
-  Object.entries(state.plants).forEach(([plant,data])=>{
-    const ref=state.db.collection('flarePlants').doc(safeId(plant));
-    batch.set(ref,{name:plant,equipments:data.equipments,sourceSheet:data.sourceSheet||'彙整',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  });
-  batch.set(state.db.collection('flareMeta').doc('latest'),{workbookName:state.workbookName,plantNames:Object.keys(state.plants),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  await batch.commit();
+  const entries=Object.entries(state.plants);
+  for(let i=0;i<entries.length;i+=450){
+    const batch=state.db.batch();
+    entries.slice(i,i+450).forEach(([plant,data])=>{
+      const ref=state.db.collection('flarePlants').doc(safeId(plant));
+      batch.set(ref,{name:plant,equipments:data.equipments,sourceSheet:data.sourceSheet||'彙整',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    });
+    await batch.commit();
+  }
+  await state.db.collection('flareMeta').doc('latest').set({workbookName:state.workbookName,plantNames:Object.keys(state.plants),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
 }
 async function loadCloudData(){
-  const snap=await state.db.collection('flarePlants').get();
-  if(!snap.empty){ state.plants={}; snap.forEach(doc=>{const d=doc.data();state.plants[d.name]={equipments:d.equipments||[],sourceSheet:d.sourceSheet||'彙整'};}); }
-  const imgs=await state.db.collection('plantImages').orderBy('createdAt','desc').get().catch(()=>null);
-  if(imgs){ state.images=[]; imgs.forEach(doc=>state.images.push({id:doc.id,...doc.data()})); }
-  const mdSnap=await state.db.collection('plantMarkdown').get().catch(()=>null);
-  if(mdSnap){
-    state.markdownDocs={};
-    await Promise.all(mdSnap.docs.map(async doc=>{
-      const d=doc.data(); let content=d.content||'';
-      if(!content&&d.url){ try{ content=await fetch(d.url).then(r=>r.text()); }catch(e){ console.warn('Markdown 下載失敗',e); } }
-      const updated=d.updatedAt?.toDate?d.updatedAt.toDate().toLocaleString('zh-TW',{hour12:false}):(d.updatedAtText||'Firebase');
-      state.markdownDocs[markdownKey(d.plant,d.equipment)]={...d,content,updatedAtText:updated,id:doc.id};
-    }));
-  }
+  const [snap,metaSnap]=await Promise.all([
+    state.db.collection('flarePlants').get(),
+    state.db.collection('flareMeta').doc('latest').get().catch(()=>null)
+  ]);
+  state.plants={};
+  snap.forEach(doc=>{const d=doc.data();if(d.name)state.plants[d.name]={equipments:d.equipments||[],sourceSheet:d.sourceSheet||'彙整'};});
+  if(metaSnap?.exists)state.workbookName=metaSnap.data().workbookName||state.workbookName||'';
+
+  const imgs=await state.db.collection('plantImages').orderBy('createdAt','desc').get();
+  state.images=[]; imgs.forEach(doc=>state.images.push({id:doc.id,...doc.data()}));
+
+  const mdSnap=await state.db.collection('plantMarkdown').get();
+  state.markdownDocs={};
+  await Promise.all(mdSnap.docs.map(async doc=>{
+    const d=doc.data(); let content=d.content||'';
+    if(!content&&d.url){ try{const r=await fetch(d.url);if(r.ok)content=await r.text();}catch(e){console.warn('Markdown 下載失敗',e);} }
+    const updated=d.updatedAt?.toDate?d.updatedAt.toDate().toLocaleString('zh-TW',{hour12:false}):(d.updatedAtText||'Firebase');
+    state.markdownDocs[markdownKey(d.plant,d.equipment)]={...d,content,updatedAtText:updated,id:doc.id};
+  }));
+  const names=Object.keys(state.plants);
+  if(!names.includes(state.selectedPlant))state.selectedPlant=names[0]||'';
+  const eqs=state.plants[state.selectedPlant]?.equipments||[];
+  if(!eqs.some(e=>e.name===state.selectedEquipment))state.selectedEquipment=eqs[0]?.name||'';
+  $('updatedAt').textContent=nowText();
   renderAll();
 }
 

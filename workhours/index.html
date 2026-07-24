@@ -12,9 +12,10 @@
   <!-- Firebase：工時分析表雲端同步（共用既有 Firebase 專案，獨立 collection/doc） -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
     import {
-      getFirestore,
+      initializeFirestore,
       doc,
       getDoc,
       setDoc,
@@ -33,13 +34,21 @@
     };
 
     window.__workhoursFirebaseReady = (async () => {
-      const app = initializeApp(firebaseConfig, "workhours-app");
+      const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
 
-      await signInWithPopup(auth, provider);
+      await requireFirebaseUser({
+        auth,
+        provider,
+        signInWithPopup,
+        onAuthStateChanged,
+        signOut,
+        setPersistence,
+        browserLocalPersistence,
+        moduleName: "工時分析表"
+      });
 
       const stateRef = doc(db, "workhours_dashboard_v10", "shared_state");
       window.__wh_getState = async () => {
@@ -611,11 +620,11 @@ async function initCloudSync(){
       }
     },(err)=>{
       console.error(err);
-      setCloudStatus('☁️ 雲端同步失敗', false);
+      setCloudStatus('☁️ ' + (window.__firebaseErrorText ? window.__firebaseErrorText(err, '雲端同步失敗') : ('雲端同步失敗：' + (err?.message || err))), false);
     });
   }catch(e){
     console.error(e);
-    setCloudStatus('☁️ 雲端連線失敗', false);
+    setCloudStatus('☁️ ' + (window.__firebaseErrorText ? window.__firebaseErrorText(e, '雲端連線失敗') : ('雲端連線失敗：' + (e?.message || e))), false);
   }
 }
 async function uploadLocalDataToCloud(){

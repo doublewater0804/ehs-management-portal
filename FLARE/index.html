@@ -724,8 +724,9 @@
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+  import { initializeFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
@@ -739,7 +740,7 @@
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   const FLARE_DOC = doc(db, "flare_control", "global_state");
 
   function updateStatus(text, type = "info") {
@@ -749,11 +750,20 @@
   }
 
   try {
-    updateStatus("☁️ Firebase 登入中…", "info");
+    updateStatus("☁️ 等待 Firebase 登入…", "info");
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
 
-    await signInWithPopup(auth, provider);
+    await requireFirebaseUser({
+      auth,
+      provider,
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut,
+      setPersistence,
+      browserLocalPersistence,
+      moduleName: "廠區廢氣燃燒塔管制表"
+    });
+    updateStatus("☁️ Firebase 已登入，讀取雲端中…", "info");
 
     let firstSnapshot = true;
     window.__flareCloudPush = async (state) => {
@@ -775,11 +785,11 @@
       firstSnapshot = false;
     }, (err) => {
       console.error(err);
-      updateStatus("☁️ Firebase 同步失敗", "err");
+      updateStatus("☁️ " + firebaseErrorText(err, "Firebase 同步失敗"), "err");
     });
   } catch (err) {
     console.error(err);
-    updateStatus("☁️ Firebase 登入失敗", "err");
+    updateStatus("☁️ " + firebaseErrorText(err, "Firebase 登入失敗"), "err");
   }
 </script>
 <script>

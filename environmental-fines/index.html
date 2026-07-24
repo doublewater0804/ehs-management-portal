@@ -7,17 +7,20 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {getFirestore,doc,setDoc,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {initializeFirestore,doc,setDoc,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",authDomain:"esh-v85.firebaseapp.com",projectId:"esh-v85",storageBucket:"esh-v85.firebasestorage.app",messagingSenderId:"1021350670476",appId:"1:1021350670476:web:afd5bc96ff28c910f48ba9",measurementId:"G-MMVQN63GDG"};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true}),provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
 const stateRef=doc(db,"environmental_fine_dashboard","shared_state");
-window.__firebaseReady=Promise.resolve({
+window.__firebaseReady=(async()=>{
+ try{await setPersistence(auth,browserLocalPersistence)}catch(error){console.warn("Firebase 登入狀態保存設定失敗，改用瀏覽器預設模式。",error)}
+ return {
  auth,signIn:()=>signInWithPopup(auth,provider),signOut:()=>signOut(auth),onAuth:cb=>onAuthStateChanged(auth,cb),
  listen:(cb,err)=>onSnapshot(stateRef,s=>cb(s.exists()?s.data():null),err),
  save:state=>setDoc(stateRef,{data:JSON.parse(JSON.stringify(state)),updatedAt:serverTimestamp(),updatedBy:auth.currentUser?.email||"",app:"environmental-fine-dashboard",version:"firebase-v2.0"},{merge:true})
-});
+ };
+})();
 </script>
 <style>
 :root{--nav:#073466;--blue:#0b63ce;--blue2:#eaf3ff;--bg:#eef3f8;--panel:#fff;--text:#10213b;--muted:#66758b;--line:#d7e1ec;--red:#c62828;--green:#18864b;--amber:#d97706;--shadow:0 5px 16px rgba(7,52,102,.08)}
@@ -91,10 +94,10 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function fmt(n,d=1){return Number(n||0).toLocaleString('zh-TW',{minimumFractionDigits:d,maximumFractionDigits:d})}
 function toastMsg(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
 function setCloud(type,text){cloudStatus.className='cloud '+(type||'');cloudStatus.textContent=text;cloudBanner.classList.toggle('show',type!=='ok')}
-async function setupFirebase(){try{cloudApi=await window.__firebaseReady;cloudApi.onAuth(user=>{cloudUser=user;loginBtn.style.display=user?'none':'';logoutBtn.style.display=user?'':'none';userEmail.textContent=user?.email||'尚未登入';if(unsubscribe){unsubscribe();unsubscribe=null}if(!user){cloudLoaded=false;setCloud('','Firebase 未登入');return}setCloud('','雲端讀取中');unsubscribe=cloudApi.listen(remote=>{applyingRemote=true;try{if(remote?.data){state=normalizeState(remote.data);lastCloud=JSON.stringify(state);cloudLoaded=true;saveState(false);renderAll();setCloud('ok','雲端已同步')}else{cloudLoaded=true;setCloud('','雲端尚無資料');cloudBanner.textContent='雲端尚無資料，可按「本機資料寫入雲端」建立。'}}finally{applyingRemote=false}},err=>{console.error(err);setCloud('err','雲端讀取失敗');cloudBanner.textContent='請檢查 Firestore 規則、Google 登入及 Authorized domains。'});});}catch(e){console.error(e);setCloud('err','Firebase 初始化失敗')}}
+async function setupFirebase(){try{cloudApi=await window.__firebaseReady;cloudApi.onAuth(user=>{cloudUser=user;loginBtn.style.display=user?'none':'';logoutBtn.style.display=user?'':'none';userEmail.textContent=user?.email||'尚未登入';if(unsubscribe){unsubscribe();unsubscribe=null}if(!user){cloudLoaded=false;setCloud('','Firebase 未登入');return}setCloud('','雲端讀取中');unsubscribe=cloudApi.listen(remote=>{applyingRemote=true;try{if(remote?.data){state=normalizeState(remote.data);lastCloud=JSON.stringify(state);cloudLoaded=true;saveState(false);renderAll();setCloud('ok','雲端已同步')}else{cloudLoaded=true;setCloud('','雲端尚無資料');cloudBanner.textContent='雲端尚無資料，可按「本機資料寫入雲端」建立。'}}finally{applyingRemote=false}},err=>{console.error(err);setCloud('err','雲端讀取失敗：'+(err.code||'unknown'));cloudBanner.textContent='Firebase 錯誤碼：'+(err.code||'unknown')+'。請檢查 Firestore 規則、Google 登入及 Authorized domains。'});});}catch(e){console.error(e);setCloud('err','Firebase 初始化失敗')}}
 function scheduleCloudSave(){if(applyingRemote||!cloudApi||!cloudUser||!cloudLoaded)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud(false),600)}
 async function saveCloud(force=false){if(!cloudApi||!cloudUser){toastMsg('請先 Google 登入');return}try{const snap=JSON.stringify(state);if(!force&&snap===lastCloud)return;setCloud('','雲端儲存中');await cloudApi.save(state);lastCloud=snap;setCloud('ok','雲端已同步')}catch(e){console.error(e);setCloud('err','雲端儲存失敗');alert('Firebase 儲存失敗：'+(e.message||e))}}
-loginBtn.onclick=async()=>{try{if(!cloudApi)cloudApi=await window.__firebaseReady;await cloudApi.signIn()}catch(e){alert('Google 登入失敗：'+(e.message||e))}};logoutBtn.onclick=()=>cloudApi?.signOut();saveCloudBtn.onclick=()=>{if(confirm('確定以目前本機資料覆蓋雲端共享資料？')){cloudLoaded=true;saveCloud(true)}};
+loginBtn.onclick=async()=>{try{if(!cloudApi)cloudApi=await window.__firebaseReady;await cloudApi.signIn()}catch(e){alert('Google 登入失敗（'+(e.code||'unknown')+'）：'+(e.message||e))}};logoutBtn.onclick=()=>cloudApi?.signOut();saveCloudBtn.onclick=()=>{if(confirm('確定以目前本機資料覆蓋雲端共享資料？')){cloudLoaded=true;saveCloud(true)}};
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));window.scrollTo({top:0});renderAll()}
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 function uniq(field,records=state.records){return [...new Set(records.map(r=>String(r[field]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'))}

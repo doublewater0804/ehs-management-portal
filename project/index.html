@@ -18,9 +18,10 @@
     <!-- 4. 引入 Firebase SDK -->
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
   import {
-    getFirestore,
+    initializeFirestore,
     collection,
     doc,
     addDoc,
@@ -41,18 +42,26 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 
     const appId = (window.__APP_ID && String(window.__APP_ID).trim()) ? window.__APP_ID : "ehs-dashboard-2024";
     const COL_NAME = `${appId}_projects`;
     const PROJECTS_COL = collection(db, COL_NAME);
 
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
 
     window.__fb = { app, auth, db, PROJECTS_COL, COL_NAME };
 
-    await signInWithPopup(auth, provider);
+    await requireFirebaseUser({
+      auth,
+      provider,
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut,
+      setPersistence,
+      browserLocalPersistence,
+      moduleName: "年度安衛環專案管制總表"
+    });
 
     window.__fs_add = async (payload) => {
       const now = serverTimestamp();
@@ -247,7 +256,7 @@
                             })));
                             setIsLoading(false);
                         }, () => setIsLoading(false));
-                    } catch (e) { console.error(e); setIsLoading(false); }
+                    } catch (e) { console.error(e); alert(window.__firebaseErrorText ? window.__firebaseErrorText(e, "Firebase 讀取失敗") : ("Firebase 讀取失敗：" + (e?.message || e))); setIsLoading(false); }
                 })();
                 return () => { if (unsubscribe) unsubscribe(); };
             }, [hasFirebaseConfig]);

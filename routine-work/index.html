@@ -13,10 +13,12 @@
       GoogleAuthProvider,
       signInWithPopup,
       signOut,
-      onAuthStateChanged
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
-      getFirestore,
+      initializeFirestore,
       doc,
       setDoc,
       onSnapshot,
@@ -35,13 +37,16 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
 
     const stateRef = doc(db, "routine_work_dashboard", "shared_state");
 
-    window.__firebaseReady = Promise.resolve({
+    window.__firebaseReady = (async () => {
+      try { await setPersistence(auth, browserLocalPersistence); }
+      catch (error) { console.warn("Firebase 登入狀態保存設定失敗，改用瀏覽器預設模式。", error); }
+      return {
       auth,
       db,
       signIn: () => signInWithPopup(auth, provider),
@@ -59,7 +64,8 @@
         app: "routine-work-dashboard",
         version: "firebase-v1.3"
       }, { merge: true })
-    });
+      };
+    })();
   </script>
   <style>
     :root{
@@ -727,10 +733,10 @@ async function setupFirebaseSync(){
       },(err)=>{
         console.error(err);
         cloudLoaded=false;
-        updateCloudStatus("err","雲端讀取失敗");
+        updateCloudStatus("err","雲端讀取失敗：" + (err.code || "unknown"));
         cloudBanner.classList.add("show");
-        cloudBanner.innerHTML="Firebase 讀取失敗，請檢查 Firestore 規則、Google 登入帳號與 Authorized domains。";
-        alert("Firebase 讀取失敗：" + (err.message || err));
+        cloudBanner.innerHTML=`Firebase 讀取失敗（${err.code || "unknown"}）。請檢查 Firestore 規則、Google 登入帳號與 Authorized domains。`;
+        alert("Firebase 讀取失敗（" + (err.code || "unknown") + "）：" + (err.message || err));
       });
     });
   }catch(err){

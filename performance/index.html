@@ -7,9 +7,10 @@
   <!-- Firebase：工作績效 Dashboard 雲端同步（共用 esh-v85 Firebase 專案） -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
     import {
-      getFirestore,
+      initializeFirestore,
       doc,
       getDoc,
       setDoc,
@@ -28,22 +29,23 @@
     };
 
     window.__performanceFirebaseReady = (async () => {
-      const app = initializeApp(firebaseConfig, "performance-dashboard-app");
+      const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
 
       // 先掛到 window，方便 F12 Console 檢查目前登入者與 Firebase 狀態。
       window.__pf = { app, auth, db };
 
-      await signInWithPopup(auth, provider);
-
-      await new Promise((resolve) => {
-        const unsub = onAuthStateChanged(auth, () => {
-          unsub();
-          resolve();
-        });
+      await requireFirebaseUser({
+        auth,
+        provider,
+        signInWithPopup,
+        onAuthStateChanged,
+        signOut,
+        setPersistence,
+        browserLocalPersistence,
+        moduleName: "個人工作績效 Dashboard"
       });
 
       const stateRef = doc(db, "performance_dashboard_v1", "shared_state");
@@ -901,12 +903,12 @@
             window.__pf_suppressCloudSave = false;
           }, (err) => {
             console.error("Performance Dashboard Firebase 監聽失敗：", err);
-            showToast?.("雲端讀取失敗：" + (err?.message || err), 4200);
+            showToast?.(window.__firebaseErrorText ? window.__firebaseErrorText(err, "雲端讀取失敗") : ("雲端讀取失敗：" + (err?.message || err)), 5200);
           });
         })
         .catch((err) => {
           console.error("Performance Dashboard Firebase 初始化失敗：", err);
-          alert("Firebase 連線失敗：" + (err?.message || err));
+          alert(window.__firebaseErrorText ? window.__firebaseErrorText(err, "Firebase 連線失敗") : ("Firebase 連線失敗：" + (err?.message || err)));
         });
     }
 

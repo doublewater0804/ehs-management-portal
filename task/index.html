@@ -360,9 +360,10 @@
   <!-- Firebase + Firestore Realtime Sync -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
     import {
-      getFirestore,
+      initializeFirestore,
       collection,
       doc,
       setDoc,
@@ -385,7 +386,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
     const TASKS_COL = collection(db, "ehs_tasks");
 
     window.__fb = { app, auth, db, TASKS_COL };
@@ -401,19 +402,20 @@
     }
 
     async function bootRealtime() {
-      setSyncState("登入中…", true);
+      setSyncState("等待 Firebase 登入…", true);
       try {
         const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
+        await requireFirebaseUser({
+          auth,
+          provider,
+          signInWithPopup,
+          onAuthStateChanged,
+          signOut,
+          setPersistence,
+          browserLocalPersistence,
+          moduleName: "環安衛工作管理系統"
+        });
 
-        await signInWithPopup(auth, provider);
-      } catch (e) {
-        setSyncState("登入失敗", false);
-        return;
-      }
-
-      onAuthStateChanged(auth, (user) => {
-        if (!user) return;
         setSyncState("同步中…", true);
         const q = query(TASKS_COL, orderBy("_createdTs", "desc"));
         onSnapshot(q, (snap) => {
@@ -422,9 +424,13 @@
           if (typeof window.__applyRemoteTasks === "function") window.__applyRemoteTasks(list);
           setSyncState("已同步", true);
         }, (err) => {
-          setSyncState("同步失敗", false);
+          console.error(err);
+          setSyncState(firebaseErrorText(err, "同步失敗"), false);
         });
-      });
+      } catch (e) {
+        console.error(e);
+        setSyncState(firebaseErrorText(e, "登入失敗"), false);
+      }
     }
 
     await bootRealtime();

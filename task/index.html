@@ -254,11 +254,15 @@
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">類型</label>
-                  <select id="f-log-type" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <select id="f-log-type" onchange="toggleOtherProgressType(this.value)" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option>工作日報</option><option>電話確認</option><option>Notes</option><option>公文</option>
                     <option>會議</option><option>現場確認</option><option>待辦事項</option><option>主管指示</option><option>其他</option>
                   </select>
                 </div>
+              </div>
+              <div id="other-progress-type-container" class="hidden">
+                <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">請輸入新的類型</label>
+                <input type="text" id="f-log-type-other" class="w-full border border-blue-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="例如：教育訓練、稽核追蹤" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">內容</label>
@@ -266,7 +270,10 @@
               </div>
               <div class="flex justify-between items-center">
                 <div class="text-[11px] text-slate-400 font-bold">新紀錄會依日期由新到舊顯示；人員可從既有負責人帶出，也可自行輸入。</div>
-                <button type="button" id="btn-add-progress-log" onclick="addProgressLogFromModal()" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">新增進度</button>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="btn-cancel-progress-log-edit" onclick="cancelProgressLogEdit()" class="hidden px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>
+                  <button type="button" id="btn-add-progress-log" onclick="addProgressLogFromModal()" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">新增進度</button>
+                </div>
               </div>
             </div>
             <div class="mt-3">
@@ -474,16 +481,22 @@
     const LOCAL_STORAGE_KEY = 'ESH_MANAGEMENT_DATA_V86';
     const LOCAL_STORAGE_BACKUP_KEY = 'ESH_MANAGEMENT_DATA_V86__BACKUP';
     const CUSTOM_SOURCE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_SOURCES_V1';
+    const CUSTOM_PROGRESS_TYPE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_PROGRESS_TYPES_V1';
     const DEFAULT_SOURCE_OPTIONS = Object.freeze([
       'NOTES', '速報表', '開會通知單', '環保通報單', '蓋用印申請單', '外來文',
       '主管交辦', '報告', '業洽函', '層峰指示', '法規要求', '全企業工安環保通報', '專案工作'
     ]);
+    const DEFAULT_PROGRESS_TYPES = Object.freeze([
+      '工作日報', '電話確認', 'Notes', '公文', '會議', '現場確認', '待辦事項', '主管指示'
+    ]);
 
     let tasks = [];
     let customSources = [];
+    let customProgressTypes = [];
     let statusChart = null;
     let factoryChart = null;
     let editingId = null;
+    let editingProgressLogId = null;
     let lastManualProgress = 0;
     let modalProgressLogs = [];
 
@@ -723,6 +736,87 @@
       document.getElementById('other-category-container')?.classList.toggle('hidden', val !== '其他');
     }
 
+    function normalizeProgressTypeName(value) {
+      return String(value || '')
+        .replace(/^其他[:：]\s*/, '')
+        .trim()
+        .replace(/\s+/g, ' ');
+    }
+
+    function progressTypeKey(value) {
+      return normalizeProgressTypeName(value).toLocaleLowerCase('zh-Hant');
+    }
+
+    function loadCustomProgressTypes() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(CUSTOM_PROGRESS_TYPE_STORAGE_KEY) || '[]');
+        customProgressTypes = Array.isArray(saved) ? saved : [];
+      } catch (e) {
+        customProgressTypes = [];
+      }
+      syncCustomProgressTypesFromTasks();
+    }
+
+    function persistCustomProgressTypes() {
+      localStorage.setItem(CUSTOM_PROGRESS_TYPE_STORAGE_KEY, JSON.stringify(customProgressTypes));
+    }
+
+    function rememberCustomProgressType(value) {
+      const name = normalizeProgressTypeName(value);
+      if (!name || name === '其他') return name;
+
+      const key = progressTypeKey(name);
+      const defaultMatch = DEFAULT_PROGRESS_TYPES.find(item => progressTypeKey(item) === key);
+      if (defaultMatch) return defaultMatch;
+
+      const existing = customProgressTypes.find(item => progressTypeKey(item) === key);
+      if (existing) return existing;
+
+      customProgressTypes.push(name);
+      customProgressTypes.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+      persistCustomProgressTypes();
+      return name;
+    }
+
+    function syncCustomProgressTypesFromTasks() {
+      let changed = false;
+      tasks.flatMap(task => Array.isArray(task?.progressLogs) ? task.progressLogs : []).forEach(log => {
+        const name = normalizeProgressTypeName(log?.type);
+        if (!name || name === '其他' || DEFAULT_PROGRESS_TYPES.some(item => progressTypeKey(item) === progressTypeKey(name))) return;
+        if (!customProgressTypes.some(item => progressTypeKey(item) === progressTypeKey(name))) {
+          customProgressTypes.push(name);
+          changed = true;
+        }
+      });
+      customProgressTypes = customProgressTypes
+        .map(normalizeProgressTypeName)
+        .filter(name => name && name !== '其他' && !DEFAULT_PROGRESS_TYPES.some(item => progressTypeKey(item) === progressTypeKey(name)))
+        .filter((name, index, all) => all.findIndex(item => progressTypeKey(item) === progressTypeKey(name)) === index)
+        .sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+      if (changed) persistCustomProgressTypes();
+    }
+
+    function toggleOtherProgressType(value) {
+      document.getElementById('other-progress-type-container')?.classList.toggle('hidden', value !== '其他');
+    }
+
+    function updateProgressTypeOptions(preferredType) {
+      syncCustomProgressTypesFromTasks();
+      const select = document.getElementById('f-log-type');
+      if (!select) return;
+
+      const current = preferredType !== undefined ? preferredType : select.value;
+      const normalizedCurrent = current === '其他' ? '其他' : normalizeProgressTypeName(current);
+      const allTypes = [...DEFAULT_PROGRESS_TYPES, ...customProgressTypes];
+      const matchedCurrent = allTypes.find(type => progressTypeKey(type) === progressTypeKey(normalizedCurrent));
+
+      select.innerHTML = '';
+      allTypes.forEach(type => appendSelectOption(select, type));
+      appendSelectOption(select, '其他');
+      select.value = normalizedCurrent === '其他' ? '其他' : (matchedCurrent || '工作日報');
+      toggleOtherProgressType(select.value);
+    }
+
     function setDatalistOptions(datalistId, values, includeOther = true) {
       const datalist = document.getElementById(datalistId);
       if (!datalist) return;
@@ -863,6 +957,7 @@
     function updateFilters() {
       updateOwnerUnitOptions();
       updateSourceOptions();
+      updateProgressTypeOptions();
 
       const ownerSelect = document.getElementById('filter-owner');
       if (ownerSelect) {
@@ -1047,13 +1142,32 @@
     function resetProgressLogForm(defaultPerson = '') {
       const d = document.getElementById('f-log-date');
       const p = document.getElementById('f-log-person');
-      const type = document.getElementById('f-log-type');
       const c = document.getElementById('f-log-content');
+      const otherType = document.getElementById('f-log-type-other');
       if (d) d.value = getTodayStr();
       if (p) p.value = defaultPerson || document.getElementById('f-owner')?.value || '';
-      if (type) type.value = '工作日報';
       if (c) c.value = '';
+      if (otherType) otherType.value = '';
+      editingProgressLogId = null;
+      updateProgressTypeOptions('工作日報');
+      setProgressLogEditMode(false);
       updateOwnerUnitOptions();
+    }
+
+    function setProgressLogEditMode(isEditing) {
+      const saveButton = document.getElementById('btn-add-progress-log');
+      const cancelButton = document.getElementById('btn-cancel-progress-log-edit');
+      if (saveButton) saveButton.textContent = isEditing ? '儲存修改' : '新增進度';
+      cancelButton?.classList.toggle('hidden', !isEditing);
+    }
+
+    function getProgressTypeFromForm() {
+      const selected = String(document.getElementById('f-log-type')?.value || '').trim();
+      if (selected !== '其他') return rememberCustomProgressType(selected) || '其他';
+
+      const other = String(document.getElementById('f-log-type-other')?.value || '').trim();
+      if (!other) return '';
+      return rememberCustomProgressType(other);
     }
 
     function renderProgressLogList(readonly = false) {
@@ -1085,10 +1199,21 @@
     function addProgressLogFromModal() {
       const date = document.getElementById('f-log-date')?.value || getTodayStr();
       const person = String(document.getElementById('f-log-person')?.value || '').trim();
-      const type = String(document.getElementById('f-log-type')?.value || '其他').trim() || '其他';
+      const type = getProgressTypeFromForm();
       const content = String(document.getElementById('f-log-content')?.value || '').trim();
+      if (!type) return alert('請輸入新的類型');
       if (!content) return alert('請輸入進度內容');
-      modalProgressLogs.unshift({ id: uid('log'), date, person, type, content });
+
+      if (editingProgressLogId) {
+        const log = modalProgressLogs.find(item => String(item.id) === String(editingProgressLogId));
+        if (!log) return cancelProgressLogEdit();
+        log.date = date;
+        log.person = person;
+        log.type = type;
+        log.content = content;
+      } else {
+        modalProgressLogs.unshift({ id: uid('log'), date, person, type, content });
+      }
       modalProgressLogs = normalizeProgressLogs(modalProgressLogs);
       resetProgressLogForm(person || document.getElementById('f-owner')?.value || '');
       renderProgressLogList(false);
@@ -1097,27 +1222,28 @@
     function editProgressLog(id) {
       const log = modalProgressLogs.find(x => String(x.id) === String(id));
       if (!log) return;
-      const date = prompt('請輸入日期（YYYY-MM-DD）：', log.date);
-      if (!date) return;
-      const fixedDate = fixDate(date);
-      if (!fixedDate) return alert('日期格式需為 YYYY-MM-DD');
-      const person = prompt('請輸入人員：', log.person || '');
-      if (person === null) return;
-      const type = prompt('請輸入類型：', log.type || '其他');
-      if (type === null) return;
-      const content = prompt('請輸入內容：', log.content || '');
-      if (content === null) return;
-      log.date = fixedDate;
-      log.person = String(person).trim();
-      log.type = String(type).trim() || '其他';
-      log.content = String(content).trim();
-      modalProgressLogs = normalizeProgressLogs(modalProgressLogs);
-      renderProgressLogList(false);
+      editingProgressLogId = String(id);
+      document.getElementById('f-log-date').value = fixDate(log.date) || getTodayStr();
+      document.getElementById('f-log-person').value = log.person || '';
+      document.getElementById('f-log-content').value = log.content || '';
+
+      const type = normalizeProgressTypeName(log.type) || '其他';
+      updateProgressTypeOptions(type);
+      document.getElementById('f-log-type-other').value = '';
+      setProgressLogEditMode(true);
+      document.getElementById('f-log-date')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('f-log-content')?.focus({ preventScroll: true });
+    }
+
+    function cancelProgressLogEdit() {
+      const person = document.getElementById('f-log-person')?.value || document.getElementById('f-owner')?.value || '';
+      resetProgressLogForm(person);
     }
 
     function deleteProgressLog(id) {
       if (!confirm('確定刪除這筆進度紀錄？')) return;
       modalProgressLogs = modalProgressLogs.filter(log => String(log.id) !== String(id));
+      if (String(editingProgressLogId) === String(id)) cancelProgressLogEdit();
       renderProgressLogList(false);
     }
 
@@ -1238,6 +1364,7 @@
     function closeModal() { 
       document.getElementById('modal').classList.add('hidden'); 
       editingId = null;
+      editingProgressLogId = null;
       modalProgressLogs = [];
       const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
       inputs.forEach(el => el.disabled = false);
@@ -1284,6 +1411,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadDataFromStorage();
       loadCustomSources();
+      loadCustomProgressTypes();
       updateFilters();
       renderAll();
       document.getElementById('current-date').innerText = getTodayStr();

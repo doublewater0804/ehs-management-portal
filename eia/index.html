@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>環評案件管理系統</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--blue:#0d6efd;--navy:#0a3b70;--bg:#f4f7fb;--line:#dce4ee;--text:#182433;--muted:#6d7b8c;--green:#22a766;--red:#ea4f4b;--orange:#ee9d00}
+*{box-sizing:border-box}body{margin:0;font-family:"Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}.hidden{display:none!important}
+.topbar{height:60px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:20}
+.brand{font-size:23px;font-weight:800;color:#092d55}.top-actions{display:flex;gap:9px}.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:9px 14px;font-weight:700;cursor:pointer}.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn-danger{color:#d83838;border-color:#f2bcbc}
+.sync-indicator{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:#f7f9fc;color:var(--muted);border-radius:18px;padding:8px 11px;font-size:12px;font-weight:800}.sync-indicator.ok{background:#e9f7ef;border-color:#bde8cf;color:#16834d}.sync-indicator.error{background:#fff0ef;border-color:#f1c3c0;color:#c63e39}
+.layout{display:grid;grid-template-columns:205px 1fr;min-height:calc(100vh - 60px)}.sidebar{background:linear-gradient(#0d477f,#092f58);padding:18px 10px;color:#fff}.nav-item{padding:13px 14px;margin-bottom:7px;border-radius:8px;cursor:pointer;font-weight:700}.nav-item:hover,.nav-item.active{background:#1977d6}
+.main{padding:18px}.page{display:none}.page.active{display:block}.page-title{font-size:22px;margin:0 0 14px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px rgba(20,35,55,.05)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.kpi{padding:17px;display:flex;gap:13px;align-items:center;min-height:108px}.kpi-icon{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;font-size:23px;background:#e8f1ff}.kpi h3{margin:0 0 6px;font-size:15px}.kpi strong{font-size:30px}.kpi small{display:block;color:var(--muted);margin-top:4px}
+.dashboard-grid{display:grid;grid-template-columns:1.4fr 1fr .85fr;gap:14px;margin-top:14px}.panel{padding:15px}.panel h2{font-size:17px;margin:0 0 13px}.chart-wrap{height:285px;position:relative}.chart-wrap canvas{width:100%;height:100%}.donut-wrap{height:285px;display:flex;align-items:center;justify-content:center;gap:18px}.donut{width:190px;height:190px;border-radius:50%;position:relative}.donut:after{content:"";position:absolute;inset:43px;background:#fff;border-radius:50%}.donut-center{position:absolute;inset:0;z-index:2;display:grid;place-content:center;text-align:center;font-weight:700}.donut-center strong{font-size:31px}.legend{display:grid;gap:9px;font-size:13px}.legend-row{display:flex;align-items:center;gap:7px}.dot{width:11px;height:11px;border-radius:3px}
+.stat-table,.data-table{width:100%;border-collapse:collapse;font-size:13px}.stat-table th,.stat-table td,.data-table th,.data-table td{border:1px solid var(--line);padding:9px;text-align:left}.stat-table th,.data-table th{background:#f7f9fc}.table-scroll{overflow:auto}.data-table{min-width:1040px}.data-table tr:hover td{background:#fbfdff}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.toolbar input,.toolbar select{border:1px solid var(--line);border-radius:7px;padding:9px;background:#fff}.toolbar input{min-width:230px}.badge{display:inline-block;padding:5px 9px;border-radius:7px;font-weight:800}.b-green{background:#e0f5e9;color:#138b4d}.b-red{background:#ffe7e5;color:#d83d39}.b-blue{background:#e5efff;color:#0b69d1}.b-orange{background:#fff0cd;color:#c97a00}.b-gray{background:#edf1f5;color:#596575}.actions{display:flex;gap:6px}.icon-btn{border:0;background:transparent;cursor:pointer;font-size:16px}.pagination{display:flex;justify-content:center;gap:6px;margin-top:12px}.page-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.page-btn.active{background:var(--blue);color:#fff}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}.action-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.action-card{padding:18px}.action-card h3{margin:0 0 8px}.action-card p{color:var(--muted);font-size:14px;min-height:42px}.warning{background:#fff6e3;border:1px solid #f2d59c;border-radius:8px;padding:12px;color:#8a5a00}
+.settings-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.tag-list{display:flex;flex-wrap:wrap;gap:7px}.tag{background:#eef4fb;border:1px solid #d9e5f2;border-radius:16px;padding:5px 9px;font-size:13px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(5,20,38,.55);display:grid;place-items:center;z-index:50;padding:18px}.modal{background:#fff;border-radius:12px;width:min(900px,100%);max-height:92vh;overflow:auto;padding:20px}.modal-header{display:flex;justify-content:space-between;align-items:center}.modal-header h2{margin:0}.close{border:0;background:transparent;font-size:26px;cursor:pointer}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:16px}.field{display:grid;gap:6px}.field.span2{grid-column:span 2}.field.span3{grid-column:span 3}.field label{font-size:13px;font-weight:800}.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:7px;padding:9px}.field textarea{min-height:78px}.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}.history-box{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fafcff}.history-row{display:grid;grid-template-columns:110px 110px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid #edf1f5;font-size:13px}
+.toast{position:fixed;right:20px;bottom:20px;background:#172331;color:#fff;padding:12px 16px;border-radius:8px;z-index:100}
+@media(max-width:1200px){.cards{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr 1fr}.dashboard-grid .panel:last-child{grid-column:span 2}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.sidebar{display:none}.main{padding:10px}.topbar{height:auto;padding:10px;gap:8px;align-items:flex-start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.cards,.dashboard-grid,.two-col,.action-cards,.settings-grid{grid-template-columns:1fr}.dashboard-grid .panel:last-child{grid-column:auto}.form-grid{grid-template-columns:1fr}.field.span2,.field.span3{grid-column:auto}}
+
+.dashboard-filter{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.dashboard-filter select{border:1px solid var(--line);border-radius:7px;padding:9px;background:#fff}
+.settings-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.settings-head h2{margin:0}.option-row{display:flex;align-items:center;gap:5px;background:#eef4fb;border:1px solid #d9e5f2;border-radius:18px;padding:4px 7px}.option-row span{padding:0 3px}.mini-btn{border:0;background:transparent;cursor:pointer;padding:2px 4px;font-size:13px}.empty-note{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🗂️ 環評案件管理系統</div>
+  <div class="top-actions">
+    <div class="sync-indicator" id="syncIndicator"><span>↻</span><span id="syncText">等待 Firebase…</span></div>
+    <button class="btn btn-primary" id="topAdd">＋ 新增案件</button>
+    <button class="btn" id="topImport">⇩ 匯入 Excel</button>
+    <button class="btn" id="topExport">⇩ 匯出 Excel</button>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+  </div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+  <div class="nav-item active" data-page="dashboard">⌂　儀表板</div>
+  <div class="nav-item" data-page="cases">▤　案件管理</div>
+  <div class="nav-item" data-page="io">⇩　匯入／匯出</div>
+  <div class="nav-item" data-page="stats">▥　統計分析</div>
+  <div class="nav-item" data-page="tracking">◷　進度追蹤</div>
+  <div class="nav-item" data-page="settings">⚙　設定</div>
+</aside>
+<main class="main">
+<section class="page active" id="page-dashboard">
+  <div class="dashboard-filter panel">
+    <select id="dashApplicant"><option value="">全部申請單位</option></select>
+    <select id="dashCompany"><option value="">全部公司</option></select>
+    <select id="dashStartYear"><option value="">起始年度</option></select>
+    <select id="dashEndYear"><option value="">結束年度</option></select>
+    <button class="btn" id="dashClear">清除篩選</button>
+  </div>
+  <div class="cards">
+    <div class="card kpi"><div class="kpi-icon">📁</div><div><h3>案件申請數</h3><strong id="kApplied">0</strong> 件<small>篩選後申請案件數</small></div></div>
+    <div class="card kpi"><div class="kpi-icon">✓</div><div><h3>通過案件</h3><strong id="kPassed">0</strong> 件<small id="kPassedPct">0%</small></div></div>
+    <div class="card kpi"><div class="kpi-icon">📄</div><div><h3>辦理中案件</h3><strong id="kProcessing">0</strong> 件<small id="kProcessingPct">0%</small></div></div>
+    <div class="card kpi"><div class="kpi-icon">✕</div><div><h3>未通過案件</h3><strong id="kFailed">0</strong> 件<small id="kFailedPct">0%</small></div></div>
+  </div>
+  <div class="dashboard-grid">
+    <div class="panel"><h2>案件申請／通過趨勢（年度）</h2><div class="chart-wrap"><canvas id="trendCanvas"></canvas></div></div>
+    <div class="panel"><h2>案件狀態分布</h2><div class="donut-wrap"><div class="donut" id="donut"><div class="donut-center">總計<br><strong id="donutTotal">0</strong>件</div></div><div class="legend" id="legend"></div></div></div>
+    <div class="panel"><h2>依申請單位統計（Top 5）</h2><table class="stat-table"><thead><tr><th>申請單位</th><th>案件數</th></tr></thead><tbody id="applicantStats"></tbody></table></div>
+  </div>
+</section>
+
+<section class="page" id="page-cases">
+  <h1 class="page-title">案件管理</h1>
+  <div class="panel">
+    <div class="toolbar">
+      <input id="searchBox" placeholder="搜尋案件名稱、廠處、申請單位…">
+      <select id="statusFilter"><option value="">全部狀態</option></select>
+      <select id="companyFilter"><option value="">全部公司</option></select>
+      <select id="categoryFilter"><option value="">全部書件類別</option></select>
+      <select id="yearFilter"><option value="">全部年度</option></select>
+      <button class="btn" id="clearFilter">清除篩選</button>
+      <button class="btn btn-primary" id="caseAdd">＋ 新增案件</button>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table"><thead><tr><th>公司</th><th>廠處</th><th>書件類別</th><th>申請單位</th><th>案件名稱／摘要</th><th>狀態</th><th>通過日期</th><th>操作</th></tr></thead><tbody id="caseBody"></tbody></table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</section>
+
+<section class="page" id="page-io">
+  <h1 class="page-title">匯入／匯出</h1>
+  <div class="action-cards">
+    <div class="card action-card"><h3>匯入 Excel</h3><p>追加匯入既有案件資料，支援 xlsx、xls、csv。</p><button class="btn btn-primary" id="ioImport">選擇檔案</button></div>
+    <div class="card action-card"><h3>完整資料匯出</h3><p>匯出目前全部案件資料。</p><button class="btn" id="ioExportAll">匯出完整 Excel</button></div>
+    <div class="card action-card"><h3>篩選結果匯出</h3><p>依案件管理頁目前篩選條件匯出。</p><button class="btn" id="ioExportFiltered">匯出篩選結果</button></div>
+    <div class="card action-card"><h3>下載匯入範本</h3><p>下載標準欄位範本，填寫後可直接匯入。</p><button class="btn" id="ioTemplate">下載範本</button></div>
+    <div class="card action-card"><h3>清除全部資料</h3><p>刪除目前瀏覽器內的全部案件資料，此操作無法復原。</p><button class="btn btn-danger" id="ioClearAll">清除全部資料</button></div>
+  </div>
+  <div class="warning" style="margin-top:14px">案件與設定會同步至 Firebase；LocalStorage 僅作為本機備份。請確認右上角顯示「已同步」後再關閉頁面。</div>
+</section>
+
+<section class="page" id="page-stats">
+  <h1 class="page-title">統計分析</h1>
+  <div class="two-col">
+    <div class="panel"><h2>公司案件數</h2><div class="chart-wrap"><canvas id="companyCanvas"></canvas></div></div>
+    <div class="panel"><h2>書件類別統計</h2><div class="chart-wrap"><canvas id="categoryCanvas"></canvas></div></div>
+    <div class="panel"><h2>廠處案件數（Top 10）</h2><div class="chart-wrap"><canvas id="plantCanvas"></canvas></div></div>
+    <div class="panel"><h2>申請單位案件數（Top 10）</h2><div class="chart-wrap"><canvas id="applicantCanvas"></canvas></div></div>
+  </div>
+</section>
+
+<section class="page" id="page-tracking">
+  <h1 class="page-title">進度追蹤</h1>
+  <div class="panel">
+    <p style="color:var(--muted)">此頁不顯示百分比進度，僅追蹤案件狀態、預定完成日、下一步工作與更新紀錄。</p>
+    <div class="table-scroll"><table class="data-table"><thead><tr><th>申請單位</th><th>案件名稱／摘要</th><th>目前狀態</th><th>預定完成日</th><th>下一步工作</th><th>承辦人</th><th>操作</th></tr></thead><tbody id="trackingBody"></tbody></table></div>
+  </div>
+</section>
+
+<section class="page" id="page-settings">
+  <h1 class="page-title">設定</h1>
+  <div class="settings-grid">
+    <div class="panel"><div class="settings-head"><h2>公司選項</h2><button class="btn" onclick="addOption('company')">＋新增</button></div><div class="tag-list" id="companyTags"></div></div>
+    <div class="panel"><div class="settings-head"><h2>廠處選項</h2><button class="btn" onclick="addOption('plant')">＋新增</button></div><div class="tag-list" id="plantTags"></div></div>
+    <div class="panel"><div class="settings-head"><h2>書件類別</h2><button class="btn" onclick="addOption('category')">＋新增</button></div><div class="tag-list" id="categoryTags"></div></div>
+    <div class="panel"><div class="settings-head"><h2>申請單位</h2><button class="btn" onclick="addOption('applicant')">＋新增</button></div><div class="tag-list" id="applicantTags"></div></div>
+    <div class="panel"><h2>原始資料</h2><p style="color:var(--muted)">恢復為附件內建的原始案件資料，會覆蓋目前資料與選項設定。</p><button class="btn btn-danger" id="restoreSeed">恢復原始資料</button></div>
+  </div>
+</section>
+</main>
+</div>
+
+<div class="modal-backdrop hidden" id="modalBackdrop"><div class="modal">
+  <div class="modal-header"><h2 id="modalTitle">新增案件</h2><button class="close" id="closeModal">×</button></div>
+  <form id="caseForm">
+    <input type="hidden" id="editIndex">
+    <div class="form-grid">
+      <div class="field"><label>公司</label><select id="fCompany" required></select></div>
+      <div class="field"><label>廠處</label><select id="fPlant" required></select></div>
+      <div class="field"><label>書件類別</label><select id="fCategory"></select></div>
+      <div class="field"><label>申請單位</label><select id="fApplicant" required></select></div>
+      <div class="field"><label>承辦人</label><input id="fOwner"></div>
+      <div class="field span3"><label>案件名稱／內容摘要</label><textarea id="fTitle" required></textarea></div>
+      <div class="field"><label>狀態</label><select id="fStatus"></select></div>
+      <div class="field"><label>申請日期</label><input id="fApplyDate" type="date"></div>
+      <div class="field"><label>預定完成日</label><input id="fDueDate" type="date"></div>
+      <div class="field"><label>通過日期</label><input id="fApprovedDate" type="date"></div>
+      <div class="field span2"><label>下一步工作</label><input id="fNextAction"></div>
+      <div class="field span3"><label>備註</label><textarea id="fNote"></textarea></div>
+      <div class="field span3"><label>進度更新紀錄</label><div class="history-box" id="historyBox"></div></div>
+      <div class="field"><label>新增紀錄日期</label><input id="hDate" type="date"></div>
+      <div class="field"><label>階段</label><input id="hStage"></div>
+      <div class="field"><label>更新內容</label><input id="hDetail"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn" id="cancelBtn">取消</button><button type="submit" class="btn btn-primary">儲存案件</button></div>
+  </form>
+</div></div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+const SEED_DATA=[{"id": "EA-2012-0001", "company": "南亞、台化、塑化", "plant": "ARO-1、2、3，醋酸廠", "category": "對照表", "applicant": "南亞、台化、塑化", "title": "六輕相關計畫廢氣燃燒塔處理常態廢氣改善案變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2012-02-10", "dueDate": "2012-02-10", "approvedDate": "2012-02-10", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2012-02-10", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2012-0002", "company": "台化", "plant": "SM1、2、3", "category": "對照表", "applicant": "台化", "title": "六輕相關計畫新設生物濾床改善儲槽VOC逸散案變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2012-11-12", "dueDate": "2012-11-12", "approvedDate": "2012-11-12", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2012-11-12", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2013-0003", "company": "台灣醋酸", "plant": "醋酸廠", "category": "對照表", "applicant": "台灣醋酸", "title": "六輕相關計畫台灣醋酸公司醋酸廠廢氣燃燒塔處理常態廢氣改善案展延改善期限變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2013-06-03", "dueDate": "2013-06-03", "approvedDate": "2013-06-03", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2013-06-03", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2013-0004", "company": "台化", "plant": "PP廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫台化公司聚丙烯廠變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2013-10-31", "dueDate": "2013-10-31", "approvedDate": "2013-10-31", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2013-10-31", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2013-0005", "company": "台化", "plant": "ARO-1廠", "category": "對照表", "applicant": "台化", "title": "六輕相關計畫台灣化學纖維股份有限公司芳香烴一廠廢氣燃燒塔處理常態廢氣改善案變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2013-11-12", "dueDate": "2013-11-12", "approvedDate": "2013-11-12", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2013-11-12", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2014-0006", "company": "台化", "plant": "ARO-1、2、3廠", "category": "對照表", "applicant": "台化", "title": "六輕相關計畫台化公司化一部新設薄膜回收改善儲槽揮發性有機物(VOC)逸散案變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2014-06-20", "dueDate": "2014-06-20", "approvedDate": "2014-06-20", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2014-06-20", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2015-0007", "company": "台化", "plant": "PC廠", "category": "對照表", "applicant": "台化", "title": "六輕相關計畫台化公司麥寮區及聚碳酸酯(PC)廠綜合廢水處理場變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2015-01-08", "dueDate": "2015-01-08", "approvedDate": "2015-01-08", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2015-01-08", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2015-0008", "company": "台化、台灣醋酸", "plant": "PTA、醋酸廠", "category": "對照表", "applicant": "台化、台灣醋酸", "title": "六輕四期擴建計畫台化公司純對苯二甲酸廠及台灣醋酸公司醋酸廠儲槽排氣改善變更內容對照表", "status": "已通過", "progress": 100, "applyDate": "2015-02-09", "dueDate": "2015-02-09", "approvedDate": "2015-02-09", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2015-02-09", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2018-0009", "company": "台化", "plant": "LAB廠", "category": "備查", "applicant": "台化", "title": "軟性十二烷基苯廠停止建廠", "status": "已通過", "progress": 100, "applyDate": "2018-11-01", "dueDate": "2018-11-01", "approvedDate": "2018-11-01", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2018-11-01", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2018-0010", "company": "台化", "plant": "PTA廠", "category": "備查", "applicant": "台化", "title": "焚化爐提升處理效率", "status": "已通過", "progress": 100, "applyDate": "2018-12-25", "dueDate": "2018-12-25", "approvedDate": "2018-12-25", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2018-12-25", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0011", "company": "台化", "plant": "醋酸廠", "category": "備查", "applicant": "台化", "title": "增加回收之二氧化碳為第2種原料來源", "status": "已通過", "progress": 100, "applyDate": "2019-02-22", "dueDate": "2019-02-22", "approvedDate": "2019-02-22", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-02-22", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0012", "company": "台化", "plant": "PC廠", "category": "備查", "applicant": "台化", "title": "新增空污防治設備吸收塔及排放管道", "status": "已通過", "progress": 100, "applyDate": "2019-03-14", "dueDate": "2019-03-14", "approvedDate": "2019-03-14", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-03-14", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0013", "company": "台化", "plant": "SM-3廠", "category": "備查", "applicant": "台化", "title": "新設揮發性有機物防制改善設備", "status": "已通過", "progress": 100, "applyDate": "2019-08-23", "dueDate": "2019-08-23", "approvedDate": "2019-08-23", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-08-23", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0014", "company": "台化", "plant": "ARO-1、ARO-1廠", "category": "備查", "applicant": "台化", "title": "揮發性有機物管制措施內容調整", "status": "已通過", "progress": 100, "applyDate": "2019-10-18", "dueDate": "2019-10-18", "approvedDate": "2019-10-18", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-10-18", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0015", "company": "台灣醋酸", "plant": "醋酸廠", "category": "備查", "applicant": "台灣醋酸", "title": "增列自廠CO2為原料來源", "status": "已通過", "progress": 100, "applyDate": "2019-11-07", "dueDate": "2019-11-07", "approvedDate": "2019-11-07", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-11-07", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2019-0016", "company": "台化", "plant": "ARO-1廠", "category": "備查", "applicant": "台化", "title": "製程編號整併", "status": "已通過", "progress": 100, "applyDate": "2019-11-14", "dueDate": "2019-11-14", "approvedDate": "2019-11-14", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2019-11-14", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2020-0017", "company": "台化", "plant": "SM廠", "category": "備查", "applicant": "台化", "title": "苯乙烯廠新設薄膜回收系統改善儲槽揮發性有機物逸散", "status": "已通過", "progress": 100, "applyDate": "2020-06-04", "dueDate": "2020-06-04", "approvedDate": "2020-06-04", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2020-06-04", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2020-0018", "company": "台化", "plant": "PP廠", "category": "備查", "applicant": "台化", "title": "台化聚丙烯PP廠製程編號整併", "status": "已通過", "progress": 100, "applyDate": "2020-06-17", "dueDate": "2020-06-17", "approvedDate": "2020-06-17", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2020-06-17", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2020-0019", "company": "台化", "plant": "phenol廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫環境影響說明書變更內容對照表(合成酚廠將廠內24座儲槽之排氣連通並導入石油化學加熱爐或觸媒氧化器處理減少揮發性有機物逸散、兩座熱媒油鍋爐燃油改燃氣、修正空氣污染物排放明細表個別揮發性有機物(丙酮、苯、異丙苯、甲醇、酚等)排放量及濃度增列揮發性有機物(VOC)進行管制、修正台化海豐區綜合廢水處理場廢水處理流程", "status": "已通過", "progress": 100, "applyDate": "2020-12-02", "dueDate": "2020-12-02", "approvedDate": "2020-12-02", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2020-12-02", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2021-0020", "company": "台化", "plant": "PS廠", "category": "備查", "applicant": "台化", "title": "台化麥寮聚苯乙烯廠RTO蓄熱式焚化爐提升處理效率", "status": "已通過", "progress": 100, "applyDate": "2021-05-03", "dueDate": "2021-05-03", "approvedDate": "2021-05-03", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2021-05-03", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2021-0021", "company": "台化", "plant": "PTA廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫環境影響說明書變更內容對照表（台化純對苯二甲酸廠回收製程氣並增設防制設備等變更）", "status": "已通過", "progress": 100, "applyDate": "2021-05-24", "dueDate": "2021-05-24", "approvedDate": "2021-05-24", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2021-05-24", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2021-0022", "company": "台化", "plant": "ARO-1廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫環境影響說明書變更內容對照表（台化ARO-1廠彈性調配產品產量）", "status": "已通過", "progress": 100, "applyDate": "2021-10-08", "dueDate": "2021-10-08", "approvedDate": "2021-10-08", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2021-10-08", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2022-0023", "company": "台化", "plant": "合成酚廠", "category": "備查", "applicant": "台化", "title": "合成酚廠設備編號及廢水處理流程調整", "status": "已通過", "progress": 100, "applyDate": "2022-04-14", "dueDate": "2022-04-14", "approvedDate": "2022-04-14", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2022-04-14", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2022-0024", "company": "台化", "plant": "-", "category": "備查", "applicant": "台化", "title": "環境監測計畫監測地點名稱變更", "status": "已通過", "progress": 100, "applyDate": "2022-09-13", "dueDate": "2022-09-13", "approvedDate": "2022-09-13", "owner": "", "nextAction": "歷史案件已核備", "note": "安衛環中心辦理", "history": [{"date": "2022-09-13", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2022-0025", "company": "台化", "plant": "PTA廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫環境影響說明書變更內容對照表台化純對苯二甲酸廠（沼氣回收做鍋爐燃料）", "status": "已通過", "progress": 100, "applyDate": "2022-10-13", "dueDate": "2022-10-13", "approvedDate": "2022-10-13", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2022-10-13", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0026", "company": "台化", "plant": "ABS廠", "category": "對照表", "applicant": "台化", "title": "六輕四期擴建計畫環境影響說明書變更內容對照表(ABS製程產能彈性調配及新增備台)", "status": "已通過", "progress": 100, "applyDate": "2024-02-22", "dueDate": "2024-02-22", "approvedDate": "2024-02-22", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-02-22", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0027", "company": "台化", "plant": "ARO-1、2、3廠", "category": "備查", "applicant": "台化", "title": "芳香烴一廠、芳香烴二廠、芳香烴三廠增加廢棄物資源化選項", "status": "已通過", "progress": 100, "applyDate": "2024-03-22", "dueDate": "2024-03-22", "approvedDate": "2024-03-22", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-03-22", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0028", "company": "台化", "plant": "PP廠", "category": "備查", "applicant": "台化", "title": "聚丙烯(PP)廠增設「選擇性觸媒還原設備(SCR)」", "status": "已通過", "progress": 100, "applyDate": "2024-05-01", "dueDate": "2024-05-01", "approvedDate": "2024-05-01", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-05-01", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0029", "company": "台灣醋酸", "plant": "醋酸廠", "category": "備查", "applicant": "台灣醋酸", "title": "廢棄COS觸媒處理方式增列境外處理", "status": "已通過", "progress": 100, "applyDate": "2024-07-16", "dueDate": "2024-07-16", "approvedDate": "2024-07-16", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-07-16", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0030", "company": "台化", "plant": "PABS廠", "category": "備查", "applicant": "台化", "title": "新增購買中間產物苯乙烯及丙烯腈共聚合物(SAN)膠粒途徑。", "status": "已通過", "progress": 100, "applyDate": "2024-08-13", "dueDate": "2024-08-13", "approvedDate": "2024-08-13", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-08-13", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0031", "company": "台化", "plant": "SM廠", "category": "對照表", "applicant": "台化", "title": "六輕產品、產能調整計畫環境影響評估報告書暨六輕四期擴建計畫環境影響說明書變更內容對照表（苯乙烯廠新增再生苯乙烯產品）", "status": "已通過", "progress": 100, "applyDate": "2024-09-24", "dueDate": "2024-09-24", "approvedDate": "2024-09-24", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2024-09-24", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0032", "company": "台灣醋酸", "plant": "醋酸廠", "category": "備查", "applicant": "台灣醋酸", "title": "增加二氧化碳產品", "status": "已通過", "progress": 100, "applyDate": "2025-07-07", "dueDate": "2025-07-07", "approvedDate": "2025-07-07", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": [{"date": "2025-07-07", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-HIS-0033", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0034", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0035", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0036", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0037", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0038", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-HIS-0039", "company": "", "plant": "", "category": "其他", "applicant": "", "title": "", "status": "已通過", "progress": 100, "applyDate": "", "dueDate": "", "approvedDate": "", "owner": "", "nextAction": "歷史案件已核備", "note": "", "history": []}, {"id": "EA-2017-0040", "company": "南亞", "plant": "EG1,2,3,4廠", "category": "備查", "applicant": "南亞EG1,2,3,4廠", "title": "在製程未改變且未增原然物料之使用下，將廢氣中二氧化碳列為產品販售", "status": "已通過", "progress": 100, "applyDate": "2017-01-04", "dueDate": "2017-01-04", "approvedDate": "2017-01-04", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2017-01-04", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2017-0041", "company": "南亞", "plant": "EG1,2,3,4廠", "category": "備查", "applicant": "南亞EG1,2,3,4廠", "title": "更正「增加二氧化碳再利用產品」備查案廠名", "status": "已通過", "progress": 100, "applyDate": "2017-04-21", "dueDate": "2017-04-21", "approvedDate": "2017-04-21", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2017-04-21", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2017-0042", "company": "南亞", "plant": "2EH廠", "category": "備查", "applicant": "南亞2EH廠", "title": "製程未改變且未增原燃物料之使用下，將廢氣中二氧化碳列為產品販售", "status": "已通過", "progress": 100, "applyDate": "2017-06-13", "dueDate": "2017-06-13", "approvedDate": "2017-06-13", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2017-06-13", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2021-0043", "company": "南亞", "plant": "南亞", "category": "備查", "applicant": "南亞", "title": "公共設施用地調整變更", "status": "已通過", "progress": 100, "applyDate": "2021-09-06", "dueDate": "2021-09-06", "approvedDate": "2021-09-06", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2021-09-06", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2022-0044", "company": "南亞", "plant": "資源回收廠", "category": "備查", "applicant": "南亞資源回收廠", "title": "南亞公司資源回收廠焚化爐飛灰及底灰廢棄物處理方式增列再利用", "status": "已通過", "progress": 100, "applyDate": "2022-01-03", "dueDate": "2022-01-03", "approvedDate": "2022-01-03", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2022-01-03", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2023-0045", "company": "南亞", "plant": "資源回收廠", "category": "備查", "applicant": "南亞資源回收廠", "title": "(M01、M02)處理總量不變前提下，彈性調配事業廢棄物及雲林縣生活垃圾處理量", "status": "已通過", "progress": 100, "applyDate": "2023-11-08", "dueDate": "2023-11-08", "approvedDate": "2023-11-08", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2023-11-08", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0046", "company": "南亞", "plant": "INA廠", "category": "備查", "applicant": "南亞INA廠", "title": "南亞塑膠工業股份有限公司異壬醇廠產品彙總表增列十二烯並補列十三醇及辛烯。", "status": "已通過", "progress": 100, "applyDate": "2024-02-29", "dueDate": "2024-02-29", "approvedDate": "2024-02-29", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2024-02-29", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2024-0047", "company": "南亞", "plant": "資源回收廠", "category": "備查", "applicant": "南亞資源回收廠", "title": "環境監測計畫監測地點名稱變更", "status": "已通過", "progress": 100, "applyDate": "2024-07-16", "dueDate": "2024-07-16", "approvedDate": "2024-07-16", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2024-07-16", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0048", "company": "南亞", "plant": "BPA3廠", "category": "備查", "applicant": "南亞BPA3廠", "title": "於廠內M04製程安裝小型實驗模組，確認測試參數及運轉可行性後即不再執行試驗，預計測試時間2年。", "status": "已通過", "progress": 100, "applyDate": "2025-01-14", "dueDate": "2025-01-14", "approvedDate": "2025-01-14", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-01-14", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0049", "company": "南亞", "plant": "1,4BG廠", "category": "備查", "applicant": "南亞1,4BG廠", "title": "增加原料N-甲基吡咯烷酮(NMP)，並減少原製程毒性化學物質原料丁二烯使用，於產能不變下，增列精餾後N-甲基吡咯烷酮", "status": "已通過", "progress": 100, "applyDate": "2025-02-06", "dueDate": "2025-02-06", "approvedDate": "2025-02-06", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-02-06", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0050", "company": "南亞", "plant": "INA廠", "category": "備查", "applicant": "南亞INA廠", "title": "南亞公司異壬醇廠增列副產品異構烷", "status": "已通過", "progress": 100, "applyDate": "2025-02-20", "dueDate": "2025-02-20", "approvedDate": "2025-02-20", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-02-20", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0051", "company": "南亞", "plant": "1,4BG2廠", "category": "備查", "applicant": "南亞1,4BG2廠", "title": "產品1,4丁二醇新增外購選項", "status": "已通過", "progress": 100, "applyDate": "2025-03-13", "dueDate": "2025-03-13", "approvedDate": "2025-03-13", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-03-13", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0052", "company": "南亞", "plant": "資源回收廠", "category": "備查", "applicant": "南亞資源回收廠", "title": "新焚化爐(M03、M04)於營運期間，處理總量1萬2,000頓/月不變前提下，彈性調配雲林縣生活垃圾及事業廢棄物處理量。", "status": "已通過", "progress": 100, "applyDate": "2025-03-31", "dueDate": "2025-03-31", "approvedDate": "2025-03-31", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-03-31", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0053", "company": "南亞", "plant": "BPA3廠", "category": "備查", "applicant": "南亞BPA3廠", "title": "南亞塑膠工業股份有限公司丙二酚三廠之實驗模組之批次反應量由原先核准之1噸調整為每批次進料量7噸，並將測試期間調整為3年。", "status": "已通過", "progress": 100, "applyDate": "2025-05-16", "dueDate": "2025-05-16", "approvedDate": "2025-05-16", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-05-16", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0054", "company": "南亞", "plant": "EG1,2,3廠", "category": "備查", "applicant": "南亞EG1,2,3廠", "title": "1.調節乙二醇廠（一至三廠）主、副產品產量。 2.增列GasFindIR 掃測人員。", "status": "已通過", "progress": 100, "applyDate": "2025-07-11", "dueDate": "2025-07-11", "approvedDate": "2025-07-11", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-07-11", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0055", "company": "南亞", "plant": "1,4BG廠", "category": "備查", "applicant": "南亞1,4BG廠", "title": "提升所屬丁二醇一廠系統控制精度與排放濃度穩定，申請增加選擇性觸媒還原(SCR)設備，以提升空氣污染防制設施等級，其廢觸媒產生量與MGN廠共同調配，不超過原環評承諾。", "status": "已通過", "progress": 100, "applyDate": "2025-09-10", "dueDate": "2025-09-10", "approvedDate": "2025-09-10", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-09-10", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2025-0056", "company": "南亞", "plant": "2EH廠", "category": "備查", "applicant": "南亞2EH廠", "title": "異辛廠產品增列異丁醛", "status": "已通過", "progress": 100, "applyDate": "2025-12-15", "dueDate": "2025-12-15", "approvedDate": "2025-12-15", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2025-12-15", "stage": "已通過", "detail": "由原始彙整表匯入"}]}, {"id": "EA-2026-0057", "company": "南亞", "plant": "EG2,3廠", "category": "備查", "applicant": "南亞EG2,3廠", "title": "產品增列固態二氧化碳(乾冰)，液態二氧化碳製程用水 來源增列二廠之工業用水及冷卻水塔", "status": "已通過", "progress": 100, "applyDate": "2026-03-23", "dueDate": "2026-03-23", "approvedDate": "2026-03-23", "owner": "", "nextAction": "歷史案件已通過", "note": "", "history": [{"date": "2026-03-23", "stage": "已通過", "detail": "由原始彙整表匯入"}]}];
+const STATUSES=["草稿","資料準備","內部審查","已送件","主管機關審查","補件中","已通過","未通過","退件","撤案","結案"];
+const STORAGE_KEY="ea_case_manager_v3", SETTINGS_KEY="ea_case_settings_v3";
+let records=loadRecords(), settings=loadSettings(), page=1, pageSize=10, currentHistory=[], editingId=null;
+let applyingRemote=false;
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function normalizeKeyPart(v){return String(v??"").trim().replace(/\s+/g," ").toLowerCase()}
+function recordFingerprint(r){
+  return [
+    r.company,r.plant,r.category,r.applicant,r.title,r.status,
+    r.applyDate,r.dueDate,r.approvedDate,r.owner,r.nextAction,r.note
+  ].map(normalizeKeyPart).join("|");
+}
+function deduplicateRecords(list){
+  const seen=new Set(),out=[];
+  (Array.isArray(list)?list:[]).forEach(r=>{
+    const key=recordFingerprint(r);
+    if(!seen.has(key)){seen.add(key);out.push(r)}
+  });
+  return out;
+}
+function loadRecords(){
+  try{
+    const v3=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(Array.isArray(v3)) return deduplicateRecords(v3);
+    const v2=JSON.parse(localStorage.getItem("ea_case_manager_v2"));
+    if(Array.isArray(v2)) return deduplicateRecords(v2);
+  }catch(e){}
+  return deduplicateRecords(clone(SEED_DATA));
+}
+function baseSettings(){
+  const unique=k=>[...new Set(SEED_DATA.map(r=>r[k]).filter(Boolean))].sort();
+  return {company:unique("company"),plant:unique("plant"),category:unique("category"),applicant:unique("applicant")};
+}
+function loadSettings(){
+  try{
+    const x=JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if(x&&["company","plant","category","applicant"].every(k=>Array.isArray(x[k]))) return x;
+  }catch(e){}
+  return baseSettings();
+}
+function saveLocalBackup(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
+}
+function saveAll(){
+  saveLocalBackup();
+  if(!applyingRemote&&typeof window.__eiaQueueSync==="function"){
+    Promise.resolve(window.__eiaQueueSync({records:clone(records),settings:clone(settings)})).catch(err=>{
+      console.error(err);
+      window.__setEiaSyncState?.("同步失敗："+(err?.message||err),"error");
+    });
+  }
+}
+function validSettings(value){
+  return value&&["company","plant","category","applicant"].every(key=>Array.isArray(value[key]));
+}
+window.__getEiaLocalState=()=>({records:clone(records),settings:clone(settings)});
+window.__setEiaSyncState=(text,state="neutral")=>{
+  const indicator=document.getElementById("syncIndicator"),label=document.getElementById("syncText");
+  if(label)label.textContent=text;
+  if(indicator)indicator.className="sync-indicator"+(state==="ok"?" ok":state==="error"?" error":"");
+};
+window.__applyRemoteEiaRecords=list=>{
+  applyingRemote=true;
+  try{
+    records=deduplicateRecords(Array.isArray(list)?list:[]);
+    syncOptionsFromRecords();
+    saveLocalBackup();
+    renderAll();
+  }finally{applyingRemote=false}
+};
+window.__applyRemoteEiaSettings=value=>{
+  if(!validSettings(value))return;
+  applyingRemote=true;
+  try{
+    settings={company:[...value.company],plant:[...value.plant],category:[...value.category],applicant:[...value.applicant]};
+    syncOptionsFromRecords();
+    saveLocalBackup();
+    renderAll();
+  }finally{applyingRemote=false}
+};
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function pct(n,t){return t?((n/t)*100).toFixed(1)+"%":"0%"}
+function isApplying(s){return["草稿","資料準備","內部審查","已送件","主管機關審查","補件中"].includes(s)}
+function isPassed(s){return["已通過","結案"].includes(s)}
+function isFailed(s){return["未通過","退件","撤案"].includes(s)}
+function statusClass(s){return isPassed(s)?"b-green":isFailed(s)?"b-red":s==="補件中"?"b-orange":isApplying(s)?"b-blue":"b-gray"}
+function isHistoricalImported(r){return Array.isArray(r.history)&&r.history.some(h=>String(h.detail||"").includes("原始彙整表匯入"))}
+function hasActualApplyDate(r){return Boolean(r.applyDate)&&!(isHistoricalImported(r)&&r.applyDate===r.approvedDate)}
+function applicationYear(r){return hasActualApplyDate(r)?r.applyDate.slice(0,4):""}
+function passYear(r){return r.approvedDate?r.approvedDate.slice(0,4):(isPassed(r.status)&&hasActualApplyDate(r)?r.applyDate.slice(0,4):"")}
+function effectiveYear(r){return passYear(r)||applicationYear(r)}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");setTimeout(()=>t.classList.add("hidden"),2200)}
+function showPage(name){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById("page-"+name).classList.add("active");document.querySelectorAll(".nav-item").forEach(x=>x.classList.toggle("active",x.dataset.page===name));if(name==="stats")setTimeout(renderStats,30);if(name==="tracking")renderTracking();if(name==="settings")renderSettings()}
+document.querySelectorAll(".nav-item").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
+
+function renderAll(){renderManagedSelects();renderCaseFilters();renderDashboardFilters();renderDashboard();renderTable();renderTracking();renderSettings()}
+function dashFiltered(){
+  const a=dashApplicant.value,c=dashCompany.value,sy=dashStartYear.value,ey=dashEndYear.value;
+  return records.filter(r=>{
+    const y=effectiveYear(r);
+    return (!a||r.applicant===a)&&(!c||r.company===c)&&(!sy||!y||y>=sy)&&(!ey||!y||y<=ey);
+  });
+}
+function renderDashboard(){
+  const list=dashFiltered(),t=list.length,p=list.filter(r=>isPassed(r.status)).length,processing=list.filter(r=>isApplying(r.status)).length,f=list.filter(r=>isFailed(r.status)).length;
+  kApplied.textContent=t;kPassed.textContent=p;kProcessing.textContent=processing;kFailed.textContent=f;
+  kPassedPct.textContent=pct(p,t);kProcessingPct.textContent=pct(processing,t);kFailedPct.textContent=pct(f,t);
+  renderTrend(list);renderDonut(list);renderApplicantStats(list);
+}
+function renderDashboardFilters(){
+  const vals={a:dashApplicant.value,c:dashCompany.value,sy:dashStartYear.value,ey:dashEndYear.value};
+  dashApplicant.innerHTML='<option value="">全部申請單位</option>'+settings.applicant.map(x=>`<option>${esc(x)}</option>`).join("");
+  dashCompany.innerHTML='<option value="">全部公司</option>'+settings.company.map(x=>`<option>${esc(x)}</option>`).join("");
+  const years=[...new Set(records.flatMap(r=>[applicationYear(r),passYear(r)]).filter(Boolean))].sort();
+  const opts=years.map(y=>`<option>${y}</option>`).join("");
+  dashStartYear.innerHTML='<option value="">起始年度</option>'+opts;
+  dashEndYear.innerHTML='<option value="">結束年度</option>'+opts;
+  dashApplicant.value=vals.a;dashCompany.value=vals.c;
+  dashStartYear.value=vals.sy||years[0]||"";
+  dashEndYear.value=vals.ey||years[years.length-1]||"";
+}
+function renderTrend(list){
+  const c=trendCanvas,ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  let years=[...new Set(list.flatMap(r=>[applicationYear(r),passYear(r)]).filter(Boolean))].sort();
+  if(dashStartYear.value||dashEndYear.value){const all=[...new Set(records.flatMap(r=>[applicationYear(r),passYear(r)]).filter(Boolean))].sort();years=all.filter(y=>(!dashStartYear.value||y>=dashStartYear.value)&&(!dashEndYear.value||y<=dashEndYear.value))}
+  if(!years.length)years=[String(new Date().getFullYear())];
+  const applied=years.map(y=>list.filter(r=>applicationYear(r)===y).length);
+  const passed=years.map(y=>list.filter(r=>isPassed(r.status)&&passYear(r)===y).length);
+  const max=Math.max(5,...applied,...passed),pad={l:36,r:18,t:38,b:35},pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
+  ctx.strokeStyle="#e3e8ef";ctx.fillStyle="#6d7b8c";ctx.font="12px sans-serif";
+  for(let i=0;i<=5;i++){const yy=pad.t+ph*i/5;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillText(Math.round(max*(1-i/5)),5,yy+4)}
+  function line(vals,color,label,legendX){
+    ctx.strokeStyle=color;ctx.lineWidth=2.4;ctx.beginPath();
+    vals.forEach((v,i)=>{const x=pad.l+(years.length===1?pw/2:pw*i/(years.length-1)),y=pad.t+ph*(1-v/max);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+    vals.forEach((v,i)=>{const x=pad.l+(years.length===1?pw/2:pw*i/(years.length-1)),y=pad.t+ph*(1-v/max);ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.fillStyle="#263445";ctx.textAlign="center";ctx.font="bold 11px sans-serif";ctx.fillText(v,x,y-(color==="#0d6efd"?10:-18))});
+    ctx.fillStyle=color;ctx.fillRect(legendX,10,22,3);ctx.fillStyle="#263445";ctx.textAlign="left";ctx.font="12px sans-serif";ctx.fillText(label,legendX+28,15);
+  }
+  line(applied,"#0d6efd","申請件數",w/2-100);line(passed,"#22a766","通過件數",w/2+15);
+  ctx.fillStyle="#6d7b8c";ctx.textAlign="center";ctx.font="12px sans-serif";years.forEach((y,i)=>{const x=pad.l+(years.length===1?pw/2:pw*i/(years.length-1));ctx.fillText(y,x,h-10)});ctx.textAlign="start";
+}
+function renderDonut(list){
+  const g=[["辦理中",list.filter(r=>isApplying(r.status)).length,"#1677e8"],["通過",list.filter(r=>isPassed(r.status)).length,"#24a866"],["未通過",list.filter(r=>isFailed(r.status)).length,"#ef5350"],["其他",list.filter(r=>!isApplying(r.status)&&!isPassed(r.status)&&!isFailed(r.status)).length,"#f6a700"]],t=Math.max(list.length,1);
+  let a=0,st=[];g.forEach(x=>{const s=a/t*360;a+=x[1];st.push(`${x[2]} ${s}deg ${a/t*360}deg`)});
+  donut.style.background=`conic-gradient(${st.join(",")})`;donutTotal.textContent=list.length;legend.innerHTML=g.map(x=>`<div class="legend-row"><span class="dot" style="background:${x[2]}"></span>${x[0]} ${x[1]}（${pct(x[1],list.length)}）</div>`).join("");
+}
+function countBy(list,key){const m={};list.forEach(r=>{const k=r[key]||"未填";m[k]=(m[k]||0)+1});return m}
+function renderApplicantStats(list){applicantStats.innerHTML=Object.entries(countBy(list,"applicant")).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")||'<tr><td colspan="2">無資料</td></tr>'}
+
+function renderCaseFilters(){
+  const sv=statusFilter.value,cv=companyFilter.value,kv=categoryFilter.value,yv=yearFilter.value;
+  statusFilter.innerHTML='<option value="">全部狀態</option>'+STATUSES.map(x=>`<option>${x}</option>`).join("");
+  companyFilter.innerHTML='<option value="">全部公司</option>'+settings.company.map(x=>`<option>${esc(x)}</option>`).join("");
+  categoryFilter.innerHTML='<option value="">全部書件類別</option>'+settings.category.map(x=>`<option>${esc(x)}</option>`).join("");
+  const years=[...new Set(records.map(effectiveYear).filter(Boolean))].sort().reverse();
+  yearFilter.innerHTML='<option value="">全部年度</option>'+years.map(x=>`<option>${x}</option>`).join("");
+  statusFilter.value=sv;companyFilter.value=cv;categoryFilter.value=kv;yearFilter.value=yv;
+}
+function filtered(){const q=searchBox.value.trim().toLowerCase(),s=statusFilter.value,c=companyFilter.value,k=categoryFilter.value,y=yearFilter.value;return records.filter(r=>(!q||Object.values(r).join(" ").toLowerCase().includes(q))&&(!s||r.status===s)&&(!c||r.company===c)&&(!k||r.category===k)&&(!y||effectiveYear(r)===y))}
+function renderTable(){
+  const list=filtered(),pages=Math.max(1,Math.ceil(list.length/pageSize));if(page>pages)page=pages;const rows=list.slice((page-1)*pageSize,page*pageSize);
+  caseBody.innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.company)}</td><td>${esc(r.plant)}</td><td>${esc(r.category)}</td><td>${esc(r.applicant)}</td><td title="${esc(r.title)}">${esc((r.title||"").slice(0,42))}${(r.title||"").length>42?"…":""}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.approvedDate||"")}</td><td><div class="actions"><button class="icon-btn" onclick="editRecord('${esc(r.id)}')">✎</button><button class="icon-btn" onclick="deleteRecord('${esc(r.id)}')">🗑</button></div></td></tr>`).join(""):`<tr><td colspan="8" style="text-align:center;padding:28px;color:#6d7b8c">沒有符合條件的案件</td></tr>`;
+  pagination.innerHTML=Array.from({length:pages},(_,i)=>`<button class="page-btn ${page===i+1?"active":""}" onclick="goPage(${i+1})">${i+1}</button>`).join("");
+}
+function goPage(p){page=p;renderTable()}window.goPage=goPage;
+function renderTracking(){
+  const list=records.filter(r=>!isPassed(r.status)&&!isFailed(r.status));
+  trackingBody.innerHTML=list.length?list.map(r=>`<tr><td>${esc(r.applicant)}</td><td>${esc(r.title)}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.dueDate||"")}</td><td>${esc(r.nextAction||"")}</td><td>${esc(r.owner||"")}</td><td><button class="icon-btn" onclick="editRecord('${esc(r.id)}')">✎</button></td></tr>`).join(""):`<tr><td colspan="7" style="text-align:center;padding:28px;color:#6d7b8c">目前沒有進行中案件</td></tr>`;
+}
+function renderManagedSelects(){
+  const fill=(id,key,placeholder)=>{const el=document.getElementById(id),v=el.value;el.innerHTML=`<option value="">${placeholder}</option>`+settings[key].map(x=>`<option>${esc(x)}</option>`).join("");el.value=v};
+  fill("fCompany","company","請選擇公司");fill("fPlant","plant","請選擇廠處");fill("fCategory","category","請選擇書件類別");fill("fApplicant","applicant","請選擇申請單位");
+}
+const LABELS={company:"公司",plant:"廠處",category:"書件類別",applicant:"申請單位"};
+function renderSettings(){
+  [["company","companyTags"],["plant","plantTags"],["category","categoryTags"],["applicant","applicantTags"]].forEach(([key,id])=>{
+    document.getElementById(id).innerHTML=settings[key].length?settings[key].map((x,i)=>`<div class="option-row"><span>${esc(x)}</span><button class="mini-btn" title="修改" onclick="editOption('${key}',${i})">✎</button><button class="mini-btn" title="刪除" onclick="removeOption('${key}',${i})">🗑</button></div>`).join(""):'<span class="empty-note">尚無選項</span>';
+  });
+}
+function addOption(key){const value=prompt(`新增${LABELS[key]}選項：`);if(value===null)return;const v=value.trim();if(!v)return alert("名稱不可空白。");if(settings[key].includes(v))return alert("此選項已存在。");settings[key].push(v);settings[key].sort();saveAll();renderAll();toast("選項已新增")}
+function editOption(key,index){const old=settings[key][index],value=prompt(`修改${LABELS[key]}：`,old);if(value===null)return;const v=value.trim();if(!v)return alert("名稱不可空白。");if(v!==old&&settings[key].includes(v))return alert("此選項已存在。");settings[key][index]=v;records.forEach(r=>{if(r[key]===old)r[key]=v});settings[key].sort();saveAll();renderAll();toast("選項及既有案件已更新")}
+function removeOption(key,index){const value=settings[key][index],used=records.some(r=>r[key]===value);if(used)return alert(`「${value}」仍有案件使用，請先修改相關案件後再刪除。`);if(confirm(`確定刪除${LABELS[key]}選項「${value}」？`)){settings[key].splice(index,1);saveAll();renderAll();toast("選項已刪除")}}
+window.addOption=addOption;window.editOption=editOption;window.removeOption=removeOption;
+
+function drawBars(canvasId,entries){const c=document.getElementById(canvasId),ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const data=entries.slice(0,10),max=Math.max(1,...data.map(x=>x[1])),pad={l:120,r:25,t:15,b:20},row=(h-pad.t-pad.b)/Math.max(data.length,1);ctx.font="12px sans-serif";data.forEach(([k,v],i)=>{const y=pad.t+i*row+row*.2,bh=row*.55,bw=(w-pad.l-pad.r)*v/max;ctx.fillStyle="#0d6efd";ctx.fillRect(pad.l,y,bw,bh);ctx.fillStyle="#334155";ctx.textAlign="right";ctx.fillText(String(k).slice(0,16),pad.l-8,y+bh*.75);ctx.textAlign="left";ctx.fillText(String(v),pad.l+bw+6,y+bh*.75)});ctx.textAlign="start"}
+function renderStats(){drawBars("companyCanvas",Object.entries(countBy(records,"company")).sort((a,b)=>b[1]-a[1]));drawBars("categoryCanvas",Object.entries(countBy(records,"category")).sort((a,b)=>b[1]-a[1]));drawBars("plantCanvas",Object.entries(countBy(records,"plant")).sort((a,b)=>b[1]-a[1]));drawBars("applicantCanvas",Object.entries(countBy(records,"applicant")).sort((a,b)=>b[1]-a[1]))}
+
+function nextId(){return "EA-"+Date.now()+"-"+Math.random().toString(36).slice(2,8)}
+function openModal(id=null){
+  modalBackdrop.classList.remove("hidden");caseForm.reset();editingId=id;currentHistory=[];renderManagedSelects();modalTitle.textContent=id?"修改案件":"新增案件";
+  if(!id){fStatus.value="資料準備"}else{const r=records.find(x=>x.id===id);if(!r)return;["Company","Plant","Category","Applicant","Owner","Title","Status","ApplyDate","DueDate","ApprovedDate","NextAction","Note"].forEach(k=>document.getElementById("f"+k).value=r[k.charAt(0).toLowerCase()+k.slice(1)]??"");currentHistory=clone(r.history||[])}
+  renderHistory();
+}
+function hideModal(){modalBackdrop.classList.add("hidden")}
+function renderHistory(){historyBox.innerHTML=currentHistory.length?currentHistory.slice().reverse().map(h=>`<div class="history-row"><span>${esc(h.date)}</span><b>${esc(h.stage)}</b><span>${esc(h.detail)}</span></div>`).join(""):'<span style="color:#6d7b8c">尚無更新紀錄</span>'}
+function editRecord(id){openModal(id)}window.editRecord=editRecord;
+function deleteRecord(id){const r=records.find(x=>x.id===id);if(r&&confirm(`確定刪除案件「${r.title||r.applicant}」？`)){records=records.filter(x=>x.id!==id);saveAll();renderAll();toast("案件已刪除")}}window.deleteRecord=deleteRecord;
+caseForm.onsubmit=e=>{
+  e.preventDefault();if(hDate.value||hStage.value.trim()||hDetail.value.trim())currentHistory.push({date:hDate.value,stage:hStage.value.trim(),detail:hDetail.value.trim()});
+  const old=editingId?records.find(x=>x.id===editingId):null;
+  const r={id:editingId||nextId(),company:fCompany.value,plant:fPlant.value,category:fCategory.value,applicant:fApplicant.value,owner:fOwner.value.trim(),title:fTitle.value.trim(),status:fStatus.value,applyDate:fApplyDate.value,dueDate:fDueDate.value,approvedDate:fApprovedDate.value,nextAction:fNextAction.value.trim(),note:fNote.value.trim(),history:currentHistory};
+  if(old)Object.assign(old,r);else records.unshift(r);saveAll();hideModal();renderAll();toast(old?"案件已更新":"案件已新增");
+};
+fStatus.innerHTML=STATUSES.map(x=>`<option>${x}</option>`).join("");
+[topAdd,caseAdd].forEach(x=>x.onclick=()=>openModal());document.getElementById("closeModal").onclick=hideModal;cancelBtn.onclick=hideModal;modalBackdrop.addEventListener("click",e=>{if(e.target===modalBackdrop)hideModal()});
+[searchBox,statusFilter,companyFilter,categoryFilter,yearFilter].forEach(x=>x.addEventListener(x===searchBox?"input":"change",()=>{page=1;renderTable()}));clearFilter.onclick=()=>{searchBox.value="";statusFilter.value="";companyFilter.value="";categoryFilter.value="";yearFilter.value="";page=1;renderTable()};
+[dashApplicant,dashCompany,dashStartYear,dashEndYear].forEach(x=>x.onchange=renderDashboard);dashClear.onclick=()=>{dashApplicant.value="";dashCompany.value="";const years=[...new Set(records.flatMap(r=>[applicationYear(r),passYear(r)]).filter(Boolean))].sort();dashStartYear.value=years[0]||"";dashEndYear.value=years[years.length-1]||"";renderDashboard()};
+
+function mapRows(rows){return rows.filter(r=>Object.values(r).some(v=>String(v??"").trim())).map((r,i)=>{const pick=(...ks)=>{for(const k of ks)if(r[k]!==undefined&&String(r[k]).trim()!=="")return r[k];return""};const date=v=>{if(!v)return"";if(typeof v==="number"){const x=XLSX.SSF.parse_date_code(v);return x?`${x.y}-${String(x.m).padStart(2,"0")}-${String(x.d).padStart(2,"0")}`:""}let s=String(v).trim().replace(/\./g,"/"),p=s.split("/");if(p.length===3){let y=+p[0];if(y<1911)y+=1911;return `${y}-${String(p[1]).padStart(2,"0")}-${String(p[2]).padStart(2,"0")}`}return s};const approved=date(pick("通過日期","環境部核備日期"));return{id:nextId()+i,company:String(pick("公司","開發單位(公司)")||""),plant:String(pick("廠處")||""),category:String(pick("書件類別","環評書件類別","類別")||"其他"),applicant:String(pick("申請單位","公司","開發單位(公司)")||""),title:String(pick("案件名稱／摘要","環評(變更)書件名稱或內容摘要","備查內容摘要","內容摘要")||""),status:String(pick("狀態")||"已通過"),applyDate:date(pick("申請日期")),dueDate:date(pick("預定完成日")),approvedDate:approved,owner:String(pick("承辦人")||""),nextAction:String(pick("下一步工作")||""),note:String(pick("備註","說明")||""),history:[]}})}
+function syncOptionsFromRecords(){["company","plant","category","applicant"].forEach(k=>{records.forEach(r=>{if(r[k]&&!settings[k].includes(r[k]))settings[k].push(r[k])});settings[k].sort()})}
+function importExcel(file){
+  if(!window.XLSX){alert("Excel 元件載入失敗，請確認網路連線。");return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array"}),all=[];
+      wb.SheetNames.forEach(n=>all.push(...mapRows(XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:""}))));
+      if(!all.length)throw Error("沒有可匯入資料");
+      const existing=new Set(records.map(recordFingerprint)),unique=[],batchSeen=new Set();
+      all.forEach(r=>{
+        const key=recordFingerprint(r);
+        if(!existing.has(key)&&!batchSeen.has(key)){batchSeen.add(key);unique.push(r)}
+      });
+      const duplicateCount=all.length-unique.length;
+      if(!unique.length){
+        alert(`偵測到 ${all.length} 筆資料，但全部已存在，未重複匯入。`);
+        return;
+      }
+      if(confirm(`偵測到 ${all.length} 筆資料，其中 ${duplicateCount} 筆重複，將新增 ${unique.length} 筆。確定匯入？`)){
+        records=deduplicateRecords(records.concat(unique));
+        records=deduplicateRecords(records);syncOptionsFromRecords();saveAll();renderAll();
+        toast(`已新增 ${unique.length} 筆，略過 ${duplicateCount} 筆重複資料`);
+      }
+    }catch(err){alert("匯入失敗："+err.message)}
+  };
+  reader.readAsArrayBuffer(file);
+}
+function exportRows(rows,name){if(!window.XLSX){alert("Excel 元件載入失敗，請確認網路連線。");return}const out=rows.map(r=>({"公司":r.company,"廠處":r.plant,"書件類別":r.category,"申請單位":r.applicant,"案件名稱／內容摘要":r.title,"狀態":r.status,"申請日期":r.applyDate,"預定完成日":r.dueDate,"通過日期":r.approvedDate,"承辦人":r.owner,"下一步工作":r.nextAction,"備註":r.note}));const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"案件彙整表");XLSX.writeFile(wb,`${name}_${new Date().toISOString().slice(0,10)}.xlsx`)}
+function template(){exportRows([{company:"台化",plant:"範例廠",category:"對照表",applicant:"台化範例廠",title:"範例案件",status:"資料準備",applyDate:"2026-07-22",dueDate:"2026-08-31",approvedDate:"",owner:"王小明",nextAction:"準備申請文件",note:""}],"環評案件匯入範本")}
+[topImport,ioImport].forEach(x=>x.onclick=()=>fileInput.click());fileInput.onchange=e=>{if(e.target.files[0])importExcel(e.target.files[0]);e.target.value=""};topExport.onclick=()=>exportRows(records,"環評案件彙整表");ioExportAll.onclick=()=>exportRows(records,"環評案件彙整表");ioExportFiltered.onclick=()=>exportRows(filtered(),"環評案件篩選結果");ioTemplate.onclick=template;
+ioClearAll.onclick=()=>{if(confirm("確定清除全部案件資料？此操作無法復原。")&&confirm("再次確認：是否真的要清除全部資料？")){records=[];saveAll();renderAll();toast("全部資料已清除")}};
+restoreSeed.onclick=()=>{if(confirm("確定恢復附件原始資料？目前資料及選項會被覆蓋。")){records=clone(SEED_DATA);settings=baseSettings();saveAll();renderAll();toast("已恢復原始資料")}};
+window.addEventListener("resize",()=>{renderTrend(dashFiltered());if(document.getElementById("page-stats").classList.contains("active"))renderStats()});
+syncOptionsFromRecords();saveAll();renderAll();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+import {
+  initializeFirestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  writeBatch,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+  authDomain:"esh-v85.firebaseapp.com",
+  projectId:"esh-v85",
+  storageBucket:"esh-v85.firebasestorage.app",
+  messagingSenderId:"1021350670476",
+  appId:"1:1021350670476:web:afd5bc96ff28c910f48ba9",
+  measurementId:"G-MMVQN63GDG"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
+const CASES_COL=collection(db,"eia_cases");
+const CONFIG_DOC=doc(db,"eia_config","options");
+
+let knownCaseIds=new Set();
+let orderById=new Map();
+let remoteRecordSignatures=new Map();
+let remoteSettingsSignature="";
+let pendingState=null;
+let syncTimer=null;
+let flushChain=Promise.resolve();
+
+const safeClone=value=>JSON.parse(JSON.stringify(value));
+const signature=value=>JSON.stringify(value);
+const validSettings=value=>value&&["company","plant","category","applicant"].every(key=>Array.isArray(value[key]));
+const cleanSettings=value=>({
+  company:[...(value?.company||[])],
+  plant:[...(value?.plant||[])],
+  category:[...(value?.category||[])],
+  applicant:[...(value?.applicant||[])]
+});
+const docIdFor=record=>String(record?.id||`EIA-${Date.now()}-${Math.random().toString(36).slice(2,8)}`).replaceAll("/","_");
+const cleanRecord=(value,id)=>{
+  const {_order,_updatedTs,...record}=value||{};
+  record.id=id||record.id;
+  return record;
+};
+const payloadFor=(record,id,order)=>({...cleanRecord(record,id),id,_order:order});
+
+function setSyncState(text,state="neutral"){
+  window.__setEiaSyncState?.(text,state);
+}
+
+function caseSnapshotData(snapshot){
+  const rows=[];
+  knownCaseIds=new Set();
+  orderById=new Map();
+  remoteRecordSignatures=new Map();
+  snapshot.forEach(item=>{
+    const data=item.data()||{};
+    const id=item.id;
+    const order=Number.isFinite(Number(data._order))?Number(data._order):Number.MAX_SAFE_INTEGER;
+    const record=cleanRecord(data,id);
+    knownCaseIds.add(id);
+    orderById.set(id,order);
+    remoteRecordSignatures.set(id,signature(payloadFor(record,id,order)));
+    rows.push({record,order,id});
+  });
+  rows.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
+  return rows.map(row=>row.record);
+}
+
+function applyCaseSnapshot(snapshot){
+  window.__applyRemoteEiaRecords?.(caseSnapshotData(snapshot));
+}
+
+function applyConfigSnapshot(snapshot){
+  if(!snapshot.exists())return;
+  const data=snapshot.data()||{};
+  if(!validSettings(data))return;
+  const next=cleanSettings(data);
+  remoteSettingsSignature=signature(next);
+  window.__applyRemoteEiaSettings?.(next);
+}
+
+function assignMissingOrders(records){
+  const ids=records.map(docIdFor);
+  for(let index=0;index<ids.length;){
+    if(orderById.has(ids[index])){index++;continue}
+    const start=index;
+    while(index<ids.length&&!orderById.has(ids[index]))index++;
+    const end=index;
+    const count=end-start;
+    const left=start>0?orderById.get(ids[start-1]):null;
+    const right=end<ids.length?orderById.get(ids[end]):null;
+    for(let offset=0;offset<count;offset++){
+      let order;
+      if(Number.isFinite(left)&&Number.isFinite(right))order=left+(right-left)*(offset+1)/(count+1);
+      else if(Number.isFinite(left))order=left+offset+1;
+      else if(Number.isFinite(right))order=right-count+offset;
+      else order=start+offset;
+      orderById.set(ids[start+offset],order);
+    }
+  }
+  return ids;
+}
+
+async function commitCaseOperations(operations){
+  for(let start=0;start<operations.length;start+=400){
+    const batch=writeBatch(db);
+    operations.slice(start,start+400).forEach(operation=>{
+      const ref=doc(CASES_COL,operation.id);
+      if(operation.type==="delete")batch.delete(ref);
+      else batch.set(ref,{...operation.payload,_updatedTs:serverTimestamp()},{merge:true});
+    });
+    await batch.commit();
+  }
+}
+
+async function initializeCases(records){
+  const initial=safeClone(Array.isArray(records)?records:[]);
+  const operations=initial.map((record,index)=>{
+    const id=docIdFor(record);
+    const payload=payloadFor(record,id,index);
+    orderById.set(id,index);
+    return {type:"set",id,payload};
+  });
+  await commitCaseOperations(operations);
+}
+
+async function flushRemoteState(state){
+  try{
+    setSyncState("同步中…");
+    const nextRecords=safeClone(Array.isArray(state?.records)?state.records:[]);
+    const ids=assignMissingOrders(nextRecords);
+    const nextIds=new Set(ids);
+    const operations=[];
+
+    nextRecords.forEach((record,index)=>{
+      const id=ids[index];
+      const payload=payloadFor(record,id,orderById.get(id));
+      const nextSignature=signature(payload);
+      if(remoteRecordSignatures.get(id)!==nextSignature)operations.push({type:"set",id,payload});
+    });
+    knownCaseIds.forEach(id=>{if(!nextIds.has(id))operations.push({type:"delete",id})});
+    await commitCaseOperations(operations);
+
+    const nextSettings=cleanSettings(state?.settings||{});
+    const nextSettingsSignature=signature(nextSettings);
+    if(validSettings(nextSettings)&&nextSettingsSignature!==remoteSettingsSignature){
+      await setDoc(CONFIG_DOC,{...nextSettings,initialized:true,_updatedTs:serverTimestamp()},{merge:true});
+      remoteSettingsSignature=nextSettingsSignature;
+    }
+
+    operations.forEach(operation=>{
+      if(operation.type==="delete"){
+        knownCaseIds.delete(operation.id);
+        orderById.delete(operation.id);
+        remoteRecordSignatures.delete(operation.id);
+      }else{
+        knownCaseIds.add(operation.id);
+        remoteRecordSignatures.set(operation.id,signature(operation.payload));
+      }
+    });
+    setSyncState("已同步","ok");
+  }catch(error){
+    console.error(error);
+    setSyncState(firebaseErrorText(error,"同步失敗"),"error");
+    throw error;
+  }
+}
+
+function queueSync(state){
+  pendingState=safeClone(state);
+  setSyncState("等待同步…");
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{
+    const stateToWrite=pendingState;
+    pendingState=null;
+    flushChain=flushChain.then(()=>flushRemoteState(stateToWrite)).catch(()=>{});
+  },350);
+}
+
+async function bootRealtime(){
+  setSyncState("等待 Firebase 登入…");
+  try{
+    const provider=new GoogleAuthProvider();
+    await requireFirebaseUser({
+      auth,
+      provider,
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut,
+      setPersistence,
+      browserLocalPersistence,
+      moduleName:"環評案件管理系統"
+    });
+
+    setSyncState("讀取雲端資料…");
+    const localState=window.__getEiaLocalState?.()||{records:[],settings:{}};
+    let [casesSnapshot,configSnapshot]=await Promise.all([getDocs(CASES_COL),getDoc(CONFIG_DOC)]);
+    const initialized=configSnapshot.exists()&&configSnapshot.data()?.initialized===true;
+
+    if(casesSnapshot.empty&&!initialized){
+      await initializeCases(localState.records);
+      await setDoc(CONFIG_DOC,{...cleanSettings(localState.settings),initialized:true,_updatedTs:serverTimestamp()},{merge:true});
+      [casesSnapshot,configSnapshot]=await Promise.all([getDocs(CASES_COL),getDoc(CONFIG_DOC)]);
+    }else if(!configSnapshot.exists()){
+      await setDoc(CONFIG_DOC,{...cleanSettings(localState.settings),initialized:true,_updatedTs:serverTimestamp()},{merge:true});
+      configSnapshot=await getDoc(CONFIG_DOC);
+    }else if(!initialized){
+      await setDoc(CONFIG_DOC,{initialized:true,_updatedTs:serverTimestamp()},{merge:true});
+      configSnapshot=await getDoc(CONFIG_DOC);
+    }
+
+    applyCaseSnapshot(casesSnapshot);
+    applyConfigSnapshot(configSnapshot);
+    window.__eiaQueueSync=queueSync;
+
+    onSnapshot(CASES_COL,snapshot=>{
+      applyCaseSnapshot(snapshot);
+      setSyncState("已同步","ok");
+    },error=>{
+      console.error(error);
+      setSyncState(firebaseErrorText(error,"案件同步失敗"),"error");
+    });
+    onSnapshot(CONFIG_DOC,snapshot=>{
+      applyConfigSnapshot(snapshot);
+    },error=>{
+      console.error(error);
+      setSyncState(firebaseErrorText(error,"設定同步失敗"),"error");
+    });
+    setSyncState("已同步","ok");
+  }catch(error){
+    console.error(error);
+    setSyncState(firebaseErrorText(error,"Firebase 連線失敗"),"error");
+  }
+}
+
+bootRealtime();
+</script>
+</body></html>

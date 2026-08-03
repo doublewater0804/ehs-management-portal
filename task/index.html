@@ -473,8 +473,14 @@
   <script>
     const LOCAL_STORAGE_KEY = 'ESH_MANAGEMENT_DATA_V86';
     const LOCAL_STORAGE_BACKUP_KEY = 'ESH_MANAGEMENT_DATA_V86__BACKUP';
+    const CUSTOM_SOURCE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_SOURCES_V1';
+    const DEFAULT_SOURCE_OPTIONS = Object.freeze([
+      'NOTES', '速報表', '開會通知單', '環保通報單', '蓋用印申請單', '外來文',
+      '主管交辦', '報告', '業洽函', '層峰指示', '法規要求', '全企業工安環保通報', '專案工作'
+    ]);
 
     let tasks = [];
+    let customSources = [];
     let statusChart = null;
     let factoryChart = null;
     let editingId = null;
@@ -610,6 +616,107 @@
 
     function toggleOtherSource(val) {
       document.getElementById('other-source-container')?.classList.toggle('hidden', val !== '其他');
+    }
+
+    function normalizeSourceName(value) {
+      return String(value || '')
+        .replace(/^其他[:：]\s*/, '')
+        .trim()
+        .replace(/\s+/g, ' ');
+    }
+
+    function sourceKey(value) {
+      return normalizeSourceName(value).toLocaleLowerCase('zh-Hant');
+    }
+
+    function isDefaultSource(value) {
+      const key = sourceKey(value);
+      return DEFAULT_SOURCE_OPTIONS.some(item => sourceKey(item) === key);
+    }
+
+    function loadCustomSources() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(CUSTOM_SOURCE_STORAGE_KEY) || '[]');
+        customSources = Array.isArray(saved) ? saved : [];
+      } catch (e) {
+        customSources = [];
+      }
+      syncCustomSourcesFromTasks();
+    }
+
+    function persistCustomSources() {
+      localStorage.setItem(CUSTOM_SOURCE_STORAGE_KEY, JSON.stringify(customSources));
+    }
+
+    function rememberCustomSource(value) {
+      const name = normalizeSourceName(value);
+      if (!name || name === '其他' || isDefaultSource(name)) return name;
+
+      const key = sourceKey(name);
+      if (!customSources.some(item => sourceKey(item) === key)) {
+        customSources.push(name);
+        customSources.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        persistCustomSources();
+      }
+      return name;
+    }
+
+    function syncCustomSourcesFromTasks() {
+      let changed = false;
+      tasks.forEach(task => {
+        const name = normalizeSourceName(task?.source);
+        if (!name || name === '其他' || isDefaultSource(name)) return;
+        const key = sourceKey(name);
+        if (!customSources.some(item => sourceKey(item) === key)) {
+          customSources.push(name);
+          changed = true;
+        }
+      });
+      customSources = customSources
+        .map(normalizeSourceName)
+        .filter(name => name && name !== '其他' && !isDefaultSource(name))
+        .filter((name, index, all) => all.findIndex(item => sourceKey(item) === sourceKey(name)) === index)
+        .sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+      if (changed) persistCustomSources();
+    }
+
+    function appendSelectOption(select, value, label = value) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      select.appendChild(option);
+    }
+
+    function updateSourceOptions(preferredSource, preferredFilter) {
+      syncCustomSourcesFromTasks();
+
+      const sourceSelect = document.getElementById('f-source');
+      if (sourceSelect) {
+        const current = preferredSource !== undefined ? preferredSource : sourceSelect.value;
+        const normalizedCurrent = current === '其他' ? '其他' : normalizeSourceName(current);
+        sourceSelect.innerHTML = '';
+        DEFAULT_SOURCE_OPTIONS.forEach(source => appendSelectOption(sourceSelect, source));
+        customSources.forEach(source => appendSelectOption(sourceSelect, source));
+        appendSelectOption(sourceSelect, '其他');
+        sourceSelect.value = [...sourceSelect.options].some(option => option.value === normalizedCurrent)
+          ? normalizedCurrent
+          : 'NOTES';
+        toggleOtherSource(sourceSelect.value);
+      }
+
+      const filterSelect = document.getElementById('filter-source');
+      if (filterSelect) {
+        const current = preferredFilter !== undefined ? preferredFilter : filterSelect.value;
+        const normalizedCurrent = current === 'all' || current === '其他' ? current : normalizeSourceName(current);
+        filterSelect.innerHTML = '';
+        appendSelectOption(filterSelect, 'all', '所有來源');
+        DEFAULT_SOURCE_OPTIONS.forEach(source => appendSelectOption(filterSelect, source));
+        customSources.forEach(source => appendSelectOption(filterSelect, source));
+        appendSelectOption(filterSelect, '其他');
+        filterSelect.value = [...filterSelect.options].some(option => option.value === normalizedCurrent)
+          ? normalizedCurrent
+          : 'all';
+      }
     }
 
     function toggleOtherCategory(val) {
@@ -755,6 +862,7 @@
 
     function updateFilters() {
       updateOwnerUnitOptions();
+      updateSourceOptions();
 
       const ownerSelect = document.getElementById('filter-owner');
       if (ownerSelect) {
@@ -811,7 +919,9 @@
           (filters.category === 'all' || (filters.category === '其他' ? String(t.category).startsWith('其他') : t.category === filters.category)) &&
           (filters.owner === 'all' || t.owner === filters.owner) &&
           (filters.unit === 'all' || t.unit === filters.unit) &&
-          (filters.source === 'all' || (filters.source === '其他' ? String(t.source).startsWith('其他') : t.source === filters.source));
+          (filters.source === 'all' || (filters.source === '其他'
+            ? String(t.source || '').trim() === '其他'
+            : normalizeSourceName(t.source) === filters.source));
       });
 
       document.getElementById('kpi-total').innerText = tasks.length;
@@ -861,7 +971,7 @@
             <td class="px-6 py-4">
               <div class="font-bold text-slate-700">${escapeHtml(t.owner || '—')}</div>
               <div class="text-[10px] text-slate-500 font-bold truncate max-w-[120px]">${escapeHtml(t.unit || '未填單位')}</div>
-              <div class="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">${escapeHtml(t.source)}</div>
+              <div class="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">${escapeHtml(normalizeSourceName(t.source) || '—')}</div>
             </td>
             <td class="px-6 py-4">
               <div class="font-bold text-slate-800 line-clamp-1 ${isDone ? 'line-through text-slate-400' : ''}">${escapeHtml(t.task)}</div>
@@ -1044,10 +1154,10 @@
       toggleOtherCategory(isOtherCat ? '其他' : t.category);
       document.getElementById('f-category-other').value = isOtherCat ? String(t.category).replace('其他:', '') : '';
 
-      const isOtherSrc = String(t.source || '').startsWith('其他:');
-      document.getElementById('f-source').value = isOtherSrc ? '其他' : t.source;
-      toggleOtherSource(isOtherSrc ? '其他' : t.source);
-      document.getElementById('f-source-other').value = isOtherSrc ? String(t.source).replace('其他:', '') : '';
+      const sourceName = normalizeSourceName(t.source);
+      const isUnnamedOtherSrc = String(t.source || '').trim() === '其他' || !sourceName;
+      updateSourceOptions(isUnnamedOtherSrc ? '其他' : sourceName);
+      document.getElementById('f-source-other').value = '';
 
       document.getElementById('f-task').value = t.task;
       document.getElementById('f-desc').value = t.desc;
@@ -1080,7 +1190,8 @@
       let srcVal = document.getElementById('f-source').value;
       if (srcVal === '其他') {
         const other = document.getElementById('f-source-other').value.trim();
-        srcVal = other ? `其他:${other}` : '其他';
+        if (!other) return alert('請輸入具體來源');
+        srcVal = rememberCustomSource(other);
       }
 
       const ownerInput = normalizeOtherInput(document.getElementById('f-owner').value, '負責人');
@@ -1172,6 +1283,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadDataFromStorage();
+      loadCustomSources();
       updateFilters();
       renderAll();
       document.getElementById('current-date').innerText = getTodayStr();
@@ -1205,6 +1317,7 @@
         toggleOtherCategory('工安');
         document.getElementById('f-source').value = 'NOTES';
         toggleOtherSource('NOTES');
+        document.getElementById('f-source-other').value = '';
         updateOwnerUnitOptions();
         document.getElementById('modal').classList.remove('hidden');
       });

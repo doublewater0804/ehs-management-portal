@@ -741,12 +741,12 @@
             <h4 class="section-title">合約清單</h4>
             <div class="toolbar">
               <div class="field"><label>狀態</label><select id="contractListStatus"><option value="">全部</option></select></div>
-              <div class="field"><label>關鍵字</label><input id="contractSearch" placeholder="合約編號、名稱、廠區"></div>
+              <div class="field"><label>關鍵字</label><input id="contractSearch" placeholder="合約編號、名稱、廢棄物、廠區"></div>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>合約編號</th><th>合約名稱</th><th>廠區</th><th>生產廠</th><th>期限</th><th>狀態</th><th>廢棄物數</th><th>操作</th></tr></thead>
+              <thead><tr><th>合約編號</th><th>合約名稱</th><th>廢棄物名稱</th><th>廠區</th><th>生產廠</th><th>期限</th><th>狀態</th><th>廢棄物數</th><th>操作</th></tr></thead>
               <tbody id="contractTable"></tbody>
             </table>
           </div>
@@ -764,14 +764,12 @@
 
         <div class="card">
           <div class="toolbar" id="compareFilters">
-            <div class="field"><label>比較月份</label><input type="month" id="fMonth"></div>
             <div class="field"><label>廠區</label><select id="fSite"></select></div>
             <div class="field"><label>生產廠</label><select id="fFactory"></select></div>
             <div class="field"><label>廢棄物</label><select id="fWaste"></select></div>
             <div class="field"><label>處理方式</label><select id="fMethod"></select></div>
             <div class="field"><label>清除機構</label><select id="fHauler"></select></div>
             <div class="field"><label>處理機構</label><select id="fProcessor"></select></div>
-            <div class="field"><label>合約</label><select id="fContract"></select></div>
             <div class="field"><label>狀態</label><select id="fStatus"></select></div>
             <button class="btn primary" id="applyCompareBtn">查詢</button>
             <button class="btn secondary" id="resetCompareBtn">重設</button>
@@ -2882,29 +2880,44 @@
     addContractLine();
   }
 
+  function contractWasteLabels(contract){
+    const labels=(contract.lines || [])
+      .map(line=>wasteLabel(getBy("wastes",line.wasteId)))
+      .filter(label=>label && label!=="—");
+    return [...new Set(labels)];
+  }
+
   function renderContractTable(){
     const q = $("#contractSearch").value.trim().toLowerCase();
     const status = $("#contractListStatus").value;
     const rows = state.contracts.filter(c => {
+      const factoryIds=Array.isArray(c.factoryIds) ? c.factoryIds : [];
+      const wasteText=contractWasteLabels(c).join(" ");
       const text = [c.no,c.name,c.requestNo,c.previousContractNo,c.currentContractor,c.applicationDepartmentName,c.workArea,
-        nameOf("sites",c.siteId),...c.factoryIds.map(id=>nameOf("factories",id))].join(" ").toLowerCase();
+        wasteText,nameOf("sites",c.siteId),...factoryIds.map(id=>nameOf("factories",id))].join(" ").toLowerCase();
       return (!q || text.includes(q)) && (!status || c.status === status);
     });
 
-    $("#contractTable").innerHTML = rows.length ? rows.map(c => `
+    $("#contractTable").innerHTML = rows.length ? rows.map(c => {
+      const factoryIds=Array.isArray(c.factoryIds) ? c.factoryIds : [];
+      const lines=Array.isArray(c.lines) ? c.lines : [];
+      const wasteNames=contractWasteLabels(c);
+      return `
       <tr>
         <td>${esc(c.no)}</td>
         <td class="wrap">${esc(c.name)}</td>
+        <td class="wrap">${wasteNames.length ? wasteNames.map(esc).join("、") : "—"}</td>
         <td>${esc(nameOf("sites",c.siteId))}</td>
-        <td class="wrap">${c.factoryIds.map(id=>esc(nameOf("factories",id))).join("、")}</td>
+        <td class="wrap">${factoryIds.map(id=>esc(nameOf("factories",id))).join("、") || "—"}</td>
         <td>${esc(c.startDate)} ～ ${esc(c.endDate)}</td>
         <td>${statusBadge(c.status)}</td>
-        <td class="right">${c.lines.length}</td>
+        <td class="right">${lines.length}</td>
         <td>
           <button class="btn secondary small" data-edit-contract="${c.id}">編輯</button>
           <button class="btn danger small" data-delete-contract="${c.id}">刪除</button>
         </td>
-      </tr>`).join("") : `<tr><td colspan="8" class="empty">無合約資料</td></tr>`;
+      </tr>`;
+    }).join("") : `<tr><td colspan="9" class="empty">無合約資料</td></tr>`;
   }
 
   function renderContractPage(){
@@ -3007,17 +3020,8 @@
     set("#fMethod",state.methods);
     set("#fHauler",state.haulers);
     set("#fProcessor",state.processors);
-    set("#fContract",state.contracts.map(c=>({id:c.id,name:`${c.no} ${c.name}`})));
     const oldStatus = $("#fStatus").value;
     $("#fStatus").innerHTML = `<option value="">全部</option>${["草稿","有效","已到期","終止","停用"].map(s=>`<option ${s===oldStatus?"selected":""}>${s}</option>`).join("")}`;
-  }
-
-  function activeInMonth(row, month){
-    if(!month) return true;
-    const monthStart = `${month}-01`;
-    const d = new Date(Number(month.slice(0,4)), Number(month.slice(5,7)), 0).getDate();
-    const monthEnd = `${month}-${String(d).padStart(2,"0")}`;
-    return row.startDate <= monthEnd && row.endDate >= monthStart;
   }
 
   function renderCompare(){
@@ -3025,20 +3029,18 @@
     let rows = flattenContracts();
 
     const filters = {
-      month:$("#fMonth").value, siteId:$("#fSite").value, factoryId:$("#fFactory").value,
+      siteId:$("#fSite").value, factoryId:$("#fFactory").value,
       wasteId:$("#fWaste").value, methodId:$("#fMethod").value, haulerId:$("#fHauler").value,
-      processorId:$("#fProcessor").value, contractId:$("#fContract").value, status:$("#fStatus").value
+      processorId:$("#fProcessor").value, status:$("#fStatus").value
     };
 
     rows = rows.filter(r =>
-      activeInMonth(r,filters.month) &&
       (!filters.siteId || r.siteId===filters.siteId) &&
       (!filters.factoryId || r.factoryId===filters.factoryId) &&
       (!filters.wasteId || r.wasteId===filters.wasteId) &&
       (!filters.methodId || r.methodId===filters.methodId) &&
       (!filters.haulerId || r.haulerId===filters.haulerId) &&
       (!filters.processorId || r.processorId===filters.processorId) &&
-      (!filters.contractId || r.contractId===filters.contractId) &&
       (!filters.status || r.status===filters.status)
     ).sort((a,b)=>{
       const av=nullableNumber(a.totalPrice), bv=nullableNumber(b.totalPrice);

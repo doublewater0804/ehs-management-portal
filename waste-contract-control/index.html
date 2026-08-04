@@ -324,6 +324,14 @@
       background:#f9fbfd;
       margin-bottom:9px;
     }
+    .line-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+    .contract-line input:disabled{
+      background:#eef2f6;
+      color:#7a8796;
+      cursor:not-allowed;
+      opacity:1;
+    }
+    .contract-line input[readonly]{background:#f4f7fa;color:#53657a}
 
     .notice{
       padding:12px 14px;border-radius:10px;
@@ -566,7 +574,7 @@
             <h4 class="section-title">合約概況總覽 <small>依合約廢棄物明細</small></h4>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>廠區</th><th>生產廠</th><th>廢棄物</th><th>處理方式</th><th>月清運量</th><th>合計單價</th></tr></thead>
+                <thead><tr><th>廠區</th><th>生產廠</th><th>廢棄物</th><th>處理方式</th><th>月清運量</th><th>清處單價</th></tr></thead>
                 <tbody id="overviewTable"></tbody>
               </table>
             </div>
@@ -717,7 +725,7 @@
             </div>
 
             <div class="notice" style="margin-top:14px">
-              資料未完整仍可儲存，之後可再編輯補充；合計單價由「清運單價＋處理單價」自動計算。
+              資料未完整仍可儲存，之後可再編輯補充。可直接輸入「清處單價」；若先輸入「清除單價」或「處理單價」，清處單價將自動計算。每筆明細僅採其中一種計價方式。
             </div>
 
             <div style="display:flex;gap:8px;margin-top:14px">
@@ -749,7 +757,7 @@
         <div class="page-head">
           <div>
             <h3>比較分析</h3>
-            <p>比較不同廠區及生產廠的處理方式、清運費、處理費及合計單價。</p>
+            <p>比較不同廠區及生產廠的處理方式、清除單價、處理單價及清處單價。</p>
           </div>
           <button class="btn secondary no-print" onclick="window.print()">匯出 PDF</button>
         </div>
@@ -770,7 +778,7 @@
           </div>
 
           <div class="notice" style="margin-bottom:14px">
-            標示規則：目前篩選結果中，清運單價、處理單價及合計單價分別標示最高與最低值。
+            標示規則：目前篩選結果中，清除單價、處理單價及清處單價分別標示最高與最低值；未拆分的清處包價不參與清除／處理單價比較。
           </div>
 
           <div class="table-wrap">
@@ -778,7 +786,7 @@
               <thead>
                 <tr>
                   <th>廠區</th><th>生產廠</th><th>廢棄物</th><th>處理方式</th>
-                  <th>月清運量</th><th>清運單價</th><th>處理單價</th><th>合計單價</th>
+                  <th>月清運量</th><th>清除單價</th><th>處理單價</th><th>清處單價</th>
                   <th>合約期限</th><th>清除機構</th><th>處理機構</th><th>合約</th>
                 </tr>
               </thead>
@@ -890,7 +898,7 @@
             <div class="grid cols-4" id="annualDetailMetrics"></div>
             <div class="table-wrap" style="margin-top:16px">
               <table style="min-width:1800px">
-                <thead><tr><th>廠區</th><th>事業部／廠處</th><th>生產廠</th><th>廢棄物代碼</th><th>廢棄物名稱</th><th>處理方式</th><th>清運量<br>噸／年</th><th>估算月平均<br>公斤／月</th><th>處理單位</th><th>清運單價<br>元／公斤</th><th>處理單價<br>元／公斤</th><th>合計單價<br>元／公斤</th><th>年度費用（元）</th><th>費用註記</th><th>備註</th><th>來源</th></tr></thead>
+                <thead><tr><th>廠區</th><th>事業部／廠處</th><th>生產廠</th><th>廢棄物代碼</th><th>廢棄物名稱</th><th>處理方式</th><th>清運量<br>噸／年</th><th>估算月平均<br>公斤／月</th><th>處理單位</th><th>清除單價<br>元／公斤</th><th>處理單價<br>元／公斤</th><th>清處單價<br>元／公斤</th><th>年度費用（元）</th><th>費用註記</th><th>備註</th><th>來源</th></tr></thead>
                 <tbody id="annualDetailTable"></tbody>
               </table>
             </div>
@@ -1789,12 +1797,43 @@
 
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
 
+  function nullableNumber(value){
+    if(value === null || value === undefined || value === "") return null;
+    const number=Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function normalizeContractPricing(result){
+    const contracts=Array.isArray(result.contracts) ? result.contracts : [];
+    result.contracts=contracts.map(contract => ({
+      ...contract,
+      factoryIds:Array.isArray(contract.factoryIds) ? contract.factoryIds : [],
+      lines:(Array.isArray(contract.lines) ? contract.lines : []).map(line => {
+        const transport=nullableNumber(line.transportPrice);
+        const treatment=nullableNumber(line.treatmentPrice);
+        const storedTotal=nullableNumber(line.totalPrice);
+        const hasComponents=transport !== null || treatment !== null;
+        const pricingMode=line.pricingMode === "package" || (!hasComponents && storedTotal !== null) ? "package" : (hasComponents || line.pricingMode === "split" ? "split" : "");
+        const totalPrice=pricingMode === "package"
+          ? storedTotal
+          : (hasComponents ? (transport || 0)+(treatment || 0) : null);
+        return {
+          ...line,
+          pricingMode,
+          transportPrice:pricingMode === "package" ? null : transport,
+          treatmentPrice:pricingMode === "package" ? null : treatment,
+          totalPrice
+        };
+      })
+    }));
+    return result;
+  }
 
   const MASTER_SEED_VERSION = 1;
 
   function applyMasterSeed(base){
     const source = base && typeof base === "object" ? base : {};
-    const result = {...clone(defaultState), ...source};
+    const result = normalizeContractPricing({...clone(defaultState), ...source});
     result.firebaseConfig={...FIREBASE_CONFIG};
     if(Number(source.masterSeedVersion || 0) >= MASTER_SEED_VERSION) return result;
 
@@ -1989,7 +2028,7 @@
     const meta = {
       dashboard:["儀表板","掌握合約狀態、廠區與60日內到期資訊"],
       masters:["基本資料管理","維護廠區、生產廠、廢棄物、處理方式及合作機構"],
-      contracts:["清運合約管理","管理合約期限、月清運量與清運／處理單價"],
+      contracts:["清運合約管理","管理合約期限、月清運量與清除／處理／清處單價"],
       compare:["比較分析","跨廠比較處理方式與費用"],
       annual:["年度清運量與費用","追蹤2022年至2025年清運量及清除處理費用"],
       io:["匯入／匯出／報表","Excel、JSON與PDF資料處理"],
@@ -2047,7 +2086,7 @@
         <td>${esc(r.waste)}</td>
         <td>${esc(r.method)}</td>
         <td class="right">${fmt(r.monthlyQty)} 公斤／月</td>
-        <td class="right">${fmt(r.totalPrice)} 元／公斤</td>
+        <td class="right">${nullableNumber(r.totalPrice) === null ? "—" : `${fmt(r.totalPrice)} 元／公斤`}</td>
       </tr>`).join("") : `<tr><td colspan="6" class="empty">尚無合約資料</td></tr>`;
   }
 
@@ -2122,20 +2161,31 @@
     return `<option value="">${placeholder}</option>` + items.map(x => `<option value="${x.id}" ${x.id===selected?"selected":""}>${esc(x.name)}</option>`).join("");
   }
 
+  function wasteLabel(item){
+    if(!item) return "—";
+    return item.code ? `${item.name}(${item.code})` : item.name;
+  }
+
+  function wasteOptionHtml(items, selected="", placeholder="全部"){
+    return `<option value="">${placeholder}</option>` + items.map(x => `<option value="${x.id}" ${x.id===selected?"selected":""}>${esc(wasteLabel(x))}</option>`).join("");
+  }
+
   function institutionOptionsHtml(items){
-    return items.map(x=>`<option value="${esc(x.name)}">${esc(x.code||"")}</option>`).join("");
+    return items.map(x=>`<option value="${esc(x.name)}">${esc(x.code||"待補代碼")}</option>`).join("");
   }
 
   function resolveInstitution(type,value){
     const name=String(value||"").trim();
-    if(!name) return {id:"",name:""};
+    if(!name) return {id:"",name:"",created:false};
     const key=name.replace(/\s/g,"").toLowerCase();
     let item=state[type].find(x=>String(x.name||"").replace(/\s/g,"").toLowerCase()===key || String(x.code||"").replace(/\s/g,"").toLowerCase()===key);
+    let created=false;
     if(!item){
-      item={id:uid(type==="haulers"?"H":"P"),code:"",name,note:"由合約欄位自行輸入建立"};
+      item={id:uid(type==="haulers"?"H":"P"),code:"",name,note:"由合約自行建立，待補代碼"};
       state[type].push(item);
+      created=true;
     }
-    return {id:item.id,name:item.name};
+    return {id:item.id,name:item.name,created};
   }
 
   function setOcrStatus(message, progress=null){
@@ -2746,22 +2796,78 @@
     `).join("") : `<span class="muted">請先建立生產廠</span>`;
   }
 
+  function detectLinePricingMode(line={}){
+    if(line.pricingMode === "package" || line.pricingMode === "split") return line.pricingMode;
+    const hasComponents=nullableNumber(line.transportPrice) !== null || nullableNumber(line.treatmentPrice) !== null;
+    return hasComponents ? "split" : (nullableNumber(line.totalPrice) !== null ? "package" : "");
+  }
+
+  function updateSplitTotal(line){
+    const transport=$(".line-transport",line).value;
+    const treatment=$(".line-treatment",line).value;
+    $(".line-total",line).value=transport === "" && treatment === "" ? "" : String((Number(transport)||0)+(Number(treatment)||0));
+  }
+
+  function applyLinePricingMode(line,mode,{clear=false}={}){
+    const transport=$(".line-transport",line);
+    const treatment=$(".line-treatment",line);
+    const total=$(".line-total",line);
+    line.dataset.pricingMode=mode;
+
+    if(clear){
+      transport.value="";
+      treatment.value="";
+      total.value="";
+    }
+
+    if(mode === "package"){
+      transport.value="";
+      treatment.value="";
+      transport.disabled=true;
+      treatment.disabled=true;
+      total.readOnly=false;
+      total.title="清處包價：不拆分清除單價與處理單價";
+    }else if(mode === "split"){
+      transport.disabled=false;
+      treatment.disabled=false;
+      total.readOnly=true;
+      total.title="由清除單價＋處理單價自動計算";
+      updateSplitTotal(line);
+    }else{
+      transport.disabled=false;
+      treatment.disabled=false;
+      total.readOnly=false;
+      total.title="可直接輸入清處單價，或先輸入清除／處理單價";
+    }
+  }
+
   function lineHtml(line={}){
-    const hasPrice=line.transportPrice!==undefined && line.transportPrice!==null && line.transportPrice!=="" || line.treatmentPrice!==undefined && line.treatmentPrice!==null && line.treatmentPrice!=="";
-    const totalValue=hasPrice ? fmt((Number(line.transportPrice)||0)+(Number(line.treatmentPrice)||0)) : "";
-    return `<div class="contract-line" data-line-id="${line.id || uid("L")}">
-      <div class="field"><label>廢棄物</label><select class="line-waste">${optionHtml(state.wastes,line.wasteId,"請選擇")}</select></div>
+    const mode=detectLinePricingMode(line);
+    const transportValue=mode === "package" ? "" : (line.transportPrice ?? "");
+    const treatmentValue=mode === "package" ? "" : (line.treatmentPrice ?? "");
+    const totalValue=mode === "package"
+      ? (line.totalPrice ?? "")
+      : ((nullableNumber(line.transportPrice) !== null || nullableNumber(line.treatmentPrice) !== null)
+        ? (nullableNumber(line.transportPrice) || 0)+(nullableNumber(line.treatmentPrice) || 0)
+        : "");
+    return `<div class="contract-line" data-line-id="${line.id || uid("L")}" data-pricing-mode="${mode}">
+      <div class="field"><label>廢棄物</label><select class="line-waste">${wasteOptionHtml(state.wastes,line.wasteId,"請選擇")}</select></div>
       <div class="field"><label>處理方式</label><select class="line-method">${optionHtml(state.methods,line.methodId,"請選擇")}</select></div>
       <div class="field"><label>月清運量</label><input class="line-qty" type="number" min="0" step="0.01" value="${line.monthlyQty ?? ""}"></div>
-      <div class="field"><label>清運單價</label><input class="line-transport" type="number" min="0" step="0.01" value="${line.transportPrice ?? ""}"></div>
-      <div class="field"><label>處理單價</label><input class="line-treatment" type="number" min="0" step="0.01" value="${line.treatmentPrice ?? ""}"></div>
-      <div class="field"><label>合計單價</label><input class="line-total" value="${totalValue}" readonly></div>
-      <button class="btn danger small remove-line" type="button">刪除</button>
+      <div class="field"><label>清除單價</label><input class="line-transport" type="number" min="0" step="0.01" value="${transportValue}"></div>
+      <div class="field"><label>處理單價</label><input class="line-treatment" type="number" min="0" step="0.01" value="${treatmentValue}"></div>
+      <div class="field"><label>清處單價</label><input class="line-total" type="number" min="0" step="0.01" value="${totalValue}"></div>
+      <div class="line-actions">
+        <button class="btn secondary small reset-line-price" type="button">重設計價</button>
+        <button class="btn danger small remove-line" type="button">刪除</button>
+      </div>
     </div>`;
   }
 
   function addContractLine(line={}){
     $("#contractLines").insertAdjacentHTML("beforeend",lineHtml(line));
+    const element=$("#contractLines").lastElementChild;
+    applyLinePricingMode(element,detectLinePricingMode(line));
   }
 
   function resetContractForm(){
@@ -2860,19 +2966,28 @@
 
       c.factoryIds.forEach(factoryId => {
         c.lines.forEach(line => {
+          const wasteItem=getBy("wastes",line.wasteId);
+          const pricingMode=detectLinePricingMode(line);
+          const transportPrice=pricingMode === "package" ? null : nullableNumber(line.transportPrice);
+          const treatmentPrice=pricingMode === "package" ? null : nullableNumber(line.treatmentPrice);
+          const hasComponents=transportPrice !== null || treatmentPrice !== null;
+          const totalPrice=pricingMode === "package"
+            ? nullableNumber(line.totalPrice)
+            : (hasComponents ? (transportPrice || 0)+(treatmentPrice || 0) : null);
           rows.push({
             contractId:c.id, contractNo:c.no, contractName:c.name,
             status:c.status, startDate:c.startDate, endDate:c.endDate,
             siteId:c.siteId, site,
             factoryId, factory:nameOf("factories",factoryId),
-            wasteId:line.wasteId, waste:nameOf("wastes",line.wasteId),
+            wasteId:line.wasteId, waste:wasteLabel(wasteItem), wasteCode:wasteItem?.code || "", wasteName:wasteItem?.name || "",
             methodId:line.methodId, method:nameOf("methods",line.methodId),
             haulerId:c.haulerId, hauler,
             processorId:c.processorId, processor,
             monthlyQty:Number(line.monthlyQty)||0,
-            transportPrice:Number(line.transportPrice)||0,
-            treatmentPrice:Number(line.treatmentPrice)||0,
-            totalPrice:(Number(line.transportPrice)||0)+(Number(line.treatmentPrice)||0)
+            pricingMode,
+            transportPrice,
+            treatmentPrice,
+            totalPrice
           });
         });
       });
@@ -2887,7 +3002,8 @@
     };
     set("#fSite",state.sites);
     set("#fFactory",state.factories);
-    set("#fWaste",state.wastes);
+    const oldWaste=$("#fWaste").value;
+    $("#fWaste").innerHTML=wasteOptionHtml(state.wastes,oldWaste,"全部");
     set("#fMethod",state.methods);
     set("#fHauler",state.haulers);
     set("#fProcessor",state.processors);
@@ -2924,19 +3040,27 @@
       (!filters.processorId || r.processorId===filters.processorId) &&
       (!filters.contractId || r.contractId===filters.contractId) &&
       (!filters.status || r.status===filters.status)
-    ).sort((a,b)=>a.totalPrice-b.totalPrice);
+    ).sort((a,b)=>{
+      const av=nullableNumber(a.totalPrice), bv=nullableNumber(b.totalPrice);
+      if(av === null && bv === null) return 0;
+      if(av === null) return 1;
+      if(bv === null) return -1;
+      return av-bv;
+    });
 
     const extrema = key => {
-      const vals = rows.map(r=>r[key]);
+      const vals = rows.map(r=>nullableNumber(r[key])).filter(v=>v !== null);
       return vals.length ? {min:Math.min(...vals),max:Math.max(...vals)} : {min:null,max:null};
     };
     const exT = extrema("transportPrice"), exP = extrema("treatmentPrice"), exA = extrema("totalPrice");
     const tag = (v,ex) => {
-      if(ex.min===null || ex.min===ex.max) return "";
-      if(v===ex.max) return ` <span class="badge high">最高價</span>`;
-      if(v===ex.min) return ` <span class="badge low">最低價</span>`;
+      const number=nullableNumber(v);
+      if(number === null || ex.min===null || ex.min===ex.max) return "";
+      if(number===ex.max) return ` <span class="badge high">最高價</span>`;
+      if(number===ex.min) return ` <span class="badge low">最低價</span>`;
       return "";
     };
+    const priceText=value => nullableNumber(value) === null ? "—" : fmt(value);
 
     $("#compareTable").innerHTML = rows.length ? rows.map(r => `
       <tr>
@@ -2945,9 +3069,9 @@
         <td>${esc(r.waste)}</td>
         <td>${esc(r.method)}</td>
         <td class="right">${fmt(r.monthlyQty)}</td>
-        <td class="right">${fmt(r.transportPrice)}${tag(r.transportPrice,exT)}</td>
-        <td class="right">${fmt(r.treatmentPrice)}${tag(r.treatmentPrice,exP)}</td>
-        <td class="right"><strong>${fmt(r.totalPrice)}</strong>${tag(r.totalPrice,exA)}</td>
+        <td class="right">${priceText(r.transportPrice)}${tag(r.transportPrice,exT)}</td>
+        <td class="right">${priceText(r.treatmentPrice)}${tag(r.treatmentPrice,exP)}</td>
+        <td class="right"><strong>${priceText(r.totalPrice)}</strong>${tag(r.totalPrice,exA)}</td>
         <td>${esc(r.startDate)} ～ ${esc(r.endDate)}</td>
         <td>${esc(r.hauler)}</td>
         <td>${esc(r.processor)}</td>
@@ -3281,11 +3405,12 @@
 
     const lines = flattenContracts().map(r => ({
       合約編號:r.contractNo, 廠區:r.site, 生產廠:r.factory,
-      廢棄物:r.waste, 處理方式:r.method,
+      廢棄物代碼:r.wasteCode, 廢棄物名稱:r.wasteName, 廢棄物:r.waste, 處理方式:r.method,
       "月清運量(公斤/月)":r.monthlyQty,
-      "清運單價(元/公斤)":r.transportPrice,
+      計價方式:r.pricingMode === "package" ? "清處包價" : (r.pricingMode === "split" ? "分項計價" : ""),
+      "清除單價(元/公斤)":r.transportPrice,
       "處理單價(元/公斤)":r.treatmentPrice,
-      "合計單價(元/公斤)":r.totalPrice,
+      "清處單價(元/公斤)":r.totalPrice,
       合約開始日:r.startDate, 合約結束日:r.endDate,
       清除機構:r.hauler, 處理機構:r.processor, 狀態:r.status
     }));
@@ -3502,6 +3627,12 @@
       saveState("合約已刪除");
     }
 
+    const resetPrice = e.target.closest(".reset-line-price");
+    if(resetPrice){
+      const line=resetPrice.closest(".contract-line");
+      applyLinePricingMode(line,"",{clear:true});
+    }
+
     const remove = e.target.closest(".remove-line");
     if(remove){
       const line = remove.closest(".contract-line");
@@ -3579,9 +3710,15 @@
   $("#contractLines").addEventListener("input",e => {
     const line = e.target.closest(".contract-line");
     if(!line) return;
-    const a=$(".line-transport",line).value;
-    const b=$(".line-treatment",line).value;
-    $(".line-total",line).value = a==="" && b==="" ? "" : fmt((Number(a)||0)+(Number(b)||0));
+    const mode=line.dataset.pricingMode || "";
+    if(e.target.matches(".line-total")){
+      if(!mode && e.target.value !== "") applyLinePricingMode(line,"package");
+      return;
+    }
+    if(e.target.matches(".line-transport,.line-treatment")){
+      if(!mode && e.target.value !== "") applyLinePricingMode(line,"split");
+      if(line.dataset.pricingMode === "split") updateSplitTotal(line);
+    }
   });
 
   $("#contractForm").addEventListener("submit",async e => {
@@ -3597,14 +3734,18 @@
       const qty=$(".line-qty",line).value;
       const transport=$(".line-transport",line).value;
       const treatment=$(".line-treatment",line).value;
+      const total=$(".line-total",line).value;
+      const pricingMode=line.dataset.pricingMode || (total !== "" ? "package" : (transport !== "" || treatment !== "" ? "split" : ""));
       return {
         id:line.dataset.lineId,
         wasteId:$(".line-waste",line).value,
         methodId:$(".line-method",line).value,
         monthlyQty:qty==="" ? null : Number(qty),
-        transportPrice:transport==="" ? null : Number(transport),
-        treatmentPrice:treatment==="" ? null : Number(treatment),
-        hasAny:Boolean($(".line-waste",line).value || $(".line-method",line).value || qty!=="" || transport!=="" || treatment!=="")
+        pricingMode,
+        transportPrice:pricingMode === "package" || transport==="" ? null : Number(transport),
+        treatmentPrice:pricingMode === "package" || treatment==="" ? null : Number(treatment),
+        totalPrice:total==="" ? null : Number(total),
+        hasAny:Boolean($(".line-waste",line).value || $(".line-method",line).value || qty!=="" || transport!=="" || treatment!=="" || total!=="")
       };
     }).filter(x=>x.hasAny).map(({hasAny,...line})=>line);
 
@@ -3659,13 +3800,15 @@
     else state.contracts.push(record);
 
     const actionText=idx>=0 ? "合約已更新" : "合約已新增";
-    const saved=await saveState(actionText);
+    const createdInstitutions=[hauler.created ? `清除機構「${hauler.name}」` : "",processor.created ? `處理機構「${processor.name}」` : ""].filter(Boolean);
+    const institutionNotice=createdInstitutions.length ? `；已自動新增至基本資料：${createdInstitutions.join("、")}（待補代碼）` : "";
+    const saved=await saveState(`${actionText}${institutionNotice}`);
     saveBtn.disabled=false;
     saveBtn.textContent="儲存合約";
     if(saved.ok){
       const target=saved.cloudSaved ? "Firebase 雲端" : "本機瀏覽器";
       const suffix=!saved.localSaved && saved.cloudSaved ? "；本機快取空間不足，但不影響雲端資料" : "";
-      setContractSaveFeedback(`${actionText}，資料已寫入${target}${suffix}。`,"success");
+      setContractSaveFeedback(`${actionText}，資料已寫入${target}${institutionNotice}${suffix}。`,"success");
       setTimeout(()=>resetContractForm(),900);
     }
   });

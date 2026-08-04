@@ -960,13 +960,13 @@
           <div class="card">
             <h4 class="section-title">Firebase 雲端資料庫</h4>
             <div class="notice warn">
-              GitHub Pages 僅提供前端。要跨電腦共用資料，必須建立 Firebase 專案並填入 Web App 設定。正式使用前應限制 Firestore 安全規則。
+              完成 Firebase 設定後，開啟系統會自動載入雲端資料；新增、修改或刪除資料時會自動寫入 Firestore。本機資料僅作離線快取，容量不足不會阻止雲端儲存。正式使用前應限制 Firestore 安全規則。
             </div>
             <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
               <button class="btn primary" id="openFirebaseBtn">設定 Firebase</button>
               <button class="btn secondary" id="testFirebaseBtn">測試連線</button>
-              <button class="btn success" id="saveCloudBtn">上傳至雲端</button>
-              <button class="btn secondary" id="loadCloudBtn">從雲端載入</button>
+              <button class="btn success" id="saveCloudBtn">立即同步至雲端</button>
+              <button class="btn secondary" id="loadCloudBtn">重新載入雲端資料</button>
             </div>
           </div>
 
@@ -1763,6 +1763,8 @@
   let currentMaster = "sites";
   let editingMasterId = null;
   let firebaseRefs = null;
+  let cloudSaveQueue = Promise.resolve();
+  let cloudSyncStatus = "idle";
   let contractOcrFile = null;
   let contractOcrObjectUrl = "";
   let ocrRunSerial = 0;
@@ -1824,16 +1826,21 @@
   }
 
   function loadState(){
+    let upgraded;
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return clone(defaultState);
-      const upgraded=applyMasterSeed(JSON.parse(raw));
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded));
-      return upgraded;
+      upgraded=applyMasterSeed(JSON.parse(raw));
     }catch(err){
-      console.error(err);
+      console.error("本機資料讀取失敗",err);
       return clone(defaultState);
     }
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded));
+    }catch(err){
+      console.warn("本機快取空間不足，已保留讀取到的資料",err);
+    }
+    return upgraded;
   }
 
   function setContractSaveFeedback(message,type="info"){
@@ -1850,21 +1857,86 @@
     el.className="save-feedback";
   }
 
-  function saveState(message){
+  function firebaseConfigured(config=state.firebaseConfig || {}){
+    return Boolean(config.apiKey && config.projectId && config.appId);
+  }
+
+  function cloudPayload(){
+    const payload={...state};
+    delete payload.firebaseConfig;
+    return JSON.stringify(payload);
+  }
+
+  function cacheStateLocally(serialized=JSON.stringify(state)){
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      renderAll();
-      if(message) toast(message,"success");
-      return true;
+      localStorage.setItem(STORAGE_KEY,serialized);
+      return {saved:true,error:null};
     }catch(err){
-      console.error("資料儲存失敗",err);
-      const detail = err && err.name === "QuotaExceededError"
-        ? "瀏覽器儲存空間不足，請先匯出 JSON 備份或清除舊資料後再試。"
-        : `瀏覽器無法寫入資料：${err && err.message ? err.message : "未知錯誤"}`;
-      toast(`儲存失敗：${detail}`,"error",6000);
-      setContractSaveFeedback(`儲存失敗：${detail}`,"error");
-      return false;
+      console.warn("本機快取寫入失敗",err);
+      return {saved:false,error:err};
     }
+  }
+
+  async function writeCloudPayload(payload){
+    const fb=await initFirebase();
+    await fb.setDoc(fb.doc(fb.db,"wasteContractSystem","main"),{
+      payload,
+      updatedAt:new Date().toISOString()
+    });
+  }
+
+  function enqueueCloudSave(payload){
+    const task=cloudSaveQueue.catch(()=>{}).then(()=>writeCloudPayload(payload));
+    cloudSaveQueue=task;
+    return task;
+  }
+
+  async function saveState(message,{syncCloud=true}={}){
+    const local=cacheStateLocally();
+    const shouldSync=syncCloud && firebaseConfigured();
+    let cloudSaved=false;
+    let cloudError=null;
+
+    if(shouldSync) cloudSyncStatus="syncing";
+    renderAll();
+
+    if(shouldSync){
+      try{
+        await enqueueCloudSave(cloudPayload());
+        cloudSaved=true;
+        cloudSyncStatus="synced";
+      }catch(err){
+        cloudError=err;
+        cloudSyncStatus="error";
+        console.error("Firebase 儲存失敗",err);
+      }
+      renderStorageMode();
+    }
+
+    const ok=cloudSaved || local.saved;
+    if(cloudSaved){
+      const suffix=local.saved ? "" : "（本機快取空間不足，但雲端已完成）";
+      if(message) toast(`${message}，已儲存至 Firebase${suffix}`,"success",5000);
+    }else if(local.saved){
+      if(shouldSync && cloudError){
+        const detail=cloudError?.message || "未知錯誤";
+        toast(`Firebase 同步失敗，資料已暫存本機：${detail}`,"error",7000);
+        setContractSaveFeedback(`Firebase 同步失敗；資料已暫存本機：${detail}`,"error");
+      }else if(message){
+        toast(`${message}，已儲存於本機`,"success");
+      }
+    }else{
+      const localDetail=local.error?.name === "QuotaExceededError"
+        ? "瀏覽器儲存空間不足"
+        : `瀏覽器無法寫入資料：${local.error?.message || "未知錯誤"}`;
+      const cloudDetail=shouldSync
+        ? `；Firebase 也未完成：${cloudError?.message || "未知錯誤"}`
+        : "；目前尚未完整設定 Firebase";
+      const detail=`${localDetail}${cloudDetail}`;
+      toast(`儲存失敗：${detail}`,"error",8000);
+      setContractSaveFeedback(`儲存失敗：${detail}`,"error");
+    }
+    return {ok,localSaved:local.saved,cloudSaved,localError:local.error,cloudError};
   }
 
   function toast(message,type="info",duration=3200){
@@ -3136,8 +3208,15 @@
   }
 
   function renderStorageMode(){
-    const configured = state.firebaseConfig?.apiKey && state.firebaseConfig?.projectId;
-    $("#storageMode").innerHTML = `<span class="status-dot ${configured?"online":"offline"}"></span> ${configured?"Firebase 已設定":"本機模式"}`;
+    const configured=firebaseConfigured();
+    const labels={
+      idle:"Firebase 自動同步",
+      syncing:"Firebase 同步中",
+      synced:"Firebase 已同步",
+      error:"Firebase 同步失敗"
+    };
+    const online=configured && cloudSyncStatus!=="error";
+    $("#storageMode").innerHTML = `<span class="status-dot ${online?"online":"offline"}"></span> ${configured?(labels[cloudSyncStatus]||labels.idle):"本機模式"}`;
   }
 
   function renderAll(){
@@ -3241,7 +3320,7 @@
 
   async function initFirebase(){
     const c = state.firebaseConfig || {};
-    if(!c.apiKey || !c.projectId || !c.appId) throw new Error("尚未完整設定 Firebase");
+    if(!firebaseConfigured(c)) throw new Error("尚未完整設定 Firebase");
 
     if(firebaseRefs) return firebaseRefs;
 
@@ -3254,24 +3333,69 @@
     return firebaseRefs;
   }
 
-  async function saveCloud(){
-    const fb = await initFirebase();
-    await fb.setDoc(fb.doc(fb.db,"wasteContractSystem","main"),{
-      payload:JSON.stringify({...state,firebaseConfig:undefined}),
-      updatedAt:new Date().toISOString()
-    });
-    toast("資料已上傳至 Firebase");
+  async function saveCloud(showMessage=true){
+    if(!firebaseConfigured()) throw new Error("尚未完整設定 Firebase");
+    cloudSyncStatus="syncing";
+    renderStorageMode();
+    try{
+      await enqueueCloudSave(cloudPayload());
+      cloudSyncStatus="synced";
+      renderStorageMode();
+      if(showMessage) toast("資料已儲存至 Firebase","success");
+      return true;
+    }catch(err){
+      cloudSyncStatus="error";
+      renderStorageMode();
+      throw err;
+    }
   }
 
-  async function loadCloud(){
-    const fb = await initFirebase();
-    const snap = await fb.getDoc(fb.doc(fb.db,"wasteContractSystem","main"));
-    if(!snap.exists()) throw new Error("雲端尚無資料");
-    const payload = JSON.parse(snap.data().payload);
-    const localFirebaseConfig=state.firebaseConfig || {};
-    state = applyMasterSeed(payload);
-    state.firebaseConfig=localFirebaseConfig;
-    saveState("已從 Firebase 載入資料");
+  async function loadCloud(showMessage=true){
+    cloudSyncStatus="syncing";
+    renderStorageMode();
+    await cloudSaveQueue.catch(()=>{});
+    try{
+      const fb = await initFirebase();
+      const snap = await fb.getDoc(fb.doc(fb.db,"wasteContractSystem","main"));
+      if(!snap.exists()) throw new Error("雲端尚無資料");
+      const payload = JSON.parse(snap.data().payload);
+      const localFirebaseConfig=state.firebaseConfig || {};
+      state = applyMasterSeed(payload);
+      state.firebaseConfig=localFirebaseConfig;
+      const local=cacheStateLocally();
+      cloudSyncStatus="synced";
+      renderAll();
+      if(showMessage){
+        const suffix=local.saved ? "" : "；本機快取空間不足，但不影響雲端資料";
+        toast(`已從 Firebase 載入資料${suffix}`,"success",5000);
+      }
+      return true;
+    }catch(err){
+      cloudSyncStatus="error";
+      renderStorageMode();
+      throw err;
+    }
+  }
+
+  async function initializeCloudData(){
+    if(!firebaseConfigured()) return;
+    try{
+      await loadCloud(false);
+      toast("Firebase 已連線，雲端資料已載入","success",4500);
+    }catch(err){
+      if(err?.message === "雲端尚無資料"){
+        try{
+          await saveCloud(false);
+          toast("Firebase 已連線，已建立第一份雲端資料","success",5000);
+          return;
+        }catch(saveErr){
+          err=saveErr;
+        }
+      }
+      cloudSyncStatus="error";
+      renderStorageMode();
+      toast(`Firebase 自動載入失敗，暫時使用本機資料：${err?.message || "未知錯誤"}`,"error",8000);
+    }
   }
 
   $("#mainNav").addEventListener("click",e => {
@@ -3419,7 +3543,7 @@
     $(".line-total",line).value = a==="" && b==="" ? "" : fmt((Number(a)||0)+(Number(b)||0));
   });
 
-  $("#contractForm").addEventListener("submit",e => {
+  $("#contractForm").addEventListener("submit",async e => {
     e.preventDefault();
     clearContractSaveFeedback();
     setContractSaveFeedback("正在檢查資料並儲存，請稍候…","info");
@@ -3494,11 +3618,13 @@
     else state.contracts.push(record);
 
     const actionText=idx>=0 ? "合約已更新" : "合約已新增";
-    const saved=saveState(actionText);
+    const saved=await saveState(actionText);
     saveBtn.disabled=false;
     saveBtn.textContent="儲存合約";
-    if(saved){
-      setContractSaveFeedback(`${actionText}，資料已寫入本機瀏覽器。`,"success");
+    if(saved.ok){
+      const target=saved.cloudSaved ? "Firebase 雲端" : "本機瀏覽器";
+      const suffix=!saved.localSaved && saved.cloudSaved ? "；本機快取空間不足，但不影響雲端資料" : "";
+      setContractSaveFeedback(`${actionText}，資料已寫入${target}${suffix}。`,"success");
       setTimeout(()=>resetContractForm(),900);
     }
   });
@@ -3556,7 +3682,7 @@
     if(e.target === e.currentTarget) e.currentTarget.classList.remove("open");
   });
 
-  $("#saveFirebaseConfigBtn").addEventListener("click",() => {
+  $("#saveFirebaseConfigBtn").addEventListener("click",async () => {
     state.firebaseConfig = {
       apiKey:$("#fbApiKey").value.trim(),
       authDomain:$("#fbAuthDomain").value.trim(),
@@ -3566,7 +3692,8 @@
       messagingSenderId:$("#fbMessagingSenderId").value.trim()
     };
     firebaseRefs = null;
-    saveState("Firebase 設定已儲存");
+    cloudSyncStatus="idle";
+    await saveState("Firebase 設定已儲存");
     $("#firebaseModal").classList.remove("open");
   });
 
@@ -3581,8 +3708,14 @@
     try{
       const fb = await initFirebase();
       await fb.getDoc(fb.doc(fb.db,"wasteContractSystem","connectionTest"));
-      toast("Firebase 連線成功");
-    }catch(err){ toast(`Firebase 連線失敗：${err.message}`); }
+      cloudSyncStatus="synced";
+      renderStorageMode();
+      toast("Firebase 連線成功","success");
+    }catch(err){
+      cloudSyncStatus="error";
+      renderStorageMode();
+      toast(`Firebase 連線失敗：${err.message}`,"error",7000);
+    }
   });
 
   $("#saveCloudBtn").addEventListener("click",async () => {
@@ -3605,16 +3738,19 @@
     }
   });
 
-  $("#resetAllBtn").addEventListener("click",() => {
+  $("#resetAllBtn").addEventListener("click",async () => {
     if(!confirm("確定清除本機合約資料？")) return;
+    const firebaseConfig=state.firebaseConfig || {};
     state = clone(defaultState);
+    state.firebaseConfig=firebaseConfig;
     firebaseRefs = null;
-    saveState("已清除本機合約資料");
+    await saveState("已清除本機合約資料",{syncCloud:false});
     resetContractForm();
   });
 
   renderAll();
   resetContractForm();
+  initializeCloudData();
 })();
 </script>
 </body>

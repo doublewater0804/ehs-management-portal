@@ -425,6 +425,23 @@
       transition:.25s;
     }
     .toast.show{opacity:1;transform:translateY(0)}
+    .toast.success{background:#16835b}
+    .toast.error{background:#b83232}
+
+    .save-feedback{
+      display:none;
+      flex:1;
+      min-width:280px;
+      padding:10px 12px;
+      border-radius:9px;
+      font-size:13px;
+      font-weight:700;
+      line-height:1.5;
+    }
+    .save-feedback.show{display:block}
+    .save-feedback.info{background:#eef7ff;border:1px solid #acd1ef;color:#345c7a}
+    .save-feedback.success{background:#e8f7f1;border:1px solid #9bd6c1;color:#126847}
+    .save-feedback.error{background:#fff2f2;border:1px solid #efb3b3;color:#8c2d2d}
 
     .danger-text{color:var(--danger);font-weight:700}
     .income-text{color:var(--success);font-weight:700}
@@ -704,8 +721,9 @@
             </div>
 
             <div style="display:flex;gap:8px;margin-top:14px">
-              <button class="btn primary" type="submit">儲存合約</button>
+              <button class="btn primary" type="submit" id="saveContractBtn">儲存合約</button>
               <button class="btn secondary" type="button" id="resetContractBtn">清除表單</button>
+              <div class="save-feedback" id="contractSaveFeedback" role="status" aria-live="polite"></div>
             </div>
           </form>
         </div>
@@ -1818,18 +1836,43 @@
     }
   }
 
-  function saveState(message){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    renderAll();
-    if(message) toast(message);
+  function setContractSaveFeedback(message,type="info"){
+    const el=$("#contractSaveFeedback");
+    if(!el) return;
+    el.textContent=message;
+    el.className=`save-feedback show ${type}`;
   }
 
-  function toast(message){
+  function clearContractSaveFeedback(){
+    const el=$("#contractSaveFeedback");
+    if(!el) return;
+    el.textContent="";
+    el.className="save-feedback";
+  }
+
+  function saveState(message){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderAll();
+      if(message) toast(message,"success");
+      return true;
+    }catch(err){
+      console.error("資料儲存失敗",err);
+      const detail = err && err.name === "QuotaExceededError"
+        ? "瀏覽器儲存空間不足，請先匯出 JSON 備份或清除舊資料後再試。"
+        : `瀏覽器無法寫入資料：${err && err.message ? err.message : "未知錯誤"}`;
+      toast(`儲存失敗：${detail}`,"error",6000);
+      setContractSaveFeedback(`儲存失敗：${detail}`,"error");
+      return false;
+    }
+  }
+
+  function toast(message,type="info",duration=3200){
     const el = $("#toast");
     el.textContent = message;
-    el.classList.add("show");
+    el.className = `toast show ${type}`;
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove("show"), 2400);
+    toast.timer = setTimeout(() => { el.className="toast"; }, duration);
   }
 
   function getBy(type,id){ return state[type].find(x => x.id === id); }
@@ -3378,6 +3421,11 @@
 
   $("#contractForm").addEventListener("submit",e => {
     e.preventDefault();
+    clearContractSaveFeedback();
+    setContractSaveFeedback("正在檢查資料並儲存，請稍候…","info");
+    const saveBtn=$("#saveContractBtn");
+    saveBtn.disabled=true;
+    saveBtn.textContent="儲存中…";
 
     const factoryIds = $$("#factoryChecks input:checked").map(x=>x.value);
     const lines = $$(".contract-line").map(line => {
@@ -3397,7 +3445,12 @@
 
     const startDate=$("#startDate").value;
     const endDate=$("#endDate").value;
-    if(startDate && endDate && endDate < startDate) return toast("合約結束日不得早於開始日");
+    if(startDate && endDate && endDate < startDate){
+      saveBtn.disabled=false;
+      saveBtn.textContent="儲存合約";
+      setContractSaveFeedback("無法儲存：合約結束日不得早於開始日。","error");
+      return toast("無法儲存：合約結束日不得早於開始日","error",5000);
+    }
     const hauler=resolveInstitution("haulers",$("#contractHauler").value);
     const processor=resolveInstitution("processors",$("#contractProcessor").value);
 
@@ -3440,11 +3493,26 @@
     if(idx >= 0) state.contracts[idx] = record;
     else state.contracts.push(record);
 
-    saveState(idx>=0 ? "合約已更新" : "合約已新增");
-    resetContractForm();
+    const actionText=idx>=0 ? "合約已更新" : "合約已新增";
+    const saved=saveState(actionText);
+    saveBtn.disabled=false;
+    saveBtn.textContent="儲存合約";
+    if(saved){
+      setContractSaveFeedback(`${actionText}，資料已寫入本機瀏覽器。`,"success");
+      setTimeout(()=>resetContractForm(),900);
+    }
   });
 
-  $("#resetContractBtn").addEventListener("click",resetContractForm);
+  $("#contractForm").addEventListener("invalid",e => {
+    const label=e.target.closest(".field")?.querySelector("label")?.textContent?.trim() || "欄位";
+    setContractSaveFeedback(`無法儲存：請檢查「${label}」的輸入格式。`,"error");
+    toast(`請檢查「${label}」的輸入格式`,"error",5000);
+  },true);
+
+  $("#resetContractBtn").addEventListener("click",()=>{
+    clearContractSaveFeedback();
+    resetContractForm();
+  });
   $("#contractSearch").addEventListener("input",renderContractTable);
   $("#contractListStatus").addEventListener("change",renderContractTable);
 

@@ -2912,6 +2912,31 @@
     wasteSelect.disabled=!category;
   }
 
+  function refreshContractLineMasterOptions(){
+    $("#contractLines .contract-line").forEach(line=>{
+      const categorySelect=$(".line-waste-category",line);
+      const wasteSelect=$(".line-waste",line);
+      const methodSelect=$(".line-method",line);
+      const selectedWasteId=wasteSelect?.value || "";
+      const selectedWaste=getBy("wastes",selectedWasteId);
+      const selectedCategory=selectedWaste ? wasteCategory(selectedWaste) : (categorySelect?.value || "");
+      const selectedMethodId=methodSelect?.value || "";
+
+      if(categorySelect && wasteSelect){
+        categorySelect.innerHTML=wasteCategoryOptionHtml(selectedCategory);
+        const category=categorySelect.value;
+        wasteSelect.innerHTML=category
+          ? wasteOptionHtml(wastesByCategory(category),selectedWasteId,"請選擇廢棄物")
+          : '<option value="">請先選分類</option>';
+        wasteSelect.disabled=!category;
+      }
+
+      if(methodSelect){
+        methodSelect.innerHTML=methodOptionHtml(state.methods,selectedMethodId,"請選擇");
+      }
+    });
+  }
+
   function addContractLine(line={}){
     $("#contractLines").insertAdjacentHTML("beforeend",lineHtml(line));
     const element=$("#contractLines").lastElementChild;
@@ -2974,6 +2999,7 @@
     const statuses = ["草稿","有效","已到期","終止","停用"];
     $("#contractListStatus").innerHTML = `<option value="">全部</option>${statuses.map(s=>`<option>${s}</option>`).join("")}`;
     renderContractSelectors();
+    refreshContractLineMasterOptions();
     renderContractTable();
     if(!$("#contractLines").children.length) addContractLine();
   }

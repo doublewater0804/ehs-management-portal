@@ -2442,72 +2442,177 @@
   }
 
   function templateOcrParameters(kind){
-    const base={user_defined_dpi:"300",preserve_interword_spaces:"1"};
-    if(kind==="digits" || kind==="amount") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789,"};
-    if(kind==="date") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789/.-~"};
-    if(kind==="period") return {...base,tessedit_pageseg_mode:"6",tessedit_char_whitelist:"0123456789/.-~"};
-    if(kind==="code") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/"};
-    if(kind==="currency") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
-    return {...base,tessedit_pageseg_mode:"6",tessedit_char_whitelist:""};
-  }
-
+  const base={user_defined_dpi:"300",preserve_interword_spaces:"1"};
+  if(kind==="digits" || kind==="amount") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789,"};
+  if(kind==="decimal") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789.,"};
+  if(kind==="date") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789/.-~"};
+  if(kind==="period") return {...base,tessedit_pageseg_mode:"6",tessedit_char_whitelist:"0123456789/.-~"};
+  if(kind==="code") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/"};
+  if(kind==="currency") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
+  if(kind==="unit") return {...base,tessedit_pageseg_mode:"7",tessedit_char_whitelist:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz公斤噸"};
+  return {...base,tessedit_pageseg_mode:"6",tessedit_char_whitelist:""};
+}
   function cleanTemplateOcrValue(value,kind){
-    let text=String(value||"").replace(/[\s\r\n]+/g,"").replace(/[「」『』“”\"']/g,"").trim();
-    if(kind==="digits") return (text.match(/\d+/)||[])[0] || "";
-    if(kind==="amount") return text.replace(/[^\d]/g,"");
-    if(kind==="currency") return text.replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,5);
-    if(kind==="code") return text.replace(/[^0-9A-Za-z\-/]/g,"").toUpperCase();
-    if(kind==="date" || kind==="period") return text.replace(/[^0-9/\.\-~]/g,"");
-    return text.replace(/^[|｜:：.。·•]+|[|｜:：.。·•]+$/g,"");
+  let text=String(value||"").replace(/[\s\r\n]+/g,"").replace(/[「」『』“”\"']/g,"").trim();
+  if(kind==="digits") return (text.match(/\d+/)||[])[0] || "";
+  if(kind==="amount") return text.replace(/[^\d]/g,"");
+  if(kind==="decimal"){
+    text=text.replace(/[Oo]/g,"0").replace(/[Il]/g,"1").replace(/[^\d.,]/g,"");
+    if(text.includes(".") && text.includes(",")) text=text.replace(/,/g,"");
+    else if(text.includes(",") && /^\d+,\d{1,3}$/.test(text)) text=text.replace(",",".");
+    else text=text.replace(/,/g,"");
+    const match=text.match(/\d+(?:\.\d+)?/);
+    return match ? match[0] : "";
   }
-
-  function templateDataToText(data){
-    return [
-      `本單編號 ${data.requestNo||""} 督導公司 ${data.supervisorCompany||""} 幣別 ${data.currency||""} 出表日期 ${data.reportDate||""}`,
-      `申請部門 ${data.applicationDepartmentCode||""} 部門名稱 ${data.applicationDepartmentName||""} 工作地區 ${data.workArea||""} 外包申請性質 ${data.outsourcingNature||""}`,
-      `外包編號 ${data.contractNo||""} 外包名稱 ${data.contractName||""} 外包期限 ${data.contractPeriod||""} 危險性工作 ${data.dangerousWork||""}`,
-      `付款週期 ${data.paymentCycle||""} 向廠商收取保證票(金) ${data.depositAmount||""} 前約編號 ${data.previousContractNo||""} 指定廠商承攬 ${data.designatedVendor||""}`,
-      `目前承攬廠商 ${data.currentContractor||""} 配合度 ${data.cooperationRating||""} 合約總金額 ${data.contractTotalAmount||""} 入廠種類 ${data.entryType||""}`
-    ].join("\n");
+  if(kind==="currency") return text.replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,5);
+  if(kind==="code") return text.replace(/[^0-9A-Za-z\-/]/g,"").toUpperCase();
+  if(kind==="date" || kind==="period") return text.replace(/[^0-9/\.\-~]/g,"");
+  return text.replace(/^[|｜:：.。·•]+|[|｜:：.。·•]+$/g,"");
+}
+  function templateDataToText(data,detailRows=[]){
+  const lines=[
+    `本單編號 ${data.requestNo||""} 督導公司 ${data.supervisorCompany||""} 幣別 ${data.currency||""} 出表日期 ${data.reportDate||""}`,
+    `申請部門 ${data.applicationDepartmentCode||""} 部門名稱 ${data.applicationDepartmentName||""} 工作地區 ${data.workArea||""} 外包申請性質 ${data.outsourcingNature||""}`,
+    `外包編號 ${data.contractNo||""} 外包名稱 ${data.contractName||""} 外包期限 ${data.contractPeriod||""} 危險性工作 ${data.dangerousWork||""}`,
+    `付款週期 ${data.paymentCycle||""} 向廠商收取保證票(金) ${data.depositAmount||""} 前約編號 ${data.previousContractNo||""} 指定廠商承攬 ${data.designatedVendor||""}`,
+    `目前承攬廠商 ${data.currentContractor||""} 配合度 ${data.cooperationRating||""} 合約總金額 ${data.contractTotalAmount||""} 入廠種類 ${data.entryType||""}`
+  ];
+  if(detailRows.length){
+    lines.push("— 廢棄物明細 —");
+    detailRows.forEach((row,index)=>lines.push(`${String(index+1).padStart(2,"0")} ${row.rawCode||""} ${row.name||""} ${row.unit||""} 現狀單價 ${row.currentPrice||""} 月工作量 ${row.monthlyQty||""}`));
   }
-
+  return lines.join("\n");
+}
   async function recognizeContractTemplate(Tesseract,file,serial){
-    const source=await imageFileToCanvas(file);
-    const grid=detectContractTemplateGrid(source);
-    if(!grid) return null;
-    let worker=null;
-    const data={},confidence={};
-    try{
-      worker=await Tesseract.createWorker("chi_tra+eng",1,{
-        logger:m=>{
-          if(serial!==ocrRunSerial || m.progress===undefined) return;
-          if(m.status!=="recognizing text") setOcrStatus("正在載入繁體中文辨識資料…",8+Math.round(m.progress*8));
-        }
-      });
-      for(let i=0;i<OCR_TEMPLATE_FIELDS.length;i++){
-        if(serial!==ocrRunSerial) throw new Error("辨識已取消");
-        const field=OCR_TEMPLATE_FIELDS[i];
-        const cell=buildTemplateCellCanvas(source,grid,field.col,field.row,field.kind);
-        if(cell.blank){ data[field.key]=""; confidence[field.key]=100; continue; }
-        await worker.setParameters(templateOcrParameters(field.kind));
-        try{
-          const result=await worker.recognize(cell.canvas);
-          data[field.key]=cleanTemplateOcrValue(result.data.text,field.kind);
-          confidence[field.key]=Number(result.data.confidence)||0;
-        }catch(err){
-          console.warn(`欄位辨識失敗：${field.key}`,err);
-          data[field.key]="";
-          confidence[field.key]=0;
-        }
-        setOcrStatus(`逐格辨識 ${i+1}/${OCR_TEMPLATE_FIELDS.length}`,16+Math.round((i+1)/OCR_TEMPLATE_FIELDS.length*78));
+  const source=await imageFileToCanvas(file);
+  const grid=detectContractTemplateGrid(source);
+  if(!grid) return null;
+  let worker=null;
+  const data={},confidence={};
+  try{
+    worker=await Tesseract.createWorker("chi_tra+eng",1,{
+      logger:m=>{
+        if(serial!==ocrRunSerial || m.progress===undefined) return;
+        if(m.status!=="recognizing text") setOcrStatus("正在載入繁體中文辨識資料…",8+Math.round(m.progress*8));
       }
-      const dangerous=detectDangerousWork(source,grid);
-      data.dangerousWork=dangerous.value;
-      confidence.dangerousWork=dangerous.confidence;
-      return {data,confidence};
-    }finally{
-      if(worker) await worker.terminate();
+    });
+    for(let i=0;i<OCR_TEMPLATE_FIELDS.length;i++){
+      if(serial!==ocrRunSerial) throw new Error("辨識已取消");
+      const field=OCR_TEMPLATE_FIELDS[i],cell=buildTemplateCellCanvas(source,grid,field.col,field.row,field.kind);
+      if(cell.blank){ data[field.key]=""; confidence[field.key]=100; continue; }
+      await worker.setParameters(templateOcrParameters(field.kind));
+      try{
+        const result=await worker.recognize(cell.canvas);
+        data[field.key]=cleanTemplateOcrValue(result.data.text,field.kind);
+        confidence[field.key]=Number(result.data.confidence)||0;
+      }catch(err){
+        console.warn(`欄位辨識失敗：${field.key}`,err);
+        data[field.key]=""; confidence[field.key]=0;
+      }
+      setOcrStatus(`逐格辨識 ${i+1}/${OCR_TEMPLATE_FIELDS.length}`,16+Math.round((i+1)/OCR_TEMPLATE_FIELDS.length*48));
     }
+    const dangerous=detectDangerousWork(source,grid);
+    data.dangerousWork=dangerous.value; confidence.dangerousWork=dangerous.confidence;
+    const detailRows=await recognizeContractDetailRows(worker,source,grid,serial);
+    return {data,confidence,detailRows};
+  }finally{
+    if(worker) await worker.terminate();
+  }
+}
+  function detectContractDetailRows(source,grid){
+    const x1=grid.xs[0],x2=grid.xs.at(-1),span=x2-x1;
+    const start=Math.min(source.height-2,grid.ys.at(-1)+Math.max(20,Math.round(source.height*.045)));
+    const ctx=source.getContext("2d",{willReadFrequently:true});
+    const {data}=ctx.getImageData(0,0,source.width,source.height);
+    const scores=new Uint32Array(source.height-start);
+    for(let y=start;y<source.height;y++){
+      let score=0;
+      for(let x=x1;x<=x2;x++){
+        const i=(y*source.width+x)*4;
+        const r=data[i],g=data[i+1],b=data[i+2],max=Math.max(r,g,b),min=Math.min(r,g,b),avg=(r+g+b)/3;
+        if(max-min<32 && avg<215) score++;
+      }
+      scores[y-start]=score;
+    }
+    const candidates=groupLinePeaks(scores,span*.32).map(y=>y+start);
+    const strong=candidates.filter(y=>scores[y-start]>=span*.76);
+    let headerBottom=-1;
+    for(let i=0;i<strong.length-1;i++){
+      if(strong[i+1]-strong[i]>=32){ headerBottom=strong[i+1]; break; }
+    }
+    if(headerBottom<0) return null;
+    const separators=[headerBottom];
+    candidates.filter(y=>y>headerBottom+12).forEach(y=>{
+      if(y-separators.at(-1)>=14) separators.push(y);
+    });
+    const rows=[];
+    for(let i=0;i<separators.length-1;i++){
+      const height=separators[i+1]-separators[i];
+      if(height>=15 && height<=110) rows.push({y1:separators[i]+1,y2:separators[i+1]-1});
+    }
+    return rows.length ? {x1,x2,rows} : null;
+  }
+
+  function buildOcrRegionCanvas(source,x1,y1,x2,y2,kind){
+    const padX=Math.max(2,Math.round((x2-x1)*.025)),padY=Math.max(1,Math.round((y2-y1)*.07));
+    x1+=padX; x2-=padX; y1+=padY; y2-=padY;
+    const width=Math.max(1,x2-x1),height=Math.max(1,y2-y1);
+    const scale=kind==="text" ? Math.min(5,Math.max(3,115/height)) : Math.min(6,Math.max(4,120/height));
+    const margin=10,canvas=document.createElement("canvas");
+    canvas.width=Math.round(width*scale)+margin*2;
+    canvas.height=Math.round(height*scale)+margin*2;
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality="high";
+    ctx.drawImage(source,x1,y1,width,height,margin,margin,canvas.width-margin*2,canvas.height-margin*2);
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+    let ink=0;
+    for(let i=0;i<pixels.data.length;i+=4){
+      const gray=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
+      if(gray<205) ink++;
+      const value=gray<205 ? 0 : 255;
+      pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=value;
+    }
+    ctx.putImageData(pixels,0,0);
+    return {canvas,blank:ink/(canvas.width*canvas.height)<.0008};
+  }
+
+  async function recognizeContractDetailRows(worker,source,grid,serial){
+    const table=detectContractDetailRows(source,grid);
+    if(!table) return [];
+    const ratios=[0,.084,.205,.413,.489,.679,.861,1];
+    const fields=[
+      {key:"rawCode",col:1,kind:"code"},{key:"name",col:2,kind:"text"},
+      {key:"unit",col:3,kind:"unit"},{key:"currentPrice",col:4,kind:"decimal"},
+      {key:"monthlyQty",col:5,kind:"amount"}
+    ];
+    const results=[],total=table.rows.length*fields.length;
+    let done=0;
+    for(let rowIndex=0;rowIndex<table.rows.length;rowIndex++){
+      if(serial!==ocrRunSerial) throw new Error("辨識已取消");
+      const row=table.rows[rowIndex],item={confidence:{}};
+      for(const field of fields){
+        const x1=Math.round(table.x1+(table.x2-table.x1)*ratios[field.col]);
+        const x2=Math.round(table.x1+(table.x2-table.x1)*ratios[field.col+1]);
+        const region=buildOcrRegionCanvas(source,x1,row.y1,x2,row.y2,field.kind);
+        if(region.blank){ item[field.key]=""; item.confidence[field.key]=100; }
+        else{
+          await worker.setParameters(templateOcrParameters(field.kind));
+          try{
+            const result=await worker.recognize(region.canvas);
+            item[field.key]=cleanTemplateOcrValue(result.data.text,field.kind);
+            item.confidence[field.key]=Number(result.data.confidence)||0;
+          }catch(err){
+            console.warn(`明細第 ${rowIndex+1} 列 ${field.key} 辨識失敗`,err);
+            item[field.key]=""; item.confidence[field.key]=0;
+          }
+        }
+        done++;
+        setOcrStatus(`辨識廢棄物明細 ${rowIndex+1}/${table.rows.length}`,66+Math.round(done/total*30));
+      }
+      if(item.rawCode || item.name || item.currentPrice || item.monthlyQty) results.push(item);
+    }
+    return results;
   }
 
   const OCR_LABELS = {
@@ -2700,75 +2805,145 @@
     return text.length>=1 && text.length<=120;
   }
 
-  function applyContractOcrData(data,confidence={}){
-    let count=0,low=0;
-    const threshold=54;
-    const mappings={
-      contractNo:data.contractNo, contractName:data.contractName,
-      requestNo:data.requestNo, supervisorCompany:data.supervisorCompany,
-      currency:data.currency, reportDate:data.reportDate,
-      applicationDepartmentCode:data.applicationDepartmentCode,
-      applicationDepartmentName:data.applicationDepartmentName,
-      workArea:data.workArea, outsourcingNature:data.outsourcingNature,
-      previousContractNo:data.previousContractNo, contractTotalAmount:data.contractTotalAmount,
-      currentContractor:data.currentContractor, dangerousWork:data.dangerousWork,
-      paymentCycle:data.paymentCycle, depositAmount:data.depositAmount,
-      designatedVendor:data.designatedVendor, cooperationRating:data.cooperationRating,
-      entryType:data.entryType
-    };
-    Object.entries(mappings).forEach(([id,value])=>{
-      if(value===undefined || value===null || String(value).trim()==="") return;
-      const sourceKey=id;
-      const conf=confidence[sourceKey] ?? 100;
-      const required=["contractTotalAmount","depositAmount"].includes(id) ? 72 : threshold;
-      if(conf<required || !isValidOcrValue(sourceKey,value)){ markOcrLow(id,value); low++; return; }
-      if(putOcrValue(id,value)) count++;
-    });
-
-    const periodConfidence=confidence.contractPeriod ?? 100;
-    if(data.contractPeriod && (!data.startDate || !data.endDate)){
-      markOcrLow("startDate",data.contractPeriod);
-      markOcrLow("endDate",data.contractPeriod);
-      low+=2;
-    }
-    [["startDate",data.startDate],["endDate",data.endDate]].forEach(([id,value])=>{
-      if(!value) return;
-      if(periodConfidence<threshold || !isValidOcrValue(id,value)){ markOcrLow(id,value); low++; return; }
-      const force=id==="startDate" && !$("#contractId").value && $("#startDate").value===todayISO();
-      if(putOcrValue(id,value,{force})) count++;
-    });
-
-    const siteConfidence=confidence.workArea ?? 100;
-    const site=findOcrSite(data.workArea);
-    if(data.workArea && (siteConfidence<threshold || !site)){
-      markOcrLow("workArea",data.workArea);
-      markOcrLow("contractSite",data.workArea);
-      low++;
-    }else if(site && putOcrValue("contractSite",site.id)){
-      count++;
-      renderContractSelectors();
-      markOcrFilled($("#contractSite"));
-      if($("#workArea").classList.contains("ocr-filled")) $("#workArea").value=site.name;
-    }
-
-    const chosenSite=$("#contractSite").value || site?.id || "";
-    const factory=findOcrFactoryByData(data,chosenSite);
-    const factoryConfidence=Math.max(confidence.applicationDepartmentName??100,confidence.applicationDepartmentCode??100);
-    if(factory && factoryConfidence>=threshold){
-      const checkbox=$(`#factoryChecks input[value="${factory.id}"]`);
-      if(checkbox && !checkbox.checked){ checkbox.checked=true; markOcrFilled(checkbox); count++; }
-    }else if(data.applicationDepartmentName || data.applicationDepartmentCode){
-      markOcrLow("factoryChecks",data.applicationDepartmentName||data.applicationDepartmentCode);
-      low++;
-    }
-
-    const message=count
-      ? `已預填 ${count} 個欄位${low?`；${low} 個低可信度欄位請人工確認`:""}。`
-      : `未自動填入資料${low?`；${low} 個欄位可信度不足`:""}。`;
-    setOcrStatus(message,100);
-    toast(message);
+  function normalizeWasteCodeFromOcr(value){
+    const raw=String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"")
+      .replace(/[O](?=\d)/g,"0").replace(/[IL](?=\d)/g,"1");
+    let match=raw.match(/FFA([A-Z])(\d{4})/);
+    if(match) return `${match[1]}-${match[2]}`;
+    match=raw.match(/([CDERG])(\d{4})$/);
+    return match ? `${match[1]}-${match[2]}` : "";
   }
 
+  function normalizeWasteName(value){
+    return String(value||"").replace(/[\s、，,。．·・\-—_()（）「」『』]/g,"")
+      .replace(/[臺]/g,"台").replace(/[裏]/g,"裡").toLowerCase();
+  }
+
+  function wasteNameSimilarity(a,b){
+    a=normalizeWasteName(a); b=normalizeWasteName(b);
+    if(!a || !b) return 0;
+    if(a===b) return 1;
+    if(a.includes(b) || b.includes(a)) return Math.min(a.length,b.length)/Math.max(a.length,b.length);
+    const grams=text=>{
+      const result=[];
+      for(let i=0;i<text.length-1;i++) result.push(text.slice(i,i+2));
+      return result;
+    };
+    const aa=grams(a),bb=grams(b),remaining=[...bb];
+    let common=0;
+    aa.forEach(x=>{ const i=remaining.indexOf(x); if(i>=0){ common++; remaining.splice(i,1); } });
+    return aa.length+bb.length ? 2*common/(aa.length+bb.length) : 0;
+  }
+
+  function matchOcrWaste(row){
+    const code=normalizeWasteCodeFromOcr(row.rawCode);
+    const masterCode=x=>String(x.code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    let candidates=code ? state.wastes.filter(x=>masterCode(x)===code.replace(/[^A-Z0-9]/g,"")) : [];
+    if(!candidates.length && row.name){
+      const ranked=state.wastes.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
+      if(ranked[0]?.score>=.8 && (!ranked[1] || ranked[0].score-ranked[1].score>=.12)) candidates=[ranked[0].item];
+    }
+    if(!candidates.length) return {item:null,code,confident:false,reason:"找不到對應的廢棄物基本資料"};
+    if(candidates.length===1){
+      const codeConfidence=Number(row.confidence?.rawCode)||0;
+      return {item:candidates[0],code,confident:Boolean(code && codeConfidence>=42),reason:codeConfidence>=42?"":"代碼辨識可信度偏低"};
+    }
+    const ranked=candidates.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
+    const confident=ranked[0].score>=.5 && (!ranked[1] || ranked[0].score-ranked[1].score>=.15);
+    return {item:ranked[0].item,code,confident,reason:confident?"":"同代碼有多筆資料，名稱無法唯一判定"};
+  }
+
+  function markOcrDetailElement(el,ok,title=""){
+    if(!el) return;
+    el.classList.remove("ocr-filled","ocr-low-confidence");
+    el.classList.add(ok?"ocr-filled":"ocr-low-confidence");
+    if(title) el.title=title; else el.removeAttribute("title");
+  }
+
+  function contractLineHasValue(line){
+    return Boolean($(".line-waste",line)?.value || $(".line-method",line)?.value ||
+      $(".line-qty",line)?.value || $(".line-transport",line)?.value ||
+      $(".line-treatment",line)?.value || $(".line-total",line)?.value);
+  }
+
+  function applyContractDetailOcrRows(rows=[]){
+    const recognized=rows.filter(row=>row.rawCode || row.name || row.currentPrice || row.monthlyQty);
+    if(!recognized.length) return {count:0,low:0,preserved:false};
+    $$("#contractLines .contract-line[data-ocr-detail='true']").forEach(line=>line.remove());
+    const existing=$$("#contractLines .contract-line");
+    const preserved=existing.some(contractLineHasValue);
+    if(!preserved) $("#contractLines").innerHTML="";
+    let count=0,low=0;
+    recognized.forEach((row,index)=>{
+      const match=matchOcrWaste(row),qty=Number(row.monthlyQty),price=Number(row.currentPrice);
+      const qtyOk=String(row.monthlyQty)!=="" && Number.isFinite(qty) && qty>0 && (Number(row.confidence?.monthlyQty)||0)>=45;
+      const priceOk=String(row.currentPrice)!=="" && Number.isFinite(price) && price>=0 && (Number(row.confidence?.currentPrice)||0)>=45;
+      const unitOk=!row.unit || /KG|公斤/i.test(row.unit);
+      const element=addContractLine({wasteId:match.item?.id||"",monthlyQty:qtyOk?qty:"",totalPrice:priceOk?price:"",pricingMode:"package"});
+      element.dataset.ocrDetail="true";
+      const label=`第 ${index+1} 列：${row.rawCode||"無代碼"} ${row.name||""}`.trim(),wasteOk=Boolean(match.item && match.confident);
+      markOcrDetailElement($(".line-waste-category",element),wasteOk,wasteOk?label:`${label}；${match.reason}`);
+      markOcrDetailElement($(".line-waste",element),wasteOk,wasteOk?label:`${label}；${match.reason}`);
+      markOcrDetailElement($(".line-qty",element),qtyOk && unitOk,
+        qtyOk && unitOk?`辨識自「擬外包月工作量」：${row.monthlyQty}`:`${label}；月工作量或單位請人工確認（${row.monthlyQty||"空白"} ${row.unit||""}）`);
+      markOcrDetailElement($(".line-total",element),priceOk,
+        priceOk?`辨識自「現狀外包單價」：${row.currentPrice}`:`${label}；現狀外包單價請人工確認（${row.currentPrice||"空白"}）`);
+      if(!wasteOk || !qtyOk || !priceOk || !unitOk){ low++; element.dataset.ocrReview="true"; }
+      count++;
+    });
+    if(!$("#contractLines").children.length) addContractLine();
+    return {count,low,preserved};
+  }
+
+  function applyContractOcrData(data,confidence={},options={}){
+  let count=0,low=0;
+  const threshold=54;
+  const mappings={
+    contractNo:data.contractNo, contractName:data.contractName,requestNo:data.requestNo,
+    supervisorCompany:data.supervisorCompany,currency:data.currency,reportDate:data.reportDate,
+    applicationDepartmentCode:data.applicationDepartmentCode,applicationDepartmentName:data.applicationDepartmentName,
+    workArea:data.workArea,outsourcingNature:data.outsourcingNature,previousContractNo:data.previousContractNo,
+    contractTotalAmount:data.contractTotalAmount,currentContractor:data.currentContractor,dangerousWork:data.dangerousWork,
+    paymentCycle:data.paymentCycle,depositAmount:data.depositAmount,designatedVendor:data.designatedVendor,
+    cooperationRating:data.cooperationRating,entryType:data.entryType
+  };
+  Object.entries(mappings).forEach(([id,value])=>{
+    if(value===undefined || value===null || String(value).trim()==="") return;
+    const conf=confidence[id] ?? 100,required=["contractTotalAmount","depositAmount"].includes(id) ? 72 : threshold;
+    if(conf<required || !isValidOcrValue(id,value)){ markOcrLow(id,value); low++; return; }
+    if(putOcrValue(id,value)) count++;
+  });
+  const periodConfidence=confidence.contractPeriod ?? 100;
+  if(data.contractPeriod && (!data.startDate || !data.endDate)){
+    markOcrLow("startDate",data.contractPeriod); markOcrLow("endDate",data.contractPeriod); low+=2;
+  }
+  [["startDate",data.startDate],["endDate",data.endDate]].forEach(([id,value])=>{
+    if(!value) return;
+    if(periodConfidence<threshold || !isValidOcrValue(id,value)){ markOcrLow(id,value); low++; return; }
+    const force=id==="startDate" && !$("#contractId").value && $("#startDate").value===todayISO();
+    if(putOcrValue(id,value,{force})) count++;
+  });
+  const siteConfidence=confidence.workArea ?? 100,site=findOcrSite(data.workArea);
+  if(data.workArea && (siteConfidence<threshold || !site)){
+    markOcrLow("workArea",data.workArea); markOcrLow("contractSite",data.workArea); low++;
+  }else if(site && putOcrValue("contractSite",site.id)){
+    count++; renderContractSelectors(); markOcrFilled($("#contractSite"));
+    if($("#workArea").classList.contains("ocr-filled")) $("#workArea").value=site.name;
+  }
+  const chosenSite=$("#contractSite").value || site?.id || "",factory=findOcrFactoryByData(data,chosenSite);
+  const factoryConfidence=Math.max(confidence.applicationDepartmentName??100,confidence.applicationDepartmentCode??100);
+  if(factory && factoryConfidence>=threshold){
+    const checkbox=$(`#factoryChecks input[value="${factory.id}"]`);
+    if(checkbox && !checkbox.checked){ checkbox.checked=true; markOcrFilled(checkbox); count++; }
+  }else if(data.applicationDepartmentName || data.applicationDepartmentCode){
+    markOcrLow("factoryChecks",data.applicationDepartmentName||data.applicationDepartmentCode); low++;
+  }
+  if(!options.deferMessage){
+    const message=count ? `已預填 ${count} 個欄位${low?`；${low} 個低可信度欄位請人工確認`:""}。` : `未自動填入資料${low?`；${low} 個欄位可信度不足`:""}。`;
+    setOcrStatus(message,100); toast(message);
+  }
+  return {count,low};
+}
   function applyContractOcrText(text){
     if(!String(text||"").trim()) return toast("尚無可套用的辨識文字");
     const data=parseContractOcr(text);
@@ -2776,58 +2951,64 @@
   }
 
   async function runContractOcr(){
-    if(!contractOcrFile) return toast("請先選擇圖片");
-    const serial=++ocrRunSerial;
-    $("#runOcrBtn").disabled=true;
-    $$("#contractForm .ocr-filled,#contractForm .ocr-low-confidence").forEach(x=>{
-      x.classList.remove("ocr-filled","ocr-low-confidence");
-      x.removeAttribute("title");
-    });
-    setOcrStatus("正在偵測外包申請單表格…",4);
-    try{
-      const Tesseract=await loadOcrEngine();
-      if(serial!==ocrRunSerial) return;
-      const template=await recognizeContractTemplate(Tesseract,contractOcrFile,serial);
-      if(serial!==ocrRunSerial) return;
-      if(template){
-        template.data.reportDate=toIsoDate(template.data.reportDate);
-        const dates=parseOcrPeriod(template.data.contractPeriod);
-        template.data.startDate=dates.length===2 ? dates[0] : "";
-        template.data.endDate=dates.length===2 ? dates[1] : "";
-        if(dates.length!==2) template.confidence.contractPeriod=0;
-        template.data.requestNo=(String(template.data.requestNo||"").match(/\d{8,12}/)||[])[0]||template.data.requestNo;
-        template.data.contractNo=(String(template.data.contractNo||"").match(/\d{5,}(?:-\d+)?/)||[])[0]||template.data.contractNo;
-        template.data.previousContractNo=(String(template.data.previousContractNo||"").match(/\d{5,}/)||[])[0]||template.data.previousContractNo;
-        correctTemplateDataByMasters(template.data,template.confidence);
-        $("#ocrRawText").value=templateDataToText(template.data);
-        applyContractOcrData(template.data,template.confidence);
-        return;
-      }
-
-      setOcrStatus("未偵測到固定表格，改用整張圖片辨識…",12);
-      const image=await preprocessOcrImage(contractOcrFile);
-      const result=await Tesseract.recognize(image,"chi_tra+eng",{
-        logger:m=>{
-          if(serial!==ocrRunSerial) return;
-          const p=Math.round((m.progress||0)*80)+18;
-          const labels={"loading tesseract core":"載入辨識核心","initializing tesseract":"初始化辨識","loading language traineddata":"載入繁體中文資料","initializing api":"準備辨識","recognizing text":"整頁辨識"};
-          setOcrStatus(`${labels[m.status]||"處理中"}${m.progress!==undefined?` ${Math.round(m.progress*100)}%`:""}`,p);
-        }
-      });
-      if(serial!==ocrRunSerial) return;
-      $("#ocrRawText").value=result.data.text||"";
-      applyContractOcrText(result.data.text||"");
-    }catch(err){
-      console.error(err);
-      if(err.message!=="辨識已取消"){
-        setOcrStatus(`辨識失敗：${err.message}`,0);
-        toast("圖片辨識失敗");
-      }
-    }finally{
-      if(serial===ocrRunSerial) $("#runOcrBtn").disabled=!contractOcrFile;
+  if(!contractOcrFile) return toast("請先選擇圖片");
+  const serial=++ocrRunSerial;
+  $("#runOcrBtn").disabled=true;
+  $$("#contractForm .ocr-filled,#contractForm .ocr-low-confidence").forEach(x=>{
+    x.classList.remove("ocr-filled","ocr-low-confidence"); x.removeAttribute("title");
+  });
+  setOcrStatus("正在偵測外包申請單表格…",4);
+  try{
+    const Tesseract=await loadOcrEngine();
+    if(serial!==ocrRunSerial) return;
+    const template=await recognizeContractTemplate(Tesseract,contractOcrFile,serial);
+    if(serial!==ocrRunSerial) return;
+    if(template){
+      template.data.reportDate=toIsoDate(template.data.reportDate);
+      const dates=parseOcrPeriod(template.data.contractPeriod);
+      template.data.startDate=dates.length===2 ? dates[0] : "";
+      template.data.endDate=dates.length===2 ? dates[1] : "";
+      if(dates.length!==2) template.confidence.contractPeriod=0;
+      template.data.requestNo=(String(template.data.requestNo||"").match(/\d{8,12}/)||[])[0]||template.data.requestNo;
+      template.data.contractNo=(String(template.data.contractNo||"").match(/\d{5,}(?:-\d+)?/)||[])[0]||template.data.contractNo;
+      template.data.previousContractNo=(String(template.data.previousContractNo||"").match(/\d{5,}/)||[])[0]||template.data.previousContractNo;
+      correctTemplateDataByMasters(template.data,template.confidence);
+      $("#ocrRawText").value=templateDataToText(template.data,template.detailRows);
+      const upper=applyContractOcrData(template.data,template.confidence,{deferMessage:true});
+      const detail=applyContractDetailOcrRows(template.detailRows);
+      const parts=[];
+      if(upper.count) parts.push(`基本欄位 ${upper.count} 個`);
+      if(detail.count) parts.push(`廢棄物明細 ${detail.count} 列`);
+      const low=upper.low+detail.low;
+      let message=parts.length ? `已預填 ${parts.join("、")}` : "未自動填入資料";
+      if(low) message+=`；${low} 個欄位／明細列請人工確認`;
+      if(detail.preserved) message+="；原有明細已保留，新辨識列附加於後";
+      message+="。資料尚未儲存，請確認後再按「儲存合約」。";
+      setOcrStatus(message,100); toast(message);
+      return;
     }
+    setOcrStatus("未偵測到固定表格，改用整張圖片辨識…",12);
+    const image=await preprocessOcrImage(contractOcrFile);
+    const result=await Tesseract.recognize(image,"chi_tra+eng",{
+      logger:m=>{
+        if(serial!==ocrRunSerial) return;
+        const p=Math.round((m.progress||0)*80)+18;
+        const labels={"loading tesseract core":"載入辨識核心","initializing tesseract":"初始化辨識","loading language traineddata":"載入繁體中文資料","initializing api":"準備辨識","recognizing text":"整頁辨識"};
+        setOcrStatus(`${labels[m.status]||"處理中"}${m.progress!==undefined?` ${Math.round(m.progress*100)}%`:""}`,p);
+      }
+    });
+    if(serial!==ocrRunSerial) return;
+    $("#ocrRawText").value=result.data.text||"";
+    applyContractOcrText(result.data.text||"");
+  }catch(err){
+    console.error(err);
+    if(err.message!=="辨識已取消"){
+      setOcrStatus(`辨識失敗：${err.message}`,0); toast("圖片辨識失敗");
+    }
+  }finally{
+    if(serial===ocrRunSerial) $("#runOcrBtn").disabled=!contractOcrFile;
   }
-
+}
   function clearContractOcr(clearHighlights=true){
     ocrRunSerial++;
     contractOcrFile=null;
@@ -2968,11 +3149,11 @@
   }
 
   function addContractLine(line={}){
-    $("#contractLines").insertAdjacentHTML("beforeend",lineHtml(line));
-    const element=$("#contractLines").lastElementChild;
-    applyLinePricingMode(element,detectLinePricingMode(line));
-  }
-
+  $("#contractLines").insertAdjacentHTML("beforeend",lineHtml(line));
+  const element=$("#contractLines").lastElementChild;
+  applyLinePricingMode(element,detectLinePricingMode(line));
+  return element;
+}
   function resetContractForm(){
     clearContractOcr();
     $("#contractForm").reset();

@@ -2806,14 +2806,19 @@
   }
 
   function normalizeWasteCodeFromOcr(value){
-    const raw=String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"")
-      .replace(/[O](?=\d)/g,"0").replace(/[IL](?=\d)/g,"1");
-    let match=raw.match(/FFA([A-Z])(\d{4})/);
-    if(match) return `${match[1]}-${match[2]}`;
-    match=raw.match(/([CDERG])(\d{4})$/);
-    return match ? `${match[1]}-${match[2]}` : "";
+  const raw=String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  let match=raw.match(/FFA([A-Z])([A-Z0-9]+)/);
+  if(match){
+    const digits=match[2].replace(/[OQD]/g,"0").replace(/[IL]/g,"1").replace(/Z/g,"2").replace(/S/g,"5").replace(/G/g,"6").replace(/B/g,"8");
+    if(/^\d{4}$/.test(digits)) return `${match[1]}-${digits}`;
   }
-
+  match=raw.match(/([CDERG])([A-Z0-9]{4})$/);
+  if(match){
+    const digits=match[2].replace(/[OQD]/g,"0").replace(/[IL]/g,"1").replace(/Z/g,"2").replace(/S/g,"5").replace(/G/g,"6").replace(/B/g,"8");
+    if(/^\d{4}$/.test(digits)) return `${match[1]}-${digits}`;
+  }
+  return "";
+}
   function normalizeWasteName(value){
     return String(value||"").replace(/[\s、，,。．·・\-—_()（）「」『』]/g,"")
       .replace(/[臺]/g,"台").replace(/[裏]/g,"裡").toLowerCase();
@@ -2835,24 +2840,52 @@
     return aa.length+bb.length ? 2*common/(aa.length+bb.length) : 0;
   }
 
-  function matchOcrWaste(row){
-    const code=normalizeWasteCodeFromOcr(row.rawCode);
-    const masterCode=x=>String(x.code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
-    let candidates=code ? state.wastes.filter(x=>masterCode(x)===code.replace(/[^A-Z0-9]/g,"")) : [];
-    if(!candidates.length && row.name){
-      const ranked=state.wastes.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
-      if(ranked[0]?.score>=.8 && (!ranked[1] || ranked[0].score-ranked[1].score>=.12)) candidates=[ranked[0].item];
-    }
-    if(!candidates.length) return {item:null,code,confident:false,reason:"找不到對應的廢棄物基本資料"};
-    if(candidates.length===1){
-      const codeConfidence=Number(row.confidence?.rawCode)||0;
-      return {item:candidates[0],code,confident:Boolean(code && codeConfidence>=42),reason:codeConfidence>=42?"":"代碼辨識可信度偏低"};
-    }
-    const ranked=candidates.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
-    const confident=ranked[0].score>=.5 && (!ranked[1] || ranked[0].score-ranked[1].score>=.15);
-    return {item:ranked[0].item,code,confident,reason:confident?"":"同代碼有多筆資料，名稱無法唯一判定"};
+  function ocrCodeDistance(a,b){
+    a=String(a||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    b=String(b||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    const fix=text=>{
+      const match=text.match(/^(FFA[A-Z])(.*)$/);
+      if(!match) return text;
+      return match[1]+match[2].replace(/[OQD]/g,"0").replace(/[IL]/g,"1").replace(/Z/g,"2").replace(/S/g,"5").replace(/G/g,"6").replace(/B/g,"8");
+    };
+    a=fix(a); b=fix(b);
+    const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+    for(let i=0;i<=a.length;i++) dp[i][0]=i;
+    for(let j=0;j<=b.length;j++) dp[0][j]=j;
+    for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++)
+      dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    return dp[a.length][b.length];
   }
 
+  function matchOcrWaste(row){
+  let code=normalizeWasteCodeFromOcr(row.rawCode);
+  const masterCode=x=>String(x.code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  let candidates=code ? state.wastes.filter(x=>masterCode(x)===code.replace(/[^A-Z0-9]/g,"")) : [];
+  let fuzzy=false;
+  if(!candidates.length && row.rawCode){
+    const codeGroups=[...new Set(state.wastes.map(masterCode).filter(x=>/^[A-Z]\d{4}$/.test(x)))];
+    const ranked=codeGroups.map(key=>({key,d:ocrCodeDistance(row.rawCode,`FFA${key}`)})).sort((a,b)=>a.d-b.d);
+    const nameSupport=Math.max(0,...state.wastes.map(item=>wasteNameSimilarity(row.name,item.name)));
+    if(ranked[0] && ranked[0].d<=3 && (!ranked[1] || ranked[1].d>ranked[0].d) && (ranked[0].d<=2 || nameSupport>=.45)){
+      code=`${ranked[0].key[0]}-${ranked[0].key.slice(1)}`;
+      candidates=state.wastes.filter(x=>masterCode(x)===ranked[0].key);
+      fuzzy=true;
+    }
+  }
+  if(!candidates.length && row.name){
+    const ranked=state.wastes.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
+    if(ranked[0]?.score>=.8 && (!ranked[1] || ranked[0].score-ranked[1].score>=.12)) candidates=[ranked[0].item];
+  }
+  if(!candidates.length) return {item:null,code,confident:false,reason:"找不到對應的廢棄物基本資料"};
+  if(candidates.length===1){
+    const codeConfidence=Number(row.confidence?.rawCode)||0,nameScore=wasteNameSimilarity(row.name,candidates[0].name);
+    const confident=Boolean((code && codeConfidence>=42 && !fuzzy) || (fuzzy && nameScore>=.45) || (!code && nameScore>=.8));
+    return {item:candidates[0],code,confident,reason:confident?"":"代碼或名稱辨識可信度偏低"};
+  }
+  const ranked=candidates.map(item=>({item,score:wasteNameSimilarity(row.name,item.name)})).sort((a,b)=>b.score-a.score);
+  const confident=ranked[0].score>=.5 && (!ranked[1] || ranked[0].score-ranked[1].score>=.15);
+  return {item:ranked[0].item,code,confident,reason:confident?"":"同代碼有多筆資料，名稱無法唯一判定"};
+}
   function markOcrDetailElement(el,ok,title=""){
     if(!el) return;
     el.classList.remove("ocr-filled","ocr-low-confidence");

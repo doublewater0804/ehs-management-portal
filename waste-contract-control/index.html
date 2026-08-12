@@ -1764,13 +1764,43 @@
       "code": "Z99",
       "name": "其他中間處理方式",
       "note": ""
+    },
+    {
+      "id": "MR01",
+      "code": "R01",
+      "name": "廢棄物採取基管會公告應回收管道",
+      "note": ""
+    },
+    {
+      "id": "MR02",
+      "code": "R02",
+      "name": "將廢棄物作為再利用之原料使用",
+      "note": ""
+    },
+    {
+      "id": "MR03",
+      "code": "R03",
+      "name": "將廢棄物作為再利用之材料、添加物使用",
+      "note": ""
+    },
+    {
+      "id": "MR04",
+      "code": "R04",
+      "name": "將廢棄物作為再利用之燃料使用",
+      "note": ""
+    },
+    {
+      "id": "MR99",
+      "code": "R99",
+      "name": "作為其他再利用之用途",
+      "note": ""
     }
   ],
   "haulers": [],
   "processors": [],
   "contracts": [],
   "firebaseConfig": {},
-  "masterSeedVersion": 1
+  "masterSeedVersion": 2
 };
   defaultState.firebaseConfig={...FIREBASE_CONFIG};
 
@@ -1829,7 +1859,7 @@
     return result;
   }
 
-  const MASTER_SEED_VERSION = 1;
+  const MASTER_SEED_VERSION = 2;
 
   function applyMasterSeed(base){
     const source = base && typeof base === "object" ? base : {};
@@ -3605,8 +3635,12 @@
       const snap = await fb.getDoc(fb.doc(fb.db,"wasteContractSystem","main"));
       if(!snap.exists()) throw new Error("雲端尚無資料");
       const payload = JSON.parse(snap.data().payload);
+      const previousSeedVersion=Number(payload.masterSeedVersion || 0);
       state = applyMasterSeed(payload);
       const local=cacheStateLocally();
+      if(previousSeedVersion < MASTER_SEED_VERSION){
+        await enqueueCloudSave(cloudPayload());
+      }
       cloudSyncStatus="synced";
       renderAll();
       if(showMessage){

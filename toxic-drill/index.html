@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>毒化物無預警應變演練統計管理</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <style>
+    :root {
+      --navy: #17324d;
+      --navy-2: #244b6b;
+      --blue-soft: #e8f1f8;
+      --blue-line: #c6d7e6;
+      --green: #237a57;
+      --green-soft: #e7f4ee;
+      --orange: #9a5d00;
+      --orange-soft: #fff2d8;
+      --red: #a63a3a;
+      --red-soft: #fdeaea;
+      --gray-1: #f4f6f8;
+      --gray-2: #e4e8ec;
+      --gray-3: #66717d;
+      --text: #1f2a33;
+      --white: #fff;
+      --shadow: 0 10px 26px rgba(28, 50, 72, .08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #eef2f5;
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: linear-gradient(135deg, var(--navy), #10263a);
+      color: white;
+      box-shadow: 0 8px 20px rgba(8, 31, 49, .18);
+    }
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .brand h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: .04em; }
+    .brand p { margin: 4px 0 0; font-size: 12px; opacity: .76; }
+    .top-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+    .container { max-width: 1440px; margin: 0 auto; padding: 26px 28px 44px; }
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      border: 1px solid #cbd8e4;
+      background: #f7fbff;
+      border-radius: 12px;
+      color: #38536a;
+      font-size: 14px;
+    }
+    .notice strong { color: var(--navy); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .summary-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid #dde4ea;
+      box-shadow: var(--shadow);
+      padding: 17px 18px;
+      min-height: 112px;
+    }
+    .summary-label { font-size: 13px; color: var(--gray-3); margin-bottom: 12px; }
+    .summary-value { font-size: 30px; font-weight: 800; line-height: 1; color: var(--navy); }
+    .summary-sub { margin-top: 9px; font-size: 12px; color: #7b858e; }
+
+    .panel {
+      background: white;
+      border: 1px solid #dde4ea;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--gray-2);
+    }
+    .panel-head h2 { margin: 0; font-size: 18px; color: var(--navy); }
+    .panel-head p { margin: 5px 0 0; color: var(--gray-3); font-size: 13px; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 14px 18px 0;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--gray-2);
+    }
+    .tab-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 11px 15px;
+      border-radius: 9px 9px 0 0;
+      color: #53606c;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tab-btn.active { background: var(--blue-soft); color: var(--navy); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.35fr .8fr .8fr .9fr auto;
+      gap: 10px;
+      padding: 16px 18px;
+      background: #fbfcfd;
+      border-bottom: 1px solid var(--gray-2);
+    }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; font-weight: 700; color: #586572; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #cfd7df;
+      border-radius: 9px;
+      padding: 10px 11px;
+      color: var(--text);
+      background: white;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #6d95b7;
+      box-shadow: 0 0 0 3px rgba(75, 126, 169, .13);
+    }
+    textarea { min-height: 88px; resize: vertical; }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 9px 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+    .btn-primary { background: #2f658f; color: white; }
+    .btn-primary:hover { background: #28587e; }
+    .btn-secondary { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.34); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,.1); }
+    .btn-light { background: white; color: var(--navy); border-color: #cfd8df; }
+    .btn-light:hover { background: #f5f8fa; }
+    .btn-danger { background: var(--red-soft); color: var(--red); border-color: #f2c6c6; }
+    .btn-small { padding: 6px 9px; font-size: 12px; }
+
+    .table-wrap { overflow: auto; }
+    .data-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    .data-table th, .data-table td {
+      padding: 11px 10px;
+      text-align: left;
+      border-bottom: 1px solid #e6eaee;
+      vertical-align: middle;
+      font-size: 13px;
+    }
+    .data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f3f6f8;
+      color: #40505f;
+      font-weight: 800;
+    }
+    .data-table tr:hover td { background: #fafcfd; }
+    .cell-muted { color: #89939c; }
+    .retest-text { color: var(--red); font-weight: 900; }
+    .actions { display: flex; gap: 6px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .status.pass { background: var(--green-soft); color: var(--green); }
+    .status.fail { background: var(--red-soft); color: var(--red); }
+    .status.retest { background: var(--red-soft); color: var(--red); border:1px solid #efc2c2; }
+    .status.pending { background: #edf0f3; color: #68737e; }
+    .status.schedule { background: var(--blue-soft); color: #2d648f; }
+
+    .empty {
+      padding: 42px 20px;
+      text-align: center;
+      color: #7c8790;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(10, 27, 42, .56);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(820px, 100%);
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      border-radius: 15px;
+      background: white;
+      box-shadow: 0 28px 80px rgba(0,0,0,.25);
+    }
+    .modal-head, .modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 17px 20px;
+      border-bottom: 1px solid var(--gray-2);
+    }
+    .modal-head h3 { margin: 0; color: var(--navy); }
+    .modal-foot { border-top: 1px solid var(--gray-2); border-bottom: 0; justify-content: flex-end; }
+    .modal-body { padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .field.full { grid-column: 1 / -1; }
+    .hidden { display: none !important; }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 200;
+      padding: 12px 15px;
+      border-radius: 10px;
+      background: #17324d;
+      color: white;
+      box-shadow: 0 12px 30px rgba(0,0,0,.2);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: .2s ease;
+      max-width: 420px;
+      font-size: 14px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { background: #8f3434; }
+
+    .print-report { display: none; }
+
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar .toolbar-action { align-self: end; }
+    }
+    @media (max-width: 720px) {
+      .topbar-inner, .container { padding-left: 16px; padding-right: 16px; }
+      .topbar-inner { align-items: flex-start; flex-direction: column; }
+      .top-actions { width: 100%; justify-content: flex-start; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+
+    @page { size: A4 portrait; margin: 0; }
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+      .app-shell, .modal-backdrop, .toast { display: none !important; }
+      .print-report { display: block !important; }
+      .print-page {
+        width: 210mm;
+        height: 297mm;
+        box-sizing: border-box;
+        padding: 10mm 7mm 8mm;
+        overflow: hidden;
+        page-break-after: always;
+        color: #000;
+        background: #fff;
+        font-family: "DFKai-SB", "BiauKai", "KaiTi", serif;
+      }
+      .print-page:last-child { page-break-after: auto; }
+      .print-intro, .print-section-title, .print-cycle-note {
+        margin: 0 0 4mm;
+        font-size: 12.8pt;
+        line-height: 1.65;
+      }
+      .print-cycle-note { margin: 4mm 0 3mm; }
+      .print-cycle-note .em { color: #d53030; }
+      .report-year { font-size: 12.5pt; margin: -1mm 0 4mm; }
+      .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 10.6pt;
+        line-height: 1.22;
+      }
+      .report-table th, .report-table td {
+        border: .55mm solid #000;
+        text-align: center;
+        vertical-align: middle;
+        padding: 1.4mm .5mm;
+        font-weight: 400;
+        word-break: break-word;
+      }
+      .report-table .row-label { width: 9.1%; }
+      .report-table .highlight { background: #b8d2e9 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .report-table .result-cell { height: 25mm; vertical-align: top; padding-top: 2mm; }
+      .report-table .schedule-result { height: 24mm; }
+      .page1 .history-table .result-cell { height: 27mm; }
+      .page1 .schedule-table td { height: 13mm; }
+      .page1 .schedule-table .schedule-result { height: 25mm; }
+      .page2 { padding-top: 8mm; }
+      .page2 .first-block { margin-bottom: 34mm; }
+      .page2 .report-table td { height: 15mm; }
+      .page2 .report-table .result-cell { height: 17mm; vertical-align: middle; padding-top: 1.4mm; }
+      .page2 .wide-table { font-size: 9.7pt; }
+    }
+
+
+    /* ===== V2: 固定功能列 / 正式統計表 / 統計比較分析 ===== */
+    body { background:#eef2f5; }
+    .app-shell { min-height:100vh; display:flex; }
+    .sidebar {
+      position:fixed; inset:0 auto 0 0; width:248px; z-index:45;
+      display:flex; flex-direction:column; color:#fff;
+      background:linear-gradient(180deg,#0e2d49 0%,#123b61 55%,#0d2c48 100%);
+      box-shadow:8px 0 28px rgba(10,35,56,.14);
+    }
+    .sidebar-brand { padding:22px 18px 18px; border-bottom:1px solid rgba(255,255,255,.10); }
+    .sidebar-brand .brand { gap:12px; }
+    .sidebar-brand .brand-mark { width:42px; height:42px; flex:0 0 42px; }
+    .sidebar-brand h1 { margin:0; font-size:17px; line-height:1.4; letter-spacing:.03em; }
+    .sidebar-brand p { margin:6px 0 0 54px; font-size:11px; opacity:.72; }
+    .side-nav { padding:16px 12px; display:grid; gap:6px; }
+    .nav-btn {
+      width:100%; border:0; border-radius:9px; padding:12px 12px; color:rgba(255,255,255,.88);
+      background:transparent; display:flex; align-items:center; gap:11px; text-align:left; font-weight:700;
+    }
+    .nav-btn:hover { background:rgba(255,255,255,.08); }
+    .nav-btn.active { background:#1f65aa; color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.14); }
+    .nav-icon { width:22px; text-align:center; font-size:17px; }
+    .sidebar-foot { margin-top:auto; padding:14px 16px 18px; border-top:1px solid rgba(255,255,255,.10); font-size:11px; line-height:1.65; opacity:.7; }
+
+    .main-shell { width:calc(100% - 248px); margin-left:248px; min-height:100vh; }
+    .page-topbar {
+      position:sticky; top:0; z-index:25; height:70px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 28px; color:var(--navy); background:rgba(255,255,255,.96); border-bottom:1px solid #dbe2e8;
+      backdrop-filter:blur(10px);
+    }
+    .page-topbar h2 { margin:0; font-size:20px; }
+    .page-topbar .sub { margin-top:4px; color:#78838d; font-size:12px; }
+    .top-status { font-size:12px; padding:6px 10px; border-radius:999px; color:#355e7b; background:#eef6fb; border:1px solid #d5e6f1; }
+    .main-container { padding:24px 28px 44px; max-width:1680px; margin:0 auto; }
+    .page-section { display:none; }
+    .page-section.active { display:block; }
+    .page-title-row { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:16px; }
+    .page-title-row h3 { margin:0; color:var(--navy); font-size:22px; }
+    .page-title-row p { margin:6px 0 0; color:#697681; font-size:13px; }
+    .readonly-note { padding:9px 12px; border-radius:9px; background:#fff8e8; border:1px solid #ecd79a; color:#6d5622; font-size:12px; line-height:1.6; }
+
+    .official-sheet { background:#fff; border:1px solid #dde4ea; border-radius:12px; box-shadow:var(--shadow); padding:24px; overflow:hidden; }
+    .official-sheet .screen-intro, .official-sheet .screen-section-title, .official-sheet .screen-cycle-note { margin:0 0 12px; color:#15293b; line-height:1.7; font-size:15px; }
+    .official-sheet .screen-section-title { margin-top:20px; color:#173f69; font-weight:800; }
+    .official-sheet .screen-cycle-note { margin-top:14px; font-weight:700; color:#24496d; }
+    .official-sheet .screen-cycle-note .em { color:#d23535; }
+    .official-sheet .report-year { margin:-4px 0 10px; color:#4e5c68; font-size:14px; }
+    .official-table-wrap { overflow:auto; margin-bottom:14px; }
+    .official-sheet .report-table { width:100%; min-width:980px; border-collapse:collapse; table-layout:fixed; font-family:"DFKai-SB","BiauKai","Microsoft JhengHei",sans-serif; font-size:14px; color:#111; }
+    .official-sheet .report-table th, .official-sheet .report-table td { border:1px solid #333; padding:8px 4px; text-align:center; vertical-align:middle; font-weight:400; word-break:break-word; }
+    .official-sheet .report-table th { background:#fff; font-weight:700; }
+    .official-sheet .report-table .row-label { width:8.5%; }
+    .official-sheet .report-table .highlight { background:#b8d2e9; }
+    .official-sheet .report-table .result-cell { min-height:76px; height:76px; vertical-align:top; padding-top:8px; }
+    .official-sheet .report-table .schedule-result { height:64px; }
+    .official-sheet .report-divider { height:16px; }
+
+    .analysis-filter { background:#fff; border:1px solid #dce4ea; border-radius:12px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:16px; }
+    .analysis-filter-head { padding:15px 18px; border-bottom:1px solid #e4e9ed; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .analysis-filter-head h4 { margin:0; color:var(--navy); font-size:16px; }
+    .analysis-filter-body { padding:14px 18px 16px; display:grid; gap:12px; }
+    .check-row { display:grid; grid-template-columns:90px 1fr; gap:12px; align-items:start; }
+    .check-row-title { font-size:13px; font-weight:800; color:#405264; padding-top:6px; }
+    .check-options { display:flex; flex-wrap:wrap; gap:7px 10px; min-width:0; }
+    .check-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border:1px solid #d9e2e8; border-radius:8px; background:#fbfcfd; font-size:12px; color:#394a59; user-select:none; }
+    .check-chip input { width:14px; height:14px; margin:0; accent-color:#286aa8; }
+    .analysis-filter-actions { display:flex; gap:8px; justify-content:flex-end; padding-top:4px; }
+    .analysis-mode-bar { display:flex; gap:8px; flex-wrap:wrap; padding:14px 16px; background:#fff; border:1px solid #dce4ea; border-radius:12px; margin-bottom:16px; }
+    .analysis-mode-btn { border:1px solid #cfd9e2; background:#fff; color:#40576c; border-radius:8px; padding:10px 14px; font-weight:800; }
+    .analysis-mode-btn.active { background:#1f65aa; color:#fff; border-color:#1f65aa; }
+    .analysis-dimension-row { margin-top:4px; padding-top:13px; border-top:1px dashed #d8e1e8; align-items:flex-start; }
+    .analysis-dimension-row .check-row-title small { font-size:10px; color:#8a949d; font-weight:600; }
+    .dimension-chip span { font-weight:800; }
+    .disabled-chip { opacity:.45; cursor:not-allowed; }
+    .disabled-chip input { cursor:not-allowed; }
+    .dimension-hint { margin-top:7px; font-size:11px; color:#6d7a84; }
+    .dimension-hint.warning { color:#a63a3a; font-weight:700; }
+    .analysis-inline-note { font-size:12px; color:#8a949d; padding:5px 2px; }
+    .analysis-result-note { font-size:12px; color:#7b8791; }
+    .analysis-kpis-5 { grid-template-columns:repeat(5,minmax(0,1fr)); }
+    .cross-analysis-table .matrix-cell strong { display:block; }
+    .cross-analysis-table .matrix-cell small { display:block; margin-top:3px; font-size:10px; }
+    .analysis-total-row th, .analysis-total-row td { background:#f3f7fa; font-weight:800; }
+    .analysis-detail { margin-top:16px; border-top:1px solid #e5eaee; padding-top:13px; }
+    .analysis-detail summary { cursor:pointer; color:#244b6b; font-weight:800; font-size:13px; margin-bottom:10px; }
+    .analysis-result { display:grid; gap:14px; }
+    .analysis-card { background:#fff; border:1px solid #dce4ea; border-radius:12px; box-shadow:var(--shadow); overflow:hidden; }
+    .analysis-card-head { padding:15px 18px; border-bottom:1px solid #e5eaee; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .analysis-card-head h4 { margin:0; color:var(--navy); font-size:17px; }
+    .analysis-card-body { padding:16px 18px; }
+    .focus-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .focus-controls label { font-size:13px; font-weight:800; color:#526170; }
+    .focus-controls select { width:auto; min-width:170px; padding:8px 10px; }
+    .analysis-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+    .analysis-kpi { padding:12px 13px; border:1px solid #e1e7eb; border-radius:10px; background:#fbfcfd; }
+    .analysis-kpi .k { font-size:12px; color:#74808b; }
+    .analysis-kpi .v { margin-top:6px; font-size:24px; font-weight:800; color:#173f69; }
+    .trend-box { border:1px solid #e1e7eb; border-radius:10px; padding:10px; overflow:auto; background:#fff; margin-bottom:14px; }
+    .trend-empty { min-height:180px; display:grid; place-items:center; color:#7c8790; font-size:13px; }
+    .analysis-table-wrap { overflow:auto; }
+    .analysis-table { width:100%; border-collapse:collapse; min-width:760px; font-size:12px; }
+    .analysis-table th, .analysis-table td { border:1px solid #dce3e8; padding:8px 9px; text-align:center; vertical-align:middle; }
+    .analysis-table th { background:#f4f7f9; color:#40505f; font-weight:800; }
+    .analysis-table tbody tr:hover td { background:#fafcfd; }
+    .matrix-cell strong { display:block; color:#173f69; }
+    .matrix-cell small { display:block; margin-top:2px; color:#78838d; }
+    .rate-good { color:#237a57 !important; }
+    .rate-mid { color:#9a5d00 !important; }
+    .rate-bad { color:#a63a3a !important; }
+    .empty-analysis { padding:38px 16px; text-align:center; color:#7a858f; }
+
+    .export-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .export-card { background:#fff; border:1px solid #dce4ea; border-radius:12px; box-shadow:var(--shadow); padding:20px; display:flex; flex-direction:column; gap:12px; }
+    .export-card h4 { margin:0; color:var(--navy); font-size:17px; }
+    .export-card p { margin:0; color:#697681; font-size:13px; line-height:1.7; flex:1; }
+    .export-card .btn { align-self:flex-start; }
+
+
+    /* ===== Visual polish: preserve existing report layout / functionality ===== */
+    body {
+      background:#edf2f6;
+      color:#22313d;
+    }
+
+    .sidebar {
+      background:linear-gradient(180deg,#0b2943 0%,#103a5f 56%,#0b2a45 100%);
+      box-shadow:10px 0 30px rgba(14,42,66,.12);
+      border-right:1px solid rgba(255,255,255,.04);
+    }
+    .sidebar-brand {
+      padding-top:24px;
+      padding-bottom:20px;
+      border-bottom-color:rgba(255,255,255,.08);
+    }
+    .sidebar-brand .brand-mark {
+      background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.06));
+      border-color:rgba(255,255,255,.22);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 8px 18px rgba(0,0,0,.10);
+    }
+    .sidebar-brand h1 { font-weight:800; letter-spacing:.035em; }
+    .side-nav { gap:8px; padding-top:18px; }
+    .nav-btn {
+      position:relative;
+      border:1px solid transparent;
+      border-radius:10px;
+      padding-top:13px;
+      padding-bottom:13px;
+      transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease;
+    }
+    .nav-btn:hover {
+      background:rgba(255,255,255,.075);
+      border-color:rgba(255,255,255,.06);
+    }
+    .nav-btn.active {
+      background:#2367a6;
+      border-color:rgba(255,255,255,.08);
+      box-shadow:0 8px 20px rgba(2,27,50,.20),inset 3px 0 0 #8fc2eb;
+    }
+    .nav-btn.active::after {
+      content:"";
+      position:absolute;
+      right:10px;
+      width:5px;
+      height:5px;
+      border-radius:50%;
+      background:rgba(255,255,255,.72);
+    }
+    .sidebar-foot {
+      color:rgba(255,255,255,.78);
+      opacity:1;
+      border-top-color:rgba(255,255,255,.08);
+    }
+
+    .page-topbar {
+      background:rgba(255,255,255,.97);
+      border-bottom:1px solid #d7e0e7;
+      box-shadow:0 3px 14px rgba(29,55,79,.045);
+    }
+    .page-topbar h2 {
+      color:#183b5a;
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+    .page-topbar .sub { color:#7a8792; }
+    .top-status {
+      color:#355f7e;
+      background:#f0f6fa;
+      border-color:#d6e4ee;
+      box-shadow:0 2px 8px rgba(40,83,116,.04);
+    }
+
+    .main-container { padding-top:26px; }
+    .page-title-row { margin-bottom:18px; }
+    .page-title-row h3 {
+      color:#153a59;
+      font-size:23px;
+      font-weight:800;
+      letter-spacing:.025em;
+    }
+    .page-title-row p {
+      margin-top:7px;
+      color:#72808c;
+      line-height:1.65;
+    }
+    .readonly-note {
+      background:#fffaf0;
+      border-color:#ead8a8;
+      color:#705a2d;
+      border-radius:10px;
+      box-shadow:0 4px 12px rgba(126,96,34,.045);
+      padding:10px 13px;
+    }
+
+    .official-sheet {
+      background:#ffffff;
+      border:1px solid #d9e2e9;
+      border-radius:14px;
+      box-shadow:0 14px 34px rgba(31,61,88,.075);
+      padding:29px 30px 30px;
+    }
+    .official-sheet .screen-intro,
+    .official-sheet .screen-section-title,
+    .official-sheet .screen-cycle-note {
+      color:#283c4d;
+      line-height:1.8;
+      font-size:15px;
+    }
+    .official-sheet .screen-intro {
+      margin-bottom:16px;
+      color:#3d5263;
+      font-weight:700;
+    }
+    .official-sheet .screen-section-title {
+      margin-top:24px;
+      margin-bottom:13px;
+      padding-left:10px;
+      border-left:3px solid #5f86a7;
+      color:#1d4e77;
+      font-weight:900;
+      letter-spacing:.015em;
+    }
+    .official-sheet .screen-cycle-note {
+      margin-top:17px;
+      margin-bottom:14px;
+      color:#385975;
+      font-weight:800;
+    }
+    .official-sheet .screen-cycle-note .em {
+      color:#b94b4b;
+      font-weight:800;
+    }
+    .official-sheet .report-year {
+      margin:-2px 0 11px;
+      color:#75828d;
+      font-size:13px;
+      font-weight:700;
+    }
+    .official-table-wrap {
+      margin-bottom:18px;
+      border-radius:7px;
+      box-shadow:0 2px 9px rgba(31,61,88,.035);
+    }
+    .official-sheet .report-table {
+      font-family:"Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
+      font-size:13.5px;
+      color:#26343f;
+      background:#fff;
+    }
+    .official-sheet .report-table th,
+    .official-sheet .report-table td {
+      border:1px solid #8797a5;
+      padding:9px 5px;
+      line-height:1.45;
+      transition:background-color .12s ease;
+    }
+    .official-sheet .report-table th {
+      background:#f6f8fa;
+      color:#263b4b;
+      font-weight:900;
+      letter-spacing:.015em;
+    }
+    .official-sheet .report-table td { font-weight:700; }
+    .official-sheet .report-table .row-label {
+      background:#f3f6f8;
+      color:#263d50;
+      font-weight:900;
+    }
+    .official-sheet .report-table .highlight {
+      background:#d8e5ef;
+      color:#183d5d;
+    }
+    .official-sheet .report-table .result-cell {
+      min-height:80px;
+      height:80px;
+      vertical-align:top;
+      padding-top:10px;
+    }
+    .official-sheet .retest-result {
+      color:#b42318;
+      font-weight:900;
+    }
+    .official-sheet .report-table .schedule-result { height:68px; }
+    .official-sheet .report-divider { height:18px; }
+
+    @media (max-width:1100px) {
+      .sidebar { width:216px; }
+      .main-shell { width:calc(100% - 216px); margin-left:216px; }
+      .analysis-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .analysis-kpis-5 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width:760px) {
+      .sidebar { position:static; width:100%; min-height:auto; }
+      .app-shell { display:block; }
+      .main-shell { width:100%; margin-left:0; }
+      .sidebar-foot { display:none; }
+      .side-nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .page-topbar { position:static; height:auto; padding:14px 16px; }
+      .main-container { padding:16px; }
+      .check-row { grid-template-columns:1fr; gap:5px; }
+      .analysis-kpis, .export-grid { grid-template-columns:1fr; }
+      .page-title-row { flex-direction:column; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="app">
+    <aside class="sidebar" aria-label="主要功能列">
+      <div class="sidebar-brand">
+        <div class="brand">
+          <div class="brand-mark">EHS</div>
+          <div><h1>毒化物無預警<br>應變演練統計管理</h1></div>
+        </div>
+        <p>Firebase 雲端同步版</p>
+      </div>
+      <nav class="side-nav" id="sideNav">
+        <button class="nav-btn active" data-page="report"><span class="nav-icon">▦</span><span>無預警演練統計表</span></button>
+        <button class="nav-btn" data-page="records"><span class="nav-icon">▣</span><span>演練紀錄管理</span></button>
+        <button class="nav-btn" data-page="analysis"><span class="nav-icon">▥</span><span>統計比較分析</span></button>
+        <button class="nav-btn" data-page="export"><span class="nav-icon">⇅</span><span>資料匯入／匯出</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        使用 Google 帳號登入後，資料會同步至 Firebase Firestore。<br>
+        建議仍定期使用 JSON 匯出功能保留備份。
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="page-topbar">
+        <div>
+          <h2 id="currentPageTitle">無預警演練統計表</h2>
+          <div class="sub" id="currentPageSub">正式附件格式顯示；資料由演練紀錄管理自動同步</div>
+        </div>
+        <div class="top-status" id="cloudStatus">等待 Firebase 登入…</div>
+      </header>
+
+      <main class="main-container">
+        <section class="page-section active" id="page-report">
+          <div class="page-title-row">
+            <div>
+              <h3>無預警演練統計表</h3>
+              <p>正式表格唯讀呈現。新增、修改及刪除請至「演練紀錄管理」。歷年比較請至「統計比較分析」。</p>
+            </div>
+            <div class="readonly-note">正式附件格式：保留合併欄位、藍色標示及原表格結構。<br>PDF／Excel 請至「資料匯入／匯出」。</div>
+          </div>
+          <div class="official-sheet" id="officialReportBody"></div>
+        </section>
+
+        <section class="page-section" id="page-records">
+          <section class="summary-grid" aria-label="統計摘要">
+            <article class="summary-card"><div class="summary-label">已執行演練</div><div class="summary-value" id="sumExecuted">0</div><div class="summary-sub">含三個執行單位</div></article>
+            <article class="summary-card"><div class="summary-label">最終通過</div><div class="summary-value" id="sumPassed">0</div><div class="summary-sub" id="sumPassRate">通過率 0%</div></article>
+            <article class="summary-card"><div class="summary-label">複測案件</div><div class="summary-value" id="sumRetest">0</div><div class="summary-sub">保留初測與複測紀錄</div></article>
+            <article class="summary-card"><div class="summary-label">平均分數</div><div class="summary-value" id="sumAverage">—</div><div class="summary-sub">採最終有效分數</div></article>
+            <article class="summary-card"><div class="summary-label">排程待執行</div><div class="summary-value" id="sumScheduled">0</div><div class="summary-sub">麥寮隊週期排程</div></article>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div><h2>演練紀錄管理</h2><p>所有正式統計表與比較分析均由本頁資料自動產生。</p></div>
+              <button class="btn btn-primary" id="addBtn">＋ 新增紀錄</button>
+            </div>
+            <div class="tabs" id="tabs">
+              <button class="tab-btn active" data-tab="all">全部資料</button>
+              <button class="tab-btn" data-tab="mailiao">麥寮隊</button>
+              <button class="tab-btn" data-tab="epa">環保局</button>
+              <button class="tab-btn" data-tab="park">園區管理局</button>
+            </div>
+            <div class="toolbar">
+              <div class="field"><label for="searchInput">關鍵字</label><input id="searchInput" placeholder="搜尋廠處、備註、型式…" /></div>
+              <div class="field"><label for="yearFilter">年度</label><select id="yearFilter"><option value="">全部年度</option></select></div>
+              <div class="field"><label for="typeFilter">資料類型</label><select id="typeFilter"><option value="">全部</option><option value="result">演練結果</option><option value="schedule">週期排程</option></select></div>
+              <div class="field"><label for="statusFilter">最終狀態</label><select id="statusFilter"><option value="">全部</option><option value="通過">通過</option><option value="未通過">未通過</option><option value="待執行">待執行</option></select></div>
+              <div class="toolbar-action"><button class="btn btn-light" id="resetFilterBtn">清除篩選</button></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>單位</th><th>類型</th><th>事業部</th><th>廠處</th><th>年度／日期</th><th>型式</th><th>初測</th><th>複測</th><th>最終結果</th><th>備註</th><th>操作</th></tr></thead>
+                <tbody id="recordBody"></tbody>
+              </table>
+              <div class="empty hidden" id="emptyState">目前沒有符合條件的資料。</div>
+            </div>
+          </section>
+        </section>
+
+        <section class="page-section" id="page-analysis">
+          <div class="page-title-row">
+            <div><h3>統計比較分析</h3><p>以勾選式表單跨年度、主管機關、事業部與廠處交叉比較；資料來源為「演練紀錄管理」。</p></div>
+          </div>
+
+          <div class="analysis-filter">
+            <div class="analysis-filter-head">
+              <h4>分析條件</h4>
+              <span style="font-size:12px;color:#7a858f;">條件可複選；「統計依據」最多選 2 個</span>
+            </div>
+            <div class="analysis-filter-body">
+              <div class="check-row"><div class="check-row-title">年度</div><div class="check-options" id="analysisYearOptions"></div></div>
+              <div class="check-row"><div class="check-row-title">主管／執行單位</div><div class="check-options" id="analysisAuthorityOptions"></div></div>
+              <div class="check-row"><div class="check-row-title">事業部</div><div class="check-options" id="analysisUnitOptions"></div></div>
+              <div class="check-row"><div class="check-row-title">廠處</div><div class="check-options" id="analysisPlantOptions"></div></div>
+              <div class="check-row"><div class="check-row-title">最終結果</div><div class="check-options" id="analysisStatusOptions"></div></div>
+              <div class="check-row"><div class="check-row-title">型式</div><div class="check-options" id="analysisModeOptions"></div></div>
+              <div class="check-row analysis-dimension-row">
+                <div class="check-row-title">統計依據<br><small>最多 2 個</small></div>
+                <div>
+                  <div class="check-options" id="analysisDimensionOptions">
+                    <label class="check-chip dimension-chip"><input type="checkbox" name="analysisDimension" value="authority" checked><span>主管機關</span></label>
+                    <label class="check-chip dimension-chip"><input type="checkbox" name="analysisDimension" value="business"><span>事業部</span></label>
+                    <label class="check-chip dimension-chip"><input type="checkbox" name="analysisDimension" value="plant" checked><span>廠處</span></label>
+                    <label class="check-chip dimension-chip"><input type="checkbox" name="analysisDimension" value="year"><span>年度</span></label>
+                  </div>
+                  <div class="dimension-hint" id="analysisDimensionHint">目前：主管機關 × 廠處。年度須勾選至少 2 年，才可作為比較依據。</div>
+                </div>
+              </div>
+              <div class="analysis-filter-actions">
+                <button class="btn btn-light" type="button" id="analysisSelectAllBtn">全部勾選</button>
+                <button class="btn btn-light" type="button" id="analysisClearBtn">全部清除</button>
+                <button class="btn btn-primary" type="button" id="analysisApplyBtn">套用分析</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="analysis-result" id="analysisResult"></div>
+        </section>
+
+        <section class="page-section" id="page-export">
+          <div class="page-title-row">
+            <div><h3>資料匯入／匯出</h3><p>JSON 用於備份與移轉；Excel 與 PDF 依正式附件格式輸出。</p></div>
+          </div>
+          <div class="export-grid">
+            <article class="export-card"><h4>匯出 JSON</h4><p>備份目前瀏覽器內的全部演練紀錄，後續可匯回本系統或銜接 Firestore。</p><button class="btn btn-primary" id="jsonExportBtn">匯出 JSON</button></article>
+            <article class="export-card"><h4>匯入 JSON</h4><p>將備份資料匯入並取代目前資料；執行前會再次確認。</p><button class="btn btn-primary" id="jsonImportBtn">匯入 JSON</button></article>
+            <article class="export-card"><h4>匯出 Excel</h4><p>包含「附件原格式」與「明細資料」兩個工作表，供列印與後續統計使用。</p><button class="btn btn-primary" id="excelBtn">匯出 Excel</button></article>
+            <article class="export-card"><h4>匯出 PDF</h4><p>以 A4 直式、原附件表格結構輸出；瀏覽器會開啟列印視窗，請選擇另存為 PDF。</p><button class="btn btn-primary" id="pdfBtn">匯出 PDF</button></article>
+          </div>
+          <input type="file" id="jsonFileInput" accept="application/json,.json" hidden />
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="recordModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">新增紀錄</h3>
+        <button class="btn btn-light btn-small" id="closeModalBtn">關閉</button>
+      </div>
+      <form id="recordForm">
+        <div class="modal-body">
+          <input type="hidden" id="recordId" />
+          <div class="form-grid">
+            <div class="field">
+              <label for="authorityInput">執行單位</label>
+              <select id="authorityInput" required>
+                <option value="mailiao">麥寮隊</option>
+                <option value="epa">環保局</option>
+                <option value="park">園區管理局</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="recordTypeInput">資料類型</label>
+              <select id="recordTypeInput" required>
+                <option value="result">演練結果</option>
+                <option value="schedule">週期排程</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="businessUnitInput">事業部</label>
+              <select id="businessUnitInput" required></select>
+            </div>
+            <div class="field">
+              <label for="plantInput">廠處</label>
+              <select id="plantInput" required></select>
+            </div>
+            <div class="field">
+              <label for="yearInput">年度</label>
+              <input id="yearInput" type="number" min="2000" max="2100" required />
+            </div>
+            <div class="field result-field">
+              <label for="dateInput">演練日期</label>
+              <input id="dateInput" type="date" />
+            </div>
+            <div class="field result-field">
+              <label for="modeInput">型式</label>
+              <select id="modeInput"></select>
+            </div>
+            <div class="field result-field">
+              <label for="initialStatusInput">初測結果</label>
+              <select id="initialStatusInput">
+                <option value="通過">通過</option>
+                <option value="未通過">未通過</option>
+                <option value="">未填寫</option>
+              </select>
+            </div>
+            <div class="field result-field">
+              <label for="initialScoreInput">初測分數</label>
+              <input id="initialScoreInput" type="number" min="0" max="100" placeholder="0～100" />
+            </div>
+            <div class="field result-field">
+              <label for="retestDateInput">複測日期</label>
+              <input id="retestDateInput" type="date" />
+            </div>
+            <div class="field result-field">
+              <label for="retestScoreInput">複測分數</label>
+              <input id="retestScoreInput" type="number" min="0" max="100" placeholder="0～100" />
+            </div>
+            <div class="field result-field">
+              <label for="finalStatusInput">最終結果</label>
+              <select id="finalStatusInput">
+                <option value="通過">通過</option>
+                <option value="未通過">未通過</option>
+                <option value="待確認">待確認</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="noteInput">備註</label>
+              <textarea id="noteInput" placeholder="可填寫演練狀況、改善事項或其他說明"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-light" id="cancelBtn">取消</button>
+          <button type="submit" class="btn btn-primary">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="print-report" id="printReport" aria-hidden="true"></div>
+
+  <script>
+    'use strict';
+
+    const STORAGE_KEY = 'ehs_unannounced_drill_records_v1';
+
+    const authorityConfig = {
+      mailiao: {
+        label: '麥寮隊',
+        modes: ['平日', '假日', '夜間'],
+        groups: [
+          { unit: '化一部', plants: ['ARO1', 'ARO2', 'ARO3'] },
+          { unit: '化二部', plants: ['SM麥寮', 'SM海豐', '合成酚'] },
+          { unit: '塑膠部', plants: ['PC', 'PP', 'PABS'] },
+          { unit: '直屬', plants: ['儲運處'] }
+        ]
+      },
+      epa: {
+        label: '環保局',
+        modes: ['日間', '夜間'],
+        groups: [
+          { unit: '化一部', plants: ['ARO1', 'ARO2', 'ARO3'] },
+          { unit: '化二部', plants: ['SM麥寮', 'SM海豐', '合成酚'] },
+          { unit: '塑膠部', plants: ['PC', 'PP', 'PABS PS課'] },
+          { unit: '直屬', plants: ['儲運處'] }
+        ]
+      },
+      park: {
+        label: '園區管理局',
+        modes: ['日間', '夜間'],
+        groups: [
+          { unit: '化一部', plants: ['ARO1', 'ARO2', 'ARO3'] },
+          { unit: '化二部', plants: ['SM麥寮', 'SM海豐', '合成酚'] },
+          { unit: '化三部', plants: ['HAC', 'PTA'] },
+          { unit: '塑膠部', plants: ['PC', 'PP', 'PABS PS課'] },
+          { unit: '直屬', plants: ['儲運處'] }
+        ]
+      }
+    };
+
+    const seedRecords = [
+      { id:'m01', authority:'mailiao', recordType:'result', businessUnit:'化一部', plant:'ARO1', year:2024, date:'2024-04-30', mode:'夜間', initialStatus:'通過', initialScore:88, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m02', authority:'mailiao', recordType:'result', businessUnit:'化一部', plant:'ARO2', year:2025, date:'2025-04-08', mode:'平日', initialStatus:'通過', initialScore:90, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m03', authority:'mailiao', recordType:'result', businessUnit:'化一部', plant:'ARO3', year:2024, date:'2024-07-01', mode:'平日', initialStatus:'通過', initialScore:88, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m04', authority:'mailiao', recordType:'result', businessUnit:'化二部', plant:'SM麥寮', year:2024, date:'2024-10-09', mode:'假日', initialStatus:'未通過', initialScore:61, retestDate:'2024-05-18', retestScore:92, finalStatus:'通過', note:'初測未通過，複測通過' },
+      { id:'m05', authority:'mailiao', recordType:'result', businessUnit:'化二部', plant:'SM海豐', year:2025, date:'2025-09-18', mode:'平日', initialStatus:'通過', initialScore:85, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m06', authority:'mailiao', recordType:'result', businessUnit:'化二部', plant:'合成酚', year:2025, date:'2025-04-19', mode:'假日', initialStatus:'通過', initialScore:82, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m07', authority:'mailiao', recordType:'result', businessUnit:'塑膠部', plant:'PC', year:2024, date:'2024-09-30', mode:'夜間', initialStatus:'通過', initialScore:92, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m08', authority:'mailiao', recordType:'result', businessUnit:'塑膠部', plant:'PP', year:2025, date:'2025-06-11', mode:'夜間', initialStatus:'通過', initialScore:86, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m09', authority:'mailiao', recordType:'result', businessUnit:'塑膠部', plant:'PABS', year:2025, date:'2025-06-11', mode:'平日', initialStatus:'通過', initialScore:89, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'m10', authority:'mailiao', recordType:'result', businessUnit:'直屬', plant:'儲運處', year:2025, date:'2025-08-14', mode:'平日', initialStatus:'通過', initialScore:85, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+
+      { id:'s01', authority:'mailiao', recordType:'schedule', businessUnit:'化一部', plant:'ARO1', year:2026, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s02', authority:'mailiao', recordType:'schedule', businessUnit:'化一部', plant:'ARO2', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s03', authority:'mailiao', recordType:'schedule', businessUnit:'化一部', plant:'ARO3', year:2026, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s04', authority:'mailiao', recordType:'schedule', businessUnit:'化二部', plant:'SM麥寮', year:2026, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s05', authority:'mailiao', recordType:'schedule', businessUnit:'化二部', plant:'SM海豐', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s06', authority:'mailiao', recordType:'schedule', businessUnit:'化二部', plant:'合成酚', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s07', authority:'mailiao', recordType:'schedule', businessUnit:'塑膠部', plant:'PC', year:2026, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s08', authority:'mailiao', recordType:'schedule', businessUnit:'塑膠部', plant:'PP', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s09', authority:'mailiao', recordType:'schedule', businessUnit:'塑膠部', plant:'PABS', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+      { id:'s10', authority:'mailiao', recordType:'schedule', businessUnit:'直屬', plant:'儲運處', year:2027, date:'', mode:'', initialStatus:'', initialScore:'', retestDate:'', retestScore:'', finalStatus:'待執行', note:'' },
+
+      { id:'e01', authority:'epa', recordType:'result', businessUnit:'化二部', plant:'SM海豐', year:2025, date:'2025-03-28', mode:'夜間', initialStatus:'通過', initialScore:88, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'e02', authority:'epa', recordType:'result', businessUnit:'塑膠部', plant:'PC', year:2025, date:'2025-11-28', mode:'夜間', initialStatus:'通過', initialScore:80, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'e03', authority:'epa', recordType:'result', businessUnit:'塑膠部', plant:'PABS PS課', year:2026, date:'2026-01-15', mode:'日間', initialStatus:'通過', initialScore:83, retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+
+      { id:'p01', authority:'park', recordType:'result', businessUnit:'化一部', plant:'ARO1', year:2025, date:'2025-06-25', mode:'日間', initialStatus:'通過', initialScore:'', retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'p02', authority:'park', recordType:'result', businessUnit:'化一部', plant:'ARO3', year:2025, date:'2025-12-18', mode:'夜間', initialStatus:'通過', initialScore:'', retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'p03', authority:'park', recordType:'result', businessUnit:'化三部', plant:'PTA', year:2026, date:'2026-01-18', mode:'日間', initialStatus:'通過', initialScore:'', retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'p04', authority:'park', recordType:'result', businessUnit:'塑膠部', plant:'PP', year:2025, date:'2025-11-18', mode:'日間', initialStatus:'通過', initialScore:'', retestDate:'', retestScore:'', finalStatus:'通過', note:'' },
+      { id:'p05', authority:'park', recordType:'result', businessUnit:'塑膠部', plant:'PABS PS課', year:2025, date:'2025-07-18', mode:'日間', initialStatus:'通過', initialScore:'', retestDate:'', retestScore:'', finalStatus:'通過', note:'' }
+    ];
+
+    let records = loadRecords();
+    let activeTab = 'all';
+
+    const els = {
+      body: document.getElementById('recordBody'),
+      empty: document.getElementById('emptyState'),
+      modal: document.getElementById('recordModal'),
+      form: document.getElementById('recordForm'),
+      modalTitle: document.getElementById('modalTitle'),
+      search: document.getElementById('searchInput'),
+      yearFilter: document.getElementById('yearFilter'),
+      typeFilter: document.getElementById('typeFilter'),
+      statusFilter: document.getElementById('statusFilter'),
+      toast: document.getElementById('toast'),
+      printReport: document.getElementById('printReport')
+    };
+
+    function clone(value) { return JSON.parse(JSON.stringify(value)); }
+    function loadRecords() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return clone(seedRecords);
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : clone(seedRecords);
+      } catch (error) {
+        console.error(error);
+        return clone(seedRecords);
+      }
+    }
+    function saveRecords() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      window.__toxicDrillQueueSync?.({ records: clone(records) });
+    }
+    function uid() {
+      return 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+    function showToast(message, isError = false) {
+      els.toast.textContent = message;
+      els.toast.classList.toggle('error', isError);
+      els.toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => els.toast.classList.remove('show'), 2600);
+    }
+    function formatDate(date, includeYear = true) {
+      if (!date) return '';
+      const [y, m, d] = date.split('-');
+      return includeYear ? `${y}/${Number(m)}/${Number(d)}` : `${Number(m)}/${Number(d)}`;
+    }
+    function finalScore(record) {
+      if (record.retestScore !== '' && record.retestScore != null) return Number(record.retestScore);
+      if (record.initialScore !== '' && record.initialScore != null) return Number(record.initialScore);
+      return null;
+    }
+    function resultDisplay(record, html = false) {
+      if (!record) return '';
+      if (record.recordType === 'schedule') return '';
+      const line = html ? '<br>' : '\n';
+      if (record.retestScore !== '' && record.retestScore != null) {
+        const initial = record.initialScore !== '' && record.initialScore != null ? `${record.initialScore}分` : '';
+        const retestDate = record.retestDate ? formatDate(record.retestDate, false) : '';
+        return `複測${line}${record.retestScore}分${line}(${retestDate}初測${initial}${record.initialStatus || '未通過'})`;
+      }
+      if (!record.finalStatus && record.initialScore === '') return '';
+      const status = record.finalStatus || record.initialStatus || '';
+      const score = record.initialScore !== '' && record.initialScore != null ? `${line}${record.initialScore}分` : '';
+      return `${status}${score}`;
+    }
+    function statusClass(record) {
+      if (record.recordType === 'schedule') return 'schedule';
+      if (record.retestScore !== '' && record.retestScore != null) return 'retest';
+      if (record.finalStatus === '通過') return 'pass';
+      if (record.finalStatus === '未通過') return 'fail';
+      return 'pending';
+    }
+    function statusLabel(record) {
+      if (record.recordType === 'schedule') return '待執行';
+      if (record.retestScore !== '' && record.retestScore != null) return `複測後${record.finalStatus || '待確認'}`;
+      return record.finalStatus || '待確認';
+    }
+
+    function getFilteredRecords() {
+      const q = els.search.value.trim().toLowerCase();
+      const year = els.yearFilter.value;
+      const type = els.typeFilter.value;
+      const status = els.statusFilter.value;
+      return records.filter(r => {
+        if (activeTab !== 'all' && r.authority !== activeTab) return false;
+        if (year && String(r.year) !== year) return false;
+        if (type && r.recordType !== type) return false;
+        if (status) {
+          const current = r.recordType === 'schedule' ? '待執行' : r.finalStatus;
+          if (current !== status) return false;
+        }
+        if (q) {
+          const haystack = [authorityConfig[r.authority]?.label, r.recordType, r.businessUnit, r.plant, r.year, r.date, r.mode, r.initialStatus, r.initialScore, r.retestScore, r.finalStatus, r.note].join(' ').toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      }).sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return (b.date || '').localeCompare(a.date || '') || a.plant.localeCompare(b.plant, 'zh-Hant');
+      });
+    }
+
+    function render() {
+      renderSummary();
+      renderYearFilter();
+      renderTable();
+      renderOfficialReport();
+      renderAnalysisOptions();
+      renderAnalysis();
+    }
+    function renderSummary() {
+      const results = records.filter(r => r.recordType === 'result' && r.date);
+      const passed = results.filter(r => r.finalStatus === '通過').length;
+      const retests = results.filter(r => r.retestScore !== '' && r.retestScore != null).length;
+      const scores = results.map(finalScore).filter(v => Number.isFinite(v));
+      const avg = scores.length ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '—';
+      const scheduled = records.filter(r => r.recordType === 'schedule' && r.finalStatus === '待執行').length;
+      document.getElementById('sumExecuted').textContent = results.length;
+      document.getElementById('sumPassed').textContent = passed;
+      document.getElementById('sumPassRate').textContent = `通過率 ${results.length ? Math.round(passed / results.length * 100) : 0}%`;
+      document.getElementById('sumRetest').textContent = retests;
+      document.getElementById('sumAverage').textContent = avg;
+      document.getElementById('sumScheduled').textContent = scheduled;
+    }
+    function renderYearFilter() {
+      const current = els.yearFilter.value;
+      const years = [...new Set(records.map(r => Number(r.year)).filter(Boolean))].sort((a,b) => b-a);
+      els.yearFilter.innerHTML = '<option value="">全部年度</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+      if (years.includes(Number(current))) els.yearFilter.value = current;
+    }
+    function renderTable() {
+      const rows = getFilteredRecords();
+      els.body.innerHTML = rows.map(r => {
+        const initial = r.recordType === 'schedule' ? '—' : [r.initialStatus, r.initialScore !== '' && r.initialScore != null ? `${r.initialScore}分` : ''].filter(Boolean).join(' ');
+        const retest = r.retestScore !== '' && r.retestScore != null ? `${formatDate(r.retestDate, false)}／${r.retestScore}分` : '—';
+        const dateText = r.recordType === 'schedule' ? `${r.year} 年` : `${r.year}／${formatDate(r.date, false) || '未填日期'}`;
+        return `<tr>
+          <td>${escapeHtml(authorityConfig[r.authority]?.label || r.authority)}</td>
+          <td>${r.recordType === 'schedule' ? '<span class="status schedule">週期排程</span>' : '演練結果'}</td>
+          <td>${escapeHtml(r.businessUnit)}</td>
+          <td><strong>${escapeHtml(r.plant)}</strong></td>
+          <td>${escapeHtml(dateText)}</td>
+          <td>${escapeHtml(r.mode || '—')}</td>
+          <td>${escapeHtml(initial || '—')}</td>
+          <td class="${r.retestScore !== '' && r.retestScore != null ? 'retest-text' : ''}">${escapeHtml(retest)}</td>
+          <td><span class="status ${statusClass(r)}">${escapeHtml(statusLabel(r))}</span></td>
+          <td class="${r.note ? '' : 'cell-muted'}">${escapeHtml(r.note || '—')}</td>
+          <td><div class="actions">
+            <button class="btn btn-light btn-small" data-action="edit" data-id="${r.id}">編輯</button>
+            <button class="btn btn-danger btn-small" data-action="delete" data-id="${r.id}">刪除</button>
+          </div></td>
+        </tr>`;
+      }).join('');
+      els.empty.classList.toggle('hidden', rows.length > 0);
+    }
+
+
+    let analysisOptionsInitialized = false;
+    let analysisAvailablePlants = new Set();
+
+    const analysisDimensionMeta = {
+      authority: {
+        label: '主管機關',
+        value: r => r.authority,
+        display: v => authorityConfig[v]?.label || v,
+        sort: (a,b) => String(a).localeCompare(String(b),'zh-Hant')
+      },
+      business: {
+        label: '事業部',
+        value: r => r.businessUnit,
+        display: v => v,
+        sort: (a,b) => String(a).localeCompare(String(b),'zh-Hant')
+      },
+      plant: {
+        label: '廠處',
+        value: r => r.plant,
+        display: v => v,
+        sort: (a,b) => String(a).localeCompare(String(b),'zh-Hant')
+      },
+      year: {
+        label: '年度',
+        value: r => String(r.year),
+        display: v => v,
+        sort: (a,b) => Number(a)-Number(b)
+      }
+    };
+
+    function yearRange(authority, recordType = 'result') {
+      const ys = records.filter(r => r.authority === authority && r.recordType === recordType).map(r => Number(r.year)).filter(Boolean);
+      if (!ys.length) return '';
+      const min = Math.min(...ys), max = Math.max(...ys);
+      return min === max ? String(min) : `${min}~${max}`;
+    }
+
+    function officialTableBlock(authority, recordType, options = {}) {
+      return `<div class="official-table-wrap">${reportTableHtml(authority, recordType, options)}</div>`;
+    }
+
+    function renderOfficialReport() {
+      const host = document.getElementById('officialReportBody');
+      if (!host) return;
+      const mailRange = yearRange('mailiao','result') || '2024~2025';
+      const scheduleRange = yearRange('mailiao','schedule') || '2026~2027';
+      const epaRange = yearRange('epa','result') || '2025~2026';
+      const parkRange = yearRange('park','result') || '2025~2026';
+      const scheduleRows = records.filter(r => r.authority === 'mailiao' && r.recordType === 'schedule').sort((a,b) => a.year-b.year || a.plant.localeCompare(b.plant,'zh-Hant'));
+      const scheduleYears = [...new Set(scheduleRows.map(r=>r.year))].sort((a,b)=>a-b);
+      let scheduleNote = `應變隊已排定${scheduleRange}年無預警週期。`;
+      if (scheduleYears.length >= 2) {
+        const first = scheduleYears[0];
+        const firstPlants = scheduleRows.filter(r=>r.year===first).map(r=>r.plant);
+        scheduleNote = `應變隊已排定${scheduleRange}年無預警週期：<span class="em">${escapeHtml(firstPlants.join('/'))}</span>於${first}年進行，其餘廠處於${scheduleYears[scheduleYears.length-1]}年執行。`;
+      }
+      host.innerHTML = `
+        <p class="screen-intro">自本年度起，麥寮隊與環保局將分開執行六輕廠區各公司之毒化物無預警應變演練作業，說明如下：</p>
+        <p class="screen-section-title">(一)麥寮隊：兩年一期週期辦理無預警應變演練，${mailRange}年，週期如下：</p>
+        ${officialTableBlock('mailiao','result',{highlights:['ARO1','ARO3','SM麥寮','PC'],className:'history-table'})}
+        <p class="screen-cycle-note">${scheduleNote}</p>
+        ${officialTableBlock('mailiao','schedule',{highlights:['ARO1','ARO3','SM麥寮','PC'],className:'schedule-table'})}
+        <p class="screen-section-title">(二)環保局：應變演練抽測對象無固定排程，以隨機抽選廠處進行測試：</p>
+        <p class="report-year">(${epaRange}年)</p>
+        ${officialTableBlock('epa','result')}
+        <p class="screen-section-title">(三)園區管理局：應變演練集合演練無固定排程，以隨機抽選廠處進行測試：</p>
+        <p class="report-year">(${parkRange}年)</p>
+        ${officialTableBlock('park','result',{className:'wide-table'})}
+      `;
+    }
+
+    function checkedValues(name) {
+      return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => el.value);
+    }
+
+    function populateCheckGroup(containerId, name, items, labels = null) {
+      const host = document.getElementById(containerId);
+      if (!host) return;
+      const old = new Set(checkedValues(name));
+      const had = host.querySelectorAll('input').length > 0;
+      host.innerHTML = items.map((value, i) => {
+        const checked = had ? old.has(String(value)) : true;
+        const label = labels ? labels[i] : value;
+        return `<label class="check-chip"><input type="checkbox" name="${name}" value="${escapeHtml(value)}" ${checked?'checked':''}><span>${escapeHtml(label)}</span></label>`;
+      }).join('');
+    }
+
+    function analysisFilterNames() {
+      return ['analysisYear','analysisAuthority','analysisUnit','analysisPlant','analysisStatus','analysisDrillMode'];
+    }
+
+    function updateAnalysisPlantOptions() {
+      const host = document.getElementById('analysisPlantOptions');
+      if (!host) return;
+      const currentChecked = new Set(checkedValues('analysisPlant'));
+      const units = new Set(checkedValues('analysisUnit'));
+      const resultRecords = records.filter(r => r.recordType === 'result');
+      const plants = [...new Set(resultRecords.filter(r => units.has(r.businessUnit)).map(r=>r.plant).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+      if (!units.size) {
+        host.innerHTML = '<span class="analysis-inline-note">請先勾選事業部。</span>';
+        analysisAvailablePlants = new Set();
+        return;
+      }
+      host.innerHTML = plants.map(p => {
+        const isNew = !analysisAvailablePlants.has(p);
+        const checked = currentChecked.has(p) || isNew;
+        return `<label class="check-chip"><input type="checkbox" name="analysisPlant" value="${escapeHtml(p)}" ${checked?'checked':''}><span>${escapeHtml(p)}</span></label>`;
+      }).join('');
+      analysisAvailablePlants = new Set(plants);
+    }
+
+    function updateAnalysisDimensionState(message = '') {
+      const yearDim = document.querySelector('input[name="analysisDimension"][value="year"]');
+      const selectedYears = checkedValues('analysisYear');
+      if (yearDim) {
+        const disabled = selectedYears.length < 2;
+        yearDim.disabled = disabled;
+        yearDim.closest('.check-chip')?.classList.toggle('disabled-chip', disabled);
+        if (disabled) yearDim.checked = false;
+      }
+      const dims = checkedValues('analysisDimension');
+      const hint = document.getElementById('analysisDimensionHint');
+      if (!hint) return;
+      if (message) {
+        hint.textContent = message;
+        hint.classList.add('warning');
+        return;
+      }
+      hint.classList.remove('warning');
+      if (!dims.length) hint.textContent = '請選擇 1～2 個統計依據。年度須勾選至少 2 年，才可作為比較依據。';
+      else hint.textContent = `目前：${dims.map(d=>analysisDimensionMeta[d].label).join(' × ')}。年度須勾選至少 2 年，才可作為比較依據。`;
+    }
+
+    function renderAnalysisOptions() {
+      const resultRecords = records.filter(r => r.recordType === 'result');
+      const years = [...new Set(resultRecords.map(r=>Number(r.year)).filter(Boolean))].sort((a,b)=>a-b);
+      const authorities = Object.keys(authorityConfig);
+      const units = [...new Set(resultRecords.map(r=>r.businessUnit).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+      const statuses = ['通過','未通過','待確認'];
+      const modes = [...new Set(resultRecords.map(r=>r.mode).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+      populateCheckGroup('analysisYearOptions','analysisYear',years);
+      populateCheckGroup('analysisAuthorityOptions','analysisAuthority',authorities,authorities.map(a=>authorityConfig[a].label));
+      populateCheckGroup('analysisUnitOptions','analysisUnit',units);
+      populateCheckGroup('analysisStatusOptions','analysisStatus',statuses);
+      populateCheckGroup('analysisModeOptions','analysisDrillMode',modes);
+      updateAnalysisPlantOptions();
+      updateAnalysisDimensionState();
+      analysisOptionsInitialized = true;
+    }
+
+    function analysisBaseRecords() {
+      const years = new Set(checkedValues('analysisYear'));
+      const authorities = new Set(checkedValues('analysisAuthority'));
+      const units = new Set(checkedValues('analysisUnit'));
+      const plants = new Set(checkedValues('analysisPlant'));
+      const statuses = new Set(checkedValues('analysisStatus'));
+      const modes = new Set(checkedValues('analysisDrillMode'));
+      return records.filter(r => r.recordType === 'result'
+        && years.has(String(r.year))
+        && authorities.has(r.authority)
+        && units.has(r.businessUnit)
+        && plants.has(r.plant)
+        && statuses.has(r.finalStatus || '待確認')
+        && modes.has(r.mode || '')
+      ).sort((a,b)=>(a.date||`${a.year}-12-31`).localeCompare(b.date||`${b.year}-12-31`));
+    }
+
+    function passRate(rows) {
+      if (!rows.length) return null;
+      return Math.round(rows.filter(r=>r.finalStatus==='通過').length / rows.length * 100);
+    }
+    function averageScore(rows) {
+      const scores = rows.map(finalScore).filter(Number.isFinite);
+      return scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+    }
+    function rateClass(rate) {
+      if (rate == null) return '';
+      if (rate >= 90) return 'rate-good';
+      if (rate >= 75) return 'rate-mid';
+      return 'rate-bad';
+    }
+
+    function analysisSummary(rows) {
+      const pass = rows.filter(r=>r.finalStatus==='通過').length;
+      const fail = rows.filter(r=>r.finalStatus==='未通過').length;
+      const retests = rows.filter(r=>r.retestScore!=='' && r.retestScore!=null).length;
+      const avg = averageScore(rows);
+      return { count:rows.length, pass, fail, retests, rate:passRate(rows), avg };
+    }
+
+    function dimensionSelectedValues(dim) {
+      if (dim === 'year') return checkedValues('analysisYear').sort((a,b)=>Number(a)-Number(b));
+      if (dim === 'authority') return checkedValues('analysisAuthority').sort(analysisDimensionMeta.authority.sort);
+      if (dim === 'business') return checkedValues('analysisUnit').sort(analysisDimensionMeta.business.sort);
+      if (dim === 'plant') return checkedValues('analysisPlant').sort(analysisDimensionMeta.plant.sort);
+      return [];
+    }
+
+    function rowsForDimensionValue(rows, dim, value) {
+      const meta = analysisDimensionMeta[dim];
+      return rows.filter(r => String(meta.value(r)) === String(value));
+    }
+
+    function metricCell(rows) {
+      if (!rows.length) return '<td class="matrix-cell">—</td>';
+      const s = analysisSummary(rows);
+      return `<td class="matrix-cell"><strong>${s.count} 次</strong><small class="${rateClass(s.rate)}">通過率 ${s.rate}%</small></td>`;
+    }
+
+    function chooseCrossOrientation(dims) {
+      const [a,b] = dims;
+      if (dims.includes('year')) return { row: dims.find(d=>d!=='year'), col:'year' };
+      if (dims.includes('plant')) return { row: dims.find(d=>d!=='plant'), col:'plant' };
+      return { row:a, col:b };
+    }
+
+    function renderAnalysisSummary(rows) {
+      const s = analysisSummary(rows);
+      return `<div class="analysis-kpis analysis-kpis-5">
+        <div class="analysis-kpi"><div class="k">符合條件抽測</div><div class="v">${s.count}</div></div>
+        <div class="analysis-kpi"><div class="k">通過率</div><div class="v">${s.rate==null?'—':s.rate+'%'}</div></div>
+        <div class="analysis-kpi"><div class="k">平均分數</div><div class="v">${s.avg==null?'—':s.avg.toFixed(1)}</div></div>
+        <div class="analysis-kpi"><div class="k">未通過</div><div class="v">${s.fail}</div></div>
+        <div class="analysis-kpi"><div class="k">複測案件</div><div class="v">${s.retests}</div></div>
+      </div>`;
+    }
+
+    function renderOneDimensionTable(base, dim) {
+      const meta = analysisDimensionMeta[dim];
+      const values = dimensionSelectedValues(dim);
+      const body = values.map(v => {
+        const rows = rowsForDimensionValue(base, dim, v);
+        const s = analysisSummary(rows);
+        return `<tr><th>${escapeHtml(meta.display(v))}</th><td>${s.count}</td><td>${s.pass}</td><td>${s.fail}</td><td>${s.retests}</td><td class="${rateClass(s.rate)}">${s.rate==null?'—':s.rate+'%'}</td><td>${s.avg==null?'—':s.avg.toFixed(1)}</td></tr>`;
+      }).join('');
+      return `<div class="analysis-table-wrap"><table class="analysis-table"><thead><tr><th>${escapeHtml(meta.label)}</th><th>抽測次數</th><th>通過</th><th>未通過</th><th>複測</th><th>通過率</th><th>平均分數</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+
+    function renderTwoDimensionTable(base, dims) {
+      const {row, col} = chooseCrossOrientation(dims);
+      const rowMeta = analysisDimensionMeta[row], colMeta = analysisDimensionMeta[col];
+      const rowValues = dimensionSelectedValues(row), colValues = dimensionSelectedValues(col);
+      const body = rowValues.map(rv => {
+        const rowRows = rowsForDimensionValue(base,row,rv);
+        const cells = colValues.map(cv => metricCell(rowsForDimensionValue(rowRows,col,cv))).join('');
+        return `<tr><th>${escapeHtml(rowMeta.display(rv))}</th>${cells}${metricCell(rowRows)}</tr>`;
+      }).join('');
+      const totalCells = colValues.map(cv => metricCell(rowsForDimensionValue(base,col,cv))).join('');
+      return `<div class="analysis-table-wrap"><table class="analysis-table cross-analysis-table"><thead><tr><th>${escapeHtml(rowMeta.label)}＼${escapeHtml(colMeta.label)}</th>${colValues.map(v=>`<th>${escapeHtml(colMeta.display(v))}</th>`).join('')}<th>合計</th></tr></thead><tbody>${body}<tr class="analysis-total-row"><th>合計</th>${totalCells}${metricCell(base)}</tr></tbody></table></div>`;
+    }
+
+    function renderAnalysisDetail(base) {
+      const rows = base.slice().sort((a,b)=>(b.date||`${b.year}-12-31`).localeCompare(a.date||`${a.year}-12-31`));
+      return `<details class="analysis-detail" ${rows.length<=12?'open':''}>
+        <summary>符合條件之抽測明細（${rows.length} 筆）</summary>
+        <div class="analysis-table-wrap"><table class="analysis-table"><thead><tr><th>年度</th><th>日期</th><th>主管／執行單位</th><th>事業部</th><th>廠處</th><th>型式</th><th>初測</th><th>複測</th><th>最終結果</th><th>最終分數</th></tr></thead><tbody>
+        ${rows.map(r=>`<tr><td>${r.year}</td><td>${escapeHtml(formatDate(r.date,true)||'—')}</td><td>${escapeHtml(authorityConfig[r.authority]?.label||r.authority)}</td><td>${escapeHtml(r.businessUnit)}</td><td>${escapeHtml(r.plant)}</td><td>${escapeHtml(r.mode||'—')}</td><td>${escapeHtml([r.initialStatus,r.initialScore!==''&&r.initialScore!=null?r.initialScore+'分':''].filter(Boolean).join(' ')||'—')}</td><td>${r.retestScore!==''&&r.retestScore!=null?escapeHtml((formatDate(r.retestDate,false)||'')+' '+r.retestScore+'分'):'—'}</td><td>${escapeHtml(r.finalStatus||'待確認')}</td><td>${Number.isFinite(finalScore(r))?finalScore(r):'—'}</td></tr>`).join('')}
+        </tbody></table></div>
+      </details>`;
+    }
+
+    function renderAnalysis() {
+      const host = document.getElementById('analysisResult');
+      if (!host || !analysisOptionsInitialized) return;
+      const dims = checkedValues('analysisDimension');
+      const selectedYears = checkedValues('analysisYear');
+      if (!dims.length || dims.length > 2) {
+        host.innerHTML = `<div class="analysis-card"><div class="empty-analysis">請在「統計依據」勾選 1～2 個項目。</div></div>`;
+        return;
+      }
+      if (dims.includes('year') && selectedYears.length < 2) {
+        host.innerHTML = `<div class="analysis-card"><div class="empty-analysis">年度僅選 1 年時不進行年度比較；請至少勾選 2 個年度，或取消「年度」統計依據。</div></div>`;
+        return;
+      }
+      const base = analysisBaseRecords();
+      if (!base.length) {
+        host.innerHTML = `<div class="analysis-card"><div class="empty-analysis">目前沒有符合勾選條件的抽測紀錄。</div></div>`;
+        return;
+      }
+      const title = dims.map(d=>analysisDimensionMeta[d].label).join(' × ');
+      const table = dims.length===1 ? renderOneDimensionTable(base,dims[0]) : renderTwoDimensionTable(base,dims);
+      host.innerHTML = `<div class="analysis-card">
+        <div class="analysis-card-head"><h4>抽測統計分析結果：${escapeHtml(title)}</h4><span class="analysis-result-note">每格顯示抽測次數＋通過率</span></div>
+        <div class="analysis-card-body">${renderAnalysisSummary(base)}${table}${renderAnalysisDetail(base)}</div>
+      </div>`;
+    }
+
+    function showPage(page) {
+      document.querySelectorAll('.page-section').forEach(sec=>sec.classList.toggle('active',sec.id===`page-${page}`));
+      document.querySelectorAll('.nav-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.page===page));
+      const info={
+        report:['無預警演練統計表','正式附件格式顯示；資料由演練紀錄管理自動同步'],
+        records:['演練紀錄管理','新增、修改、刪除歷年演練資料'],
+        analysis:['統計比較分析','以勾選條件進行跨年度、跨主管機關與跨廠比較'],
+        export:['資料匯入／匯出','JSON 備份、附件原格式 Excel 與 PDF 輸出']
+      }[page] || ['', ''];
+      document.getElementById('currentPageTitle').textContent=info[0];
+      document.getElementById('currentPageSub').textContent=info[1];
+      if (page==='analysis') renderAnalysis();
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function updateFormOptions(preferredUnit = '', preferredPlant = '') {
+      const authority = document.getElementById('authorityInput').value;
+      const config = authorityConfig[authority];
+      const unitSelect = document.getElementById('businessUnitInput');
+      const plantSelect = document.getElementById('plantInput');
+      const modeSelect = document.getElementById('modeInput');
+      unitSelect.innerHTML = config.groups.map(g => `<option value="${escapeHtml(g.unit)}">${escapeHtml(g.unit)}</option>`).join('');
+      if (preferredUnit && config.groups.some(g => g.unit === preferredUnit)) unitSelect.value = preferredUnit;
+      const group = config.groups.find(g => g.unit === unitSelect.value) || config.groups[0];
+      plantSelect.innerHTML = group.plants.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      if (preferredPlant && group.plants.includes(preferredPlant)) plantSelect.value = preferredPlant;
+      modeSelect.innerHTML = '<option value="">請選擇</option>' + config.modes.map(m => `<option value="${m}">${m}</option>`).join('');
+      const recordType = document.getElementById('recordTypeInput');
+      if (authority !== 'mailiao' && recordType.value === 'schedule') recordType.value = 'result';
+      recordType.querySelector('option[value="schedule"]').disabled = authority !== 'mailiao';
+      toggleRecordTypeFields();
+    }
+    function toggleRecordTypeFields() {
+      const isSchedule = document.getElementById('recordTypeInput').value === 'schedule';
+      document.querySelectorAll('.result-field').forEach(el => el.classList.toggle('hidden', isSchedule));
+      document.getElementById('dateInput').required = !isSchedule;
+      document.getElementById('modeInput').required = !isSchedule;
+    }
+    function openModal(record = null) {
+      els.form.reset();
+      document.getElementById('recordId').value = record?.id || '';
+      document.getElementById('authorityInput').value = record?.authority || (activeTab !== 'all' ? activeTab : 'mailiao');
+      document.getElementById('recordTypeInput').value = record?.recordType || 'result';
+      updateFormOptions(record?.businessUnit || '', record?.plant || '');
+      document.getElementById('yearInput').value = record?.year || new Date().getFullYear();
+      document.getElementById('dateInput').value = record?.date || '';
+      document.getElementById('modeInput').value = record?.mode || '';
+      document.getElementById('initialStatusInput').value = record?.initialStatus ?? '通過';
+      document.getElementById('initialScoreInput').value = record?.initialScore ?? '';
+      document.getElementById('retestDateInput').value = record?.retestDate || '';
+      document.getElementById('retestScoreInput').value = record?.retestScore ?? '';
+      document.getElementById('finalStatusInput').value = record?.finalStatus || '通過';
+      document.getElementById('noteInput').value = record?.note || '';
+      els.modalTitle.textContent = record ? '編輯紀錄' : '新增紀錄';
+      toggleRecordTypeFields();
+      els.modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      els.modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function collectFormData() {
+      const recordType = document.getElementById('recordTypeInput').value;
+      const isSchedule = recordType === 'schedule';
+      return {
+        id: document.getElementById('recordId').value || uid(),
+        authority: document.getElementById('authorityInput').value,
+        recordType,
+        businessUnit: document.getElementById('businessUnitInput').value,
+        plant: document.getElementById('plantInput').value,
+        year: Number(document.getElementById('yearInput').value),
+        date: isSchedule ? '' : document.getElementById('dateInput').value,
+        mode: isSchedule ? '' : document.getElementById('modeInput').value,
+        initialStatus: isSchedule ? '' : document.getElementById('initialStatusInput').value,
+        initialScore: isSchedule || document.getElementById('initialScoreInput').value === '' ? '' : Number(document.getElementById('initialScoreInput').value),
+        retestDate: isSchedule ? '' : document.getElementById('retestDateInput').value,
+        retestScore: isSchedule || document.getElementById('retestScoreInput').value === '' ? '' : Number(document.getElementById('retestScoreInput').value),
+        finalStatus: isSchedule ? '待執行' : document.getElementById('finalStatusInput').value,
+        note: document.getElementById('noteInput').value.trim()
+      };
+    }
+
+    function exportJson() {
+      const payload = {
+        schema: 'ehs-unannounced-drill-v1',
+        exportedAt: new Date().toISOString(),
+        records
+      };
+      downloadBlob(JSON.stringify(payload, null, 2), `無預警應變演練資料_${dateStamp()}.json`, 'application/json;charset=utf-8');
+      showToast('JSON 備份已匯出。');
+    }
+    async function importJson(file) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const incoming = Array.isArray(parsed) ? parsed : parsed.records;
+        if (!Array.isArray(incoming)) throw new Error('JSON 內容缺少 records 陣列');
+        const valid = incoming.every(r => r && r.id && r.authority && r.recordType && r.plant && r.year);
+        if (!valid) throw new Error('部分紀錄缺少必要欄位');
+        if (!confirm(`即將以匯入檔案取代目前 ${records.length} 筆資料，共匯入 ${incoming.length} 筆。是否繼續？`)) return;
+        records = incoming;
+        saveRecords();
+        render();
+        showToast('JSON 資料已匯入。');
+      } catch (error) {
+        console.error(error);
+        showToast(`匯入失敗：${error.message}`, true);
+      }
+    }
+    function downloadBlob(content, filename, type) {
+      const blob = content instanceof Blob ? content : new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function dateStamp() {
+      const d = new Date();
+      return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function getLatest(authority, recordType, plant) {
+      return records
+        .filter(r => r.authority === authority && r.recordType === recordType && r.plant === plant)
+        .sort((a,b) => (b.year - a.year) || (b.date || '').localeCompare(a.date || ''))[0] || null;
+    }
+
+    function reportTableHtml(authority, recordType, options = {}) {
+      const config = authorityConfig[authority];
+      const groups = config.groups;
+      const plants = groups.flatMap(g => g.plants);
+      const highlights = new Set(options.highlights || []);
+      const recordsByPlant = new Map(plants.map(p => [p, getLatest(authority, recordType, p)]));
+      const className = options.className || '';
+      const groupHeaders = groups.map(g => `<th colspan="${g.plants.length}">${escapeHtml(g.unit)}</th>`).join('');
+      const plantHeaders = plants.map(p => `<th class="${highlights.has(p) ? 'highlight' : ''}">${escapeHtml(p).replace('SM', 'SM<br>').replace('PABS PS課','PABS<br>PS課').replace('儲運處','儲運<br>處')}</th>`).join('');
+      const row = (label, valueFn, extraClass = '') => `<tr><th class="row-label">${label}</th>${plants.map(p => {
+        const r = recordsByPlant.get(p);
+        return `<td class="${highlights.has(p) ? 'highlight ' : ''}${extraClass}">${valueFn(r, p)}</td>`;
+      }).join('')}</tr>`;
+      return `<table class="report-table ${className}">
+        <colgroup><col class="row-label">${plants.map(() => '<col>').join('')}</colgroup>
+        <tr><th>事業部</th>${groupHeaders}</tr>
+        <tr><th>廠處</th>${plantHeaders}</tr>
+        ${row(recordType === 'schedule' ? '年份' : (authority === 'mailiao' ? '年份' : '日期'), r => {
+          if (!r) return '';
+          if (recordType === 'schedule') return r.year || '';
+          if (authority === 'mailiao') return r.year || '';
+          return formatDate(r.date, true).replace('/', '<br>');
+        })}
+        ${recordType === 'schedule' ? row('日期', r => r?.date ? formatDate(r.date, false) : '') : (authority === 'mailiao' ? row('日期', r => r?.date ? formatDate(r.date, false) : '') : '')}
+        ${row('型式', r => escapeHtml(r?.mode || ''))}
+        ${row('結果', r => { const html = resultDisplay(r, true); return r && r.retestScore !== '' && r.retestScore != null ? `<span class="retest-result">${html}</span>` : html; }, recordType === 'schedule' ? 'schedule-result' : 'result-cell')}
+      </table>`;
+    }
+
+    function buildPrintReport() {
+      els.printReport.innerHTML = `
+        <section class="print-page page1">
+          <p class="print-intro">自本年度起，麥寮隊與環保局將分開執行六輕廠區各公司之毒化物無預警應變<br>演練作業，說明如下：</p>
+          <p class="print-section-title">(一)麥寮隊：兩年一期週期辦理無預警應變演練，${(yearRange('mailiao','result') || '2024~2025').replace('~','年至')}年，週期如下：</p>
+          ${reportTableHtml('mailiao', 'result', { highlights:['ARO1','ARO3','SM麥寮','PC'], className:'history-table' })}
+          <p class="print-cycle-note">應變隊已排定2026年~2027年無預警週期：<span class="em">ARO1/ARO3/SM麥寮/PC</span>於2026年進行，<br>其餘廠處於2027年執行。</p>
+          ${reportTableHtml('mailiao', 'schedule', { highlights:['ARO1','ARO3','SM麥寮','PC'], className:'schedule-table' })}
+        </section>
+        <section class="print-page page2">
+          <div class="first-block">
+            <p class="print-section-title">(二)環保局：應變演練抽測對象無固定排程，以隨機抽選廠處進行測試：</p>
+            <p class="report-year">(${yearRange('epa','result') || '2025~2026'}年)</p>
+            ${reportTableHtml('epa', 'result')}
+          </div>
+          <div>
+            <p class="print-section-title">(三)園區管理局：應變演練集合演練無固定排程，以隨機抽選廠處進行測試：</p>
+            <p class="report-year">(${yearRange('park','result') || '2025~2026'}年)</p>
+            ${reportTableHtml('park', 'result', { className:'wide-table' })}
+          </div>
+        </section>`;
+    }
+
+    function exportPdf() {
+      buildPrintReport();
+      showToast('已開啟列印視窗，請選擇「另存為 PDF」。');
+      setTimeout(() => window.print(), 100);
+    }
+
+    function exportExcel() {
+      if (!window.XLSX) {
+        showToast('Excel 元件尚未載入，請確認網路連線後再試。', true);
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      const report = buildExcelReportSheet();
+      const detail = buildExcelDetailSheet();
+      XLSX.utils.book_append_sheet(wb, report, '附件原格式');
+      XLSX.utils.book_append_sheet(wb, detail, '明細資料');
+      XLSX.writeFile(wb, `近年無預警統計表_${dateStamp()}.xlsx`);
+      showToast('Excel 已匯出。');
+    }
+
+    function buildExcelReportSheet() {
+      const aoa = [];
+      const merges = [];
+      const styles = [];
+      const push = row => { aoa.push(row); return aoa.length - 1; };
+      const merge = (r1,c1,r2,c2) => merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}});
+      const mailPlants = authorityConfig.mailiao.groups.flatMap(g => g.plants);
+      const epaPlants = authorityConfig.epa.groups.flatMap(g => g.plants);
+      const parkPlants = authorityConfig.park.groups.flatMap(g => g.plants);
+
+      let r = push(['自本年度起，麥寮隊與環保局將分開執行六輕廠區各公司之毒化物無預警應變演練作業，說明如下：']);
+      merge(r,0,r,10);
+      r = push(['(一)麥寮隊：兩年一期週期辦理無預警應變演練，2024年至2025年，週期如下：']);
+      merge(r,0,r,10);
+      const start1 = aoa.length;
+      push(['事業部','化一部','','','化二部','','','塑膠部','','','直屬']);
+      merge(start1,1,start1,3); merge(start1,4,start1,6); merge(start1,7,start1,9);
+      push(['廠處', ...mailPlants.map(x => x.replace('SM','SM\n'))]);
+      push(['年份', ...mailPlants.map(p => getLatest('mailiao','result',p)?.year || '')]);
+      push(['日期', ...mailPlants.map(p => formatDate(getLatest('mailiao','result',p)?.date, false))]);
+      push(['型式', ...mailPlants.map(p => getLatest('mailiao','result',p)?.mode || '')]);
+      push(['結果', ...mailPlants.map(p => resultDisplay(getLatest('mailiao','result',p), false))]);
+      push([]);
+      r = push(['應變隊已排定2026年~2027年無預警週期：ARO1/ARO3/SM麥寮/PC於2026年進行，其餘廠處於2027年執行。']);
+      merge(r,0,r,10);
+      const start2 = aoa.length;
+      push(['事業部','化一部','','','化二部','','','塑膠部','','','直屬']);
+      merge(start2,1,start2,3); merge(start2,4,start2,6); merge(start2,7,start2,9);
+      push(['廠處', ...mailPlants.map(x => x.replace('SM','SM\n'))]);
+      push(['年份', ...mailPlants.map(p => getLatest('mailiao','schedule',p)?.year || '')]);
+      push(['日期', ...mailPlants.map(p => formatDate(getLatest('mailiao','schedule',p)?.date, false))]);
+      push(['型式', ...mailPlants.map(p => getLatest('mailiao','schedule',p)?.mode || '')]);
+      push(['結果', ...mailPlants.map(p => resultDisplay(getLatest('mailiao','schedule',p), false))]);
+      push([]); push([]);
+      r = push(['(二)環保局：應變演練抽測對象無固定排程，以隨機抽選廠處進行測試：']); merge(r,0,r,10);
+      r = push(['(2025~2026年)']); merge(r,0,r,10);
+      const start3 = aoa.length;
+      push(['事業部','化一部','','','化二部','','','塑膠部','','','直屬']);
+      merge(start3,1,start3,3); merge(start3,4,start3,6); merge(start3,7,start3,9);
+      push(['廠處', ...epaPlants.map(x => x.replace('SM','SM\n').replace('PABS PS課','PABS\nPS課'))]);
+      push(['日期', ...epaPlants.map(p => formatDate(getLatest('epa','result',p)?.date, true))]);
+      push(['型式', ...epaPlants.map(p => getLatest('epa','result',p)?.mode || '')]);
+      push(['結果', ...epaPlants.map(p => resultDisplay(getLatest('epa','result',p), false))]);
+      push([]); push([]); push([]);
+      r = push(['(三)園區管理局：應變演練集合演練無固定排程，以隨機抽選廠處進行測試：']); merge(r,0,r,12);
+      r = push(['(2025~2026年)']); merge(r,0,r,12);
+      const start4 = aoa.length;
+      push(['事業部','化一部','','','化二部','','','化三部','','塑膠部','','','直屬']);
+      merge(start4,1,start4,3); merge(start4,4,start4,6); merge(start4,7,start4,8); merge(start4,9,start4,11);
+      push(['廠處', ...parkPlants.map(x => x.replace('SM','SM\n').replace('PABS PS課','PABS\nPS課').replace('儲運處','儲運\n處'))]);
+      push(['日期', ...parkPlants.map(p => formatDate(getLatest('park','result',p)?.date, true))]);
+      push(['型式', ...parkPlants.map(p => getLatest('park','result',p)?.mode || '')]);
+      push(['結果', ...parkPlants.map(p => resultDisplay(getLatest('park','result',p), false))]);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = merges;
+      ws['!cols'] = [{wch:12}, ...Array.from({length:12}, () => ({wch:12}))];
+      ws['!rows'] = aoa.map((row, idx) => ({hpt: idx === start1+5 || idx === start2+5 ? 78 : (idx === start4+4 ? 48 : 28)}));
+      ws['!margins'] = { left:0.28, right:0.28, top:0.35, bottom:0.35, header:0, footer:0 };
+      ws['!pageSetup'] = { orientation:'portrait', paperSize:9, fitToWidth:1, fitToHeight:2 };
+
+      const thin = { style:'thin', color:{rgb:'000000'} };
+      const border = { top:thin, bottom:thin, left:thin, right:thin };
+      const baseFont = { name:'標楷體', sz:12 };
+      const tableStarts = [start1, start2, start3, start4];
+      const tableRowCounts = [6,6,5,5];
+      for (let R = 0; R < aoa.length; R++) {
+        for (let C = 0; C < (aoa[R]?.length || 0); C++) {
+          const addr = XLSX.utils.encode_cell({r:R,c:C});
+          if (!ws[addr]) continue;
+          ws[addr].s = { font:baseFont, alignment:{vertical:'center', wrapText:true} };
+        }
+      }
+      tableStarts.forEach((start, idx) => {
+        const cols = idx === 3 ? 13 : 11;
+        for (let R = start; R < start + tableRowCounts[idx]; R++) {
+          for (let C = 0; C < cols; C++) {
+            const addr = XLSX.utils.encode_cell({r:R,c:C});
+            if (!ws[addr]) ws[addr] = {t:'s', v:''};
+            ws[addr].s = { font:baseFont, alignment:{horizontal:'center', vertical:'center', wrapText:true}, border };
+          }
+        }
+      });
+      const highlightPlants = new Set(['ARO1','ARO3','SM麥寮','PC']);
+      [start1, start2].forEach(start => {
+        mailPlants.forEach((p, i) => {
+          if (!highlightPlants.has(p)) return;
+          for (let R = start+1; R <= start+5; R++) {
+            const addr = XLSX.utils.encode_cell({r:R,c:i+1});
+            if (!ws[addr]) ws[addr] = {t:'s',v:''};
+            ws[addr].s = { ...(ws[addr].s || {}), fill:{fgColor:{rgb:'B8D2E9'}}, font:baseFont, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border };
+          }
+        });
+      });
+      return ws;
+    }
+
+    function buildExcelDetailSheet() {
+      const headers = ['ID','執行單位','資料類型','事業部','廠處','年度','演練日期','型式','初測結果','初測分數','複測日期','複測分數','最終結果','備註'];
+      const rows = records
+        .slice()
+        .sort((a,b) => (b.year-a.year) || (b.date||'').localeCompare(a.date||''))
+        .map(r => [r.id, authorityConfig[r.authority]?.label || r.authority, r.recordType === 'schedule' ? '週期排程' : '演練結果', r.businessUnit, r.plant, r.year, r.date, r.mode, r.initialStatus, r.initialScore, r.retestDate, r.retestScore, r.finalStatus, r.note]);
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws['!autofilter'] = { ref:`A1:N${rows.length+1}` };
+      ws['!freeze'] = { xSplit:0, ySplit:1 };
+      ws['!cols'] = [12,12,12,12,14,9,13,10,11,11,13,11,11,30].map(wch => ({wch}));
+      const thin = { style:'thin', color:{rgb:'D9E0E6'} };
+      for (let R=0; R<=rows.length; R++) {
+        for (let C=0; C<headers.length; C++) {
+          const addr = XLSX.utils.encode_cell({r:R,c:C});
+          if (!ws[addr]) ws[addr] = {t:'s',v:''};
+          ws[addr].s = {
+            font:{name:'微軟正黑體', sz:10, bold:R===0, color:{rgb:R===0?'FFFFFF':'1F2A33'}},
+            fill:R===0 ? {fgColor:{rgb:'244B6B'}} : undefined,
+            alignment:{vertical:'center', wrapText:true},
+            border:{top:thin,bottom:thin,left:thin,right:thin}
+          };
+        }
+      }
+      return ws;
+    }
+
+
+    document.getElementById('sideNav').addEventListener('click', event => {
+      const btn=event.target.closest('[data-page]');
+      if (btn) showPage(btn.dataset.page);
+    });
+    document.getElementById('analysisApplyBtn').addEventListener('click', renderAnalysis);
+    document.getElementById('analysisSelectAllBtn').addEventListener('click', () => {
+      ['analysisYear','analysisAuthority','analysisUnit','analysisStatus','analysisDrillMode'].forEach(name => {
+        document.querySelectorAll(`input[name="${name}"]`).forEach(i=>i.checked=true);
+      });
+      updateAnalysisPlantOptions();
+      document.querySelectorAll('input[name="analysisPlant"]').forEach(i=>i.checked=true);
+      updateAnalysisDimensionState();
+      renderAnalysis();
+    });
+    document.getElementById('analysisClearBtn').addEventListener('click', () => {
+      analysisFilterNames().forEach(name => document.querySelectorAll(`input[name="${name}"]`).forEach(i=>i.checked=false));
+      updateAnalysisPlantOptions();
+      updateAnalysisDimensionState();
+      renderAnalysis();
+    });
+    document.getElementById('analysisUnitOptions').addEventListener('change', event => {
+      if (!event.target.matches('input[name="analysisUnit"]')) return;
+      updateAnalysisPlantOptions();
+    });
+    document.getElementById('analysisYearOptions').addEventListener('change', event => {
+      if (!event.target.matches('input[name="analysisYear"]')) return;
+      updateAnalysisDimensionState();
+    });
+    document.getElementById('analysisDimensionOptions').addEventListener('change', event => {
+      const input = event.target.closest('input[name="analysisDimension"]');
+      if (!input) return;
+      const dims = checkedValues('analysisDimension');
+      if (dims.length > 2) {
+        input.checked = false;
+        updateAnalysisDimensionState('統計依據最多只能選 2 個；請先取消其他項目再選擇。');
+        return;
+      }
+      updateAnalysisDimensionState();
+    });
+
+    document.getElementById('tabs').addEventListener('click', event => {
+      const button = event.target.closest('[data-tab]');
+      if (!button) return;
+      activeTab = button.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === button));
+      renderTable();
+    });
+    [els.search, els.yearFilter, els.typeFilter, els.statusFilter].forEach(el => el.addEventListener('input', renderTable));
+    document.getElementById('resetFilterBtn').addEventListener('click', () => {
+      els.search.value = '';
+      els.yearFilter.value = '';
+      els.typeFilter.value = '';
+      els.statusFilter.value = '';
+      renderTable();
+    });
+    document.getElementById('addBtn').addEventListener('click', () => openModal());
+    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    els.modal.addEventListener('click', event => { if (event.target === els.modal) closeModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && els.modal.classList.contains('open')) closeModal(); });
+    document.getElementById('authorityInput').addEventListener('change', () => updateFormOptions());
+    document.getElementById('businessUnitInput').addEventListener('change', () => {
+      const authority = document.getElementById('authorityInput').value;
+      const group = authorityConfig[authority].groups.find(g => g.unit === document.getElementById('businessUnitInput').value);
+      document.getElementById('plantInput').innerHTML = group.plants.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    });
+    document.getElementById('recordTypeInput').addEventListener('change', toggleRecordTypeFields);
+    els.form.addEventListener('submit', event => {
+      event.preventDefault();
+      const data = collectFormData();
+      const duplicate = records.find(r => r.id !== data.id && r.authority === data.authority && r.recordType === data.recordType && r.plant === data.plant && r.year === data.year && (data.recordType === 'schedule' || r.date === data.date));
+      if (duplicate && !confirm('已有相同單位、廠處與年度的資料，仍要新增／覆寫為另一筆紀錄嗎？')) return;
+      const index = records.findIndex(r => r.id === data.id);
+      if (index >= 0) records[index] = data; else records.push(data);
+      saveRecords();
+      render();
+      closeModal();
+      showToast(index >= 0 ? '紀錄已更新。' : '紀錄已新增。');
+    });
+    els.body.addEventListener('click', event => {
+      const button = event.target.closest('[data-action]');
+      if (!button) return;
+      const record = records.find(r => r.id === button.dataset.id);
+      if (!record) return;
+      if (button.dataset.action === 'edit') openModal(record);
+      if (button.dataset.action === 'delete') {
+        if (!confirm(`確定刪除「${authorityConfig[record.authority].label}／${record.plant}／${record.year}」？`)) return;
+        records = records.filter(r => r.id !== record.id);
+        saveRecords();
+        render();
+        showToast('紀錄已刪除。');
+      }
+    });
+    document.getElementById('jsonExportBtn').addEventListener('click', exportJson);
+    document.getElementById('jsonImportBtn').addEventListener('click', () => document.getElementById('jsonFileInput').click());
+    document.getElementById('jsonFileInput').addEventListener('change', event => {
+      const file = event.target.files?.[0];
+      if (file) importJson(file);
+      event.target.value = '';
+    });
+    document.getElementById('excelBtn').addEventListener('click', exportExcel);
+    document.getElementById('pdfBtn').addEventListener('click', exportPdf);
+    window.addEventListener('beforeprint', buildPrintReport);
+
+    updateFormOptions();
+    render();
+    window.__getToxicDrillState = () => ({ records: clone(records) });
+    window.__applyRemoteToxicDrillState = state => {
+      if (!state || !Array.isArray(state.records)) return;
+      records = clone(state.records);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      render();
+    };
+    window.__setToxicDrillSyncState = (text, state = 'neutral') => {
+      const status = document.getElementById('cloudStatus');
+      if (!status) return;
+      status.textContent = text;
+      status.style.color = state === 'ok' ? '#237a57' : state === 'error' ? '#a63a3a' : '';
+      status.style.borderColor = state === 'ok' ? '#9ed7bf' : state === 'error' ? '#e2aaaa' : '';
+    };
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut,
+      setPersistence,
+      browserLocalPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      initializeFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+    const provider = new GoogleAuthProvider();
+    const stateRef = doc(db, "toxic_drill_dashboard", "shared_state");
+    let pendingState = null;
+    let syncTimer = null;
+    let flushChain = Promise.resolve();
+
+    const clone = value => JSON.parse(JSON.stringify(value));
+    const setSyncState = (text, state = "neutral") => window.__setToxicDrillSyncState?.(text, state);
+
+    async function saveCloudState(state) {
+      setSyncState("同步中…");
+      await setDoc(stateRef, {
+        records: clone(Array.isArray(state?.records) ? state.records : []),
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.email || "",
+        app: "toxic-drill-dashboard",
+        version: "firebase-v1"
+      }, { merge: true });
+      setSyncState("Firebase 已同步", "ok");
+    }
+
+    function queueSync(state) {
+      pendingState = clone(state);
+      setSyncState("等待同步…");
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        const next = pendingState;
+        pendingState = null;
+        flushChain = flushChain
+          .then(() => saveCloudState(next))
+          .catch(error => {
+            console.error(error);
+            setSyncState(firebaseErrorText(error, "同步失敗"), "error");
+          });
+      }, 350);
+    }
+
+    async function bootFirebase() {
+      try {
+        await requireFirebaseUser({
+          auth,
+          provider,
+          signInWithPopup,
+          onAuthStateChanged,
+          signOut,
+          setPersistence,
+          browserLocalPersistence,
+          moduleName: "毒化物無預警應變演練統計管理"
+        });
+
+        setSyncState("讀取 Firebase 資料…");
+        const snapshot = await getDoc(stateRef);
+        if (snapshot.exists() && Array.isArray(snapshot.data()?.records)) {
+          window.__applyRemoteToxicDrillState?.({ records: snapshot.data().records });
+        } else {
+          await saveCloudState(window.__getToxicDrillState?.() || { records: [] });
+        }
+
+        window.__toxicDrillQueueSync = queueSync;
+        onSnapshot(stateRef, snap => {
+          if (snap.exists() && Array.isArray(snap.data()?.records)) {
+            window.__applyRemoteToxicDrillState?.({ records: snap.data().records });
+          }
+          setSyncState("Firebase 已同步", "ok");
+        }, error => {
+          console.error(error);
+          setSyncState(firebaseErrorText(error, "即時同步失敗"), "error");
+        });
+      } catch (error) {
+        console.error(error);
+        setSyncState(firebaseErrorText(error, "Firebase 連線失敗"), "error");
+      }
+    }
+
+    bootFirebase();
+  </script>
+</body>
+</html>

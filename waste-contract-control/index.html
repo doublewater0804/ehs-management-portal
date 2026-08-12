@@ -315,7 +315,7 @@
 
     .contract-line{
       display:grid;
-      grid-template-columns:1.1fr 1.2fr 1fr .9fr .9fr .9fr auto;
+      grid-template-columns:1.8fr 1.25fr .85fr .8fr .8fr .8fr auto;
       gap:8px;
       align-items:end;
       padding:10px;
@@ -324,6 +324,8 @@
       background:#f9fbfd;
       margin-bottom:9px;
     }
+    .line-waste-picker{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px}
+    .line-waste-picker select{min-width:0}
     .line-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
     .contract-line input:disabled{
       background:#eef2f6;
@@ -2168,6 +2170,40 @@
     return `<option value="">${placeholder}</option>` + items.map(x => `<option value="${x.id}" ${x.id===selected?"selected":""}>${esc(wasteLabel(x))}</option>`).join("");
   }
 
+  function wasteCategory(item){
+    const match=String(item?.code||"").trim().match(/^([A-Za-z])/);
+    return match ? match[1].toUpperCase() : "OTHER";
+  }
+
+  function wasteCategoryLabel(category){
+    return category === "OTHER" ? "其他" : `${category} 類`;
+  }
+
+  function wasteCategoryOptionHtml(selected=""){
+    const categories=[...new Set(state.wastes.map(wasteCategory))]
+      .sort((a,b)=>a==="OTHER"?1:b==="OTHER"?-1:a.localeCompare(b));
+    return `<option value="">代碼分類</option>` + categories.map(category =>
+      `<option value="${category}" ${category===selected?"selected":""}>${esc(wasteCategoryLabel(category))}</option>`
+    ).join("");
+  }
+
+  function wastesByCategory(category){
+    return state.wastes
+      .filter(item=>wasteCategory(item)===category)
+      .sort((a,b)=>String(a.code||"").localeCompare(String(b.code||""),"zh-Hant",{numeric:true}) || String(a.name||"").localeCompare(String(b.name||""),"zh-Hant"));
+  }
+
+  function methodLabel(item){
+    if(!item) return "—";
+    return `${item.name}（${item.code || "待補代碼"}）`;
+  }
+
+  function methodOptionHtml(items,selected="",placeholder="全部"){
+    return `<option value="">${placeholder}</option>` + items.map(item =>
+      `<option value="${item.id}" ${item.id===selected?"selected":""}>${esc(methodLabel(item))}</option>`
+    ).join("");
+  }
+
   function institutionOptionsHtml(items){
     return items.map(x=>`<option value="${esc(x.name)}">${esc(x.code||"待補代碼")}</option>`).join("");
   }
@@ -2841,6 +2877,8 @@
 
   function lineHtml(line={}){
     const mode=detectLinePricingMode(line);
+    const selectedWaste=getBy("wastes",line.wasteId);
+    const selectedCategory=selectedWaste ? wasteCategory(selectedWaste) : "";
     const transportValue=mode === "package" ? "" : (line.transportPrice ?? "");
     const treatmentValue=mode === "package" ? "" : (line.treatmentPrice ?? "");
     const totalValue=mode === "package"
@@ -2849,8 +2887,11 @@
         ? (nullableNumber(line.transportPrice) || 0)+(nullableNumber(line.treatmentPrice) || 0)
         : "");
     return `<div class="contract-line" data-line-id="${line.id || uid("L")}" data-pricing-mode="${mode}">
-      <div class="field"><label>廢棄物</label><select class="line-waste">${wasteOptionHtml(state.wastes,line.wasteId,"請選擇")}</select></div>
-      <div class="field"><label>處理方式</label><select class="line-method">${optionHtml(state.methods,line.methodId,"請選擇")}</select></div>
+      <div class="field"><label>廢棄物分類／種類</label><div class="line-waste-picker">
+        <select class="line-waste-category">${wasteCategoryOptionHtml(selectedCategory)}</select>
+        <select class="line-waste" ${selectedCategory?"":"disabled"}>${selectedCategory ? wasteOptionHtml(wastesByCategory(selectedCategory),line.wasteId,"請選擇廢棄物") : '<option value="">請先選分類</option>'}</select>
+      </div></div>
+      <div class="field"><label>處理方式</label><select class="line-method">${methodOptionHtml(state.methods,line.methodId,"請選擇")}</select></div>
       <div class="field"><label>月清運量</label><input class="line-qty" type="number" min="0" step="0.01" value="${line.monthlyQty ?? ""}"></div>
       <div class="field"><label>清除單價</label><input class="line-transport" type="number" min="0" step="0.01" value="${transportValue}"></div>
       <div class="field"><label>處理單價</label><input class="line-treatment" type="number" min="0" step="0.01" value="${treatmentValue}"></div>
@@ -2860,6 +2901,15 @@
         <button class="btn danger small remove-line" type="button">刪除</button>
       </div>
     </div>`;
+  }
+
+  function updateLineWasteOptions(line){
+    const category=$(".line-waste-category",line).value;
+    const wasteSelect=$(".line-waste",line);
+    wasteSelect.innerHTML=category
+      ? wasteOptionHtml(wastesByCategory(category),"","請選擇廢棄物")
+      : '<option value="">請先選分類</option>';
+    wasteSelect.disabled=!category;
   }
 
   function addContractLine(line={}){
@@ -3709,6 +3759,9 @@
     }
   });
   $("#addLineBtn").addEventListener("click",()=>addContractLine());
+  $("#contractLines").addEventListener("change",e => {
+    if(e.target.matches(".line-waste-category")) updateLineWasteOptions(e.target.closest(".contract-line"));
+  });
   $("#contractLines").addEventListener("input",e => {
     const line = e.target.closest(".contract-line");
     if(!line) return;

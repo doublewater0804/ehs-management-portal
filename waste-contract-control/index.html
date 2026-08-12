@@ -2943,7 +2943,7 @@
   }
 
   function refreshContractLineMasterOptions(){
-    $("#contractLines .contract-line").forEach(line=>{
+    document.querySelectorAll("#contractLines .contract-line").forEach(line=>{
       const categorySelect=$(".line-waste-category",line);
       const wasteSelect=$(".line-waste",line);
       const methodSelect=$(".line-method",line);

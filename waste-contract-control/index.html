@@ -343,6 +343,8 @@
     .notice.warn{background:#fff8e7;border-color:#eed086;color:#775100}
     .notice.danger{background:#fff2f2;border-color:#efb3b3;color:#8c2d2d}
 
+    .ocr-upload-stack{display:grid;gap:14px;margin-bottom:18px}
+    .ocr-upload-stack .ocr-panel{margin-bottom:0}
     .ocr-panel{
       display:grid;
       grid-template-columns:minmax(210px,300px) minmax(0,1fr);
@@ -645,29 +647,56 @@
           <form id="contractForm">
             <input type="hidden" id="contractId">
 
-            <div class="ocr-panel no-print">
-              <div class="ocr-preview" id="ocrPreviewBox">
-                <span id="ocrPreviewPlaceholder">尚未選擇申請單圖片</span>
-                <img id="ocrPreview" alt="申請單預覽">
+            <div class="ocr-upload-stack no-print">
+              <div class="ocr-panel">
+                <div class="ocr-preview" id="ocrPreviewBox">
+                  <span id="ocrPreviewPlaceholder">尚未選擇基本資料圖片</span>
+                  <img id="ocrPreview" alt="基本資料圖片預覽">
+                </div>
+                <div class="stack">
+                  <div>
+                    <strong style="color:var(--navy)">1. 基本資料圖片</strong>
+                    <p class="muted" style="margin:6px 0 0;font-size:13px">上傳完整申請單或上方基本資料；只預填外包申請資料，不處理廢棄物明細。</p>
+                  </div>
+                  <div class="ocr-actions">
+                    <input type="file" id="contractImageUpload" accept="image/png,image/jpeg,image/webp" hidden>
+                    <label class="btn secondary" for="contractImageUpload">選擇基本資料圖片</label>
+                    <button class="btn primary" type="button" id="runOcrBtn" disabled>辨識基本資料</button>
+                    <button class="btn secondary" type="button" id="clearOcrBtn" disabled>清除</button>
+                  </div>
+                  <div id="ocrStatus" class="muted" style="font-size:13px" aria-live="polite">選擇圖片後會自動開始辨識。</div>
+                  <div class="ocr-progress" aria-hidden="true"><span id="ocrProgressBar"></span></div>
+                  <details class="ocr-details">
+                    <summary>查看／修正辨識文字</summary>
+                    <textarea id="ocrRawText" placeholder="辨識後的原始文字會顯示於此；修正後可再按「套用文字至欄位」。"></textarea>
+                    <button class="btn secondary small" type="button" id="applyOcrTextBtn" style="margin-top:8px">套用文字至欄位</button>
+                  </details>
+                </div>
               </div>
-              <div class="stack">
-                <div>
-                  <strong style="color:var(--navy)">由外包申請單圖片預填</strong>
-                  <p class="muted" style="margin:6px 0 0;font-size:13px">優先使用固定表格逐格辨識；黃色為已預填，紅色為低可信度未填入。</p>
+
+              <div class="ocr-panel">
+                <div class="ocr-preview" id="detailOcrPreviewBox">
+                  <span id="detailOcrPreviewPlaceholder">尚未選擇廢棄物明細圖片</span>
+                  <img id="detailOcrPreview" alt="廢棄物明細圖片預覽">
                 </div>
-                <div class="ocr-actions">
-                  <input type="file" id="contractImageUpload" accept="image/png,image/jpeg,image/webp" hidden>
-                  <label class="btn secondary" for="contractImageUpload">選擇圖片</label>
-                  <button class="btn primary" type="button" id="runOcrBtn" disabled>辨識並填入</button>
-                  <button class="btn secondary" type="button" id="clearOcrBtn" disabled>清除圖片</button>
+                <div class="stack">
+                  <div>
+                    <strong style="color:var(--navy)">2. 廢棄物明細圖片</strong>
+                    <p class="muted" style="margin:6px 0 0;font-size:13px">請截取包含表頭與全部資料列的明細表；辨識代碼、名稱、現狀單價及擬外包月工作量。</p>
+                  </div>
+                  <div class="ocr-actions">
+                    <input type="file" id="contractDetailImageUpload" accept="image/png,image/jpeg,image/webp" hidden>
+                    <label class="btn secondary" for="contractDetailImageUpload">選擇明細圖片</label>
+                    <button class="btn primary" type="button" id="runDetailOcrBtn" disabled>辨識明細</button>
+                    <button class="btn secondary" type="button" id="clearDetailOcrBtn" disabled>清除</button>
+                  </div>
+                  <div id="detailOcrStatus" class="muted" style="font-size:13px" aria-live="polite">選擇明細圖片後會自動辨識。</div>
+                  <div class="ocr-progress" aria-hidden="true"><span id="detailOcrProgressBar"></span></div>
+                  <details class="ocr-details">
+                    <summary>查看明細辨識文字</summary>
+                    <textarea id="detailOcrRawText" readonly placeholder="辨識到的明細列會顯示於此。"></textarea>
+                  </details>
                 </div>
-                <div id="ocrStatus" class="muted" style="font-size:13px" aria-live="polite">選擇圖片後會自動開始辨識。</div>
-                <div class="ocr-progress" aria-hidden="true"><span id="ocrProgressBar"></span></div>
-                <details class="ocr-details">
-                  <summary>查看／修正辨識文字</summary>
-                  <textarea id="ocrRawText" placeholder="辨識後的原始文字會顯示於此；修正後可再按「套用文字至欄位」。"></textarea>
-                  <button class="btn secondary small" type="button" id="applyOcrTextBtn" style="margin-top:8px">套用文字至欄位</button>
-                </details>
               </div>
             </div>
 
@@ -1817,6 +1846,9 @@
   let contractOcrFile = null;
   let contractOcrObjectUrl = "";
   let ocrRunSerial = 0;
+  let contractDetailOcrFile = null;
+  let contractDetailOcrObjectUrl = "";
+  let detailOcrRunSerial = 0;
 
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -2513,8 +2545,8 @@
     }
     const dangerous=detectDangerousWork(source,grid);
     data.dangerousWork=dangerous.value; confidence.dangerousWork=dangerous.confidence;
-    const detailRows=await recognizeContractDetailRows(worker,source,grid,serial);
-    return {data,confidence,detailRows};
+    setOcrStatus("基本資料辨識完成，正在整理欄位…",96);
+    return {data,confidence,detailRows:[]};
   }finally{
     if(worker) await worker.terminate();
   }
@@ -2613,6 +2645,168 @@
       if(item.rawCode || item.name || item.currentPrice || item.monthlyQty) results.push(item);
     }
     return results;
+  }
+
+  function setDetailOcrStatus(message,progress=null){
+    $("#detailOcrStatus").textContent=message;
+    if(progress!==null) $("#detailOcrProgressBar").style.width=`${Math.max(0,Math.min(100,progress))}%`;
+  }
+
+  function detectStandaloneDetailTable(source){
+    const ctx=source.getContext("2d",{willReadFrequently:true});
+    const {data}=ctx.getImageData(0,0,source.width,source.height);
+    const scores=new Uint32Array(source.height);
+    const bounds=Array.from({length:source.height},()=>({x1:source.width,x2:-1}));
+    for(let y=0;y<source.height;y++){
+      let score=0,x1=source.width,x2=-1;
+      for(let x=0;x<source.width;x++){
+        const i=(y*source.width+x)*4;
+        const r=data[i],g=data[i+1],b=data[i+2],max=Math.max(r,g,b),min=Math.min(r,g,b),avg=(r+g+b)/3;
+        if(max-min<32 && avg<215){ score++; if(x<x1)x1=x; if(x>x2)x2=x; }
+      }
+      scores[y]=score; bounds[y]={x1,x2};
+    }
+    const raw=groupLinePeaks(scores,source.width*.28)
+      .filter(y=>bounds[y].x2-bounds[y].x1>=source.width*.45)
+      .map(y=>({y,score:scores[y],...bounds[y]}));
+    if(raw.length<2) return null;
+    const merged=[];
+    raw.forEach(line=>{
+      const previous=merged.at(-1);
+      if(previous && line.y-previous.y<=4){
+        if(line.score>previous.score) merged[merged.length-1]=line;
+      }else merged.push(line);
+    });
+    const clusters=[]; let cluster=[];
+    merged.forEach(line=>{
+      if(cluster.length && line.y-cluster.at(-1).y>120){
+        if(cluster.length>=2) clusters.push(cluster);
+        cluster=[];
+      }
+      cluster.push(line);
+    });
+    if(cluster.length>=2) clusters.push(cluster);
+    const lines=clusters.at(-1);
+    if(!lines || lines.length<2) return null;
+    let headerIndex=0;
+    if(lines.length>=3){
+      const firstGap=lines[1].y-lines[0].y,secondGap=lines[2].y-lines[1].y;
+      if(firstGap>=30 && firstGap<=120 && secondGap>=14 && secondGap<=110) headerIndex=1;
+    }
+    const reference=lines.reduce((best,line)=>line.score>best.score?line:best,lines[0]);
+    const x1=reference.x1,x2=reference.x2;
+    if(x2-x1<source.width*.45) return null;
+    const separators=lines.slice(headerIndex).map(line=>line.y),rows=[];
+    for(let i=0;i<separators.length-1;i++){
+      const height=separators[i+1]-separators[i];
+      if(height>=14 && height<=120) rows.push({y1:separators[i]+1,y2:separators[i+1]-1});
+    }
+    const last=separators.at(-1);
+    if(source.height-last>=15 && source.height-last<=110) rows.push({y1:last+1,y2:source.height-1});
+    return rows.length ? {x1,x2,rows} : null;
+  }
+
+  function detailRowsToText(rows=[]){
+    return rows.map((row,index)=>
+      `${String(index+1).padStart(2,"0")} ${row.rawCode||""} ${row.name||""} ${row.unit||""} 現狀單價 ${row.currentPrice||""} 月工作量 ${row.monthlyQty||""}`
+    ).join("\n");
+  }
+
+  async function recognizeStandaloneDetailImage(Tesseract,file,serial){
+    const source=await imageFileToCanvas(file);
+    const table=detectStandaloneDetailTable(source);
+    if(!table) throw new Error("找不到明細表表頭或資料列，請保留完整表頭與左右邊界");
+    const ratios=[0,.084,.205,.413,.489,.679,.861,1];
+    const fields=[
+      {key:"rawCode",col:1,kind:"code",worker:"numeric"},{key:"name",col:2,kind:"text",worker:"text"},
+      {key:"unit",col:3,kind:"unit",worker:"numeric"},{key:"currentPrice",col:4,kind:"decimal",worker:"numeric"},
+      {key:"monthlyQty",col:5,kind:"amount",worker:"numeric"}
+    ];
+    let textWorker=null,numericWorker=null;
+    try{
+      setDetailOcrStatus("正在載入明細辨識資料…",8);
+      [textWorker,numericWorker]=await Promise.all([Tesseract.createWorker("chi_tra+eng",1),Tesseract.createWorker("eng",1)]);
+      const results=[],total=table.rows.length*fields.length; let done=0;
+      for(let rowIndex=0;rowIndex<table.rows.length;rowIndex++){
+        if(serial!==detailOcrRunSerial) throw new Error("辨識已取消");
+        const row=table.rows[rowIndex],item={confidence:{}};
+        for(const field of fields){
+          const x1=Math.round(table.x1+(table.x2-table.x1)*ratios[field.col]);
+          const x2=Math.round(table.x1+(table.x2-table.x1)*ratios[field.col+1]);
+          const region=buildOcrRegionCanvas(source,x1,row.y1,x2,row.y2,field.kind);
+          if(region.blank){ item[field.key]=""; item.confidence[field.key]=100; }
+          else{
+            const worker=field.worker==="text"?textWorker:numericWorker;
+            await worker.setParameters(templateOcrParameters(field.kind));
+            try{
+              const result=await worker.recognize(region.canvas);
+              item[field.key]=cleanTemplateOcrValue(result.data.text,field.kind);
+              let confidence=Number(result.data.confidence)||0;
+              if(field.kind==="code" && normalizeWasteCodeFromOcr(item[field.key])) confidence=Math.max(confidence,78);
+              if(field.kind==="decimal" && item[field.key]!=="" && Number.isFinite(Number(item[field.key]))) confidence=Math.max(confidence,82);
+              if(field.kind==="amount" && item[field.key]!=="" && Number(item[field.key])>0) confidence=Math.max(confidence,82);
+              item.confidence[field.key]=confidence;
+            }catch(err){
+              console.warn(`明細第 ${rowIndex+1} 列 ${field.key} 辨識失敗`,err);
+              item[field.key]=""; item.confidence[field.key]=0;
+            }
+          }
+          done++;
+          setDetailOcrStatus(`逐列辨識 ${rowIndex+1}/${table.rows.length}`,12+Math.round(done/total*82));
+        }
+        if(item.rawCode || item.name || item.currentPrice || item.monthlyQty) results.push(item);
+      }
+      return results;
+    }finally{
+      await Promise.allSettled([textWorker?.terminate(),numericWorker?.terminate()]);
+    }
+  }
+
+  async function runContractDetailOcr(){
+    if(!contractDetailOcrFile) return toast("請先選擇廢棄物明細圖片");
+    const serial=++detailOcrRunSerial;
+    $("#runDetailOcrBtn").disabled=true;
+    setDetailOcrStatus("正在偵測明細表格…",3);
+    try{
+      const Tesseract=await loadOcrEngine();
+      if(serial!==detailOcrRunSerial) return;
+      const rows=await recognizeStandaloneDetailImage(Tesseract,contractDetailOcrFile,serial);
+      if(serial!==detailOcrRunSerial) return;
+      $("#detailOcrRawText").value=detailRowsToText(rows);
+      const result=applyContractDetailOcrRows(rows);
+      if(!result.count) throw new Error("有找到表格，但未辨識到有效明細列");
+      let message=`已建立 ${result.count} 筆廢棄物明細`;
+      if(result.low) message+=`；${result.low} 筆請人工確認紅色欄位`;
+      if(result.preserved) message+="；原有手動明細已保留";
+      message+="。資料尚未儲存。";
+      setDetailOcrStatus(message,100); toast(message);
+    }catch(err){
+      console.error(err);
+      if(err.message!=="辨識已取消"){
+        const message=`明細辨識失敗：${err.message}`;
+        setDetailOcrStatus(message,0); toast(message);
+      }
+    }finally{
+      if(serial===detailOcrRunSerial) $("#runDetailOcrBtn").disabled=!contractDetailOcrFile;
+    }
+  }
+
+  function clearContractDetailOcr(clearHighlights=true){
+    detailOcrRunSerial++;
+    contractDetailOcrFile=null;
+    if(contractDetailOcrObjectUrl) URL.revokeObjectURL(contractDetailOcrObjectUrl);
+    contractDetailOcrObjectUrl="";
+    $("#contractDetailImageUpload").value="";
+    $("#detailOcrPreview").removeAttribute("src");
+    $("#detailOcrPreview").style.display="none";
+    $("#detailOcrPreviewPlaceholder").style.display="";
+    $("#detailOcrRawText").value="";
+    $("#runDetailOcrBtn").disabled=true;
+    $("#clearDetailOcrBtn").disabled=true;
+    setDetailOcrStatus("選擇明細圖片後會自動辨識。",0);
+    if(clearHighlights) $$("#contractLines .ocr-filled,#contractLines .ocr-low-confidence").forEach(x=>{
+      x.classList.remove("ocr-filled","ocr-low-confidence"); x.removeAttribute("title");
+    });
   }
 
   const OCR_LABELS = {
@@ -3189,6 +3383,7 @@
 }
   function resetContractForm(){
     clearContractOcr();
+    clearContractDetailOcr();
     $("#contractForm").reset();
     $("#contractId").value = "";
     $("#contractFormTitle").textContent = "新增合約";
@@ -3252,6 +3447,7 @@
     const c = getBy("contracts",id);
     if(!c) return;
     clearContractOcr();
+    clearContractDetailOcr();
     switchPage("contracts");
 
     $("#contractId").value = c.id;
@@ -4023,6 +4219,31 @@
     setOcrStatus("已選擇圖片，準備自動辨識…",1);
     runContractOcr();
   });
+  $("#contractDetailImageUpload").addEventListener("change",e => {
+    const file=e.target.files[0];
+    if(!file) return;
+    if(!/^image\/(png|jpeg|webp)$/.test(file.type)){
+      e.target.value="";
+      return toast("明細圖片僅支援 PNG、JPG、WEBP");
+    }
+    if(file.size>20*1024*1024){
+      e.target.value="";
+      return toast("明細圖片不可超過 20 MB");
+    }
+    contractDetailOcrFile=file;
+    if(contractDetailOcrObjectUrl) URL.revokeObjectURL(contractDetailOcrObjectUrl);
+    contractDetailOcrObjectUrl=URL.createObjectURL(file);
+    $("#detailOcrPreview").src=contractDetailOcrObjectUrl;
+    $("#detailOcrPreview").style.display="block";
+    $("#detailOcrPreviewPlaceholder").style.display="none";
+    $("#runDetailOcrBtn").disabled=false;
+    $("#clearDetailOcrBtn").disabled=false;
+    $("#detailOcrRawText").value="";
+    setDetailOcrStatus("已選擇明細圖片，準備自動辨識…",1);
+    runContractDetailOcr();
+  });
+  $("#runDetailOcrBtn").addEventListener("click",runContractDetailOcr);
+  $("#clearDetailOcrBtn").addEventListener("click",()=>clearContractDetailOcr());
   $("#runOcrBtn").addEventListener("click",runContractOcr);
   $("#clearOcrBtn").addEventListener("click",()=>clearContractOcr());
   $("#applyOcrTextBtn").addEventListener("click",()=>applyContractOcrText($("#ocrRawText").value));

@@ -1,741 +1,691 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>年度安衛環專案管制總表 - 雲端即時版</title>
-    
-    <!-- 1. 引入 Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. 引入 React 核心庫 -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- 3. 引入 Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>年度安衛環專案管制總表 - 雲端即時版</title>
 
-    <!-- 4. 引入 Firebase SDK -->
-    <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
-  import {
-    initializeFirestore,
-    collection,
-    doc,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    onSnapshot,
-    serverTimestamp,
-    query,
-    orderBy
-  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  const firebaseConfig = window.__FIREBASE_CONFIG;
-
-  window.__firebaseReady = (async () => {
-    if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      throw new Error("Firebase config missing");
-    }
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-
-    const appId = (window.__APP_ID && String(window.__APP_ID).trim()) ? window.__APP_ID : "ehs-dashboard-2024";
-    const COL_NAME = `${appId}_projects`;
-    const PROJECTS_COL = collection(db, COL_NAME);
-
-    const provider = new GoogleAuthProvider();
-
-    window.__fb = { app, auth, db, PROJECTS_COL, COL_NAME };
-
-    await requireFirebaseUser({
-      auth,
-      provider,
-      signInWithPopup,
-      onAuthStateChanged,
-      signOut,
-      setPersistence,
-      browserLocalPersistence,
-      moduleName: "年度安衛環專案管制總表"
-    });
-
-    window.__fs_add = async (payload) => {
-      const now = serverTimestamp();
-      const docRef = await addDoc(PROJECTS_COL, { ...payload, createdAt: now, updatedAt: now });
-      return docRef.id;
+  <script>
+    window.__FIREBASE_CONFIG = {
+      apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
+      authDomain: "esh-v85.firebaseapp.com",
+      projectId: "esh-v85",
+      storageBucket: "esh-v85.firebasestorage.app",
+      messagingSenderId: "1021350670476",
+      appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
+      measurementId: "G-MMVQN63GDG"
     };
+    window.__APP_ID = "ehs-dashboard-2024";
+  </script>
 
-    window.__fs_update = async (id, payload) => {
-      const ref = doc(PROJECTS_COL, String(id));
-      await updateDoc(ref, { ...payload, updatedAt: serverTimestamp() });
-    };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+    import {
+      initializeFirestore,
+      collection,
+      doc,
+      addDoc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      serverTimestamp,
+      query,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    window.__fs_delete = async (id) => {
-      await deleteDoc(doc(PROJECTS_COL, String(id)));
-    };
+    const firebaseConfig = window.__FIREBASE_CONFIG;
 
-    window.__fs_subscribe = (cb, onErr) => {
-      const q = query(PROJECTS_COL, orderBy("createdAt", "desc"));
-      return onSnapshot(q, (snap) => {
-        const list = [];
-        snap.forEach(d => list.push({ id: d.id, ...(d.data() || {}) }));
-        cb(list);
-      }, onErr);
-    };
+    window.__firebaseReady = (async () => {
+      if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) throw new Error("Firebase config missing");
 
-    await new Promise((resolve) => {
-      const unsub = onAuthStateChanged(auth, () => { unsub(); resolve(); });
-    });
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+      const appId = (window.__APP_ID && String(window.__APP_ID).trim()) ? window.__APP_ID : "ehs-dashboard-2024";
+      const PROJECTS_COL = collection(db, `${appId}_projects`);
+      const MASTER_COL = collection(db, `${appId}_project_masterdata`);
+      const provider = new GoogleAuthProvider();
 
-    return true;
-  })();
-</script>
+      window.__fb = { app, auth, db, PROJECTS_COL, MASTER_COL };
 
-    <script>
-      window.__FIREBASE_CONFIG = {
-        apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
-        authDomain: "esh-v85.firebaseapp.com",
-        projectId: "esh-v85",
-        storageBucket: "esh-v85.firebasestorage.app",
-        messagingSenderId: "1021350670476",
-        appId: "1:1021350670476:web:afd5bc96ff28c910f48ba9",
-        measurementId: "G-MMVQN63GDG"
+      const user = await requireFirebaseUser({
+        auth,
+        provider,
+        signInWithPopup,
+        onAuthStateChanged,
+        signOut,
+        setPersistence,
+        browserLocalPersistence,
+        moduleName: "年度安衛環專案管制總表"
+      });
+
+      window.__currentUserName = user?.displayName || (user?.email ? user.email.split('@')[0] : '') || '';
+
+      window.__fs_add = async (payload) => {
+        const now = serverTimestamp();
+        const docRef = await addDoc(PROJECTS_COL, { ...payload, createdAt: now, updatedAt: now });
+        return docRef.id;
       };
 
-      window.__APP_ID = "ehs-dashboard-2024";
-    </script>
+      window.__fs_update = async (id, payload) => {
+        await updateDoc(doc(PROJECTS_COL, String(id)), { ...payload, updatedAt: serverTimestamp() });
+      };
 
-    <style>
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        html { -webkit-text-size-adjust: 100%; }
-        body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f9fafb; }
-        input, select, textarea { font-size: 16px !important; }
-        input:focus, select:focus, textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
-        
-        .project-row-height { 
-            height: 130px; 
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .gantt-row { 
-            height: 130px; 
-            border-bottom: 1px solid #e5e7eb; 
-            position: relative; 
-        }
+      window.__fs_delete = async (id) => {
+        await deleteDoc(doc(PROJECTS_COL, String(id)));
+      };
 
-        .execution-log-item { transition: all 0.2s ease; }
-        .execution-log-item:hover { border-color: #cbd5e1; transform: translateY(-1px); }
-        .action-link { font-size: 11px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-        .action-link:hover { opacity: 0.7; text-decoration: underline; }
-        .quick-view-dot { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .quick-view-dot:hover { transform: scale(1.4); }
-        
-        .row-even { background-color: #f8fafc; }
-        .row-odd { background-color: #ffffff; }
-        .row-hover:hover { background-color: #eff6ff !important; }
+      window.__fs_subscribe = (cb, onErr) => {
+        const q = query(PROJECTS_COL, orderBy("createdAt", "desc"));
+        return onSnapshot(q, (snap) => {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...(d.data() || {}) }));
+          cb(list);
+        }, onErr);
+      };
 
-        /* 新增可調整大小視窗的 CSS */
-        .resizable-container {
-            resize: both;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            min-width: 400px;
-            min-height: 300px;
-            max-width: 95vw;
-            max-height: 90vh;
-            background: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            border-radius: 1rem;
-        }
-    </style>
+      window.__fs_subscribe_master = (cb, onErr) => {
+        return onSnapshot(MASTER_COL, (snap) => {
+          const data = {};
+          snap.forEach(d => { data[d.id] = Array.isArray(d.data()?.items) ? d.data().items : []; });
+          cb(data);
+        }, onErr);
+      };
+
+      window.__fs_save_master = async (key, items) => {
+        await setDoc(doc(MASTER_COL, key), { items, updatedAt: serverTimestamp() }, { merge: true });
+      };
+
+      return true;
+    })();
+  </script>
+
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background:#f8fafc; }
+    input, select, textarea { font-size: 16px !important; }
+    input:focus, select:focus, textarea:focus { border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.10); outline:none; }
+    .scrollbar-hide::-webkit-scrollbar { display:none; }
+    .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+    .project-row-height,.gantt-row { height:144px; border-bottom:1px solid #e5e7eb; }
+    .gantt-row { position:relative; }
+    .row-even { background:#f8fafc; }
+    .row-odd { background:#fff; }
+    .row-hover:hover { background:#eff6ff !important; }
+    .action-link { font-size:11px; font-weight:700; cursor:pointer; }
+    .action-link:hover { text-decoration:underline; opacity:.75; }
+    .quick-view-dot { transition:transform .2s cubic-bezier(.175,.885,.32,1.275); }
+    .quick-view-dot:hover { transform:scale(1.4); }
+    .resizable-container { resize:both; overflow:hidden; display:flex; flex-direction:column; min-width:420px; min-height:320px; max-width:96vw; max-height:92vh; background:#fff; box-shadow:0 25px 50px -12px rgba(0,0,0,.25); border-radius:1rem; }
+    .progress-card { transition:border-color .15s, background .15s; }
+    .progress-card:hover { border-color:#bfdbfe; background:#f8fbff; }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useMemo, useEffect, useRef } = React;
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
 
-        const IconBase = ({ d, className, ...props }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-                {d}
-            </svg>
-        );
-        const Plus = (props) => <IconBase d={<path d="M5 12h14M12 5v14"/>} {...props} />;
-        const AlertCircle = (props) => <IconBase d={<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>} {...props} />;
-        const CheckCircle = (props) => <IconBase d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} {...props} />;
-        const Clock = (props) => <IconBase d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} {...props} />;
-        const FileSpreadsheet = (props) => <IconBase d={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></>} {...props} />;
-        const SyncIcon = (props) => <IconBase d={<path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>} {...props} />;
-        const Upload = (props) => <IconBase d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} {...props} />;
-        const Trash = (props) => <IconBase d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>} {...props} />;
-        const Info = (props) => <IconBase d={<><circle cx="12" cy="12" r="10"/><line x1="12" x1="12" y1="16" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>} {...props} />;
+    const IconBase = ({ children, className = '', ...props }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+    );
+    const Plus = (p) => <IconBase {...p}><path d="M5 12h14M12 5v14"/></IconBase>;
+    const Trash = (p) => <IconBase {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></IconBase>;
+    const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+    const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+    const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
+    const Upload = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></IconBase>;
+    const FileSpreadsheet = (p) => <IconBase {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></IconBase>;
+    const Settings = (p) => <IconBase {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 8.97 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.09A1.7 1.7 0 0 0 4.65 8.94a1.7 1.7 0 0 0-.34-1.88L4.25 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10.03 3H10V3h4v.09A1.7 1.7 0 0 0 15.03 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7.08l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.03H21v4h-.09A1.7 1.7 0 0 0 19.4 15z"/></IconBase>;
+    const Info = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>;
 
-        const PROJECT_TYPES = {
-            ENGINEERING: { label: '專案工程', color: 'bg-blue-100 text-blue-800', barColor: 'bg-blue-500' },
-            PERMIT: { label: '法規/證照申請', color: 'bg-purple-100 text-purple-800', barColor: 'bg-purple-500' },
-            FIRE_SAFETY: { label: '年度工作', color: 'bg-red-100 text-red-800', barColor: 'bg-red-500' },
-            IMPROVEMENT: { label: '稽核缺失改善', color: 'bg-orange-100 text-orange-800', barColor: 'bg-orange-500' },
-            OTHER: { label: '其他 (自行輸入)', color: 'bg-gray-100 text-gray-800', barColor: 'bg-gray-500' }
-        };
+    const DEFAULT_MASTER = Object.freeze({
+      factories: [
+        { id:'LD', label:'龍德', active:true, order:1 },
+        { id:'CH', label:'彰化', active:true, order:2 },
+        { id:'ML', label:'麥寮', active:true, order:3 },
+        { id:'SG', label:'新港', active:true, order:4 },
+        { id:'CROSS', label:'跨廠區', active:true, order:5 }
+      ],
+      projectTypes: [
+        { id:'ENGINEERING', label:'專案工程', active:true, order:1, tone:'blue' },
+        { id:'PERMIT', label:'法規/證照申請', active:true, order:2, tone:'purple' },
+        { id:'FIRE_SAFETY', label:'年度工作', active:true, order:3, tone:'red' },
+        { id:'IMPROVEMENT', label:'稽核缺失改善', active:true, order:4, tone:'orange' },
+        { id:'OTHER', label:'其他 (自行輸入)', active:true, order:5, tone:'gray' }
+      ],
+      permitCategories: [
+        { id:'AIR', label:'空污', active:true, order:1 },
+        { id:'WATER', label:'廢水', active:true, order:2 },
+        { id:'WASTE', label:'廢棄物', active:true, order:3 }
+      ]
+    });
 
-        const STATUS_TYPES = {
-            ON_TRACK: { label: '正常', color: 'text-green-600', bgColor: 'bg-green-500', icon: CheckCircle },
-            DELAYED: { label: '落後', color: 'text-red-600', bgColor: 'bg-red-500', icon: AlertCircle },
-            COMPLETED: { label: '結案', color: 'text-gray-500', bgColor: 'bg-gray-400', icon: Clock },
-        };
+    const PROGRESS_TYPES = ['工作日報','電話確認','Notes','公文','會議','現場確認','待辦事項','主管指示','其他'];
+    const STATUS_TYPES = {
+      ON_TRACK: { label:'正常', color:'text-green-600', bgColor:'bg-green-500', icon:CheckCircle },
+      DELAYED: { label:'落後', color:'text-red-600', bgColor:'bg-red-500', icon:AlertCircle },
+      COMPLETED: { label:'結案', color:'text-gray-500', bgColor:'bg-gray-400', icon:Clock }
+    };
+    const SUPERVISION_DEPTS = ['安衛處(龍德)','安衛處(彰化)','安衛處(麥寮)','安衛處(新港)','環保組','消防組'];
 
-        const SUPERVISION_DEPTS = ['安衛處(龍德)', '安衛處(彰化)', '安衛處(麥寮)', '安衛處(新港)', '環保組', '消防組'];
+    const today = () => new Date().toISOString().split('T')[0];
+    const uid = (prefix='id') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+    const deepClone = (v) => JSON.parse(JSON.stringify(v));
+    const clampProgress = (v) => Math.min(100, Math.max(0, Number.parseInt(v, 10) || 0));
+    const normalizeItems = (items, fallback) => {
+      const list = Array.isArray(items) && items.length ? items : deepClone(fallback);
+      return list.map((x,i) => ({ ...x, id:String(x.id || uid('item')), label:String(x.label || '').trim(), active:x.active !== false, order:Number.isFinite(Number(x.order)) ? Number(x.order) : i + 1 })).sort((a,b) => a.order - b.order);
+    };
+    const typeTone = (tone='gray') => ({
+      blue:'bg-blue-100 text-blue-800', purple:'bg-purple-100 text-purple-800', red:'bg-red-100 text-red-800', orange:'bg-orange-100 text-orange-800', green:'bg-green-100 text-green-800', gray:'bg-gray-100 text-gray-800'
+    }[tone] || 'bg-gray-100 text-gray-800');
+    const typeBar = (tone='gray') => ({ blue:'bg-blue-500', purple:'bg-purple-500', red:'bg-red-500', orange:'bg-orange-500', green:'bg-green-500', gray:'bg-gray-500' }[tone] || 'bg-gray-500');
 
-        const App = () => {
-            const [projects, setProjects] = useState([]);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [isViewMode, setIsViewMode] = useState(false);
-            const [editingProject, setEditingProject] = useState(null);
-            const [filterType, setFilterType] = useState('ALL');
-            const [isLoading, setIsLoading] = useState(true);
-            const [executionLogs, setExecutionLogs] = useState([]);
-            const [selectedType, setSelectedType] = useState('ENGINEERING');
-            const [selectedSupervisionDept, setSelectedSupervisionDept] = useState(SUPERVISION_DEPTS[0]);
-            
-            const [expectedProgress, setExpectedProgress] = useState(0);
-            const [actualProgress, setActualProgress] = useState(0);
-            const [hoverIdx, setHoverIdx] = useState(null); 
+    const normalizeLogs = (logs=[]) => (Array.isArray(logs) ? logs : []).map((r,i) => ({
+      id:String(r?.id || `legacy_${i}_${r?.date || ''}`),
+      date:r?.date || today(),
+      person:String(r?.person || '').trim(),
+      type:String(r?.type || '工作日報').trim() || '工作日報',
+      content:String(r?.content || ''),
+      progress:clampProgress(r?.progress)
+    })).sort((a,b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
 
-            const [quickViewData, setQuickViewData] = useState(null);
+    const App = () => {
+      const [projects, setProjects] = useState([]);
+      const [master, setMaster] = useState(() => deepClone(DEFAULT_MASTER));
+      const [masterCloudOk, setMasterCloudOk] = useState(true);
+      const [isLoading, setIsLoading] = useState(true);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [isViewMode, setIsViewMode] = useState(false);
+      const [editingProject, setEditingProject] = useState(null);
+      const [isMasterOpen, setIsMasterOpen] = useState(false);
+      const [masterTab, setMasterTab] = useState('factories');
+      const [masterDraft, setMasterDraft] = useState(() => deepClone(DEFAULT_MASTER));
+      const [filterType, setFilterType] = useState('ALL');
+      const [filterFactory, setFilterFactory] = useState('ALL');
+      const [hoverIdx, setHoverIdx] = useState(null);
+      const [quickViewData, setQuickViewData] = useState(null);
 
-            const fileInputRef = useRef(null);
-            const leftScrollRef = useRef(null);
-            const rightScrollRef = useRef(null);
+      const [selectedType, setSelectedType] = useState('ENGINEERING');
+      const [selectedFactory, setSelectedFactory] = useState('');
+      const [selectedPermitCategories, setSelectedPermitCategories] = useState([]);
+      const [selectedSupervisionDept, setSelectedSupervisionDept] = useState(SUPERVISION_DEPTS[0]);
+      const [expectedProgress, setExpectedProgress] = useState(0);
+      const [actualProgress, setActualProgress] = useState(0);
+      const [executionLogs, setExecutionLogs] = useState([]);
+      const [logDraft, setLogDraft] = useState({ id:null, date:today(), person:'', type:'工作日報', customType:'', progress:0, content:'' });
 
-            useEffect(() => {
-                if (!isModalOpen) return;
-                const logs = (editingProject && Array.isArray(editingProject.executionLogs)) ? editingProject.executionLogs : [];
-                setExecutionLogs(sortExecutionLogsByDateDesc(logs.map(r => ({ date: r?.date || '', content: r?.content || '', progress: r?.progress || 0 }))));
-                setSelectedType(editingProject?.type || 'ENGINEERING');
-                
-                setExpectedProgress(editingProject?.expectedProgress ?? 0);
-                setActualProgress(editingProject?.progress ?? 0);
-                
-                const currentDept = editingProject?.supervisionDept || SUPERVISION_DEPTS[0];
-                if (SUPERVISION_DEPTS.includes(currentDept)) {
-                    setSelectedSupervisionDept(currentDept);
-                } else {
-                    setSelectedSupervisionDept('OTHER');
-                }
-            }, [isModalOpen, editingProject]);
+      const fileInputRef = useRef(null);
+      const leftScrollRef = useRef(null);
+      const rightScrollRef = useRef(null);
 
-            const firebaseConfig = window.__FIREBASE_CONFIG;
-            const hasFirebaseConfig = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId;
+      const factories = useMemo(() => normalizeItems(master.factories, DEFAULT_MASTER.factories), [master.factories]);
+      const projectTypes = useMemo(() => normalizeItems(master.projectTypes, DEFAULT_MASTER.projectTypes), [master.projectTypes]);
+      const permitCategories = useMemo(() => normalizeItems(master.permitCategories, DEFAULT_MASTER.permitCategories), [master.permitCategories]);
+      const typeMap = useMemo(() => Object.fromEntries(projectTypes.map(x => [x.id, x])), [projectTypes]);
+      const factoryMap = useMemo(() => Object.fromEntries(factories.map(x => [x.id, x])), [factories]);
+      const permitMap = useMemo(() => Object.fromEntries(permitCategories.map(x => [x.id, x])), [permitCategories]);
 
-            // 執行說明清單排序：日期由新至舊；無日期者排在最後
-            const sortExecutionLogsByDateDesc = (logs = []) => {
-                return [...logs].sort((a, b) => {
-                    const timeA = a?.date ? new Date(a.date).getTime() : -Infinity;
-                    const timeB = b?.date ? new Date(b.date).getTime() : -Infinity;
-                    return timeB - timeA;
-                });
-            };
-            
-            useEffect(() => {
-                if (!hasFirebaseConfig) return;
-                let unsubscribe = null;
-                (async () => {
-                    try {
-                        await window.__firebaseReady;
-                        unsubscribe = window.__fs_subscribe((list) => {
-                            setProjects(list.map(d => ({
-                                ...d,
-                                id: d.id,
-                                createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : d.createdAt,
-                                updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate() : d.updatedAt,
-                            })));
-                            setIsLoading(false);
-                        }, () => setIsLoading(false));
-                    } catch (e) { console.error(e); alert(window.__firebaseErrorText ? window.__firebaseErrorText(e, "Firebase 讀取失敗") : ("Firebase 讀取失敗：" + (e?.message || e))); setIsLoading(false); }
-                })();
-                return () => { if (unsubscribe) unsubscribe(); };
-            }, [hasFirebaseConfig]);
+      useEffect(() => {
+        let unsubProjects = null;
+        let unsubMaster = null;
+        (async () => {
+          try {
+            await window.__firebaseReady;
+            unsubProjects = window.__fs_subscribe((list) => {
+              setProjects(list.map(d => ({
+                ...d,
+                id:d.id,
+                createdAt:d.createdAt?.toDate ? d.createdAt.toDate() : d.createdAt,
+                updatedAt:d.updatedAt?.toDate ? d.updatedAt.toDate() : d.updatedAt
+              })));
+              setIsLoading(false);
+            }, (err) => {
+              console.error(err);
+              setIsLoading(false);
+              alert(window.__firebaseErrorText ? window.__firebaseErrorText(err, 'Firebase 讀取失敗') : `Firebase 讀取失敗：${err?.message || err}`);
+            });
+            unsubMaster = window.__fs_subscribe_master((data) => {
+              const next = {
+                factories:normalizeItems(data.factories, DEFAULT_MASTER.factories),
+                projectTypes:normalizeItems(data.projectTypes, DEFAULT_MASTER.projectTypes),
+                permitCategories:normalizeItems(data.permitCategories, DEFAULT_MASTER.permitCategories)
+              };
+              setMaster(next);
+              setMasterCloudOk(true);
+            }, (err) => {
+              console.warn('基本資料雲端同步失敗，暫用預設值', err);
+              setMasterCloudOk(false);
+            });
+          } catch (e) {
+            console.error(e);
+            setIsLoading(false);
+            alert(window.__firebaseErrorText ? window.__firebaseErrorText(e, 'Firebase 初始化失敗') : `Firebase 初始化失敗：${e?.message || e}`);
+          }
+        })();
+        return () => { if (unsubProjects) unsubProjects(); if (unsubMaster) unsubMaster(); };
+      }, []);
 
-            const projectCounts = useMemo(() => {
-                const counts = { ENGINEERING: 0, PERMIT: 0, FIRE_SAFETY: 0, IMPROVEMENT: 0, OTHER: 0 };
-                projects.forEach(p => { if (counts[p.type] !== undefined) counts[p.type]++; });
-                return counts;
-            }, [projects]);
+      useEffect(() => {
+        if (!isModalOpen) return;
+        const logs = normalizeLogs(editingProject?.executionLogs || []);
+        const defaultFactory = editingProject?.factory || factories.find(x => x.active)?.id || '';
+        const currentDept = editingProject?.supervisionDept || SUPERVISION_DEPTS[0];
+        const actual = clampProgress(editingProject?.progress ?? (logs[0]?.progress ?? 0));
+        setExecutionLogs(logs);
+        setSelectedType(editingProject?.type || projectTypes.find(x => x.active)?.id || 'ENGINEERING');
+        setSelectedFactory(defaultFactory);
+        setSelectedPermitCategories(Array.isArray(editingProject?.permitCategories) ? editingProject.permitCategories : []);
+        setSelectedSupervisionDept(SUPERVISION_DEPTS.includes(currentDept) ? currentDept : 'OTHER');
+        setExpectedProgress(clampProgress(editingProject?.expectedProgress ?? 0));
+        setActualProgress(actual);
+        setLogDraft({ id:null, date:today(), person:window.__currentUserName || editingProject?.mainPic || '', type:'工作日報', customType:'', progress:actual, content:'' });
+      }, [isModalOpen, editingProject, factories, projectTypes]);
 
-            const handleExportCSV = () => {
-                const headers = ['名稱', '摘要', '類型', '自定義類型', '主辦部門', '主辦人', '督導部門', '督導人員', '開始日期', '結束日期', '預計進度', '實際進度', '狀態', '執行說明', '備註'];
-                const rows = projects.map(p => [
-                    `"${(p.name || '').replace(/"/g, '""')}"`,
-                    `"${(p.projectContent || '').replace(/"/g, '""')}"`,
-                    p.type, `"${(p.customTypeName || '').replace(/"/g, '""')}"`,
-                    p.mainDept, p.mainPic, p.supervisionDept, p.supervisionPic,
-                    p.startDate, p.endDate, p.expectedProgress || 0, p.progress, p.status,
-                    `"${JSON.stringify(p.executionLogs || []).replace(/"/g, '""')}"`,
-                    `"${(p.description || '').replace(/"/g, '""')}"`
-                ]);
-                const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `安衛環管制總表_${new Date().toISOString().slice(0,10)}.csv`);
-                link.click();
-            };
+      const projectCounts = useMemo(() => {
+        const counts = {};
+        projectTypes.forEach(t => counts[t.id] = 0);
+        projects.forEach(p => counts[p.type] = (counts[p.type] || 0) + 1);
+        return counts;
+      }, [projects, projectTypes]);
 
-            const handleImportCSV = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const text = event.target.result;
-                    const lines = text.split('\n').filter(line => line.trim() !== '');
-                    for (let i = 1; i < lines.length; i++) {
-                        const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"'));
-                        if (cols.length >= 11) {
-                            await window.__fs_add({
-                                name: cols[0], projectContent: cols[1], type: cols[2], customTypeName: cols[3] || '',
-                                mainDept: cols[4], mainPic: cols[5], supervisionDept: cols[6], supervisionPic: cols[7],
-                                startDate: cols[8], endDate: cols[9], 
-                                expectedProgress: parseInt(cols[10]) || 0,
-                                progress: parseInt(cols[11]) || 0, status: cols[12],
-                                executionLogs: (() => { try { return cols[13] ? JSON.parse(cols[13]) : []; } catch (_) { return []; } })(),
-                                description: cols[14] || '', updatedAt: Date.now()
-                            });
-                        }
-                    }
-                    e.target.value = null;
-                };
-                reader.readAsText(file);
-            };
+      const sortedFilteredProjects = useMemo(() => {
+        const factoryOrder = new Map(factories.map((x,i) => [x.id, i]));
+        const typeOrder = new Map(projectTypes.map((x,i) => [x.id, i]));
+        return projects
+          .filter(p => (filterType === 'ALL' || p.type === filterType) && (filterFactory === 'ALL' || p.factory === filterFactory))
+          .sort((a,b) => {
+            const fa = factoryOrder.has(a.factory) ? factoryOrder.get(a.factory) : 999;
+            const fb = factoryOrder.has(b.factory) ? factoryOrder.get(b.factory) : 999;
+            if (fa !== fb) return fa - fb;
+            const ta = typeOrder.has(a.type) ? typeOrder.get(a.type) : 999;
+            const tb = typeOrder.has(b.type) ? typeOrder.get(b.type) : 999;
+            if (ta !== tb) return ta - tb;
+            return String(a.startDate || '').localeCompare(String(b.startDate || ''));
+          });
+      }, [projects, filterType, filterFactory, factories, projectTypes]);
 
-            const timelineRange = useMemo(() => {
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                if (projects.length === 0) return { start: new Date(currentYear, 0, 1), end: new Date(currentYear, 11, 31), duration: 31536000000 };
-                let minTime = new Date(`${currentYear}-01-01`).getTime();
-                let maxTime = new Date(`${currentYear}-12-31`).getTime();
-                projects.forEach(p => {
-                    const s = new Date(p.startDate).getTime();
-                    const e = new Date(p.endDate).getTime();
-                    if (s < minTime) minTime = s;
-                    if (e > maxTime) maxTime = e;
-                });
-                const start = new Date(minTime); start.setDate(1);
-                const end = new Date(maxTime); end.setMonth(end.getMonth() + 1); end.setDate(0);
-                return { start, end, duration: end.getTime() - start.getTime() };
-            }, [projects]);
-
-            const months = useMemo(() => {
-                const ms = [];
-                let loopDate = new Date(timelineRange.start);
-                while (loopDate <= timelineRange.end) { ms.push(new Date(loopDate)); loopDate.setMonth(loopDate.getMonth() + 1); }
-                return ms;
-            }, [timelineRange]);
-
-            const calculateBarPosition = (pStart, pEnd) => {
-                const start = new Date(pStart).getTime();
-                const end = new Date(pEnd).getTime();
-                let left = ((start - timelineRange.start.getTime()) / timelineRange.duration) * 100;
-                let width = ((end - start) / timelineRange.duration) * 100;
-                return { left: `${Math.max(0, left)}%`, width: `${Math.max(1, width)}%` };
-            };
-
-            const handleSave = async (e) => {
-                e.preventDefault();
-                if (isViewMode) return;
-                const formData = new FormData(e.target);
-                const projectData = {
-                    name: formData.get('name'),
-                    projectContent: formData.get('projectContent'),
-                    type: selectedType,
-                    customTypeName: selectedType === 'OTHER' ? formData.get('customTypeName') : '',
-                    mainDept: formData.get('mainDept'),
-                    mainPic: formData.get('mainPic'),
-                    supervisionDept: selectedSupervisionDept === 'OTHER' ? formData.get('customSupervisionDept') : selectedSupervisionDept,
-                    supervisionPic: formData.get('supervisionPic'),
-                    startDate: formData.get('startDate'),
-                    endDate: formData.get('endDate'),
-                    expectedProgress: expectedProgress,
-                    progress: actualProgress,
-                    status: formData.get('status'),
-                    description: formData.get('description'),
-                    executionLogs: sortExecutionLogsByDateDesc(executionLogs),
-                    updatedAt: Date.now()
-                };
-                try {
-                    if (editingProject) await window.__fs_update(editingProject.id, projectData);
-                    else await window.__fs_add(projectData);
-                    setIsModalOpen(false);
-                    setEditingProject(null);
-                } catch (err) { alert("儲存失敗: " + err.message); }
-            };
-
-            const openModal = (p, viewOnly = false) => {
-                setEditingProject(p);
-                setIsViewMode(viewOnly);
-                setIsModalOpen(true);
-            };
-
-            const handleDeleteProject = async (id, e) => {
-                if (e) e.stopPropagation();
-                if (confirm('確定要刪除此專案？（此操作不可復原）')) {
-                    await window.__fs_delete(id);
-                    if (isModalOpen) setIsModalOpen(false);
-                }
-            };
-
-            const handleDeleteExecutionLog = (idx) => {
-                if (confirm('確定要刪除此筆執行紀錄？')) {
-                    setExecutionLogs((prev) => prev.filter((_, i) => i !== idx));
-                }
-            };
-
-            const updateLogProgress = (idx, value) => {
-                const val = Math.min(100, Math.max(0, parseInt(value) || 0));
-                setExecutionLogs(prev => prev.map((log, i) => i === idx ? { ...log, progress: val } : log));
-                setActualProgress(val);
-            };
-
-            const filteredProjects = projects.filter(p => filterType === 'ALL' || p.type === filterType);
-
-            const handleScroll = (e) => {
-                if (e.target === leftScrollRef.current) {
-                    rightScrollRef.current.scrollTop = leftScrollRef.current.scrollTop;
-                } else {
-                    leftScrollRef.current.scrollTop = rightScrollRef.current.scrollTop;
-                }
-            };
-
-            if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 flex-col gap-4"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div><p className="text-gray-500 font-bold">同步中...</p></div>;
-
-            return (
-                <div className="min-h-screen bg-gray-50 p-4 lg:p-6 text-gray-800 font-sans">
-                    <div className="max-w-[1600px] mx-auto">
-                        <input type="file" ref={fileInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
-
-                        <div className="mb-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl font-bold text-gray-800">年度安衛環專案管制總表</h1>
-                                    <span className="flex items-center gap-1 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold shadow-sm"><SyncIcon className="w-3 h-3 animate-pulse" /> 雲端即時版</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-4 mt-3">
-                                    <p className="text-gray-500 text-sm font-medium">專案總數: <span className="font-bold text-gray-800">{projects.length}</span></p>
-                                    <div className="flex flex-wrap gap-2 py-1 px-3 bg-gray-50 rounded-lg border border-gray-100">
-                                        {Object.entries(PROJECT_TYPES).map(([key, config]) => (
-                                            <div key={key} className="flex items-center gap-1.5 px-2 py-0.5 border-r last:border-0 border-gray-200">
-                                                <span className={`w-2 h-2 rounded-full ${config.barColor}`}></span>
-                                                <span className="text-[11px] font-bold text-gray-600">{config.label}:</span>
-                                                <span className="text-[11px] font-mono font-bold text-blue-600">{projectCounts[key] || 0}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => { setEditingProject(null); setIsViewMode(false); setIsModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-md transition-all font-bold active:scale-95"><Plus className="w-5 h-5" /> 新增專案</button>
-                                <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-bold transition-colors"><Upload className="w-4 h-4 text-green-600" /> 匯入</button>
-                                <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-bold transition-colors"><FileSpreadsheet className="w-4 h-4" /> 匯出</button>
-                            </div>
-                        </div>
-
-                        <div className="mb-6 flex flex-wrap gap-2">
-                            <button onClick={() => setFilterType('ALL')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filterType === 'ALL' ? 'bg-gray-800 text-white shadow-lg shadow-gray-200' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>全部顯示</button>
-                            {Object.entries(PROJECT_TYPES).map(([key, config]) => (
-                                <button key={key} onClick={() => setFilterType(key)} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filterType === key ? config.barColor + ' text-white shadow-lg' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>{config.label}</button>
-                            ))}
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)]">
-                            <div className="w-full lg:w-[400px] border-r border-gray-200 flex flex-col overflow-hidden shrink-0">
-                                <div className="bg-gray-50 p-3 border-b border-gray-200 text-xs font-bold text-gray-500 flex justify-between uppercase tracking-wider h-10 items-center">
-                                    <span>專案概況</span><span>進度(預計/實際)</span>
-                                </div>
-                                <div ref={leftScrollRef} onScroll={handleScroll} className="overflow-y-auto flex-1 bg-white scrollbar-hide">
-                                    {filteredProjects.map((p, idx) => {
-                                        const expected = p.expectedProgress || 0;
-                                        const actual = p.progress || 0;
-                                        const isDelayed = actual < expected;
-                                        return (
-                                            <div 
-                                                key={p.id} 
-                                                onMouseEnter={() => setHoverIdx(idx)}
-                                                onMouseLeave={() => setHoverIdx(null)}
-                                                className={`project-row-height p-4 row-hover transition-colors relative group overflow-hidden ${idx % 2 === 1 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}
-                                            >
-                                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_TYPES[p.status]?.bgColor || 'bg-gray-200'}`}></div>
-                                                <div className="flex justify-between items-start mb-1.5">
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${PROJECT_TYPES[p.type]?.color || 'bg-gray-100'}`}>
-                                                        {(p.type === 'OTHER' && p.customTypeName) ? p.customTypeName : (PROJECT_TYPES[p.type]?.label || p.type)}
-                                                    </span>
-                                                    <div className="flex items-center gap-3">
-                                                        <span onClick={(e) => { e.stopPropagation(); openModal(p, true); }} className="action-link text-gray-400">查看</span>
-                                                        <span onClick={(e) => { e.stopPropagation(); openModal(p, false); }} className="action-link text-blue-500">編輯</span>
-                                                        <span onClick={(e) => handleDeleteProject(p.id, e)} className="action-link text-red-500">刪除</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex justify-between items-center mb-1.5">
-                                                    <h3 className="font-bold text-gray-800 text-sm truncate pr-2 flex-1" title={p.name}>{p.name}</h3>
-                                                    <div className="flex items-center gap-1 text-[10px] font-bold shrink-0">
-                                                        {isDelayed ? <AlertCircle className="w-3 h-3 text-red-500" /> : <CheckCircle className="w-3 h-3 text-green-500" />}
-                                                        <span className={isDelayed ? 'text-red-500' : 'text-green-600'}>{isDelayed ? '落後' : '正常'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-50/60 p-2 rounded-lg mb-2 grid grid-cols-2 gap-2 text-[10px] border border-gray-100/50">
-                                                    <div className="truncate"><span className="text-gray-400 font-medium">主辦:</span> <span className="font-bold text-gray-600">{p.mainDept}-{p.mainPic}</span></div>
-                                                    <div className="border-l pl-2 truncate"><span className="text-gray-400 font-medium">預計:</span> <span className="font-bold text-blue-600">{expected}%</span></div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex-1 h-2 bg-gray-200/50 rounded-full overflow-hidden relative border border-gray-100">
-                                                        <div className="absolute h-full bg-blue-400/20" style={{ width: `${expected}%` }}></div>
-                                                        <div className={`absolute h-full transition-all duration-700 ease-out ${isDelayed ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${actual}%` }}></div>
-                                                    </div>
-                                                    <span className={`text-[10px] font-bold ${isDelayed ? 'text-red-600' : 'text-green-600'}`}>{actual}%</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col overflow-hidden relative">
-                                <div className="flex border-b border-gray-200 bg-gray-50 h-10 sticky top-0 z-20">
-                                    {months.map((m, idx) => (
-                                        <div key={idx} className="flex-1 flex flex-col items-center justify-center text-[10px] font-bold text-gray-400 border-r border-gray-200/50 min-w-[50px]">
-                                            {m.getMonth() === 0 && <div className="text-blue-500 scale-90">{m.getFullYear()}</div>}
-                                            <div>{m.getMonth() + 1}月</div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div ref={rightScrollRef} onScroll={handleScroll} className="overflow-y-auto overflow-x-hidden flex-1 relative scrollbar-hide">
-                                    <div className="absolute inset-0 flex pointer-events-none">
-                                        {months.map((_, idx) => <div key={idx} className="flex-1 border-r border-gray-100/30 min-w-[50px] odd:bg-transparent even:bg-slate-50/10"></div>)}
-                                    </div>
-                                    
-                                    {filteredProjects.map((p, idx) => {
-                                        const { left, width } = calculateBarPosition(p.startDate, p.endDate);
-                                        const expected = p.expectedProgress || 0;
-                                        const actual = p.progress || 0;
-                                        const isDelayed = actual < expected;
-                                        const barColor = isDelayed ? 'bg-red-500' : 'bg-green-500';
-                                        
-                                        const logGroups = {};
-                                        if (Array.isArray(p.executionLogs)) {
-                                            p.executionLogs.forEach(log => {
-                                                if (log.date) {
-                                                    const d = new Date(log.date);
-                                                    const key = `${d.getFullYear()}-${d.getMonth()}`;
-                                                    if (!logGroups[key]) logGroups[key] = [];
-                                                    logGroups[key].push(log);
-                                                }
-                                            });
-                                        }
-
-                                        return (
-                                            <div 
-                                                key={p.id} 
-                                                onMouseEnter={() => setHoverIdx(idx)}
-                                                onMouseLeave={() => setHoverIdx(null)}
-                                                className={`gantt-row row-hover transition-colors ${idx % 2 === 1 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}
-                                            >
-                                                <div className="absolute inset-0 flex pointer-events-none">
-                                                    {months.map((m, idx) => {
-                                                        const key = `${m.getFullYear()}-${m.getMonth()}`;
-                                                        const logsInMonth = logGroups[key];
-                                                        if (logsInMonth) {
-                                                            return (
-                                                                <div key={idx} className="flex-1 flex items-end justify-center pb-2">
-                                                                    <div 
-                                                                        onClick={() => setQuickViewData({ project: p, month: `${m.getFullYear()}年${m.getMonth() + 1}月`, logs: logsInMonth })}
-                                                                        className="quick-view-dot w-2.5 h-2.5 bg-orange-500 rounded-full shadow-sm animate-pulse cursor-pointer z-10 pointer-events-auto" 
-                                                                    ></div>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return <div key={idx} className="flex-1"></div>;
-                                                    })}
-                                                </div>
-                                                <div className="absolute top-1/2 -translate-y-1/2 h-7 rounded shadow-sm hover:h-9 transition-all cursor-pointer overflow-hidden z-10 flex border border-gray-300" style={{ left, width }} onClick={() => openModal(p, false)}>
-                                                    <div className="absolute inset-0 bg-blue-400/30" style={{ width: `${expected}%` }}></div>
-                                                    <div className={`h-full ${barColor} relative z-10 flex items-center px-3 text-white text-[10px] font-bold shadow-inner transition-all duration-700`} style={{ width: `${actual}%` }}>
-                                                        <span className="truncate">{actual}%</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 快速查看視窗 (可調整大小) */}
-                    {quickViewData && (
-                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-                            <div className="resizable-container w-[500px] h-[600px] animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <div className="bg-orange-500 p-4 flex justify-between items-center text-white font-bold shrink-0">
-                                    <div className="flex items-center gap-2"><Info className="w-5 h-5" /><span>{quickViewData.month} 執行內容明細</span></div>
-                                    <button onClick={() => setQuickViewData(null)} className="p-1 hover:bg-white/20 rounded text-xl">✕</button>
-                                </div>
-                                <div className="p-5 flex-1 overflow-y-auto space-y-4 bg-white">
-                                    <div className="border-b pb-3 shrink-0"><p className="text-xs text-gray-400 font-bold uppercase mb-1">對應專案</p><p className="font-bold text-gray-800">{quickViewData.project.name}</p></div>
-                                    {quickViewData.logs.map((log, i) => (
-                                        <div key={i} className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-xs font-bold bg-white px-2 py-1 rounded border border-gray-200 text-gray-600">{log.date}</span>
-                                                <span className="text-xs font-bold text-orange-600">進度: {log.progress}%</span>
-                                            </div>
-                                            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{log.content || '未輸入描述'}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="p-4 bg-gray-50 border-t flex gap-2 shrink-0">
-                                    <button onClick={() => { const p = quickViewData.project; setQuickViewData(null); openModal(p, false); }} className="flex-1 bg-white border border-blue-200 text-blue-600 font-bold py-2 rounded-xl text-sm hover:bg-blue-50 transition-colors shadow-sm">前往編輯專案</button>
-                                    <button onClick={() => setQuickViewData(null)} className="flex-1 bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-sm hover:bg-gray-300 transition-colors">關閉</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 編輯/查看 Modal (同步設定為可調整大小) */}
-                    {isModalOpen && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                            <div className="resizable-container w-[1024px] h-[80vh] animate-in fade-in zoom-in duration-200">
-                                <div className="bg-gray-800 p-5 flex justify-between items-center text-white shrink-0">
-                                    <h3 className="font-bold text-lg">{isViewMode ? '查看專案' : (editingProject ? '編輯專案' : '新增專案')}</h3>
-                                    <button onClick={() => setIsModalOpen(false)} className="hover:rotate-90 transition-transform p-1 text-xl">✕</button>
-                                </div>
-                                <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5 bg-white">
-                                    <fieldset disabled={isViewMode} className="space-y-5">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="md:col-span-2">
-                                                <label className="block text-sm font-bold text-gray-700 mb-1">專案名稱</label>
-                                                <input required name="name" defaultValue={editingProject?.name} className="w-full p-2.5 border rounded-xl bg-white disabled:bg-gray-50 outline-none" />
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="block text-sm font-bold text-gray-700 mb-1">摘要內容</label>
-                                                <textarea name="projectContent" defaultValue={editingProject?.projectContent} className="w-full p-2.5 border rounded-xl h-20 resize-none bg-white disabled:bg-gray-50 outline-none" />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-1">專案類型</label>
-                                                    <select name="typeSelect" value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">
-                                                        {Object.entries(PROJECT_TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-1">目前狀態</label>
-                                                    <select name="status" defaultValue={editingProject?.status || 'ON_TRACK'} className="w-full p-2.5 border rounded-xl bg-white">
-                                                        {Object.entries(STATUS_TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">主辦部門</label><input name="mainDept" defaultValue={editingProject?.mainDept} className="w-full p-2 border rounded-lg bg-white outline-none" /></div>
-                                            <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">主辦人</label><input name="mainPic" defaultValue={editingProject?.mainPic} className="w-full p-2 border rounded-lg bg-white outline-none" /></div>
-                                            <div className="col-span-1">
-                                                <label className="block text-xs font-bold text-gray-500 mb-1">督導部門</label>
-                                                <select name="supervisionDeptSelect" value={selectedSupervisionDept} onChange={(e) => setSelectedSupervisionDept(e.target.value)} className="w-full p-2 border rounded-lg bg-white outline-none">
-                                                    {SUPERVISION_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
-                                                    <option value="OTHER">其他 (自行輸入)</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">督導人員</label><input name="supervisionPic" defaultValue={editingProject?.supervisionPic} className="w-full p-2 border rounded-lg bg-white outline-none" /></div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="text-sm font-bold text-gray-700">開始日期</label><input type="date" required name="startDate" defaultValue={editingProject?.startDate} className="w-full p-2 border rounded-xl bg-white outline-none" /></div>
-                                                <div><label className="text-sm font-bold text-gray-700">預計結束</label><input type="date" required name="endDate" defaultValue={editingProject?.endDate} className="w-full p-2 border rounded-xl bg-white outline-none" /></div>
-                                            </div>
-                                            <div className="bg-gray-50 p-4 rounded-xl flex flex-col justify-center border border-gray-200">
-                                                <div className="flex justify-between mb-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-gray-700">進度管控中心</span>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            {actualProgress < expectedProgress ? (
-                                                                <span className="flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold"><AlertCircle className="w-3 h-3"/> 落後</span>
-                                                            ) : (
-                                                                <span className="flex items-center gap-1 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold"><CheckCircle className="w-3 h-3"/> 正常</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <div className="flex justify-between mb-1">
-                                                            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">建檔: 預計進度</span>
-                                                            <span className="font-bold text-blue-600">{expectedProgress}%</span>
-                                                        </div>
-                                                        <input type="range" min="0" max="100" value={expectedProgress} onChange={(e) => setExpectedProgress(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex justify-between mb-1">
-                                                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">現狀: 實際進度</span>
-                                                            <span className={`font-bold ${actualProgress < expectedProgress ? 'text-red-600' : 'text-green-600'}`}>{actualProgress}%</span>
-                                                        </div>
-                                                        <input type="range" min="0" max="100" value={actualProgress} onChange={(e) => setActualProgress(parseInt(e.target.value))} className={`w-full cursor-pointer ${actualProgress < expectedProgress ? 'accent-red-500' : 'accent-green-500'}`} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <label className="block text-sm font-bold text-slate-700">執行說明 (動態清單)</label>
-                                                    <span className="bg-slate-200 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold">{executionLogs.length} 筆</span>
-                                                </div>
-                                                <div className="flex flex-wrap items-center justify-end gap-2">
-                                                    {!isViewMode && (
-                                                        <button type="button" onClick={() => setExecutionLogs((prev) => sortExecutionLogsByDateDesc([{ date: new Date().toISOString().split('T')[0], content: '', progress: actualProgress }, ...prev]))} className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg border border-blue-200 transition-all flex items-center gap-1 shadow-sm"><Plus className="w-3 h-3" /> 新增紀錄</button>
-                                                    )}
-                                                    {!isViewMode && editingProject && <button type="button" onClick={() => handleDeleteProject(editingProject.id)} className="flex items-center gap-1.5 text-red-500 hover:text-red-700 font-bold text-sm transition-colors px-4 py-2 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100"><Trash className="w-4 h-4" /> 刪除專案</button>}
-                                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">{isViewMode ? '關閉' : '取消'}</button>
-                                                    {!isViewMode && (
-                                                        <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all active:scale-95">儲存變更</button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {executionLogs.map((row, idx) => (
-                                                    <div key={idx} className="execution-log-item flex flex-col md:flex-row gap-4 items-start bg-white p-5 rounded-xl border border-slate-100 shadow-sm relative group">
-                                                        <div className="w-full md:w-44 shrink-0 flex flex-col gap-3">
-                                                            <div><label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">日期</label><input type="date" value={row.date || ''} readOnly={isViewMode} onChange={(e) => { const v = e.target.value; setExecutionLogs((prev) => sortExecutionLogsByDateDesc(prev.map((r, i) => (i === idx ? { ...r, date: v } : r)))); }} className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 text-xs focus:ring-2 focus:ring-blue-100 outline-none" /></div>
-                                                            <div><label className="block text-[10px] font-bold text-blue-500 mb-1 uppercase tracking-wider">輸入進度 (%)</label><input type="number" min="0" max="100" value={row.progress || 0} readOnly={isViewMode} onChange={(e) => updateLogProgress(idx, e.target.value)} className="w-full p-2.5 border-2 border-blue-100 rounded-lg bg-blue-50/30 text-xs font-bold text-blue-600 focus:border-blue-500 outline-none" /></div>
-                                                        </div>
-                                                        <div className="flex-1 w-full">
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">進度描述</label><textarea value={row.content || ''} readOnly={isViewMode} placeholder="請輸入執行進度與說明..." onChange={(e) => { const v = e.target.value; setExecutionLogs((prev) => prev.map((r, i) => (i === idx ? { ...r, content: v } : r))); }} className="w-full p-3 border border-slate-200 rounded-lg bg-slate-50 text-xs focus:ring-2 focus:ring-blue-100 min-h-[120px] leading-relaxed resize read-only:bg-gray-100 outline-none" /></div>
-                                                        {!isViewMode && <button type="button" onClick={() => handleDeleteExecutionLog(idx)} className="absolute top-4 right-4 md:relative md:top-0 md:right-0 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white p-2 rounded-full transition-all md:mt-7 border border-red-50 shadow-sm"><Trash className="w-4 h-4" /></button>}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div><label className="block text-sm font-bold text-gray-700 mb-1">備註</label><textarea name="description" defaultValue={editingProject?.description} className="w-full p-2.5 border rounded-xl h-20 resize-none bg-white outline-none" /></div>
-                                    </fieldset>
-
-                                    <div className="py-3 border-t shrink-0 text-[11px] text-gray-400 text-right">
-                                        操作按鈕已移至「執行說明」區塊右上方。
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        window.__firebaseReady.then(() => {
-            ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+      const timelineRange = useMemo(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        let minTime = new Date(`${y}-01-01T00:00:00`).getTime();
+        let maxTime = new Date(`${y}-12-31T00:00:00`).getTime();
+        projects.forEach(p => {
+          const s = new Date(p.startDate).getTime();
+          const e = new Date(p.endDate).getTime();
+          if (Number.isFinite(s) && s < minTime) minTime = s;
+          if (Number.isFinite(e) && e > maxTime) maxTime = e;
         });
-    </script>
+        const start = new Date(minTime); start.setDate(1);
+        const end = new Date(maxTime); end.setMonth(end.getMonth() + 1); end.setDate(0);
+        return { start, end, duration:Math.max(1, end.getTime() - start.getTime()) };
+      }, [projects]);
+
+      const months = useMemo(() => {
+        const list = [];
+        const d = new Date(timelineRange.start);
+        while (d <= timelineRange.end) { list.push(new Date(d)); d.setMonth(d.getMonth() + 1); }
+        return list;
+      }, [timelineRange]);
+
+      const calculateBarPosition = (pStart, pEnd) => {
+        const start = new Date(pStart).getTime();
+        const end = new Date(pEnd).getTime();
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return { left:'0%', width:'1%' };
+        const left = ((start - timelineRange.start.getTime()) / timelineRange.duration) * 100;
+        const width = ((end - start) / timelineRange.duration) * 100;
+        return { left:`${Math.max(0,left)}%`, width:`${Math.max(1,width)}%` };
+      };
+
+      const effectiveStatus = (p) => {
+        if (p.status === 'COMPLETED' || clampProgress(p.progress) >= 100) return 'COMPLETED';
+        return clampProgress(p.progress) < clampProgress(p.expectedProgress) ? 'DELAYED' : 'ON_TRACK';
+      };
+
+      const openModal = (p=null, viewOnly=false) => {
+        setEditingProject(p);
+        setIsViewMode(viewOnly);
+        setIsModalOpen(true);
+      };
+
+      const handleDeleteProject = async (id, e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('確定要刪除此專案？（此操作不可復原）')) return;
+        try { await window.__fs_delete(id); setIsModalOpen(false); setEditingProject(null); }
+        catch (err) { alert(`刪除失敗：${err?.message || err}`); }
+      };
+
+      const togglePermitCategory = (id) => {
+        setSelectedPermitCategories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+      };
+
+      const resetLogDraft = (person, progress=actualProgress) => setLogDraft({ id:null, date:today(), person:person || window.__currentUserName || '', type:'工作日報', customType:'', progress:clampProgress(progress), content:'' });
+
+      const saveProgressLog = () => {
+        const finalType = logDraft.type === '其他' ? String(logDraft.customType || '').trim() : logDraft.type;
+        const content = String(logDraft.content || '').trim();
+        if (!finalType) return alert('請輸入進度類型');
+        if (!content) return alert('請輸入進度內容');
+        const item = {
+          id:logDraft.id || uid('log'),
+          date:logDraft.date || today(),
+          person:String(logDraft.person || '').trim(),
+          type:finalType,
+          content,
+          progress:clampProgress(logDraft.progress)
+        };
+        setExecutionLogs(prev => normalizeLogs(logDraft.id ? prev.map(x => x.id === logDraft.id ? item : x) : [item, ...prev]));
+        setActualProgress(item.progress);
+        resetLogDraft(item.person, item.progress);
+      };
+
+      const editProgressLog = (log) => {
+        const isDefault = PROGRESS_TYPES.includes(log.type) && log.type !== '其他';
+        setLogDraft({ id:log.id, date:log.date || today(), person:log.person || '', type:isDefault ? log.type : '其他', customType:isDefault ? '' : log.type, progress:clampProgress(log.progress), content:log.content || '' });
+        document.getElementById('progress-entry')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      };
+
+      const deleteProgressLog = (id) => {
+        if (!confirm('確定刪除這筆進度紀錄？')) return;
+        const next = normalizeLogs(executionLogs.filter(x => x.id !== id));
+        setExecutionLogs(next);
+        setActualProgress(next.length ? next[0].progress : 0);
+        if (logDraft.id === id) resetLogDraft('', next.length ? next[0].progress : 0);
+      };
+
+      const handleSave = async (e) => {
+        e.preventDefault();
+        if (isViewMode) return;
+        const formData = new FormData(e.currentTarget);
+        if (!selectedFactory) return alert('請選擇廠區');
+        if (selectedType === 'PERMIT' && selectedPermitCategories.length === 0) return alert('法規／證照申請請至少勾選一個法規類別');
+        const projectData = {
+          name:formData.get('name'),
+          projectContent:formData.get('projectContent') || '',
+          type:selectedType,
+          customTypeName:selectedType === 'OTHER' ? (formData.get('customTypeName') || '') : '',
+          factory:selectedFactory,
+          permitCategories:selectedType === 'PERMIT' ? selectedPermitCategories : [],
+          mainDept:formData.get('mainDept') || '',
+          mainPic:formData.get('mainPic') || '',
+          supervisionDept:selectedSupervisionDept === 'OTHER' ? (formData.get('customSupervisionDept') || '') : selectedSupervisionDept,
+          supervisionPic:formData.get('supervisionPic') || '',
+          startDate:formData.get('startDate'),
+          endDate:formData.get('endDate'),
+          expectedProgress:clampProgress(expectedProgress),
+          progress:clampProgress(actualProgress),
+          status:formData.get('status') || 'ON_TRACK',
+          description:formData.get('description') || '',
+          executionLogs:normalizeLogs(executionLogs)
+        };
+        try {
+          if (editingProject) await window.__fs_update(editingProject.id, projectData);
+          else await window.__fs_add(projectData);
+          setIsModalOpen(false);
+          setEditingProject(null);
+        } catch (err) { alert(`儲存失敗：${err?.message || err}`); }
+      };
+
+      const openMaster = () => {
+        setMasterDraft(deepClone({ factories, projectTypes, permitCategories }));
+        setMasterTab('factories');
+        setIsMasterOpen(true);
+      };
+
+      const updateMasterItem = (key, id, patch) => setMasterDraft(prev => ({ ...prev, [key]:prev[key].map(x => x.id === id ? { ...x, ...patch } : x) }));
+      const moveMasterItem = (key, id, delta) => setMasterDraft(prev => {
+        const arr = [...prev[key]].sort((a,b) => a.order - b.order);
+        const idx = arr.findIndex(x => x.id === id);
+        const target = idx + delta;
+        if (idx < 0 || target < 0 || target >= arr.length) return prev;
+        [arr[idx], arr[target]] = [arr[target], arr[idx]];
+        return { ...prev, [key]:arr.map((x,i) => ({ ...x, order:i + 1 })) };
+      });
+      const addMasterItem = (key) => setMasterDraft(prev => {
+        const arr = prev[key];
+        const prefix = key === 'factories' ? 'FAC' : key === 'projectTypes' ? 'TYPE' : 'PERMIT';
+        const base = { id:`${prefix}_${Date.now().toString(36).toUpperCase()}`, label:'', active:true, order:arr.length + 1 };
+        if (key === 'projectTypes') base.tone = 'gray';
+        return { ...prev, [key]:[...arr, base] };
+      });
+
+      const saveMaster = async () => {
+        for (const key of ['factories','projectTypes','permitCategories']) {
+          if (masterDraft[key].some(x => !String(x.label || '').trim())) return alert('基本資料名稱不可空白');
+        }
+        const normalized = {
+          factories:normalizeItems(masterDraft.factories, DEFAULT_MASTER.factories),
+          projectTypes:normalizeItems(masterDraft.projectTypes, DEFAULT_MASTER.projectTypes),
+          permitCategories:normalizeItems(masterDraft.permitCategories, DEFAULT_MASTER.permitCategories)
+        };
+        try {
+          await Promise.all(Object.entries(normalized).map(([key,items]) => window.__fs_save_master(key, items)));
+          setMaster(normalized);
+          setMasterCloudOk(true);
+          setIsMasterOpen(false);
+        } catch (err) {
+          console.error(err);
+          setMasterCloudOk(false);
+          alert(`基本資料儲存失敗：${err?.message || err}`);
+        }
+      };
+
+      const handleScroll = (e) => {
+        if (!leftScrollRef.current || !rightScrollRef.current) return;
+        if (e.target === leftScrollRef.current) rightScrollRef.current.scrollTop = leftScrollRef.current.scrollTop;
+        else leftScrollRef.current.scrollTop = rightScrollRef.current.scrollTop;
+      };
+
+      const csvEscape = (v) => `"${String(v ?? '').replace(/"/g,'""')}"`;
+      const handleExportCSV = () => {
+        const headers = ['名稱','摘要','類型','自定義類型','廠區','法規類別','主辦部門','主辦人','督導部門','督導人員','開始日期','結束日期','預計進度','實際進度','狀態','執行說明','備註'];
+        const rows = projects.map(p => [
+          p.name,p.projectContent,p.type,p.customTypeName,p.factory,(p.permitCategories || []).join('|'),p.mainDept,p.mainPic,p.supervisionDept,p.supervisionPic,p.startDate,p.endDate,p.expectedProgress || 0,p.progress || 0,p.status,JSON.stringify(normalizeLogs(p.executionLogs || [])),p.description
+        ].map(csvEscape));
+        const blob = new Blob(['\uFEFF' + [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\n')], { type:'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `安衛環管制總表_${today()}.csv`; link.click(); URL.revokeObjectURL(url);
+      };
+
+      const parseCsvLine = (line) => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g,'').replace(/""/g,'"'));
+      const handleImportCSV = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const lines = String(event.target.result || '').split(/\r?\n/).filter(x => x.trim());
+          if (lines.length < 2) return;
+          const headers = parseCsvLine(lines[0]).map(x => x.replace(/^\uFEFF/,''));
+          const idx = (name) => headers.indexOf(name);
+          try {
+            for (let i=1;i<lines.length;i++) {
+              const cols = parseCsvLine(lines[i]);
+              const get = (name, fallbackIndex=-1) => idx(name) >= 0 ? cols[idx(name)] : (fallbackIndex >= 0 ? cols[fallbackIndex] : '');
+              let logs = [];
+              try { logs = JSON.parse(get('執行說明', 13) || '[]'); } catch (_) {}
+              const isNew = idx('廠區') >= 0;
+              await window.__fs_add({
+                name:get('名稱',0), projectContent:get('摘要',1), type:get('類型',2), customTypeName:get('自定義類型',3) || '',
+                factory:isNew ? get('廠區') : '', permitCategories:isNew ? String(get('法規類別') || '').split('|').filter(Boolean) : [],
+                mainDept:get('主辦部門', isNew ? 6 : 4), mainPic:get('主辦人', isNew ? 7 : 5), supervisionDept:get('督導部門', isNew ? 8 : 6), supervisionPic:get('督導人員', isNew ? 9 : 7),
+                startDate:get('開始日期', isNew ? 10 : 8), endDate:get('結束日期', isNew ? 11 : 9), expectedProgress:clampProgress(get('預計進度', isNew ? 12 : 10)), progress:clampProgress(get('實際進度', isNew ? 13 : 11)),
+                status:get('狀態', isNew ? 14 : 12) || 'ON_TRACK', executionLogs:normalizeLogs(logs), description:get('備註', isNew ? 16 : 14) || ''
+              });
+            }
+          } catch (err) { alert(`匯入失敗：${err?.message || err}`); }
+          e.target.value = '';
+        };
+        reader.readAsText(file);
+      };
+
+      if (isLoading) return <div className="h-screen flex items-center justify-center flex-col gap-4"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div><p className="text-gray-500 font-bold">同步中...</p></div>;
+
+      const masterLabels = { factories:'廠區管理', projectTypes:'專案類型管理', permitCategories:'法規類別管理' };
+      const currentMasterItems = [...(masterDraft[masterTab] || [])].sort((a,b) => a.order - b.order);
+
+      return (
+        <div className="min-h-screen bg-gray-50 p-4 lg:p-6 text-gray-800">
+          <div className="max-w-[1700px] mx-auto">
+            <input type="file" ref={fileInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
+
+            <div className="mb-5 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-800">年度安衛環專案管制總表</h1>
+                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">● 雲端即時版</span>
+                  {!masterCloudOk && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold">基本資料雲端同步異常</span>}
+                </div>
+                <div className="flex flex-wrap items-center gap-4 mt-3">
+                  <p className="text-gray-500 text-sm font-medium">專案總數: <span className="font-bold text-gray-800">{projects.length}</span></p>
+                  <div className="flex flex-wrap gap-1 py-1 px-2 bg-gray-50 rounded-lg border border-gray-100">
+                    {projectTypes.map(t => <div key={t.id} className="flex items-center gap-1.5 px-2 py-0.5 border-r last:border-0 border-gray-200"><span className={`w-2 h-2 rounded-full ${typeBar(t.tone)}`}></span><span className="text-[11px] font-bold text-gray-600">{t.label}:</span><span className="text-[11px] font-mono font-bold text-blue-600">{projectCounts[t.id] || 0}</span></div>)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={openMaster} className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 text-sm font-bold"><Settings className="w-4 h-4"/> 基本資料</button>
+                <button onClick={() => openModal(null,false)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-md font-bold"><Plus className="w-5 h-5"/> 新增專案</button>
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-bold"><Upload className="w-4 h-4 text-green-600"/> 匯入</button>
+                <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-bold"><FileSpreadsheet className="w-4 h-4"/> 匯出</button>
+              </div>
+            </div>
+
+            <div className="mb-5 flex flex-wrap gap-2 items-center">
+              <button onClick={() => setFilterType('ALL')} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === 'ALL' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border border-gray-200'}`}>全部顯示</button>
+              {projectTypes.map(t => <button key={t.id} onClick={() => setFilterType(t.id)} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === t.id ? `${typeBar(t.tone)} text-white shadow` : 'bg-white text-gray-600 border border-gray-200'}`}>{t.label}</button>)}
+              <div className="ml-0 md:ml-auto flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1">
+                <span className="text-xs font-bold text-gray-400">廠區</span>
+                <select value={filterFactory} onChange={e => setFilterFactory(e.target.value)} className="border-0 bg-transparent text-sm font-bold text-gray-700 py-1 pr-7 focus:ring-0">
+                  <option value="ALL">全部廠區</option>
+                  {factories.map(f => <option key={f.id} value={f.id}>{f.label}{f.active ? '' : '（停用）'}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-270px)] min-h-[520px]">
+              <div className="w-full lg:w-[470px] border-r border-gray-200 flex flex-col overflow-hidden shrink-0">
+                <div className="bg-gray-50 p-3 border-b border-gray-200 text-xs font-bold text-gray-500 flex justify-between h-10 items-center"><span>專案概況</span><span>進度(預計/實際)</span></div>
+                <div ref={leftScrollRef} onScroll={handleScroll} className="overflow-y-auto flex-1 scrollbar-hide">
+                  {sortedFilteredProjects.length === 0 && <div className="p-10 text-center text-sm text-gray-400">目前篩選條件沒有專案。</div>}
+                  {sortedFilteredProjects.map((p,idx) => {
+                    const expected = clampProgress(p.expectedProgress); const actual = clampProgress(p.progress); const statusKey = effectiveStatus(p); const status = STATUS_TYPES[statusKey];
+                    const t = typeMap[p.type] || { label:p.type || '未分類', tone:'gray' }; const f = factoryMap[p.factory];
+                    return <div key={p.id} onMouseEnter={() => setHoverIdx(idx)} onMouseLeave={() => setHoverIdx(null)} className={`project-row-height p-4 row-hover relative overflow-hidden ${idx % 2 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}>
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${status.bgColor}`}></div>
+                      <div className="flex justify-between items-start mb-1.5 gap-2">
+                        <div className="flex flex-wrap gap-1.5 min-w-0">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-800 text-white">{f?.label || '未設定廠區'}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${typeTone(t.tone)}`}>{p.type === 'OTHER' && p.customTypeName ? p.customTypeName : t.label}</span>
+                          {p.type === 'PERMIT' && (p.permitCategories || []).map(id => <span key={id} className="text-[10px] px-2 py-0.5 rounded font-bold bg-purple-50 text-purple-700 border border-purple-100">{permitMap[id]?.label || id}</span>)}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0"><span onClick={e => {e.stopPropagation(); openModal(p,true);}} className="action-link text-gray-400">查看</span><span onClick={e => {e.stopPropagation(); openModal(p,false);}} className="action-link text-blue-500">編輯</span><span onClick={e => handleDeleteProject(p.id,e)} className="action-link text-red-500">刪除</span></div>
+                      </div>
+                      <div className="flex justify-between items-center mb-1.5"><h3 className="font-bold text-gray-800 text-sm truncate pr-2 flex-1" title={p.name}>{p.name}</h3><div className="flex items-center gap-1 text-[10px] font-bold shrink-0">{statusKey === 'DELAYED' ? <AlertCircle className="w-3 h-3 text-red-500"/> : <CheckCircle className={`w-3 h-3 ${statusKey === 'COMPLETED' ? 'text-gray-400' : 'text-green-500'}`}/>}<span className={status.color}>{status.label}</span></div></div>
+                      <div className="bg-gray-50/70 p-2 rounded-lg mb-2 grid grid-cols-2 gap-2 text-[10px] border border-gray-100"><div className="truncate"><span className="text-gray-400">主辦:</span> <span className="font-bold text-gray-600">{p.mainDept || '-'}-{p.mainPic || '-'}</span></div><div className="border-l pl-2"><span className="text-gray-400">預計:</span> <span className="font-bold text-blue-600">{expected}%</span></div></div>
+                      <div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200/50 rounded-full overflow-hidden relative border border-gray-100"><div className="absolute h-full bg-blue-400/20" style={{width:`${expected}%`}}></div><div className={`absolute h-full ${statusKey === 'DELAYED' ? 'bg-red-500' : 'bg-green-500'}`} style={{width:`${actual}%`}}></div></div><span className={`text-[10px] font-bold ${statusKey === 'DELAYED' ? 'text-red-600' : 'text-green-600'}`}>{actual}%</span></div>
+                    </div>;
+                  })}
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col overflow-hidden relative">
+                <div className="flex border-b border-gray-200 bg-gray-50 h-10 sticky top-0 z-20">{months.map((m,idx) => <div key={idx} className="flex-1 flex flex-col items-center justify-center text-[10px] font-bold text-gray-400 border-r border-gray-200/50 min-w-[50px]">{m.getMonth() === 0 && <div className="text-blue-500 scale-90">{m.getFullYear()}</div>}<div>{m.getMonth()+1}月</div></div>)}</div>
+                <div ref={rightScrollRef} onScroll={handleScroll} className="overflow-y-auto overflow-x-hidden flex-1 relative scrollbar-hide">
+                  <div className="absolute inset-0 flex pointer-events-none">{months.map((_,idx) => <div key={idx} className="flex-1 border-r border-gray-100/30 min-w-[50px]"></div>)}</div>
+                  {sortedFilteredProjects.map((p,idx) => {
+                    const {left,width} = calculateBarPosition(p.startDate,p.endDate); const expected=clampProgress(p.expectedProgress); const actual=clampProgress(p.progress); const delayed=effectiveStatus(p)==='DELAYED';
+                    const groups={}; normalizeLogs(p.executionLogs || []).forEach(log => { if(log.date){const d=new Date(`${log.date}T00:00:00`); const key=`${d.getFullYear()}-${d.getMonth()}`; (groups[key] ||= []).push(log);} });
+                    return <div key={p.id} onMouseEnter={() => setHoverIdx(idx)} onMouseLeave={() => setHoverIdx(null)} className={`gantt-row row-hover ${idx % 2 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}>
+                      <div className="absolute inset-0 flex pointer-events-none">{months.map((m,i) => {const key=`${m.getFullYear()}-${m.getMonth()}`; const logs=groups[key]; return logs ? <div key={i} className="flex-1 flex items-end justify-center pb-2"><div onClick={() => setQuickViewData({project:p,month:`${m.getFullYear()}年${m.getMonth()+1}月`,logs})} className="quick-view-dot w-2.5 h-2.5 bg-orange-500 rounded-full shadow-sm cursor-pointer z-10 pointer-events-auto"></div></div> : <div key={i} className="flex-1"></div>;})}</div>
+                      <div className="absolute top-1/2 -translate-y-1/2 h-7 rounded shadow-sm hover:h-9 transition-all cursor-pointer overflow-hidden z-10 flex border border-gray-300" style={{left,width}} onClick={() => openModal(p,false)}><div className="absolute inset-0 bg-blue-400/30" style={{width:`${expected}%`}}></div><div className={`h-full ${delayed ? 'bg-red-500' : 'bg-green-500'} relative z-10 flex items-center px-3 text-white text-[10px] font-bold`} style={{width:`${actual}%`}}><span className="truncate">{actual}%</span></div></div>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {quickViewData && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4"><div className="resizable-container w-[560px] h-[620px]"><div className="bg-orange-500 p-4 flex justify-between items-center text-white font-bold shrink-0"><div className="flex items-center gap-2"><Info className="w-5 h-5"/><span>{quickViewData.month} 進度明細</span></div><button onClick={() => setQuickViewData(null)} className="p-1 hover:bg-white/20 rounded text-xl">✕</button></div><div className="p-5 flex-1 overflow-y-auto space-y-3"><div className="border-b pb-3"><p className="text-xs text-gray-400 font-bold mb-1">對應專案</p><p className="font-bold">{quickViewData.project.name}</p></div>{quickViewData.logs.map(log => <div key={log.id} className="bg-gray-50 p-4 rounded-xl border"><div className="flex flex-wrap gap-2 items-center mb-2"><span className="text-[11px] font-bold bg-white px-2 py-1 rounded border">{log.date}</span><span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">{log.person || '未填人員'}</span><span className="text-[11px] font-bold bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">{log.type}</span><span className="ml-auto text-xs font-bold text-orange-600">{log.progress}%</span></div><p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{log.content || '未輸入描述'}</p></div>)}</div><div className="p-4 bg-gray-50 border-t flex gap-2"><button onClick={() => {const p=quickViewData.project; setQuickViewData(null); openModal(p,false);}} className="flex-1 bg-white border border-blue-200 text-blue-600 font-bold py-2 rounded-xl text-sm">前往編輯專案</button><button onClick={() => setQuickViewData(null)} className="flex-1 bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-sm">關閉</button></div></div></div>}
+
+          {isModalOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="resizable-container w-[1120px] h-[88vh]"><div className="bg-gray-800 p-5 flex justify-between items-center text-white shrink-0"><h3 className="font-bold text-lg">{isViewMode ? '查看專案' : editingProject ? '編輯專案' : '新增專案'}</h3><button onClick={() => setIsModalOpen(false)} className="p-1 text-xl">✕</button></div>
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5 bg-white">
+              <fieldset disabled={isViewMode} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">專案名稱</label><input required name="name" defaultValue={editingProject?.name || ''} className="w-full p-2.5 border rounded-xl bg-white disabled:bg-gray-50"/></div>
+                  <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">摘要內容</label><textarea name="projectContent" defaultValue={editingProject?.projectContent || ''} className="w-full p-2.5 border rounded-xl h-20 resize-y bg-white disabled:bg-gray-50"/></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">廠區 *</label><select required value={selectedFactory} onChange={e => setSelectedFactory(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white"><option value="">請選擇廠區</option>{factories.filter(f => f.active || f.id === editingProject?.factory).map(f => <option key={f.id} value={f.id}>{f.label}{f.active ? '' : '（已停用）'}</option>)}</select></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">專案類型</label><select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{projectTypes.filter(t => t.active || t.id === editingProject?.type).map(t => <option key={t.id} value={t.id}>{t.label}{t.active ? '' : '（已停用）'}</option>)}</select></div>
+                  {selectedType === 'OTHER' && <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">其他專案類型名稱</label><input name="customTypeName" defaultValue={editingProject?.customTypeName || ''} className="w-full p-2.5 border rounded-xl"/></div>}
+                  {selectedType === 'PERMIT' && <div className="md:col-span-2 bg-purple-50/60 border border-purple-100 rounded-xl p-4"><label className="block text-sm font-bold text-purple-800 mb-3">法規類別（可複選）*</label><div className="flex flex-wrap gap-2">{permitCategories.filter(x => x.active || selectedPermitCategories.includes(x.id)).map(c => <label key={c.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ${selectedPermitCategories.includes(c.id) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-purple-700 border-purple-200'}`}><input type="checkbox" checked={selectedPermitCategories.includes(c.id)} onChange={() => togglePermitCategory(c.id)} className="accent-purple-600"/><span className="text-sm font-bold">{c.label}{c.active ? '' : '（已停用）'}</span></label>)}</div></div>}
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">目前狀態</label><select name="status" defaultValue={editingProject?.status || 'ON_TRACK'} className="w-full p-2.5 border rounded-xl bg-white">{Object.entries(STATUS_TYPES).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
+                </div>
+
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">主辦部門</label><input name="mainDept" defaultValue={editingProject?.mainDept || ''} className="w-full p-2 border rounded-lg bg-white"/></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">主辦人</label><input name="mainPic" defaultValue={editingProject?.mainPic || ''} className="w-full p-2 border rounded-lg bg-white"/></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">督導部門</label><select value={selectedSupervisionDept} onChange={e => setSelectedSupervisionDept(e.target.value)} className="w-full p-2 border rounded-lg bg-white">{SUPERVISION_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}<option value="OTHER">其他 (自行輸入)</option></select>{selectedSupervisionDept === 'OTHER' && <input name="customSupervisionDept" defaultValue={SUPERVISION_DEPTS.includes(editingProject?.supervisionDept) ? '' : (editingProject?.supervisionDept || '')} className="w-full p-2 border rounded-lg bg-white mt-2" placeholder="輸入督導部門"/>}</div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-1">督導人員</label><input name="supervisionPic" defaultValue={editingProject?.supervisionPic || ''} className="w-full p-2 border rounded-lg bg-white"/></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">開始日期</label><input type="date" required name="startDate" defaultValue={editingProject?.startDate || today()} className="w-full p-2.5 border rounded-xl bg-white"/></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">預計結束</label><input type="date" required name="endDate" defaultValue={editingProject?.endDate || today()} className="w-full p-2.5 border rounded-xl bg-white"/></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">預計進度 (%)</label><input type="number" min="0" max="100" value={expectedProgress} onChange={e => setExpectedProgress(clampProgress(e.target.value))} className="w-full p-2.5 border rounded-xl bg-white"/></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">實際進度</label><div className="w-full p-2.5 border rounded-xl bg-slate-50 font-bold text-green-600">{actualProgress}% <span className="text-[11px] font-normal text-gray-400">由進度紀錄更新</span></div></div>
+                </div>
+
+                <div className="border border-slate-200 rounded-2xl p-5 bg-white">
+                  <div className="flex items-center justify-between mb-3"><div><h4 className="text-sm font-bold text-slate-700">辦理進度紀錄</h4><p className="text-[11px] text-slate-400 mt-1">新增進度後會直接更新專案實際進度；歷程依日期由新到舊顯示。</p></div><span className="text-[11px] font-bold text-slate-400">{executionLogs.length} 筆</span></div>
+                  {!isViewMode && <div id="progress-entry" className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">日期</label><input type="date" value={logDraft.date} onChange={e => setLogDraft({...logDraft,date:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white"/></div>
+                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員</label><input value={logDraft.person} onChange={e => setLogDraft({...logDraft,person:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white" placeholder="登入者自動帶入，可修改"/></div>
+                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">類型</label><select value={logDraft.type} onChange={e => setLogDraft({...logDraft,type:e.target.value,customType:e.target.value === '其他' ? logDraft.customType : ''})} className="w-full p-2.5 border rounded-lg bg-white">{PROGRESS_TYPES.map(x => <option key={x}>{x}</option>)}</select></div>
+                      <div><label className="block text-[11px] font-bold text-blue-500 mb-1">進度 (%)</label><input type="number" min="0" max="100" value={logDraft.progress} onChange={e => setLogDraft({...logDraft,progress:clampProgress(e.target.value)})} className="w-full p-2.5 border-2 border-blue-100 rounded-lg bg-white font-bold text-blue-600"/></div>
+                    </div>
+                    {logDraft.type === '其他' && <div><label className="block text-[11px] font-bold text-slate-400 mb-1">其他類型名稱</label><input value={logDraft.customType} onChange={e => setLogDraft({...logDraft,customType:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white" placeholder="例如：教育訓練、稽核追蹤"/></div>}
+                    <div><label className="block text-[11px] font-bold text-slate-400 mb-1">內容</label><textarea value={logDraft.content} onChange={e => setLogDraft({...logDraft,content:e.target.value})} rows="3" className="w-full p-3 border rounded-lg bg-white resize-y" placeholder="請輸入本次辦理進度、聯繫結果、下一步事項..."/></div>
+                    <div className="flex justify-end gap-2">{logDraft.id && <button type="button" onClick={() => resetLogDraft(logDraft.person,actualProgress)} className="px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>}<button type="button" onClick={saveProgressLog} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">{logDraft.id ? '儲存修改' : '新增進度'}</button></div>
+                  </div>}
+                  <div className="mt-4"><div className="flex justify-between items-center mb-2"><label className="block text-xs font-bold text-slate-400">進度歷程</label><span className="text-[11px] text-slate-400 font-bold">{executionLogs.length} 筆</span></div><div className="space-y-2 max-h-80 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-white">
+                    {executionLogs.length === 0 && <div className="p-4 text-xs text-slate-400">尚無進度紀錄。</div>}
+                    {executionLogs.map(log => <div key={log.id} className="progress-card border border-slate-200 rounded-xl p-3 bg-white"><div className="flex flex-wrap gap-2 items-center mb-2"><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.date}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.person || '未填人員'}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-purple-50 text-purple-700 border border-purple-100">{log.type}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-green-50 text-green-700 border border-green-100">{log.progress}%</span>{!isViewMode && <div className="ml-auto flex gap-1"><button type="button" onClick={() => editProgressLog(log)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">修改</button><button type="button" onClick={() => deleteProgressLog(log.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold">刪除</button></div>}</div><div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{log.content || '未輸入內容'}</div></div>)}
+                  </div></div>
+                </div>
+
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">備註</label><textarea name="description" defaultValue={editingProject?.description || ''} className="w-full p-2.5 border rounded-xl h-20 resize-y bg-white"/></div>
+              </fieldset>
+
+              <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t pt-4 pb-1 flex flex-wrap justify-end gap-2">
+                {!isViewMode && editingProject && <button type="button" onClick={() => handleDeleteProject(editingProject.id)} className="flex items-center gap-1.5 text-red-500 font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-red-50"><Trash className="w-4 h-4"/> 刪除專案</button>}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl">{isViewMode ? '關閉' : '取消'}</button>
+                {!isViewMode && <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700">{editingProject ? '儲存變更' : '建立專案'}</button>}
+              </div>
+            </form>
+          </div></div>}
+
+          {isMasterOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"><div className="resizable-container w-[900px] h-[72vh]"><div className="bg-slate-800 p-5 flex justify-between items-center text-white shrink-0"><div><h3 className="font-bold text-lg">年度專案｜基本資料管理</h3><p className="text-xs text-slate-300 mt-1">此基本資料僅供「年度安衛環專案管制總表」使用。</p></div><button onClick={() => setIsMasterOpen(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
+            <div className="md:w-56 p-4 border-r bg-white flex md:flex-col gap-2 overflow-x-auto">{Object.entries(masterLabels).map(([key,label]) => <button key={key} onClick={() => setMasterTab(key)} className={`px-4 py-3 rounded-xl text-sm font-bold text-left whitespace-nowrap ${masterTab === key ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-slate-600 hover:bg-slate-50 border border-transparent'}`}>{label}</button>)}</div>
+            <div className="flex-1 p-5 overflow-y-auto"><div className="flex justify-between items-center mb-4"><div><h4 className="font-bold text-slate-800">{masterLabels[masterTab]}</h4><p className="text-xs text-slate-400 mt-1">可直接修改名稱、停用，並用上下箭頭調整排序。</p></div><button onClick={() => addMasterItem(masterTab)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Plus className="w-3 h-3"/> 新增</button></div>
+              <div className="space-y-2">{currentMasterItems.map((item,idx) => <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 items-center"><div className="text-xs font-mono text-slate-400 w-full md:w-24 truncate" title={item.id}>{item.id}</div><input value={item.label} onChange={e => updateMasterItem(masterTab,item.id,{label:e.target.value})} className="flex-1 p-2 border rounded-lg" placeholder="名稱"/><label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={item.active !== false} onChange={e => updateMasterItem(masterTab,item.id,{active:e.target.checked})}/>啟用</label><div className="flex gap-1"><button type="button" disabled={idx===0} onClick={() => moveMasterItem(masterTab,item.id,-1)} className="px-2 py-1 border rounded disabled:opacity-30">↑</button><button type="button" disabled={idx===currentMasterItems.length-1} onClick={() => moveMasterItem(masterTab,item.id,1)} className="px-2 py-1 border rounded disabled:opacity-30">↓</button></div></div>)}</div>
+            </div>
+          </div><div className="p-4 border-t bg-white flex justify-end gap-2"><button onClick={() => setIsMasterOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold rounded-xl hover:bg-gray-100">取消</button><button onClick={saveMaster} className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow">儲存基本資料</button></div></div></div>}
+        </div>
+      );
+    };
+
+    window.__firebaseReady.then(() => ReactDOM.createRoot(document.getElementById('root')).render(<App />));
+  </script>
 </body>
 </html>

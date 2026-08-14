@@ -1,0 +1,75 @@
+name: Fix routine-work Firebase init
+
+on:
+  push:
+    branches:
+      - fix-routine-firebase-init-20260814
+    paths:
+      - .github/workflows/fix-routine-firebase-init.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-routine-firebase-init-20260814
+      - name: Patch Firebase initialization timing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('routine-work/index.html')
+          text = path.read_text(encoding='utf-8')
+          old = '''async function setupFirebaseSync(){
+  if(!window.__firebaseReady){
+    updateCloudStatus("err","Firebase SDK 未載入");
+    return;
+  }
+  try{
+    cloudApi=await window.__firebaseReady;'''
+          new = '''async function waitForFirebaseReady(timeoutMs=10000){
+  const started=Date.now();
+  while(!window.__firebaseReady){
+    if(Date.now()-started>=timeoutMs){
+      throw new Error("Firebase SDK 載入逾時");
+    }
+    await new Promise(resolve=>setTimeout(resolve,50));
+  }
+  return window.__firebaseReady;
+}
+async function setupFirebaseSync(){
+  try{
+    updateCloudStatus("warn","Firebase 載入中");
+    cloudApi=await waitForFirebaseReady();'''
+          if old not in text:
+              raise SystemExit('Target setupFirebaseSync snippet not found')
+          text = text.replace(old, new, 1)
+          old2 = '''async function cloudSignIn(){
+  try{
+    if(!cloudApi) cloudApi=await window.__firebaseReady;
+    await cloudApi.signIn();'''
+          new2 = '''async function cloudSignIn(){
+  try{
+    if(!cloudApi) cloudApi=await waitForFirebaseReady();
+    await cloudApi.signIn();'''
+          if old2 not in text:
+              raise SystemExit('Target cloudSignIn snippet not found')
+          text = text.replace(old2, new2, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Verify patch
+        run: |
+          grep -q 'async function waitForFirebaseReady' routine-work/index.html
+          grep -q 'Firebase 載入中' routine-work/index.html
+          ! grep -q 'Firebase SDK 未載入' routine-work/index.html
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm .github/workflows/fix-routine-firebase-init.yml
+          git config user.name 'openai-automation'
+          git config user.email 'openai-automation@users.noreply.github.com'
+          git add routine-work/index.html .github/workflows/fix-routine-firebase-init.yml
+          git commit -m 'fix: wait for Firebase module before routine-work sync [skip ci]'
+          git push origin HEAD:fix-routine-firebase-init-20260814

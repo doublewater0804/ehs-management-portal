@@ -150,23 +150,23 @@
 
     const DEFAULT_MASTER = Object.freeze({
       factories: [
-        { id:'LD', label:'龍德', active:true, order:1 },
-        { id:'CH', label:'彰化', active:true, order:2 },
-        { id:'ML', label:'麥寮', active:true, order:3 },
-        { id:'SG', label:'新港', active:true, order:4 },
-        { id:'CROSS', label:'跨廠區', active:true, order:5 }
+        { id:'LD', label:'龍德', active:true, order:1, color:'#1e3a5f' },
+        { id:'CH', label:'彰化', active:true, order:2, color:'#0f766e' },
+        { id:'ML', label:'麥寮', active:true, order:3, color:'#c2410c' },
+        { id:'SG', label:'新港', active:true, order:4, color:'#7c3aed' },
+        { id:'CROSS', label:'跨廠區', active:true, order:5, color:'#475569' }
       ],
       projectTypes: [
-        { id:'ENGINEERING', label:'專案工程', active:true, order:1, tone:'blue' },
-        { id:'PERMIT', label:'法規/證照申請', active:true, order:2, tone:'purple' },
-        { id:'FIRE_SAFETY', label:'年度工作', active:true, order:3, tone:'red' },
-        { id:'IMPROVEMENT', label:'稽核缺失改善', active:true, order:4, tone:'orange' },
-        { id:'OTHER', label:'其他 (自行輸入)', active:true, order:5, tone:'gray' }
+        { id:'ENGINEERING', label:'專案工程', active:true, order:1, tone:'blue', color:'#2563eb' },
+        { id:'PERMIT', label:'法規/證照申請', active:true, order:2, tone:'purple', color:'#9333ea' },
+        { id:'FIRE_SAFETY', label:'年度工作', active:true, order:3, tone:'red', color:'#dc2626' },
+        { id:'IMPROVEMENT', label:'稽核缺失改善', active:true, order:4, tone:'orange', color:'#ea580c' },
+        { id:'OTHER', label:'其他 (自行輸入)', active:true, order:5, tone:'gray', color:'#64748b' }
       ],
       permitCategories: [
-        { id:'AIR', label:'空污', active:true, order:1 },
-        { id:'WATER', label:'廢水', active:true, order:2 },
-        { id:'WASTE', label:'廢棄物', active:true, order:3 }
+        { id:'AIR', label:'空污', active:true, order:1, color:'#64748b' },
+        { id:'WATER', label:'廢水', active:true, order:2, color:'#0284c7' },
+        { id:'WASTE', label:'廢棄物', active:true, order:3, color:'#b45309' }
       ]
     });
 
@@ -182,14 +182,20 @@
     const uid = (prefix='id') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
     const deepClone = (v) => JSON.parse(JSON.stringify(v));
     const clampProgress = (v) => Math.min(100, Math.max(0, Number.parseInt(v, 10) || 0));
+    const normalizeHexColor = (value, fallback='#64748b') => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : fallback;
+    const toneHex = (tone='gray') => ({blue:'#2563eb',purple:'#9333ea',red:'#dc2626',orange:'#ea580c',green:'#16a34a',gray:'#64748b'}[tone] || '#64748b');
     const normalizeItems = (items, fallback) => {
       const list = Array.isArray(items) && items.length ? items : deepClone(fallback);
-      return list.map((x,i) => ({ ...x, id:String(x.id || uid('item')), label:String(x.label || '').trim(), active:x.active !== false, order:Number.isFinite(Number(x.order)) ? Number(x.order) : i + 1 })).sort((a,b) => a.order - b.order);
+      return list.map((x,i) => {
+        const fb = fallback.find(f => String(f.id) === String(x.id)) || fallback[i] || {};
+        const fallbackColor = fb.color || toneHex(x.tone || fb.tone);
+        return { ...x, id:String(x.id || uid('item')), label:String(x.label || '').trim(), active:x.active !== false, order:Number.isFinite(Number(x.order)) ? Number(x.order) : i + 1, color:normalizeHexColor(x.color, fallbackColor) };
+      }).sort((a,b) => a.order - b.order);
     };
-    const typeTone = (tone='gray') => ({
-      blue:'bg-blue-100 text-blue-800', purple:'bg-purple-100 text-purple-800', red:'bg-red-100 text-red-800', orange:'bg-orange-100 text-orange-800', green:'bg-green-100 text-green-800', gray:'bg-gray-100 text-gray-800'
-    }[tone] || 'bg-gray-100 text-gray-800');
-    const typeBar = (tone='gray') => ({ blue:'bg-blue-500', purple:'bg-purple-500', red:'bg-red-500', orange:'bg-orange-500', green:'bg-green-500', gray:'bg-gray-500' }[tone] || 'bg-gray-500');
+    const hexToRgba = (hex, alpha=.14) => { const h=normalizeHexColor(hex).slice(1); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${alpha})`; };
+    const darkenHex = (hex, amount=.28) => { const h=normalizeHexColor(hex).slice(1); const vals=[0,2,4].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*(1-amount)))); return `#${vals.map(v=>v.toString(16).padStart(2,'0')).join('')}`; };
+    const contrastText = (hex) => { const h=normalizeHexColor(hex).slice(1); const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); return (r*299+g*587+b*114)/1000 > 165 ? '#0f172a' : '#ffffff'; };
+    const tagStyle = (color, solid=false) => { const c=normalizeHexColor(color); return solid ? {backgroundColor:c,color:contrastText(c),borderColor:c} : {backgroundColor:hexToRgba(c,.12),color:darkenHex(c,.22),borderColor:hexToRgba(c,.32)}; };
 
     const normalizeLogs = (logs=[]) => (Array.isArray(logs) ? logs : []).map((r,i) => ({
       id:String(r?.id || `legacy_${i}_${r?.date || ''}`),
@@ -454,7 +460,8 @@
       const addMasterItem = (key) => setMasterDraft(prev => {
         const arr = prev[key];
         const prefix = key === 'factories' ? 'FAC' : key === 'projectTypes' ? 'TYPE' : 'PERMIT';
-        const base = { id:`${prefix}_${Date.now().toString(36).toUpperCase()}`, label:'', active:true, order:arr.length + 1 };
+        const defaultColor = '#64748b';
+        const base = { id:`${prefix}_${Date.now().toString(36).toUpperCase()}`, label:'', active:true, order:arr.length + 1, color:defaultColor };
         if (key === 'projectTypes') base.tone = 'gray';
         return { ...prev, [key]:[...arr, base] };
       });
@@ -549,7 +556,7 @@
                 <div className="flex flex-wrap items-center gap-4 mt-3">
                   <p className="text-gray-500 text-sm font-medium">專案總數: <span className="font-bold text-gray-800">{projects.length}</span></p>
                   <div className="flex flex-wrap gap-1 py-1 px-2 bg-gray-50 rounded-lg border border-gray-100">
-                    {projectTypes.map(t => <div key={t.id} className="flex items-center gap-1.5 px-2 py-0.5 border-r last:border-0 border-gray-200"><span className={`w-2 h-2 rounded-full ${typeBar(t.tone)}`}></span><span className="text-[11px] font-bold text-gray-600">{t.label}:</span><span className="text-[11px] font-mono font-bold text-blue-600">{projectCounts[t.id] || 0}</span></div>)}
+                    {projectTypes.map(t => <div key={t.id} className="flex items-center gap-1.5 px-2 py-0.5 border-r last:border-0 border-gray-200"><span className="w-2 h-2 rounded-full" style={{backgroundColor:t.color}}></span><span className="text-[11px] font-bold text-gray-600">{t.label}:</span><span className="text-[11px] font-mono font-bold text-blue-600">{projectCounts[t.id] || 0}</span></div>)}
                   </div>
                 </div>
               </div>
@@ -563,7 +570,7 @@
 
             <div className="mb-5 flex flex-wrap gap-2 items-center">
               <button onClick={() => setFilterType('ALL')} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === 'ALL' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border border-gray-200'}`}>全部顯示</button>
-              {projectTypes.map(t => <button key={t.id} onClick={() => setFilterType(t.id)} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === t.id ? `${typeBar(t.tone)} text-white shadow` : 'bg-white text-gray-600 border border-gray-200'}`}>{t.label}</button>)}
+              {projectTypes.map(t => <button key={t.id} onClick={() => setFilterType(t.id)} style={filterType === t.id ? tagStyle(t.color,true) : undefined} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === t.id ? 'shadow border' : 'bg-white text-gray-600 border border-gray-200'}`}>{t.label}</button>)}
               <div className="ml-0 md:ml-auto flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1">
                 <span className="text-xs font-bold text-gray-400">廠區</span>
                 <select value={filterFactory} onChange={e => setFilterFactory(e.target.value)} className="border-0 bg-transparent text-sm font-bold text-gray-700 py-1 pr-7 focus:ring-0">
@@ -580,14 +587,14 @@
                   {sortedFilteredProjects.length === 0 && <div className="p-10 text-center text-sm text-gray-400">目前篩選條件沒有專案。</div>}
                   {sortedFilteredProjects.map((p,idx) => {
                     const expected = clampProgress(p.expectedProgress); const actual = clampProgress(p.progress); const statusKey = effectiveStatus(p); const status = STATUS_TYPES[statusKey];
-                    const t = typeMap[p.type] || { label:p.type || '未分類', tone:'gray' }; const f = factoryMap[p.factory];
+                    const t = typeMap[p.type] || { label:p.type || '未分類', color:'#64748b' }; const f = factoryMap[p.factory];
                     return <div key={p.id} onMouseEnter={() => setHoverIdx(idx)} onMouseLeave={() => setHoverIdx(null)} className={`project-row-height p-4 row-hover relative overflow-hidden ${idx % 2 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}>
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${status.bgColor}`}></div>
                       <div className="flex justify-between items-start mb-1.5 gap-2">
                         <div className="flex flex-wrap gap-1.5 min-w-0">
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-800 text-white">{f?.label || '未設定廠區'}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${typeTone(t.tone)}`}>{p.type === 'OTHER' && p.customTypeName ? p.customTypeName : t.label}</span>
-                          {p.type === 'PERMIT' && (p.permitCategories || []).map(id => <span key={id} className="text-[10px] px-2 py-0.5 rounded font-bold bg-purple-50 text-purple-700 border border-purple-100">{permitMap[id]?.label || id}</span>)}
+                          <span style={tagStyle(f?.color || '#475569',true)} className="text-[10px] px-2 py-0.5 rounded font-bold border">{f?.label || '未設定廠區'}</span>
+                          <span style={tagStyle(t.color)} className="text-[10px] px-2 py-0.5 rounded font-bold border">{p.type === 'OTHER' && p.customTypeName ? p.customTypeName : t.label}</span>
+                          {p.type === 'PERMIT' && (p.permitCategories || []).map(id => {const c=permitMap[id]; return <span key={id} style={tagStyle(c?.color || '#64748b')} className="text-[10px] px-2 py-0.5 rounded font-bold border">{c?.label || id}</span>;})}
                         </div>
                         <div className="flex items-center gap-3 shrink-0"><span onClick={e => {e.stopPropagation(); openModal(p,true);}} className="action-link text-gray-400">查看</span><span onClick={e => {e.stopPropagation(); openModal(p,false);}} className="action-link text-blue-500">編輯</span><span onClick={e => handleDeleteProject(p.id,e)} className="action-link text-red-500">刪除</span></div>
                       </div>
@@ -677,8 +684,8 @@
 
           {isMasterOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"><div className="resizable-container w-[900px] h-[72vh]"><div className="bg-slate-800 p-5 flex justify-between items-center text-white shrink-0"><div><h3 className="font-bold text-lg">年度專案｜基本資料管理</h3><p className="text-xs text-slate-300 mt-1">此基本資料僅供「年度安衛環專案管制總表」使用。</p></div><button onClick={() => setIsMasterOpen(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
             <div className="md:w-56 p-4 border-r bg-white flex md:flex-col gap-2 overflow-x-auto">{Object.entries(masterLabels).map(([key,label]) => <button key={key} onClick={() => setMasterTab(key)} className={`px-4 py-3 rounded-xl text-sm font-bold text-left whitespace-nowrap ${masterTab === key ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-slate-600 hover:bg-slate-50 border border-transparent'}`}>{label}</button>)}</div>
-            <div className="flex-1 p-5 overflow-y-auto"><div className="flex justify-between items-center mb-4"><div><h4 className="font-bold text-slate-800">{masterLabels[masterTab]}</h4><p className="text-xs text-slate-400 mt-1">可直接修改名稱、停用，並用上下箭頭調整排序。</p></div><button onClick={() => addMasterItem(masterTab)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Plus className="w-3 h-3"/> 新增</button></div>
-              <div className="space-y-2">{currentMasterItems.map((item,idx) => <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 items-center"><div className="text-xs font-mono text-slate-400 w-full md:w-24 truncate" title={item.id}>{item.id}</div><input value={item.label} onChange={e => updateMasterItem(masterTab,item.id,{label:e.target.value})} className="flex-1 p-2 border rounded-lg" placeholder="名稱"/><label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={item.active !== false} onChange={e => updateMasterItem(masterTab,item.id,{active:e.target.checked})}/>啟用</label><div className="flex gap-1"><button type="button" disabled={idx===0} onClick={() => moveMasterItem(masterTab,item.id,-1)} className="px-2 py-1 border rounded disabled:opacity-30">↑</button><button type="button" disabled={idx===currentMasterItems.length-1} onClick={() => moveMasterItem(masterTab,item.id,1)} className="px-2 py-1 border rounded disabled:opacity-30">↓</button></div></div>)}</div>
+            <div className="flex-1 p-5 overflow-y-auto"><div className="flex justify-between items-center mb-4"><div><h4 className="font-bold text-slate-800">{masterLabels[masterTab]}</h4><p className="text-xs text-slate-400 mt-1">可修改名稱、顏色、啟用狀態，並用上下箭頭調整排序。</p></div><button onClick={() => addMasterItem(masterTab)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Plus className="w-3 h-3"/> 新增</button></div>
+              <div className="space-y-2">{currentMasterItems.map((item,idx) => <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 items-center"><div className="text-xs font-mono text-slate-400 w-full md:w-24 truncate" title={item.id}>{item.id}</div><input value={item.label} onChange={e => updateMasterItem(masterTab,item.id,{label:e.target.value})} className="flex-1 p-2 border rounded-lg" placeholder="名稱"/><div className="flex items-center gap-2 shrink-0"><span style={masterTab === 'factories' ? tagStyle(item.color,true) : tagStyle(item.color)} className="px-2 py-1 rounded border text-xs font-bold min-w-14 text-center">{item.label || '預覽'}</span><input type="color" value={normalizeHexColor(item.color)} onChange={e => updateMasterItem(masterTab,item.id,{color:e.target.value})} className="w-10 h-9 p-1 border rounded-lg cursor-pointer bg-white" title="自訂標籤顏色"/></div><label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={item.active !== false} onChange={e => updateMasterItem(masterTab,item.id,{active:e.target.checked})}/>啟用</label><div className="flex gap-1"><button type="button" disabled={idx===0} onClick={() => moveMasterItem(masterTab,item.id,-1)} className="px-2 py-1 border rounded disabled:opacity-30">↑</button><button type="button" disabled={idx===currentMasterItems.length-1} onClick={() => moveMasterItem(masterTab,item.id,1)} className="px-2 py-1 border rounded disabled:opacity-30">↓</button></div></div>)}</div>
             </div>
           </div><div className="p-4 border-t bg-white flex justify-end gap-2"><button onClick={() => setIsMasterOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold rounded-xl hover:bg-gray-100">取消</button><button onClick={saveMaster} className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow">儲存基本資料</button></div></div></div>}
         </div>

@@ -687,13 +687,18 @@ function updateCloudStatus(type,text){
   if(type==="ok") cloudBanner.classList.remove("show");
   else cloudBanner.classList.add("show");
 }
-async function setupFirebaseSync(){
-  if(!window.__firebaseReady){
-    updateCloudStatus("err","Firebase SDK 未載入");
-    return;
+async function waitForFirebaseReady(timeoutMs=10000){
+  const started=Date.now();
+  while(!window.__firebaseReady){
+    if(Date.now()-started>=timeoutMs) throw new Error("Firebase SDK 載入逾時");
+    await new Promise(resolve=>setTimeout(resolve,50));
   }
+  return window.__firebaseReady;
+}
+async function setupFirebaseSync(){
   try{
-    cloudApi=await window.__firebaseReady;
+    updateCloudStatus("warn","Firebase 載入中");
+    cloudApi=await waitForFirebaseReady();
     cloudApi.onAuth((user)=>{
       cloudUser=user;
       signInBtn.style.display=user?"none":"inline-flex";
@@ -747,7 +752,7 @@ async function setupFirebaseSync(){
 }
 async function cloudSignIn(){
   try{
-    if(!cloudApi) cloudApi=await window.__firebaseReady;
+    if(!cloudApi) cloudApi=await waitForFirebaseReady();
     await cloudApi.signIn();
   }catch(err){
     console.error(err);

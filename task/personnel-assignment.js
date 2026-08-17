@@ -20,7 +20,7 @@
   }
 
   const script = document.createElement('script');
-  script.src = './personnel-management.js?v=4';
+  script.src = './personnel-management.js?v=5';
   script.defer = true;
   script.dataset.ehsTaskPersonnelManagementV3 = '1';
   script.onload = loadImporter;

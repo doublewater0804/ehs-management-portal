@@ -1,5 +1,6 @@
-/* EHS Task Basic Data Management v1.0
- * Centralized maintenance for factory, category, source, people, unit and progress type.
+/* EHS Task Basic Data Management v1.1
+ * Centralized maintenance for factory, category, source, people, group and progress type.
+ * Personnel/group relationships are enhanced by personnel-assignment.js.
  * Firestore-first with localStorage fallback. Historical task strings are preserved.
  */
 (() => {
@@ -20,8 +21,8 @@
     { key: 'factories', label: '廠區', singular: '廠區' },
     { key: 'categories', label: '工作類別', singular: '工作類別' },
     { key: 'sources', label: '來源', singular: '來源' },
-    { key: 'people', label: '人員', singular: '人員' },
-    { key: 'units', label: '單位', singular: '單位' },
+    { key: 'people', label: '人員管理', singular: '人員' },
+    { key: 'units', label: '組別', singular: '組別' },
     { key: 'progressTypes', label: '進度類型', singular: '進度類型' }
   ];
 
@@ -116,7 +117,7 @@
     const isProtectedType = ['categories', 'sources', 'progressTypes'].includes(type);
     const out = [];
     const seen = new Set();
-    (Array.isArray(list) ? list : []).forEach((raw, idx) => {
+    (Array.isArray(list) ? list : []).forEach((raw) => {
       const name = norm(raw?.name ?? raw);
       const k = keyOf(name);
       if (!name || seen.has(k)) return;
@@ -294,7 +295,7 @@
 
     const fUnit = document.getElementById('filter-unit');
     setSelectOptions(fUnit, uniqueNames([...enabledNames('units'), ...tasksNow.map(t => t?.unit)]), {
-      current: fUnit?.value, allLabel: '所有單位'
+      current: fUnit?.value, allLabel: '所有組別'
     });
 
     const fSource = document.getElementById('filter-source');
@@ -331,11 +332,11 @@
     wrap.id = 'master-data-modal';
     wrap.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[140] p-4 no-print';
     wrap.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-2xl w-[min(95vw,70rem)] max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-white rounded-2xl shadow-2xl w-[min(95vw,78rem)] max-h-[90vh] overflow-hidden flex flex-col">
         <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
             <h4 class="font-bold text-slate-800 text-lg">基本資料管理</h4>
-            <p class="text-xs text-slate-400 mt-1">維護工作管理模組共用選項；停用項目仍保留歷史資料。</p>
+            <p class="text-xs text-slate-400 mt-1">維護工作管理模組共用選項；人員依廠區、組別及人員類別集中管理。</p>
           </div>
           <div class="flex items-center gap-3">
             <span id="master-sync-state" class="text-[11px] font-bold text-slate-400">載入中…</span>
@@ -352,7 +353,7 @@
               <input id="master-new-name" type="text" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入名稱" />
             </div>
             <div id="master-person-unit-wrap" class="hidden flex-1">
-              <label class="block text-xs font-bold text-slate-400 uppercase mb-2">預設單位</label>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-2">預設組別</label>
               <select id="master-new-unit" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"></select>
             </div>
             <div class="flex items-end">
@@ -366,11 +367,11 @@
             <div id="master-list" class="divide-y divide-slate-100"></div>
           </div>
           <div class="mt-4 text-xs text-slate-400 leading-relaxed">
-            說明：已被工作紀錄使用的文字不會因重新命名或停用而改寫，避免破壞歷史紀錄；新增/編輯時只提供目前啟用的基本資料。
+            說明：歷史工作紀錄不會因基本資料重新命名、停用或人員離職而被改寫。
           </div>
         </div>
         <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-          <span class="text-xs text-slate-400">「其他」為系統保留項目，不可改名或停用。</span>
+          <span class="text-xs text-slate-400">人員刪除採離職封存，不影響歷史工作紀錄。</span>
           <button type="button" id="btn-master-close" class="px-6 py-2 bg-slate-700 text-white text-sm font-bold rounded-lg hover:bg-slate-800">完成</button>
         </div>
       </div>`;
@@ -432,7 +433,7 @@
         <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 items-center px-4 py-3 ${x.enabled ? 'bg-white' : 'bg-slate-50 opacity-70'}" data-master-row="${esc(x.id)}">
           <div class="min-w-0">
             <div class="font-bold text-sm text-slate-700 truncate">${esc(x.name)} ${x.protected ? '<span class="text-[10px] text-indigo-500 ml-1">系統保留</span>' : ''}</div>
-            ${activeTab === 'people' ? `<div class="text-[11px] text-slate-400 mt-0.5">預設單位：${esc(unitText || '未指定')}</div>` : ''}
+            ${activeTab === 'people' ? `<div class="text-[11px] text-slate-400 mt-0.5">預設組別：${esc(unitText || '未指定')}</div>` : ''}
           </div>
           <div class="flex items-center gap-1">
             <span class="text-[11px] font-bold px-2 py-1 rounded-full ${x.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}">${x.enabled ? '啟用' : '停用'}</span>
@@ -503,12 +504,11 @@
     let unitId = x.unitId || '';
     if (type === 'people') {
       const units = getList('units').filter(u => u.enabled);
-      const choices = units.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
       const currentUnit = findUnitName(x.unitId);
-      const answer = prompt(`設定「${name}」的預設單位\n輸入序號；留空代表未指定\n\n${choices}`, currentUnit ? String(units.findIndex(u => u.id === x.unitId) + 1) : '');
+      const answer = prompt(`舊版相容欄位：設定「${name}」的預設組別名稱。\n新的人員廠區/組別關聯請直接在人員管理畫面設定。`, currentUnit || '');
       if (answer !== null) {
-        const n = parseInt(answer, 10);
-        unitId = Number.isFinite(n) && units[n - 1] ? units[n - 1].id : '';
+        const matched = units.find(u => keyOf(u.name) === keyOf(answer));
+        unitId = matched?.id || '';
       }
     }
 
@@ -576,7 +576,6 @@
   }
 
   function installWrappers() {
-    // Keep existing task logic, then re-apply centrally managed options.
     if (typeof window.updateFilters === 'function' && !window.__basicDataOriginalUpdateFilters) {
       window.__basicDataOriginalUpdateFilters = window.updateFilters;
       window.updateFilters = function(...args) {
@@ -648,7 +647,6 @@
     patchOwnerAutoUnit();
     applyEverywhere();
 
-    // Original module initializes Firebase asynchronously; retry briefly before falling back.
     let tries = 0;
     const timer = setInterval(() => {
       tries++;

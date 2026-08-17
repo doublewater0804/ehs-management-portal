@@ -1,13 +1,28 @@
 /* Compatibility loader.
- * Personnel management is implemented by personnel-management.js v3.
- * Keeping this filename avoids changing the shared Firebase loader again.
+ * Personnel management is implemented by personnel-management.js.
+ * Existing Basic Data people/units are imported by personnel-legacy-import.js.
  */
 (() => {
   'use strict';
-  if (document.querySelector('script[data-ehs-task-personnel-management-v3]')) return;
+
+  function loadImporter() {
+    if (document.querySelector('script[data-ehs-task-personnel-legacy-import]')) return;
+    const importer = document.createElement('script');
+    importer.src = './personnel-legacy-import.js?v=1';
+    importer.defer = true;
+    importer.dataset.ehsTaskPersonnelLegacyImport = '1';
+    document.head.appendChild(importer);
+  }
+
+  if (document.querySelector('script[data-ehs-task-personnel-management-v3]')) {
+    loadImporter();
+    return;
+  }
+
   const script = document.createElement('script');
-  script.src = './personnel-management.js?v=1';
+  script.src = './personnel-management.js?v=2';
   script.defer = true;
   script.dataset.ehsTaskPersonnelManagementV3 = '1';
+  script.onload = loadImporter;
   document.head.appendChild(script);
 })();

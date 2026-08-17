@@ -136,10 +136,7 @@
           <option value="其他">其他 (自填內容)</option>
         </select>
         <select id="filter-owner" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="all">所有負責人</option>
-        </select>
-        <select id="filter-unit" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="all">所有單位</option>
+          <option value="all">所有經辦人員</option>
         </select>
         <select id="filter-source" class="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
   <option value="all">所有來源</option>
@@ -169,7 +166,7 @@
               <th class="px-6 py-4 text-nowrap">狀態/提醒</th>
               <th class="px-6 py-4 text-nowrap">類別</th>
               <th class="px-6 py-4 text-nowrap">廠區/月份</th>
-              <th class="px-6 py-4 text-nowrap">負責人/單位/來源</th>
+              <th class="px-6 py-4 text-nowrap">經辦人員/來源</th>
               <th class="px-6 py-4">工作項目與內容</th>
               <th class="px-6 py-4 text-center text-nowrap">建檔日期</th>
               <th class="px-6 py-4 text-center text-nowrap">截止日期</th>
@@ -224,7 +221,18 @@
 </select>
           </div>
 
-          <div class="col-span-1 hidden" id="other-source-container">
+          <div class="col-span-1 relative" id="handler-field">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">經辦人員</label>
+            <button type="button" id="handler-select-button" class="w-full min-h-[46px] border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-left bg-white outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between gap-2">
+              <span id="handler-select-text" class="truncate text-slate-400">請選擇經辦人員</span>
+              <span class="text-slate-500 text-xs">▼</span>
+            </button>
+            <div id="handler-select-dropdown" class="hidden absolute z-[160] mt-1 w-full max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl custom-scrollbar p-2"></div>
+            <input type="hidden" id="f-owner" value="" />
+            <input type="hidden" id="f-unit" value="" />
+          </div>
+
+          <div class="col-span-2 hidden" id="other-source-container">
             <label class="block text-xs font-bold text-slate-400 uppercase mb-2">請輸入具體來源</label>
             <input type="text" id="f-source-other" class="w-full border border-blue-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="來源名稱" />
           </div>
@@ -295,32 +303,6 @@
           </div>
 
           <div class="col-span-1">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">負責人</label>
-            <input
-              type="text"
-              id="f-owner"
-              list="owner-options"
-              autocomplete="off"
-              class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="可輸入、搜尋或選擇其他:自行填寫"
-              onfocus="updateOwnerUnitOptions()"
-              oninput="handleOwnerInput(this.value)"
-              onchange="handleOwnerInput(this.value)"
-            />
-            <datalist id="owner-options"></datalist>
-          </div>
-
-          <div class="col-span-1">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">組別</label>
-            <select
-              id="f-unit"
-              class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">請先選擇廠區</option>
-            </select>
-          </div>
-
-          <div class="col-span-1">
             <label class="block text-xs font-bold text-slate-400 uppercase mb-2">建檔日期</label>
             <input type="date" id="f-created" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" />
           </div>
@@ -359,7 +341,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=13";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=14";
     import {
       initializeFirestore,
       collection,
@@ -951,25 +933,13 @@
       const ownerSelect = document.getElementById('filter-owner');
       if (ownerSelect) {
         const currentOwner = ownerSelect.value || 'all';
-        const uniqueOwners = [...new Set(tasks.map(t => t.owner))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-        ownerSelect.innerHTML = '<option value="all">所有負責人</option>';
+        const uniqueOwners = [...new Set(tasks.flatMap(t => String(t.owner || '').split(/[、,，;；\n]+/).map(v => v.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        ownerSelect.innerHTML = '<option value="all">所有經辦人員</option>';
         uniqueOwners.forEach(owner => {
           const opt = document.createElement('option');
           opt.value = owner; opt.textContent = owner; ownerSelect.appendChild(opt);
         });
         ownerSelect.value = uniqueOwners.includes(currentOwner) ? currentOwner : 'all';
-      }
-
-      const unitSelect = document.getElementById('filter-unit');
-      if (unitSelect) {
-        const currentUnit = unitSelect.value || 'all';
-        const uniqueUnits = [...new Set(tasks.map(t => t.unit))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-        unitSelect.innerHTML = '<option value="all">所有單位</option>';
-        uniqueUnits.forEach(unit => {
-          const opt = document.createElement('option');
-          opt.value = unit; opt.textContent = unit; unitSelect.appendChild(opt);
-        });
-        unitSelect.value = uniqueUnits.includes(currentUnit) ? currentUnit : 'all';
       }
 
       const monthSelect = document.getElementById('filter-month');
@@ -990,7 +960,6 @@
         factory: document.getElementById('filter-factory')?.value || 'all',
         category: document.getElementById('filter-category')?.value || 'all',
         owner: document.getElementById('filter-owner')?.value || 'all',
-        unit: document.getElementById('filter-unit')?.value || 'all',
         source: document.getElementById('filter-source')?.value || 'all'
       };
 
@@ -1001,8 +970,7 @@
           (filters.status === 'all' || sInfo.code === filters.status) &&
           (filters.factory === 'all' || t.factory === filters.factory) &&
           (filters.category === 'all' || (filters.category === '其他' ? String(t.category).startsWith('其他') : t.category === filters.category)) &&
-          (filters.owner === 'all' || t.owner === filters.owner) &&
-          (filters.unit === 'all' || t.unit === filters.unit) &&
+          (filters.owner === 'all' || String(t.owner || '').split(/[、,，;；\n]+/).map(v => v.trim()).includes(filters.owner)) &&
           (filters.source === 'all' || (filters.source === '其他'
             ? String(t.source || '').trim() === '其他'
             : normalizeSourceName(t.source) === filters.source));
@@ -1054,7 +1022,6 @@
             </td>
             <td class="px-6 py-4">
               <div class="font-bold text-slate-700">${escapeHtml(t.owner || '—')}</div>
-              <div class="text-[10px] text-slate-500 font-bold truncate max-w-[120px]">${escapeHtml(t.unit || '未填單位')}</div>
               <div class="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">${escapeHtml(normalizeSourceName(t.source) || '—')}</div>
             </td>
             <td class="px-6 py-4">
@@ -1245,7 +1212,7 @@
       document.getElementById('modal-title').innerText = "工作事項詳情 (唯讀模式)";
       document.getElementById('btn-modal-save').classList.add('hidden');
       
-      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea, #handler-select-button');
       inputs.forEach(el => el.disabled = true);
       document.getElementById('btn-add-progress-log')?.classList.add('hidden');
       renderProgressLogList(true);
@@ -1259,7 +1226,7 @@
       document.getElementById('modal-title').innerText = "編輯工作事項";
       document.getElementById('btn-modal-save').classList.remove('hidden');
       
-      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea, #handler-select-button');
       inputs.forEach(el => el.disabled = false);
 
       document.getElementById('f-factory').value = t.factory;
@@ -1309,11 +1276,7 @@
         srcVal = rememberCustomSource(other);
       }
 
-      const ownerInput = normalizeOtherInput(document.getElementById('f-owner').value, '負責人');
-      if (!ownerInput.ok) return alert(ownerInput.message);
-
-      const unitInput = normalizeOtherInput(document.getElementById('f-unit').value, '單位');
-      if (!unitInput.ok) return alert(unitInput.message);
+      const ownerValue = String(document.getElementById('f-owner').value || '').trim();
 
       const taskObj = {
         id: editingId ? String(editingId) : String(Date.now()),
@@ -1322,8 +1285,8 @@
         source: srcVal,
         task: document.getElementById('f-task').value,
         desc: document.getElementById('f-desc').value,
-        owner: ownerInput.value,
-        unit: unitInput.value,
+        owner: ownerValue,
+        unit: String(document.getElementById('f-unit').value || ''),
         workProgress: document.getElementById('f-work-progress')?.value || '',
         progressLogs: normalizeProgressLogs(modalProgressLogs),
         closeNote: document.getElementById('f-close-note').value,
@@ -1332,7 +1295,7 @@
         progress: parseInt(document.getElementById('f-progress').value)
       };
 
-      if (!taskObj.task || !taskObj.owner) return alert("請填寫必填欄位");
+      if (!taskObj.task || !taskObj.owner) return alert("請填寫工作項目並選擇經辦人員");
 
       if (editingId) {
         const idx = tasks.findIndex(x => String(x.id) === String(editingId));
@@ -1355,7 +1318,7 @@
       editingId = null;
       editingProgressLogId = null;
       modalProgressLogs = [];
-      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+      const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea, #handler-select-button');
       inputs.forEach(el => el.disabled = false);
       document.getElementById('btn-modal-save').classList.remove('hidden');
       document.getElementById('btn-add-progress-log')?.classList.remove('hidden');
@@ -1404,7 +1367,7 @@
       updateFilters();
       renderAll();
       document.getElementById('current-date').innerText = getTodayStr();
-      ['filter-month', 'filter-status', 'filter-factory', 'filter-category', 'filter-owner', 'filter-unit', 'filter-source'].forEach(id => {
+      ['filter-month', 'filter-status', 'filter-factory', 'filter-category', 'filter-owner', 'filter-source'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', renderAll);
       });
       document.getElementById('btn-add')?.addEventListener('click', () => {
@@ -1412,7 +1375,7 @@
         document.getElementById('modal-title').innerText = "新增工作事項";
         document.getElementById('btn-modal-save').classList.remove('hidden');
         
-        const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea');
+        const inputs = document.querySelectorAll('#modal-fields input, #modal-fields select, #modal-fields textarea, #handler-select-button');
         inputs.forEach(el => el.disabled = false);
 
         document.getElementById('f-task').value = "";

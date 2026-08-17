@@ -358,8 +358,8 @@
   <!-- Firebase + Firestore Realtime Sync -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=11";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=12";
     import {
       initializeFirestore,
       collection,
@@ -403,22 +403,14 @@
       setSyncState("等待 Firebase 登入…", true);
       try {
         const provider = new GoogleAuthProvider();
-        const user = await requireFirebaseUser({
+        await requireFirebaseUser({
           auth,
           provider,
           signInWithPopup,
           onAuthStateChanged,
           signOut,
-          setPersistence,
-          browserLocalPersistence,
-          allowOffline: true,
           moduleName: "環安衛工作管理系統"
         });
-
-        if (!user) {
-          setSyncState("離線模式（資料僅存本機）", false);
-          return;
-        }
 
         setSyncState("同步中…", true);
         const q = query(TASKS_COL, orderBy("_createdTs", "desc"));

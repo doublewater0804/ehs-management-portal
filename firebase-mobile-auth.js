@@ -188,11 +188,21 @@ if (typeof window !== "undefined") {
   // The task module keeps its large legacy page intact. Load its basic-data extension
   // only on /task/ so other EHS modules are unaffected.
   const isTaskModule = /\/task\/(?:index\.html)?$/.test(window.location.pathname);
-  if (isTaskModule && !document.querySelector('script[data-ehs-task-basic-data]')) {
-    const script = document.createElement('script');
-    script.src = './basic-data.js';
-    script.defer = true;
-    script.dataset.ehsTaskBasicData = '1';
-    document.head.appendChild(script);
+  if (isTaskModule) {
+    if (!document.querySelector('link[data-ehs-task-basic-data-layout]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './basic-data-layout.css';
+      link.dataset.ehsTaskBasicDataLayout = '1';
+      document.head.appendChild(link);
+    }
+
+    if (!document.querySelector('script[data-ehs-task-basic-data]')) {
+      const script = document.createElement('script');
+      script.src = './basic-data.js';
+      script.defer = true;
+      script.dataset.ehsTaskBasicData = '1';
+      document.head.appendChild(script);
+    }
   }
 }

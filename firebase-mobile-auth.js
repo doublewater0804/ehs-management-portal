@@ -192,14 +192,14 @@ if (typeof window !== "undefined") {
     if (!document.querySelector('link[data-ehs-task-basic-data-layout]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = './basic-data-layout.css?v=4';
+      link.href = './basic-data-layout.css?v=5';
       link.dataset.ehsTaskBasicDataLayout = '1';
       document.head.appendChild(link);
     }
 
     if (!document.querySelector('script[data-ehs-task-basic-data]')) {
       const script = document.createElement('script');
-      script.src = './basic-data.js?v=4';
+      script.src = './basic-data.js?v=5';
       script.defer = true;
       script.dataset.ehsTaskBasicData = '1';
       document.head.appendChild(script);
@@ -207,7 +207,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-basic-data-tab-structure]')) {
       const structurePatch = document.createElement('script');
-      structurePatch.src = './basic-data-tab-structure.js?v=4';
+      structurePatch.src = './basic-data-tab-structure.js?v=5';
       structurePatch.defer = true;
       structurePatch.dataset.ehsTaskBasicDataTabStructure = '1';
       document.head.appendChild(structurePatch);
@@ -215,10 +215,18 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-personnel-assignment]')) {
       const personnel = document.createElement('script');
-      personnel.src = './personnel-assignment.js?v=1';
+      personnel.src = './personnel-assignment.js?v=2';
       personnel.defer = true;
       personnel.dataset.ehsTaskPersonnelAssignment = '1';
       document.head.appendChild(personnel);
+    }
+
+    if (!document.querySelector('script[data-ehs-task-personnel-basic-inline]')) {
+      const personnelInline = document.createElement('script');
+      personnelInline.src = './personnel-basic-inline.js?v=1';
+      personnelInline.defer = true;
+      personnelInline.dataset.ehsTaskPersonnelBasicInline = '1';
+      document.head.appendChild(personnelInline);
     }
   }
 }

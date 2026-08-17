@@ -15,7 +15,6 @@ function ensureStyle() {
     #${GATE_ID} .ehs-auth-status{font-size:12px;line-height:1.6;padding:9px 11px;border-radius:10px;background:#f1f5f9;color:#475569;margin-bottom:14px;word-break:break-word}
     #${GATE_ID} .ehs-auth-status.error{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
     #${GATE_ID} button{width:100%;min-height:46px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:15px;font-weight:800;cursor:pointer;padding:10px 14px}
-    #${GATE_ID} .ehs-auth-offline{margin-top:10px;background:#e2e8f0;color:#334155}
     #${GATE_ID} button:disabled{opacity:.55;cursor:wait}
     #${GATE_ID} .ehs-auth-note{font-size:11px;color:#94a3b8;margin-top:12px;text-align:center}
     #${BADGE_ID}{position:fixed;right:12px;bottom:12px;z-index:2147483645;display:flex;align-items:center;gap:8px;max-width:min(460px,calc(100vw - 24px));padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.96);color:#166534;border:1px solid #bbf7d0;box-shadow:0 8px 28px rgba(15,23,42,.16);font:700 11px/1.4 "Noto Sans TC","Microsoft JhengHei",Arial,sans-serif}
@@ -83,30 +82,9 @@ export async function requireFirebaseUser({
   signInWithPopup,
   onAuthStateChanged,
   signOut,
-  setPersistence,
-  browserLocalPersistence,
-  allowOffline = false,
   moduleName = "EHS 系統"
 }) {
   ensureStyle();
-
-  // Some browsers can leave IndexedDB/Cookie persistence initialization pending
-  // indefinitely. Keep the login UI responsive and fall back after a short wait.
-  const persistenceReady = (async () => {
-    if (typeof setPersistence !== "function" || !browserLocalPersistence) return;
-    try {
-      await Promise.race([
-        setPersistence(auth, browserLocalPersistence),
-        new Promise((_, reject) => setTimeout(() => {
-          const error = new Error("Firebase Auth persistence initialization timed out");
-          error.code = "auth/persistence-timeout";
-          reject(error);
-        }, 3000))
-      ]);
-    } catch (error) {
-      console.warn("Firebase Auth persistence 設定失敗或逾時，改用瀏覽器可用的預設模式。", error);
-    }
-  })();
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -129,15 +107,6 @@ export async function requireFirebaseUser({
       }
     };
 
-    const finishOffline = () => {
-      clearTimeout(authStateTimer);
-      removeGate();
-      if (!resolved) {
-        resolved = true;
-        resolve(null);
-      }
-    };
-
     const showGate = () => {
       if (document.getElementById(GATE_ID)) return;
       gate = document.createElement("div");
@@ -149,20 +118,17 @@ export async function requireFirebaseUser({
           <p>「${moduleName}」需要先完成 Firebase Google 登入，才會讀取與同步雲端資料。請使用與電腦相同的 Google 帳號。</p>
           <div class="ehs-auth-status">請按下方按鈕登入；若已有登入狀態，將自動進入。</div>
           <button type="button" data-auth-login>使用 Google 登入並讀取雲端資料</button>
-          ${allowOffline ? '<button type="button" class="ehs-auth-offline" data-auth-offline>先進入系統（暫不啟用雲端同步）</button>' : ''}
           <div class="ehs-auth-note">登入視窗由您按下按鈕後才開啟，可改善 iPad Safari／Chrome 阻擋自動彈出視窗的問題。</div>
         </div>`;
       document.body.appendChild(gate);
       status = gate.querySelector(".ehs-auth-status");
       loginButton = gate.querySelector("[data-auth-login]");
-      gate.querySelector("[data-auth-offline]")?.addEventListener("click", finishOffline);
 
       loginButton.addEventListener("click", async () => {
         loginButton.disabled = true;
         status.classList.remove("error");
         status.textContent = "正在開啟 Google 登入視窗…";
         try {
-          await persistenceReady;
           provider.setCustomParameters?.({ prompt: "select_account" });
           const result = await signInWithPopup(auth, provider);
           status.textContent = `登入成功：${result.user?.email || "正在載入雲端資料"}`;

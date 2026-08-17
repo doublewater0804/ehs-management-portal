@@ -407,7 +407,9 @@
 
     const groupBlock = group.closest('.col-span-1') || group.parentElement;
     const label = groupBlock?.querySelector('label');
-    if (label) label.textContent = '組別';
+    // Keep this DOM patch idempotent. An unconditional textContent assignment
+    // retriggers the body MutationObserver and can lock the entire page.
+    if (label && norm(label.textContent) !== '組別') label.textContent = '組別';
     group.removeAttribute('onfocus');
     group.removeAttribute('onclick');
     group.removeAttribute('oninput');

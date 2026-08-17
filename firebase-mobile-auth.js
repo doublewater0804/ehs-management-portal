@@ -222,7 +222,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-personnel-assignment]')) {
       const personnel = document.createElement('script');
-      personnel.src = './personnel-assignment.js?v=5';
+      personnel.src = './personnel-assignment.js?v=6';
       personnel.defer = true;
       personnel.dataset.ehsTaskPersonnelAssignment = '1';
       document.head.appendChild(personnel);

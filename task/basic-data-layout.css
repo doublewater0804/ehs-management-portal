@@ -1,6 +1,9 @@
-/* Basic data modal layout fix: keep header/tabs/footer visible and scroll body only. */
+/* Basic data modal layout v2
+ * Header / tabs / footer never scroll vertically.
+ * Only the main data area owns vertical scrolling.
+ */
 #master-data-modal {
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
 #master-data-modal > div {
@@ -11,52 +14,83 @@
   flex-direction: column;
 }
 
-#master-data-modal > div > div:nth-child(1),
-#master-data-modal > div > div:nth-child(2),
-#master-data-modal > div > div:last-child {
+/* Header */
+#master-data-modal > div > div:nth-child(1) {
   flex: 0 0 auto;
   min-height: 0;
+  position: relative;
+  z-index: 4;
 }
 
+/* Tabs: never make this row a scroll container. */
 #master-data-modal > div > div:nth-child(2) {
+  flex: 0 0 auto;
+  min-height: 58px;
   padding-top: 0.75rem !important;
   padding-bottom: 0 !important;
-  overflow-x: auto;
-  overflow-y: visible !important;
-  min-height: 52px;
+  overflow: visible !important;
   position: relative;
-  z-index: 2;
+  z-index: 4;
 }
 
 #master-tabs {
-  min-height: 44px;
-  align-items: stretch;
+  width: 100%;
+  min-width: 0 !important;
+  min-height: 46px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  overflow: visible !important;
 }
 
 #master-tabs > button {
-  min-height: 44px;
+  min-height: 46px;
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  line-height: 1.25;
+  line-height: 1.35;
   white-space: nowrap;
   flex: 0 0 auto;
+  overflow: visible !important;
 }
 
+/* Main content: this is the only vertical scroll area. */
 #master-data-modal > div > div:nth-child(3) {
   flex: 1 1 auto;
   min-height: 0 !important;
   overflow-y: auto !important;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
   overscroll-behavior: contain;
   position: relative;
   z-index: 1;
+  scrollbar-gutter: stable;
 }
 
+/* Footer */
 #master-data-modal > div > div:last-child {
+  flex: 0 0 auto;
+  min-height: 0;
   position: relative;
-  z-index: 3;
+  z-index: 4;
   background: rgb(248 250 252);
+}
+
+@media (max-width: 760px) {
+  #master-data-modal > div > div:nth-child(2) {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  #master-tabs {
+    gap: 0.25rem !important;
+  }
+
+  #master-tabs > button {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
 }
 
 @media (max-height: 700px) {
@@ -72,6 +106,10 @@
   #master-data-modal > div > div:nth-child(1) {
     padding-top: 0.75rem !important;
     padding-bottom: 0.75rem !important;
+  }
+
+  #master-data-modal > div > div:nth-child(2) {
+    min-height: 54px;
   }
 
   #master-data-modal > div > div:nth-child(3) {

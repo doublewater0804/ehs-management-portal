@@ -135,8 +135,8 @@ export async function requireFirebaseUser({
           <div class="ehs-auth-icon">☁️</div>
           <h2 id="ehs-auth-title">Firebase 雲端資料登入</h2>
           <p>「${moduleName}」需要先完成 Firebase Google 登入，才會讀取與同步雲端資料。請使用與電腦相同的 Google 帳號。</p>
-          <div class="ehs-auth-status">正在確認既有登入狀態…</div>
-          <button type="button" disabled>使用 Google 登入並讀取雲端資料</button>
+          <div class="ehs-auth-status">請按下方按鈕登入；若已有登入狀態，將自動進入。</div>
+          <button type="button">使用 Google 登入並讀取雲端資料</button>
           <div class="ehs-auth-note">登入視窗由您按下按鈕後才開啟，可改善 iPad Safari／Chrome 阻擋自動彈出視窗的問題。</div>
         </div>`;
       document.body.appendChild(gate);

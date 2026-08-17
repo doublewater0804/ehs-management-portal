@@ -192,17 +192,25 @@ if (typeof window !== "undefined") {
     if (!document.querySelector('link[data-ehs-task-basic-data-layout]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = './basic-data-layout.css';
+      link.href = './basic-data-layout.css?v=3';
       link.dataset.ehsTaskBasicDataLayout = '1';
       document.head.appendChild(link);
     }
 
     if (!document.querySelector('script[data-ehs-task-basic-data]')) {
       const script = document.createElement('script');
-      script.src = './basic-data.js';
+      script.src = './basic-data.js?v=3';
       script.defer = true;
       script.dataset.ehsTaskBasicData = '1';
       document.head.appendChild(script);
+    }
+
+    if (!document.querySelector('script[data-ehs-task-basic-data-tab-structure]')) {
+      const structurePatch = document.createElement('script');
+      structurePatch.src = './basic-data-tab-structure.js?v=3';
+      structurePatch.defer = true;
+      structurePatch.dataset.ehsTaskBasicDataTabStructure = '1';
+      document.head.appendChild(structurePatch);
     }
   }
 }

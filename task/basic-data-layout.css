@@ -1,0 +1,81 @@
+/* Basic data modal layout fix: keep header/tabs/footer visible and scroll body only. */
+#master-data-modal {
+  overflow: hidden;
+}
+
+#master-data-modal > div {
+  height: min(90vh, 860px);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+
+#master-data-modal > div > div:nth-child(1),
+#master-data-modal > div > div:nth-child(2),
+#master-data-modal > div > div:last-child {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+#master-data-modal > div > div:nth-child(2) {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0 !important;
+  overflow-x: auto;
+  overflow-y: visible !important;
+  min-height: 52px;
+  position: relative;
+  z-index: 2;
+}
+
+#master-tabs {
+  min-height: 44px;
+  align-items: stretch;
+}
+
+#master-tabs > button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.25;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#master-data-modal > div > div:nth-child(3) {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  position: relative;
+  z-index: 1;
+}
+
+#master-data-modal > div > div:last-child {
+  position: relative;
+  z-index: 3;
+  background: rgb(248 250 252);
+}
+
+@media (max-height: 700px) {
+  #master-data-modal {
+    padding: 0.5rem !important;
+  }
+
+  #master-data-modal > div {
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  #master-data-modal > div > div:nth-child(1) {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  #master-data-modal > div > div:nth-child(3) {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}

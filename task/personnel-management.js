@@ -1,4 +1,4 @@
-/* EHS Task Personnel Management v3
+/* EHS Task Personnel Management v4
  * Integrated personnel administration for /task/.
  * Hierarchy: Factory -> Group -> Person -> Personnel categories.
  * People use soft-delete (leave/archive) so historical task records remain unchanged.
@@ -213,31 +213,29 @@
   }
 
   function masterBody() {
-    const list = document.getElementById('master-list');
-    const table = list?.parentElement;
-    const body = table?.parentElement;
-    const addRow = body?.children?.[0];
-    return {body,table,addRow};
+    const body = document.getElementById('master-data-content');
+    const table = document.getElementById('master-standard-list');
+    const addRow = document.getElementById('master-standard-add');
+    const host = document.getElementById('pm-v3-host');
+    return {body,table,addRow,host};
   }
 
   function openCustom(label) {
-    const {body,table,addRow} = masterBody();
-    if (!body) return null;
+    const {body,table,addRow,host} = masterBody();
+    if (!body || !host) return null;
     addRow?.classList.add('hidden');
     table?.classList.add('hidden');
-    let host = document.getElementById('pm-v3-host');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'pm-v3-host';
-      body.insertBefore(host, addRow || body.firstChild);
-    }
+    host.classList.remove('hidden');
     setTabActive(label);
     return host;
   }
 
   function closeCustom() {
-    const {table,addRow} = masterBody();
-    document.getElementById('pm-v3-host')?.remove();
+    const {table,addRow,host} = masterBody();
+    if (host) {
+      host.innerHTML = '';
+      host.classList.add('hidden');
+    }
     addRow?.classList.remove('hidden');
     table?.classList.remove('hidden');
   }
@@ -359,6 +357,23 @@
       firestoreApi = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
       basicRef = firestoreApi.doc(window.__fb.db,'ehs_task_master_data','settings');
       metaRef = firestoreApi.doc(window.__fb.db,META_COLLECTION,META_DOC_ID);
+      firestoreApi.onSnapshot(basicRef, snap => {
+        if (!snap.exists()) return;
+        const d = snap.data() || {};
+        basic = {
+          ...basic,
+          ...d,
+          factories:Array.isArray(d.factories)?d.factories:[],
+          people:Array.isArray(d.people)?d.people:[],
+          units:Array.isArray(d.units)?d.units:[]
+        };
+        saveLocal();
+        ensureFactorySelection();
+        if (customMode==='people') renderPeople();
+        else if(customMode==='groups') renderGroups();
+        populateGroups(true);
+        renderAssignment();
+      });
       firestoreApi.onSnapshot(metaRef, snap => {
         if (!snap.exists()) { saveMetaRemote(); return; }
         const d = snap.data() || {};
@@ -388,15 +403,24 @@
       const sel = document.createElement('select');
       sel.id = 'f-unit'; sel.className = group.className; sel.value = group.value || '';
       group.replaceWith(sel); group = sel;
-      const label = group.closest('div')?.querySelector('label'); if (label) label.textContent = '組別';
     }
+
+    const groupBlock = group.closest('.col-span-1') || group.parentElement;
+    const label = groupBlock?.querySelector('label');
+    if (label) label.textContent = '組別';
+    group.removeAttribute('onfocus');
+    group.removeAttribute('onclick');
+    group.removeAttribute('oninput');
+    group.removeAttribute('onchange');
+    group.classList.remove('pr-10');
+    groupBlock?.querySelector('button[onclick*="showUnitDropdown"]')?.remove();
+    groupBlock?.querySelector('#unit-dropdown')?.remove();
 
     if (!document.getElementById('personnel-assignment-v3')) {
       const panel = document.createElement('div');
       panel.id = 'personnel-assignment-v3';
       panel.className = 'col-span-2 border border-slate-200 rounded-xl p-4 bg-slate-50/70';
       panel.innerHTML = `<div class="mb-4"><div class="flex justify-between mb-2"><label class="text-xs font-bold text-slate-400 uppercase">人員類別</label><span class="text-[11px] text-slate-400">廠區 → 組別 → 類別 → 負責人</span></div><div id="pa3-categories" class="flex flex-wrap gap-2"></div></div><div id="pa3-people-wrap" class="hidden mb-4"><div id="pa3-people" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div></div><div class="border-t border-slate-200 pt-3"><label class="inline-flex items-center gap-2 text-sm font-bold"><input id="pa3-other-toggle" type="checkbox" class="accent-blue-600">其他／自行輸入</label><input id="pa3-other" class="hidden mt-2 w-full border border-slate-200 rounded-lg p-2.5 text-sm" placeholder="多人可用「、」分隔"></div><div class="mt-4"><div class="text-[11px] font-bold text-slate-400 mb-2">已選負責人</div><div id="pa3-selected" class="flex flex-wrap gap-2"></div></div>`;
-      const groupBlock = group.closest('.col-span-1') || group.parentElement;
       grid.insertBefore(panel, groupBlock?.nextSibling || ownerBlock);
       panel.querySelector('#pa3-other-toggle')?.addEventListener('change',e=>{const i=panel.querySelector('#pa3-other');i?.classList.toggle('hidden',!e.target.checked);if(!e.target.checked){manualOwner='';if(i)i.value='';syncOwner();renderOwnerChips();}});
       panel.querySelector('#pa3-other')?.addEventListener('input',e=>{manualOwner=e.target.value;syncOwner();renderOwnerChips();});
@@ -523,6 +547,14 @@
     basic=readBasic();meta=readMeta();migrateLegacyOnce();
     ensureTabs();ensureAssignmentPanel();bindEvents();observe();setupFirestore();
   }
+
+  window.__ehsPersonnelManagement = {
+    renderPeople,
+    renderGroups,
+    renderCategories,
+    closeCustom,
+    refreshTaskForm:hydrateTaskModal
+  };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

@@ -310,23 +310,14 @@
             <datalist id="owner-options"></datalist>
           </div>
 
-          <div class="col-span-1 relative">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">單位</label>
-            <div class="relative">
-              <input
-                type="text"
-                id="f-unit"
-                autocomplete="off"
-                class="w-full border border-slate-200 rounded-lg p-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="可輸入、搜尋或選擇其他:自行填寫"
-                onfocus="showUnitDropdown(true)"
-                onclick="showUnitDropdown(true)"
-                oninput="handleUnitInput(this)"
-                onchange="handleOtherPrefixInput(this)"
-              />
-              <button type="button" onclick="showUnitDropdown(true)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-600 text-xs">▼</button>
-              <div id="unit-dropdown" class="hidden absolute z-[120] mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl custom-scrollbar"></div>
-            </div>
+          <div class="col-span-1">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">組別</label>
+            <select
+              id="f-unit"
+              class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">請先選擇廠區</option>
+            </select>
           </div>
 
           <div class="col-span-1">
@@ -368,7 +359,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=8";
     import {
       initializeFirestore,
       collection,

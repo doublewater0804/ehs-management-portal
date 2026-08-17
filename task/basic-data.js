@@ -1,4 +1,4 @@
-/* EHS Task Basic Data Management v1.1
+/* EHS Task Basic Data Management v1.2
  * Centralized maintenance for factory, category, source, people, group and progress type.
  * Personnel/group relationships are enhanced by personnel-assignment.js.
  * Firestore-first with localStorage fallback. Historical task strings are preserved.
@@ -346,8 +346,8 @@
         <div class="px-6 pt-4 border-b border-slate-100 bg-white overflow-x-auto">
           <div id="master-tabs" class="flex gap-2 min-w-max"></div>
         </div>
-        <div class="p-6 flex-1 overflow-y-auto custom-scrollbar">
-          <div class="flex flex-col md:flex-row gap-3 mb-5">
+        <div id="master-data-content" class="p-6 flex-1 overflow-y-auto custom-scrollbar">
+          <div id="master-standard-add" class="flex flex-col md:flex-row gap-3 mb-5">
             <div class="flex-1">
               <label class="block text-xs font-bold text-slate-400 uppercase mb-2" id="master-new-label">新增</label>
               <input id="master-new-name" type="text" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入名稱" />
@@ -360,12 +360,13 @@
               <button type="button" id="btn-master-add" class="px-5 py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 shadow">＋ 新增</button>
             </div>
           </div>
-          <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div id="master-standard-list" class="border border-slate-200 rounded-xl overflow-hidden">
             <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-[11px] font-black text-slate-400 uppercase">
               <div>名稱 / 設定</div><div>狀態 / 排序</div><div>操作</div>
             </div>
             <div id="master-list" class="divide-y divide-slate-100"></div>
           </div>
+          <div id="pm-v3-host" class="hidden"></div>
           <div class="mt-4 text-xs text-slate-400 leading-relaxed">
             說明：歷史工作紀錄不會因基本資料重新命名、停用或人員離職而被改寫。
           </div>
@@ -394,7 +395,21 @@
       b.type = 'button';
       b.className = `px-4 py-2.5 rounded-t-lg text-sm font-bold border-b-2 transition ${activeTab === tab.key ? 'text-blue-600 border-blue-600 bg-blue-50/60' : 'text-slate-500 border-transparent hover:text-slate-700'}`;
       b.textContent = tab.label;
-      b.addEventListener('click', () => { activeTab = tab.key; renderTabs(); renderMasterList(); });
+      b.addEventListener('click', () => {
+        activeTab = tab.key;
+        renderTabs();
+        const personnel = window.__ehsPersonnelManagement;
+        if (tab.key === 'people' && personnel?.renderPeople) {
+          personnel.renderPeople();
+          return;
+        }
+        if (tab.key === 'units' && personnel?.renderGroups) {
+          personnel.renderGroups();
+          return;
+        }
+        personnel?.closeCustom?.();
+        renderMasterList();
+      });
       host.appendChild(b);
     });
   }

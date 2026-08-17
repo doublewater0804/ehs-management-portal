@@ -289,13 +289,8 @@
     });
 
     const fOwner = document.getElementById('filter-owner');
-    setSelectOptions(fOwner, uniqueNames([...enabledNames('people'), ...tasksNow.map(t => t?.owner)]), {
-      current: fOwner?.value, allLabel: '所有負責人'
-    });
-
-    const fUnit = document.getElementById('filter-unit');
-    setSelectOptions(fUnit, uniqueNames([...enabledNames('units'), ...tasksNow.map(t => t?.unit)]), {
-      current: fUnit?.value, allLabel: '所有組別'
+    setSelectOptions(fOwner, uniqueNames([...enabledNames('people'), ...tasksNow.flatMap(t => String(t?.owner || '').split(/[、,，;；\n]+/))]), {
+      current: fOwner?.value, allLabel: '所有經辦人員'
     });
 
     const fSource = document.getElementById('filter-source');
@@ -336,7 +331,7 @@
         <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
             <h4 class="font-bold text-slate-800 text-lg">基本資料管理</h4>
-            <p class="text-xs text-slate-400 mt-1">維護工作管理模組共用選項；人員依廠區、組別及人員類別集中管理。</p>
+            <p class="text-xs text-slate-400 mt-1">維護工作管理模組共用選項；人員依廠區集中管理。</p>
           </div>
           <div class="flex items-center gap-3">
             <span id="master-sync-state" class="text-[11px] font-bold text-slate-400">載入中…</span>
@@ -390,7 +385,7 @@
     const host = document.getElementById('master-tabs');
     if (!host) return;
     host.innerHTML = '';
-    TABS.forEach(tab => {
+    TABS.filter(tab => tab.key !== 'units').forEach(tab => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = `px-4 py-2.5 rounded-t-lg text-sm font-bold border-b-2 transition ${activeTab === tab.key ? 'text-blue-600 border-blue-600 bg-blue-50/60' : 'text-slate-500 border-transparent hover:text-slate-700'}`;
@@ -665,12 +660,12 @@
     let tries = 0;
     const timer = setInterval(() => {
       tries++;
-      if (window.__fb?.db) {
+      if (window.__fb?.db && window.__fb?.auth?.currentUser) {
         clearInterval(timer);
         setupFirestore();
-      } else if (tries >= 20) {
+      } else if (tries >= 1200) {
         clearInterval(timer);
-        setSyncLabel('使用本機資料', false);
+        setSyncLabel('等待 Firebase 登入…', false);
       }
     }, 250);
 

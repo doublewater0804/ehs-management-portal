@@ -206,7 +206,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-basic-data]')) {
       const script = document.createElement('script');
-      script.src = './basic-data.js?v=8';
+      script.src = './basic-data.js?v=9';
       script.defer = true;
       script.dataset.ehsTaskBasicData = '1';
       document.head.appendChild(script);
@@ -222,7 +222,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-personnel-assignment]')) {
       const personnel = document.createElement('script');
-      personnel.src = './personnel-assignment.js?v=6';
+      personnel.src = './personnel-assignment.js?v=7';
       personnel.defer = true;
       personnel.dataset.ehsTaskPersonnelAssignment = '1';
       document.head.appendChild(personnel);

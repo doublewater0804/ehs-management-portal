@@ -184,4 +184,15 @@ export function firebaseErrorText(error, prefix = "Firebase 操作失敗") {
 
 if (typeof window !== "undefined") {
   window.__firebaseErrorText = firebaseErrorText;
+
+  // The task module keeps its large legacy page intact. Load its basic-data extension
+  // only on /task/ so other EHS modules are unaffected.
+  const isTaskModule = /\/task\/(?:index\.html)?$/.test(window.location.pathname);
+  if (isTaskModule && !document.querySelector('script[data-ehs-task-basic-data]')) {
+    const script = document.createElement('script');
+    script.src = './basic-data.js';
+    script.defer = true;
+    script.dataset.ehsTaskBasicData = '1';
+    document.head.appendChild(script);
+  }
 }

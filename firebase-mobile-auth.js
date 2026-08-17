@@ -88,19 +88,43 @@ export async function requireFirebaseUser({
 }) {
   ensureStyle();
 
-  if (typeof setPersistence === "function" && browserLocalPersistence) {
+  // Some browsers can leave IndexedDB/Cookie persistence initialization pending
+  // indefinitely. Keep the login UI responsive and fall back after a short wait.
+  const persistenceReady = (async () => {
+    if (typeof setPersistence !== "function" || !browserLocalPersistence) return;
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      await Promise.race([
+        setPersistence(auth, browserLocalPersistence),
+        new Promise((_, reject) => setTimeout(() => {
+          const error = new Error("Firebase Auth persistence initialization timed out");
+          error.code = "auth/persistence-timeout";
+          reject(error);
+        }, 3000))
+      ]);
     } catch (error) {
-      console.warn("Firebase Auth persistence 設定失敗，改用瀏覽器可用的預設模式。", error);
+      console.warn("Firebase Auth persistence 設定失敗或逾時，改用瀏覽器可用的預設模式。", error);
     }
-  }
+  })();
 
   return new Promise((resolve) => {
     let resolved = false;
     let gate;
     let status;
     let loginButton;
+
+    const finishLogin = (user) => {
+      if (!user) return;
+      removeGate();
+      renderBadge({
+        user,
+        moduleName,
+        signOut: typeof signOut === "function" ? () => signOut(auth) : null
+      });
+      if (!resolved) {
+        resolved = true;
+        resolve(user);
+      }
+    };
 
     const showGate = () => {
       if (document.getElementById(GATE_ID)) return;
@@ -124,9 +148,11 @@ export async function requireFirebaseUser({
         status.classList.remove("error");
         status.textContent = "正在開啟 Google 登入視窗…";
         try {
+          await persistenceReady;
           provider.setCustomParameters?.({ prompt: "select_account" });
           const result = await signInWithPopup(auth, provider);
           status.textContent = `登入成功：${result.user?.email || "正在載入雲端資料"}`;
+          finishLogin(result.user);
         } catch (error) {
           console.error("Firebase Google 登入失敗", error);
           status.classList.add("error");
@@ -139,22 +165,23 @@ export async function requireFirebaseUser({
 
     showGate();
 
+    const authStateTimer = setTimeout(() => {
+      if (resolved) return;
+      status = document.querySelector(`#${GATE_ID} .ehs-auth-status`);
+      loginButton = document.querySelector(`#${GATE_ID} button`);
+      if (status) status.textContent = "登入狀態確認時間較久，請直接按下方按鈕登入。";
+      if (loginButton) loginButton.disabled = false;
+    }, 5000);
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        removeGate();
-        renderBadge({
-          user,
-          moduleName,
-          signOut: typeof signOut === "function" ? () => signOut(auth) : null
-        });
-        if (!resolved) {
-          resolved = true;
-          resolve(user);
-        }
+        clearTimeout(authStateTimer);
+        finishLogin(user);
         return;
       }
 
       if (!resolved) {
+        clearTimeout(authStateTimer);
         showGate();
         status = document.querySelector(`#${GATE_ID} .ehs-auth-status`);
         loginButton = document.querySelector(`#${GATE_ID} button`);
@@ -162,6 +189,7 @@ export async function requireFirebaseUser({
         if (loginButton) loginButton.disabled = false;
       }
     }, (error) => {
+      clearTimeout(authStateTimer);
       console.error("Firebase 登入狀態檢查失敗", error);
       showGate();
       status = document.querySelector(`#${GATE_ID} .ehs-auth-status`);

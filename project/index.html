@@ -26,7 +26,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js";
+    import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=15";
     import {
       initializeFirestore,
       collection,
@@ -127,6 +127,8 @@
     .resizable-container { resize:both; overflow:hidden; display:flex; flex-direction:column; min-width:420px; min-height:320px; max-width:96vw; max-height:92vh; background:#fff; box-shadow:0 25px 50px -12px rgba(0,0,0,.25); border-radius:1rem; }
     .progress-card { transition:border-color .15s, background .15s; }
     .progress-card:hover { border-color:#bfdbfe; background:#f8fbff; }
+    .person-picker summary { list-style:none; }
+    .person-picker summary::-webkit-details-marker { display:none; }
   </style>
 </head>
 <body>
@@ -178,7 +180,8 @@
         { id:'TODO', label:'待辦事項', active:true, order:7, color:'#d97706' },
         { id:'SUPERVISOR', label:'主管指示', active:true, order:8, color:'#dc2626' },
         { id:'OTHER', label:'其他', active:true, order:9, color:'#475569' }
-      ]
+      ],
+      people: []
     });
     const STATUS_TYPES = {
       ON_TRACK: { label:'正常', color:'text-green-600', bgColor:'bg-green-500', icon:CheckCircle },
@@ -201,6 +204,15 @@
         return { ...x, id:String(x.id || uid('item')), label:String(x.label || '').trim(), active:x.active !== false, order:Number.isFinite(Number(x.order)) ? Number(x.order) : i + 1, color:normalizeHexColor(x.color, fallbackColor) };
       }).sort((a,b) => a.order - b.order);
     };
+    const normalizePeople = (items=[]) => (Array.isArray(items) ? items : []).map((x,i) => ({
+      ...x,
+      id:String(x?.id || uid('person')),
+      label:String(x?.label || x?.name || '').trim(),
+      factoryId:String(x?.factoryId || ''),
+      active:x?.active !== false,
+      order:Number.isFinite(Number(x?.order)) ? Number(x.order) : i + 1
+    })).filter(x => x.label).sort((a,b) => a.order - b.order);
+    const splitPeople = (value='') => [...new Set(String(value || '').split(/[、,，;；\n]+/).map(x => x.trim()).filter(Boolean))];
     const hexToRgba = (hex, alpha=.14) => { const h=normalizeHexColor(hex).slice(1); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${alpha})`; };
     const darkenHex = (hex, amount=.28) => { const h=normalizeHexColor(hex).slice(1); const vals=[0,2,4].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*(1-amount)))); return `#${vals.map(v=>v.toString(16).padStart(2,'0')).join('')}`; };
     const contrastText = (hex) => { const h=normalizeHexColor(hex).slice(1); const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); return (r*299+g*587+b*114)/1000 > 165 ? '#0f172a' : '#ffffff'; };
@@ -249,6 +261,7 @@
       const projectTypes = useMemo(() => normalizeItems(master.projectTypes, DEFAULT_MASTER.projectTypes), [master.projectTypes]);
       const permitCategories = useMemo(() => normalizeItems(master.permitCategories, DEFAULT_MASTER.permitCategories), [master.permitCategories]);
       const progressTypes = useMemo(() => normalizeItems(master.progressTypes, DEFAULT_MASTER.progressTypes), [master.progressTypes]);
+      const people = useMemo(() => normalizePeople(master.people), [master.people]);
       const typeMap = useMemo(() => Object.fromEntries(projectTypes.map(x => [x.id, x])), [projectTypes]);
       const factoryMap = useMemo(() => Object.fromEntries(factories.map(x => [x.id, x])), [factories]);
       const permitMap = useMemo(() => Object.fromEntries(permitCategories.map(x => [x.id, x])), [permitCategories]);
@@ -274,11 +287,13 @@
               alert(window.__firebaseErrorText ? window.__firebaseErrorText(err, 'Firebase 讀取失敗') : `Firebase 讀取失敗：${err?.message || err}`);
             });
             unsubMaster = window.__fs_subscribe_master((data) => {
+              const nextFactories = normalizeItems(data.factories, DEFAULT_MASTER.factories);
               const next = {
-                factories:normalizeItems(data.factories, DEFAULT_MASTER.factories),
+                factories:nextFactories,
                 projectTypes:normalizeItems(data.projectTypes, DEFAULT_MASTER.projectTypes),
                 permitCategories:normalizeItems(data.permitCategories, DEFAULT_MASTER.permitCategories),
-                progressTypes:normalizeItems(data.progressTypes, DEFAULT_MASTER.progressTypes)
+                progressTypes:normalizeItems(data.progressTypes, DEFAULT_MASTER.progressTypes),
+                people:normalizePeople(data.people)
               };
               setMaster(next);
               setMasterCloudOk(true);
@@ -309,8 +324,22 @@
         setExpectedProgress(clampProgress(editingProject?.expectedProgress ?? 0));
         setActualProgress(actual);
         const defaultProgressType = progressTypes.find(x => x.active)?.id || 'WORK_LOG';
-        setLogDraft({ id:null, date:today(), person:window.__currentUserName || editingProject?.mainPic || '', typeId:defaultProgressType, customType:'', progress:actual, content:'' });
+        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', progress:actual, content:'' });
       }, [isModalOpen, editingProject, factories, projectTypes, progressTypes]);
+
+      const selectedLogPeople = useMemo(() => splitPeople(logDraft.person), [logDraft.person]);
+      const logPeopleOptions = useMemo(() => {
+        const active = people.filter(person => person.active && (selectedFactory === 'CROSS' || person.factoryId === selectedFactory));
+        const names = new Set(active.map(person => person.label));
+        const retained = selectedLogPeople.filter(name => !names.has(name)).map((name,index) => ({
+          id:`retained_${index}_${name}`,
+          label:name,
+          factoryId:'',
+          active:false,
+          retained:true
+        }));
+        return [...active, ...retained];
+      }, [people, selectedFactory, selectedLogPeople]);
 
       const projectCounts = useMemo(() => {
         const counts = {};
@@ -389,9 +418,17 @@
         setSelectedPermitCategories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
       };
 
-      const resetLogDraft = (person, progress=actualProgress) => {
+      const toggleLogPerson = (name) => {
+        setLogDraft(prev => {
+          const selected = splitPeople(prev.person);
+          const next = selected.includes(name) ? selected.filter(x => x !== name) : [...selected, name];
+          return { ...prev, person:next.join('、') };
+        });
+      };
+
+      const resetLogDraft = (progress=actualProgress) => {
         const defaultProgressType = progressTypes.find(x => x.active)?.id || 'WORK_LOG';
-        setLogDraft({ id:null, date:today(), person:person || window.__currentUserName || '', typeId:defaultProgressType, customType:'', progress:clampProgress(progress), content:'' });
+        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', progress:clampProgress(progress), content:'' });
       };
 
       const saveProgressLog = () => {
@@ -413,7 +450,7 @@
         };
         setExecutionLogs(prev => normalizeLogs(logDraft.id ? prev.map(x => x.id === logDraft.id ? item : x) : [item, ...prev]));
         setActualProgress(item.progress);
-        resetLogDraft(item.person, item.progress);
+        resetLogDraft(item.progress);
       };
 
       const editProgressLog = (log) => {
@@ -429,7 +466,7 @@
         const next = normalizeLogs(executionLogs.filter(x => x.id !== id));
         setExecutionLogs(next);
         setActualProgress(next.length ? next[0].progress : 0);
-        if (logDraft.id === id) resetLogDraft('', next.length ? next[0].progress : 0);
+        if (logDraft.id === id) resetLogDraft(next.length ? next[0].progress : 0);
       };
 
       const handleSave = async (e) => {
@@ -466,7 +503,7 @@
       };
 
       const openMaster = () => {
-        setMasterDraft(deepClone({ factories, projectTypes, permitCategories, progressTypes }));
+        setMasterDraft(deepClone({ factories, projectTypes, permitCategories, progressTypes, people }));
         setMasterTab('factories');
         setIsMasterOpen(true);
       };
@@ -482,10 +519,11 @@
       });
       const addMasterItem = (key) => setMasterDraft(prev => {
         const arr = prev[key];
-        const prefix = key === 'factories' ? 'FAC' : key === 'projectTypes' ? 'TYPE' : key === 'permitCategories' ? 'PERMIT' : 'PROGRESS';
+        const prefix = key === 'factories' ? 'FAC' : key === 'projectTypes' ? 'TYPE' : key === 'permitCategories' ? 'PERMIT' : key === 'people' ? 'PERSON' : 'PROGRESS';
         const defaultColor = '#64748b';
         const base = { id:`${prefix}_${Date.now().toString(36).toUpperCase()}`, label:'', active:true, order:arr.length + 1, color:defaultColor };
         if (key === 'projectTypes') base.tone = 'gray';
+        if (key === 'people') base.factoryId = prev.factories.find(x => x.active)?.id || prev.factories[0]?.id || '';
         return { ...prev, [key]:[...arr, base] };
       });
 
@@ -500,14 +538,18 @@
       });
 
       const saveMaster = async () => {
-        for (const key of ['factories','projectTypes','permitCategories','progressTypes']) {
+        for (const key of ['factories','projectTypes','permitCategories','progressTypes','people']) {
           if (masterDraft[key].some(x => !String(x.label || '').trim())) return alert('基本資料名稱不可空白');
         }
+        if (masterDraft.people.some(x => !String(x.factoryId || '').trim())) return alert('每位人員都必須指定廠區');
+        const personNames = masterDraft.people.map(x => String(x.label || '').trim().toLocaleLowerCase('zh-Hant'));
+        if (new Set(personNames).size !== personNames.length) return alert('人員名稱不可重複');
         const normalized = {
           factories:normalizeItems(masterDraft.factories, DEFAULT_MASTER.factories),
           projectTypes:normalizeItems(masterDraft.projectTypes, DEFAULT_MASTER.projectTypes),
           permitCategories:normalizeItems(masterDraft.permitCategories, DEFAULT_MASTER.permitCategories),
-          progressTypes:normalizeItems(masterDraft.progressTypes, DEFAULT_MASTER.progressTypes).map(x => x.id === 'OTHER' ? {...x,active:true} : x)
+          progressTypes:normalizeItems(masterDraft.progressTypes, DEFAULT_MASTER.progressTypes).map(x => x.id === 'OTHER' ? {...x,active:true} : x),
+          people:normalizePeople(masterDraft.people)
         };
         try {
           await Promise.all(Object.entries(normalized).map(([key,items]) => window.__fs_save_master(key, items)));
@@ -572,7 +614,7 @@
 
       if (isLoading) return <div className="h-screen flex items-center justify-center flex-col gap-4"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div><p className="text-gray-500 font-bold">同步中...</p></div>;
 
-      const masterLabels = { factories:'廠區管理', projectTypes:'專案類型管理', permitCategories:'法規類別管理', progressTypes:'進度類型管理' };
+      const masterLabels = { factories:'廠區管理', people:'人員管理', projectTypes:'專案類型管理', permitCategories:'法規類別管理', progressTypes:'進度類型管理' };
       const currentMasterItems = [...(masterDraft[masterTab] || [])].sort((a,b) => a.order - b.order);
 
       return (
@@ -691,13 +733,13 @@
                   {!isViewMode && <div id="progress-entry" className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">日期</label><input type="date" value={logDraft.date} onChange={e => setLogDraft({...logDraft,date:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white"/></div>
-                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員</label><input value={logDraft.person} onChange={e => setLogDraft({...logDraft,person:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white" placeholder="登入者自動帶入，可修改"/></div>
+                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員（可複選）</label><details className="person-picker relative"><summary className="w-full min-h-[46px] p-2.5 border rounded-lg bg-white cursor-pointer flex items-center justify-between gap-2"><span className={selectedLogPeople.length ? 'text-slate-700 font-bold truncate' : 'text-slate-400'}>{selectedLogPeople.length ? selectedLogPeople.join('、') : '請勾選人員'}</span><span className="text-slate-400">⌄</span></summary><div className="absolute z-40 mt-1 w-full min-w-[240px] max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl p-2">{logPeopleOptions.length ? logPeopleOptions.map(person => <label key={person.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer"><input type="checkbox" checked={selectedLogPeople.includes(person.label)} onChange={() => toggleLogPerson(person.label)} className="accent-blue-600"/><span className="text-sm font-bold text-slate-700">{person.label}{person.retained ? <span className="text-[10px] text-amber-600 ml-1">（已選保留）</span> : ''}</span></label>) : <div className="px-3 py-4 text-xs text-slate-400">此廠區尚未建立人員，請至基本資料新增。</div>}</div></details></div>
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">類型</label><select value={logDraft.typeId} onChange={e => setLogDraft({...logDraft,typeId:e.target.value,customType:e.target.value === 'OTHER' ? logDraft.customType : ''})} className="w-full p-2.5 border rounded-lg bg-white">{progressTypes.filter(x => x.active || x.id === logDraft.typeId).map(x => <option key={x.id} value={x.id}>{x.label}{x.active ? '' : '（已停用）'}</option>)}</select></div>
                       <div><label className="block text-[11px] font-bold text-blue-500 mb-1">進度 (%)</label><input type="number" min="0" max="100" value={logDraft.progress} onChange={e => setLogDraft({...logDraft,progress:clampProgress(e.target.value)})} className="w-full p-2.5 border-2 border-blue-100 rounded-lg bg-white font-bold text-blue-600"/></div>
                     </div>
                     {logDraft.typeId === 'OTHER' && <div><label className="block text-[11px] font-bold text-slate-400 mb-1">其他類型名稱</label><input value={logDraft.customType} onChange={e => setLogDraft({...logDraft,customType:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white" placeholder="例如：教育訓練、稽核追蹤"/></div>}
                     <div><label className="block text-[11px] font-bold text-slate-400 mb-1">內容</label><textarea value={logDraft.content} onChange={e => setLogDraft({...logDraft,content:e.target.value})} rows="3" className="w-full p-3 border rounded-lg bg-white resize-y" placeholder="請輸入本次辦理進度、聯繫結果、下一步事項..."/></div>
-                    <div className="flex justify-end gap-2">{logDraft.id && <button type="button" onClick={() => resetLogDraft(logDraft.person,actualProgress)} className="px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>}<button type="button" onClick={saveProgressLog} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">{logDraft.id ? '儲存修改' : '新增進度'}</button></div>
+                    <div className="flex justify-end gap-2">{logDraft.id && <button type="button" onClick={() => resetLogDraft(actualProgress)} className="px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>}<button type="button" onClick={saveProgressLog} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">{logDraft.id ? '儲存修改' : '新增進度'}</button></div>
                   </div>}
                   <div className="mt-4"><div className="flex justify-between items-center mb-2"><label className="block text-xs font-bold text-slate-400">進度歷程</label><span className="text-[11px] text-slate-400 font-bold">{executionLogs.length} 筆</span></div><div className="space-y-2 max-h-80 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-white">
                     {executionLogs.length === 0 && <div className="p-4 text-xs text-slate-400">尚無進度紀錄。</div>}
@@ -718,8 +760,17 @@
 
           {isMasterOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"><div className="resizable-container w-[900px] h-[72vh]"><div className="bg-slate-800 p-5 flex justify-between items-center text-white shrink-0"><div><h3 className="font-bold text-lg">年度專案｜基本資料管理</h3><p className="text-xs text-slate-300 mt-1">此基本資料僅供「年度安衛環專案管制總表」使用。</p></div><button onClick={() => setIsMasterOpen(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
             <div className="md:w-56 p-4 border-r bg-white flex md:flex-col gap-2 overflow-x-auto">{Object.entries(masterLabels).map(([key,label]) => <button key={key} onClick={() => setMasterTab(key)} className={`px-4 py-3 rounded-xl text-sm font-bold text-left whitespace-nowrap ${masterTab === key ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-slate-600 hover:bg-slate-50 border border-transparent'}`}>{label}</button>)}</div>
-            <div className="flex-1 p-5 overflow-y-auto"><div className="flex justify-between items-center mb-4"><div><h4 className="font-bold text-slate-800">{masterLabels[masterTab]}</h4><p className="text-xs text-slate-400 mt-1">可修改名稱、顏色、啟用狀態與排序；進度類型未被使用時可刪除，已使用者請改為停用。</p></div><button onClick={() => addMasterItem(masterTab)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Plus className="w-3 h-3"/> 新增</button></div>
-              <div className="space-y-2">{currentMasterItems.map((item,idx) => <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 items-center"><div className="text-xs font-mono text-slate-400 w-full md:w-24 truncate" title={item.id}>{item.id}</div><input value={item.label} onChange={e => updateMasterItem(masterTab,item.id,{label:e.target.value})} className="flex-1 p-2 border rounded-lg" placeholder="名稱"/><div className="flex items-center gap-2 shrink-0"><span style={masterTab === 'factories' ? tagStyle(item.color,true) : tagStyle(item.color)} className="px-2 py-1 rounded border text-xs font-bold min-w-14 text-center">{item.label || '預覽'}</span><input type="color" value={normalizeHexColor(item.color)} onChange={e => updateMasterItem(masterTab,item.id,{color:e.target.value})} className="w-10 h-9 p-1 border rounded-lg cursor-pointer bg-white" title="自訂標籤顏色"/></div><label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={item.active !== false} disabled={masterTab === 'progressTypes' && item.id === 'OTHER'} onChange={e => updateMasterItem(masterTab,item.id,{active:e.target.checked})}/>啟用</label>{masterTab === 'progressTypes' && <button type="button" disabled={item.id === 'OTHER' || isProgressTypeUsed(item)} onClick={() => deleteProgressType(item.id)} title={item.id === 'OTHER' ? '其他為保留類型' : isProgressTypeUsed(item) ? '已有歷史紀錄，只能停用' : '刪除此進度類型'} className="px-2 py-1 border border-red-200 text-red-600 rounded text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed">刪除</button>}<div className="flex gap-1"><button type="button" disabled={idx===0} onClick={() => moveMasterItem(masterTab,item.id,-1)} className="px-2 py-1 border rounded disabled:opacity-30">↑</button><button type="button" disabled={idx===currentMasterItems.length-1} onClick={() => moveMasterItem(masterTab,item.id,1)} className="px-2 py-1 border rounded disabled:opacity-30">↓</button></div></div>)}</div>
+            <div className="flex-1 p-5 overflow-y-auto"><div className="flex justify-between items-center mb-4"><div><h4 className="font-bold text-slate-800">{masterLabels[masterTab]}</h4><p className="text-xs text-slate-400 mt-1">{masterTab === 'people' ? '設定人員所屬廠區；停用後不再提供新進度勾選，歷史紀錄不受影響。' : '可修改名稱、顏色、啟用狀態與排序；進度類型未被使用時可刪除，已使用者請改為停用。'}</p></div><button onClick={() => addMasterItem(masterTab)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Plus className="w-3 h-3"/> 新增</button></div>
+              <div className="space-y-2">{currentMasterItems.map((item,idx) => <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row gap-3 items-center">
+                <div className="text-xs font-mono text-slate-400 w-full md:w-24 truncate" title={item.id}>{item.id}</div>
+                <input value={item.label} onChange={e => updateMasterItem(masterTab,item.id,{label:e.target.value})} className="flex-1 p-2 border rounded-lg" placeholder={masterTab === 'people' ? '人員姓名' : '名稱'}/>
+                {masterTab === 'people'
+                  ? <select value={item.factoryId || ''} onChange={e => updateMasterItem(masterTab,item.id,{factoryId:e.target.value})} className="w-full md:w-44 p-2 border rounded-lg bg-white"><option value="">選擇廠區</option>{[...(masterDraft.factories || [])].sort((a,b) => a.order - b.order).map(factory => <option key={factory.id} value={factory.id}>{factory.label}{factory.active === false ? '（已停用）' : ''}</option>)}</select>
+                  : <div className="flex items-center gap-2 shrink-0"><span style={masterTab === 'factories' ? tagStyle(item.color,true) : tagStyle(item.color)} className="px-2 py-1 rounded border text-xs font-bold min-w-14 text-center">{item.label || '預覽'}</span><input type="color" value={normalizeHexColor(item.color)} onChange={e => updateMasterItem(masterTab,item.id,{color:e.target.value})} className="w-10 h-9 p-1 border rounded-lg cursor-pointer bg-white" title="自訂標籤顏色"/></div>}
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={item.active !== false} disabled={masterTab === 'progressTypes' && item.id === 'OTHER'} onChange={e => updateMasterItem(masterTab,item.id,{active:e.target.checked})}/>啟用</label>
+                {masterTab === 'progressTypes' && <button type="button" disabled={item.id === 'OTHER' || isProgressTypeUsed(item)} onClick={() => deleteProgressType(item.id)} title={item.id === 'OTHER' ? '其他為保留類型' : isProgressTypeUsed(item) ? '已有歷史紀錄，只能停用' : '刪除此進度類型'} className="px-2 py-1 border border-red-200 text-red-600 rounded text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed">刪除</button>}
+                <div className="flex gap-1"><button type="button" disabled={idx===0} onClick={() => moveMasterItem(masterTab,item.id,-1)} className="px-2 py-1 border rounded disabled:opacity-30">↑</button><button type="button" disabled={idx===currentMasterItems.length-1} onClick={() => moveMasterItem(masterTab,item.id,1)} className="px-2 py-1 border rounded disabled:opacity-30">↓</button></div>
+              </div>)}</div>
             </div>
           </div><div className="p-4 border-t bg-white flex justify-end gap-2"><button onClick={() => setIsMasterOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold rounded-xl hover:bg-gray-100">取消</button><button onClick={saveMaster} className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow">儲存基本資料</button></div></div></div>}
         </div>

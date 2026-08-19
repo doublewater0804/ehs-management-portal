@@ -206,7 +206,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-task-basic-data]')) {
       const script = document.createElement('script');
-      script.src = './basic-data.js?v=9';
+      script.src = './basic-data.js?v=10';
       script.defer = true;
       script.dataset.ehsTaskBasicData = '1';
       document.head.appendChild(script);

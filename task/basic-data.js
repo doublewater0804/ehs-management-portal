@@ -7,6 +7,7 @@
   'use strict';
 
   const CACHE_KEY = 'ESH_TASK_MASTER_DATA_V1';
+  const PERSONNEL_META_KEY = 'ESH_TASK_PERSONNEL_META_V1';
   const MASTER_COLLECTION = 'ehs_task_master_data';
   const MASTER_DOC_ID = 'settings';
 
@@ -163,6 +164,30 @@
   function findByName(type, name) { return getList(type).find(x => keyOf(x.name) === keyOf(name)); }
   function findUnitName(unitId) { return getList('units').find(x => x.id === unitId)?.name || ''; }
 
+  function loadPersonnelProfiles() {
+    try {
+      const value = JSON.parse(localStorage.getItem(PERSONNEL_META_KEY) || '{}');
+      return value?.profiles && typeof value.profiles === 'object' ? value.profiles : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function activePeopleForFactory(factoryName) {
+    const profiles = loadPersonnelProfiles();
+    const selectedFactory = factoryName && factoryName !== 'all'
+      ? findByName('factories', factoryName)
+      : null;
+
+    return getList('people').filter(person => {
+      if (person?.enabled === false) return false;
+      const profile = profiles[String(person?.id || '')] || {};
+      if (profile.archived === true) return false;
+      if (!selectedFactory) return true;
+      return String(profile.factoryId || '') === String(selectedFactory.id);
+    }).map(person => person.name);
+  }
+
   function collectHistorical(type) {
     const tasks = loadTaskSnapshot();
     if (type === 'factories') return uniqueNames(tasks.map(t => t?.factory));
@@ -288,15 +313,44 @@
       current: fCat?.value, allLabel: '所有類別'
     });
 
-    const fOwner = document.getElementById('filter-owner');
-    setSelectOptions(fOwner, uniqueNames([...enabledNames('people'), ...tasksNow.flatMap(t => String(t?.owner || '').split(/[、,，;；\n]+/))]), {
-      current: fOwner?.value, allLabel: '所有經辦人員'
-    });
+    applyOwnerFilterOptions(false, tasksNow);
 
     const fSource = document.getElementById('filter-source');
     const histSrc = tasksNow.map(t => String(t?.source || '').replace(/^其他[:：]\s*/, '')).filter(Boolean);
     setSelectOptions(fSource, uniqueNames([...activeSourceNames(), ...histSrc]), {
       current: fSource?.value, allLabel: '所有來源'
+    });
+  }
+
+  function applyOwnerFilterOptions(resetSelection = false, taskSnapshot = loadTaskSnapshot()) {
+    const fFactory = document.getElementById('filter-factory');
+    const fOwner = document.getElementById('filter-owner');
+    if (!fOwner) return;
+
+    const factoryName = fFactory?.value || 'all';
+    const current = resetSelection ? 'all' : (fOwner.value || 'all');
+    const activePeople = activePeopleForFactory(factoryName);
+    const historicalPeople = factoryName === 'all'
+      ? taskSnapshot.flatMap(task => String(task?.owner || '').split(/[、,，;；\n]+/))
+      : [];
+    const availablePeople = uniqueNames([...activePeople, ...historicalPeople]);
+    const safeCurrent = current === 'all' || availablePeople.some(name => keyOf(name) === keyOf(current))
+      ? current
+      : 'all';
+
+    setSelectOptions(fOwner, availablePeople, {
+      current: safeCurrent,
+      allLabel: '所有經辦人員'
+    });
+  }
+
+  function bindFactoryOwnerFilter() {
+    const fFactory = document.getElementById('filter-factory');
+    if (!fFactory || fFactory.dataset.ownerFilterLinked === '1') return;
+    fFactory.dataset.ownerFilterLinked = '1';
+    fFactory.addEventListener('change', () => {
+      applyOwnerFilterOptions(true);
+      document.getElementById('filter-owner')?.dispatchEvent(new Event('change', { bubbles: true }));
     });
   }
 
@@ -656,6 +710,7 @@
     patchUnitDropdown();
     patchOwnerAutoUnit();
     applyEverywhere();
+    bindFactoryOwnerFilter();
 
     let tries = 0;
     const timer = setInterval(() => {

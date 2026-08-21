@@ -25,6 +25,8 @@
     .progress-chip { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .progress-log-actions { display: flex; gap: 0.35rem; margin-left: auto; }
     .progress-summary { margin-top: .35rem; padding-left: .55rem; border-left: 3px solid #bfdbfe; color: #475569; }
+    .completed-task-row { background-color: #f4f7fb; }
+    .completed-task-row:hover { background-color: #edf4fb; }
   </style>
 </head>
 
@@ -1001,7 +1003,7 @@
           const displayCat = String(t.category).startsWith('其他:') ? String(t.category).replace('其他:', '') : t.category;
           
           const row = document.createElement('tr');
-          row.className = `hover:bg-slate-50/50 transition ${isDone ? 'opacity-60' : ''}`;
+          row.className = `transition ${isDone ? 'completed-task-row' : 'hover:bg-slate-50/50'}`;
           row.innerHTML = `
             <td class="px-6 py-4">
               <span class="inline-flex flex-col">
@@ -1022,21 +1024,21 @@
             </td>
             <td class="px-6 py-4">
               <div class="font-bold text-slate-700">${escapeHtml(t.owner || '—')}</div>
-              <div class="text-[10px] text-slate-400 font-bold truncate max-w-[120px]">${escapeHtml(normalizeSourceName(t.source) || '—')}</div>
+              <div class="text-[10px] ${isDone ? 'text-slate-500' : 'text-slate-400'} font-bold truncate max-w-[120px]">${escapeHtml(normalizeSourceName(t.source) || '—')}</div>
             </td>
             <td class="px-6 py-4">
-              <div class="font-bold text-slate-800 line-clamp-1 ${isDone ? 'line-through text-slate-400' : ''}">${escapeHtml(t.task)}</div>
-              <div class="text-[11px] text-slate-400 line-clamp-1 mt-0.5">${escapeHtml(t.desc)}</div>
+              <div class="font-bold line-clamp-1 ${isDone ? 'text-slate-600' : 'text-slate-800'}">${escapeHtml(t.task)}</div>
+              <div class="text-[11px] ${isDone ? 'text-slate-500' : 'text-slate-400'} line-clamp-1 mt-0.5">${escapeHtml(t.desc)}</div>
               ${progressLogSummary(t) ? `<div class="progress-summary text-[11px] line-clamp-2">${escapeHtml(progressLogSummary(t))}</div>` : ''}
             </td>
-            <td class="px-6 py-4 text-center font-mono text-xs text-slate-400">${escapeHtml(t.createdAt)}</td>
+            <td class="px-6 py-4 text-center font-mono text-xs ${isDone ? 'text-slate-500' : 'text-slate-400'}">${escapeHtml(t.createdAt)}</td>
             <td class="px-6 py-4 text-center font-mono text-xs font-bold text-slate-600">${escapeHtml(t.deadline)}</td>
             <td class="px-6 py-4">
               <div class="flex items-center space-x-2">
                 <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden w-16">
                   <div class="bg-blue-600 h-full transition-all duration-500" style="width: ${t.progress}%"></div>
                 </div>
-                <span class="text-[10px] font-bold text-slate-400">${t.progress}%</span>
+                <span class="text-[10px] font-bold ${isDone ? 'text-slate-500' : 'text-slate-400'}">${t.progress}%</span>
               </div>
             </td>
             <td class="px-6 py-4 text-center">

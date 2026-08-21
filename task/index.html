@@ -25,8 +25,14 @@
     .progress-chip { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .progress-log-actions { display: flex; gap: 0.35rem; margin-left: auto; }
     .progress-summary { margin-top: .35rem; padding-left: .55rem; border-left: 3px solid #bfdbfe; color: #475569; }
-    .completed-task-row { background-color: #f4f7fb; }
-    .completed-task-row:hover { background-color: #edf4fb; }
+    .status-row-warning { background-color: #fffbeb; }
+    .status-row-warning:hover { background-color: #fef3c7; }
+    .status-row-overdue { background-color: #fef2f2; }
+    .status-row-overdue:hover { background-color: #fee2e2; }
+    .status-row-active { background-color: #ecfdf5; }
+    .status-row-active:hover { background-color: #d1fae5; }
+    .status-row-done { background-color: #eff6ff; }
+    .status-row-done:hover { background-color: #dbeafe; }
   </style>
 </head>
 
@@ -1001,9 +1007,15 @@
           const isDone = t.progress >= 100;
           const m = parseInt(String(t.createdAt || '').split('-')[1]);
           const displayCat = String(t.category).startsWith('其他:') ? String(t.category).replace('其他:', '') : t.category;
+          const rowStatusClass = {
+            warning: 'status-row-warning',
+            overdue: 'status-row-overdue',
+            active: 'status-row-active',
+            done: 'status-row-done'
+          }[s.code] || '';
           
           const row = document.createElement('tr');
-          row.className = `transition ${isDone ? 'completed-task-row' : 'hover:bg-slate-50/50'}`;
+          row.className = `transition ${rowStatusClass}`;
           row.innerHTML = `
             <td class="px-6 py-4">
               <span class="inline-flex flex-col">

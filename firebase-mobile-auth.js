@@ -252,9 +252,18 @@ if (typeof window !== "undefined") {
       window.onload = guardedFlareOnload;
     }
 
+
+    if (!document.querySelector('script[data-ehs-flare-layout-redesign]')) {
+      const flareLayoutRedesign = document.createElement('script');
+      flareLayoutRedesign.src = './layout-redesign.js?v=20260824-1044';
+      flareLayoutRedesign.defer = true;
+      flareLayoutRedesign.dataset.ehsFlareLayoutRedesign = '1';
+      document.head.appendChild(flareLayoutRedesign);
+    }
+
     if (!document.querySelector('script[data-ehs-flare-restore-actions]')) {
       const flareRestoreActions = document.createElement('script');
-      flareRestoreActions.src = './restore-actions.js?v=20260824-1010';
+      flareRestoreActions.src = './restore-actions.js?v=20260824-1044';
       flareRestoreActions.defer = true;
       flareRestoreActions.dataset.ehsFlareRestoreActions = '1';
       document.head.appendChild(flareRestoreActions);

@@ -233,7 +233,7 @@ if (typeof window !== "undefined") {
   const isFlareModule = /\/FLARE\/(?:index\.html)?$/.test(window.location.pathname);
   if (isFlareModule && !document.querySelector('script[data-ehs-flare-restore-actions]')) {
     const flareRestoreActions = document.createElement('script');
-    flareRestoreActions.src = './restore-actions.js?v=20260824-1005';
+    flareRestoreActions.src = './restore-actions.js?v=20260824-1010';
     flareRestoreActions.defer = true;
     flareRestoreActions.dataset.ehsFlareRestoreActions = '1';
     document.head.appendChild(flareRestoreActions);

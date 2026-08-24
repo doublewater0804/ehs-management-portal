@@ -1,0 +1,282 @@
+name: Fix FLARE sync and preserve exclusions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-flare-sync-preserve-exclusions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Patch FLARE synchronization and exclusion retention
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('FLARE/index.html')
+          text = path.read_text(encoding='utf-8')
+
+          # 1) Firestore must never merge nested state maps. First cloud snapshot is authoritative.
+          old = '''    let firstSnapshot = true;
+    window.__flareCloudPush = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp() }, { merge: true });
+    };
+    window.__flareCloudUploadLocal = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp(), migratedAt: serverTimestamp() }, { merge: true });
+    };
+
+    onSnapshot(FLARE_DOC, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        if (data.state && typeof window.__applyFlareCloudState === "function") {
+          window.__applyFlareCloudState(data.state);
+        }
+      } else if (firstSnapshot) {
+        updateStatus("☁️ 雲端尚無資料，可按本機資料上傳雲端", "warn");
+      }
+      firstSnapshot = false;
+    }, (err) => {
+      console.error(err);
+      updateStatus("☁️ " + firebaseErrorText(err, "Firebase 同步失敗"), "err");
+    });'''
+          new = '''    let firstSnapshot = true;
+    window.__flareCloudHydrated = false;
+    window.__flareCloudHydrationFailed = false;
+
+    // state 是完整快照：禁止 merge 巢狀 map，避免已恢復/已移除的 key 被舊雲端資料保留下來。
+    window.__flareCloudPush = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp() });
+    };
+    window.__flareCloudUploadLocal = async (state) => {
+      await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp(), migratedAt: serverTimestamp() });
+    };
+
+    onSnapshot(FLARE_DOC, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        if (data.state && typeof window.__applyFlareCloudState === "function") {
+          window.__applyFlareCloudState(data.state);
+        }
+        window.__flareCloudHydrated = true;
+        window.__flareCloudHydrationFailed = false;
+      } else if (firstSnapshot) {
+        window.__flareCloudHydrated = true;
+        updateStatus("☁️ 雲端尚無資料，可按本機資料上傳雲端", "warn");
+      }
+      firstSnapshot = false;
+    }, (err) => {
+      console.error(err);
+      window.__flareCloudHydrated = false;
+      window.__flareCloudHydrationFailed = true;
+      updateStatus("☁️ " + firebaseErrorText(err, "Firebase 同步失敗"), "err");
+    });'''
+          if old not in text:
+              raise SystemExit('Firestore sync block not found')
+          text = text.replace(old, new, 1)
+
+          # 2) Never write before first cloud snapshot has hydrated the page.
+          old = '''        function queueFlareCloudSave() {
+            if (__flareApplyingRemote) return;
+            if (typeof window.__flareCloudPush !== 'function') return;
+            clearTimeout(__flareCloudSaveTimer);'''
+          new = '''        function queueFlareCloudSave() {
+            if (__flareApplyingRemote) return;
+            if (window.__flareCloudHydrated !== true) {
+                setFirebaseSyncStatus(window.__flareCloudHydrationFailed
+                    ? '☁️ 雲端同步失敗，已阻止本機覆蓋雲端'
+                    : '☁️ 等待雲端初始同步，暫不寫入', window.__flareCloudHydrationFailed ? 'err' : 'warn');
+                return;
+            }
+            if (typeof window.__flareCloudPush !== 'function') return;
+            clearTimeout(__flareCloudSaveTimer);'''
+          if old not in text:
+              raise SystemExit('queueFlareCloudSave block not found')
+          text = text.replace(old, new, 1)
+
+          # 3) Loading the page must be read-only. Do not auto-save localStorage on window.onload.
+          old = '''            renderFactoryAliasManager();
+            saveData();
+            renderAll();'''
+          new = '''            renderFactoryAliasManager();
+            // 首次載入只呈現目前本機畫面；真正資料以 Firestore 第一份 snapshot 為準。
+            // 禁止在尚未讀到雲端前自動 saveData()，避免 localStorage 反向覆蓋 Firestore。
+            renderAll();'''
+          if old not in text:
+              raise SystemExit('window.onload saveData block not found')
+          text = text.replace(old, new, 1)
+
+          # 4) Exclusion records are soft-restored instead of deleted, so audit information is retained.
+          old = '''        function isDayExcluded(factory, dateISO) {
+            return Boolean(excludedDays[getDayExclusionKey(factory, dateISO)]);
+        }
+
+        function clearExcludedDaysForYear(year) {
+            Object.keys(excludedDays).forEach(key => {
+                if (key.startsWith(`${year}|`)) delete excludedDays[key];
+            });
+            saveExcludedDays();
+        }'''
+          new = '''        function isDayExcluded(factory, dateISO) {
+            const exclusion = excludedDays[getDayExclusionKey(factory, dateISO)];
+            return Boolean(exclusion && exclusion.active !== false);
+        }
+
+        function clearExcludedDaysForYear(year) {
+            const restoredAt = new Date().toISOString();
+            Object.keys(excludedDays).forEach(key => {
+                if (!key.startsWith(`${year}|`)) return;
+                const current = excludedDays[key];
+                if (!current || current.active === false) return;
+                excludedDays[key] = {
+                    ...current,
+                    active: false,
+                    restoredAt,
+                    restoreReason: '年度資料覆蓋時停用剔除狀態'
+                };
+            });
+            saveExcludedDays();
+        }'''
+          if old not in text:
+              raise SystemExit('isDayExcluded block not found')
+          text = text.replace(old, new, 1)
+
+          old = '''        function excludeDay(factory, dateISO) {
+            const reason = prompt(`請輸入 ${factory} / ${dateISO} 的剔除原因（可留空）：`, '');
+            if (reason === null) return;
+            const key = getDayExclusionKey(factory, dateISO);
+            excludedDays[key] = {
+                factory,
+                date: dateISO,
+                reason: reason.trim(),
+                createdAt: new Date().toISOString()
+            };
+            saveExcludedDays();
+            renderAll();
+        }
+
+        function restoreDay(factory, dateISO) {
+            if (!confirm(`確定要恢復 ${factory} / ${dateISO}，重新納入統計嗎？`)) return;
+            delete excludedDays[getDayExclusionKey(factory, dateISO)];
+            saveExcludedDays();
+            renderAll();
+        }'''
+          new = '''        function excludeDay(factory, dateISO) {
+            if (window.__flareCloudHydrated !== true) {
+                alert('雲端資料尚未完成初始同步，為避免資料被覆蓋，請稍候同步完成後再操作。');
+                return;
+            }
+            const reason = prompt(`請輸入 ${factory} / ${dateISO} 的剔除原因（可留空）：`, '');
+            if (reason === null) return;
+            const key = getDayExclusionKey(factory, dateISO);
+            const previous = excludedDays[key] || null;
+            const now = new Date().toISOString();
+            const history = Array.isArray(previous?.history) ? [...previous.history] : [];
+            if (previous) {
+                history.push({
+                    active: previous.active !== false,
+                    reason: previous.reason || '',
+                    createdAt: previous.createdAt || null,
+                    restoredAt: previous.restoredAt || null,
+                    archivedAt: now
+                });
+            }
+            excludedDays[key] = {
+                factory,
+                date: dateISO,
+                reason: reason.trim(),
+                active: true,
+                createdAt: previous?.createdAt || now,
+                updatedAt: now,
+                restoredAt: null,
+                history
+            };
+            saveExcludedDays();
+            renderAll();
+        }
+
+        function restoreDay(factory, dateISO) {
+            if (window.__flareCloudHydrated !== true) {
+                alert('雲端資料尚未完成初始同步，為避免資料被覆蓋，請稍候同步完成後再操作。');
+                return;
+            }
+            const key = getDayExclusionKey(factory, dateISO);
+            const current = excludedDays[key];
+            if (!current || current.active === false) {
+                alert(`找不到 ${factory} / ${dateISO} 的有效剔除紀錄。`);
+                return;
+            }
+            if (!confirm(`確定要恢復 ${factory} / ${dateISO}，重新納入統計嗎？`)) return;
+            excludedDays[key] = {
+                ...current,
+                active: false,
+                restoredAt: new Date().toISOString()
+            };
+            saveExcludedDays();
+            renderAll();
+        }
+        window.excludeDay = excludeDay;
+        window.restoreDay = restoreDay;'''
+          if old not in text:
+              raise SystemExit('exclude/restore block not found')
+          text = text.replace(old, new, 1)
+
+          # 5) Exports only treat active exclusions as excluded, but inactive records remain retained in state.
+          old = '''            Object.keys(excludedDays)
+                .filter(key => key.startsWith(`${year}|`))
+                .sort()'''
+          new = '''            Object.keys(excludedDays)
+                .filter(key => key.startsWith(`${year}|`) && excludedDays[key]?.active !== false)
+                .sort()'''
+          if old not in text:
+              raise SystemExit('maintenance exclusion export filter not found')
+          text = text.replace(old, new, 1)
+
+          old = '''                const exclusion = excludedDays[key];
+                const excluded = exclusion ? '是' : '否';
+                const reason = exclusion?.reason || '';'''
+          new = '''                const exclusion = excludedDays[key];
+                const excluded = exclusion && exclusion.active !== false ? '是' : '否';
+                const reason = excluded === '是' ? (exclusion?.reason || '') : '';'''
+          if old not in text:
+              raise SystemExit('exportAllData exclusion block not found')
+          text = text.replace(old, new, 1)
+
+          # Force a fresh auth helper module.
+          text = re.sub(r'from "\.\./firebase-mobile-auth\.js(?:\?v=[^"]+)?";',
+                        'from "../firebase-mobile-auth.js?v=20260824-0955";', text, count=1)
+
+          path.write_text(text, encoding='utf-8')
+
+          # Replace the delegated click helper with a minimal bridge to the main, audited restoreDay().
+          restore = Path('FLARE/restore-actions.js')
+          restore.write_text('''(() => {\n  if (window.__flareRestoreActionsLoaded) return;\n  window.__flareRestoreActionsLoaded = true;\n\n  document.addEventListener('click', (event) => {\n    const button = event.target.closest('#excluded-days-body button, #excluded-days-modal-body button');\n    if (!button || button.textContent.trim() !== '恢復') return;\n\n    event.preventDefault();\n    event.stopImmediatePropagation();\n\n    const row = button.closest('tr');\n    const cells = row ? row.querySelectorAll('td') : [];\n    const dateISO = cells[0]?.textContent?.trim() || '';\n    const factory = cells[1]?.textContent?.trim() || '';\n\n    if (!factory || !dateISO) {\n      alert('無法讀取要恢復的資料，請重新整理頁面後再試。');\n      return;\n    }\n    if (typeof window.restoreDay !== 'function') {\n      alert('恢復功能尚未載入完成，請重新整理頁面後再試。');\n      return;\n    }\n    window.restoreDay(factory, dateISO);\n  }, true);\n})();\n''', encoding='utf-8')
+
+          auth = Path('firebase-mobile-auth.js')
+          auth_text = auth.read_text(encoding='utf-8')
+          auth_text, n = re.subn(r"flareRestoreActions\.src = '\./restore-actions\.js(?:\?v=[^']+)?';",
+                                 "flareRestoreActions.src = './restore-actions.js?v=20260824-0955';",
+                                 auth_text, count=1)
+          if n != 1:
+              raise SystemExit('restore-actions loader not found')
+          auth.write_text(auth_text, encoding='utf-8')
+          PY
+
+      - name: Commit production fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add FLARE/index.html FLARE/restore-actions.js firebase-mobile-auth.js
+          git rm .github/workflows/fix-flare-sync-preserve-exclusions.yml
+          git commit -m 'fix: make FLARE cloud-first and preserve exclusion history'
+          git push origin main

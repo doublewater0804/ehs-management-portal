@@ -2,6 +2,15 @@
   if (window.__flareRestoreActionsLoaded) return;
   window.__flareRestoreActionsLoaded = true;
 
+  // 先載入 Firestore 全狀態覆蓋修正。舊版 merge:true 無法真正刪除巢狀 excludedDays key。
+  if (!document.querySelector('script[data-flare-cloud-sync-fix]')) {
+    const syncFix = document.createElement('script');
+    syncFix.type = 'module';
+    syncFix.src = './cloud-sync-fix.js?v=1';
+    syncFix.dataset.flareCloudSyncFix = '1';
+    document.head.appendChild(syncFix);
+  }
+
   function normalizeText(value) {
     return String(value ?? '').replace(/[\s　]+/g, '').trim();
   }
@@ -19,7 +28,6 @@
       const itemDate = normalizeText(item.date || '');
       if (itemFactory === normalizedFactory && itemDate === normalizedDate) return true;
 
-      // 相容舊資料：若物件內沒有 factory/date，就從 key 本身判斷。
       const parts = String(key).split('|');
       if (parts.length >= 3) {
         const keyFactory = normalizeText(parts.slice(1, -1).join('|'));
@@ -76,7 +84,6 @@
     button.textContent = '恢復中…';
 
     try {
-      // 同一工廠/日期可能存在歷史重複 key；全部刪除，避免只刪其中一筆後仍被判定為剔除。
       targetKeys.forEach((key) => delete exclusions[key]);
 
       const remaining = findMatchingExclusionKeys(exclusions, factory, dateISO);
@@ -90,7 +97,6 @@
         window.setFirebaseSyncStatus('☁️ 雲端儲存中…', 'info');
       }
 
-      // cloud-sync-fix.js 會用 updateDoc 直接取代 top-level state，確保刪除 key 真正從 Firestore 消失。
       await window.__flareCloudPush(state);
 
       if (typeof window.setFirebaseSyncStatus === 'function') {

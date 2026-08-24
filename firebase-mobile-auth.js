@@ -229,13 +229,35 @@ if (typeof window !== "undefined") {
     }
   }
 
-  // FLARE uses a delegated restore handler because its deleted-day rows are rendered dynamically.
   const isFlareModule = /\/FLARE\/(?:index\.html)?$/.test(window.location.pathname);
-  if (isFlareModule && !document.querySelector('script[data-ehs-flare-restore-actions]')) {
-    const flareRestoreActions = document.createElement('script');
-    flareRestoreActions.src = './restore-actions.js?v=20260824-1010';
-    flareRestoreActions.defer = true;
-    flareRestoreActions.dataset.ehsFlareRestoreActions = '1';
-    document.head.appendChild(flareRestoreActions);
+  if (isFlareModule) {
+    // 此模組舊版 window.onload 會自動 saveData()。先同步包住該事件，
+    // 讓第一次頁面載入只能讀 Firestore，不能拿 localStorage 反向覆蓋雲端。
+    window.__flareCloudHydrated = false;
+    const originalFlareOnload = window.onload;
+    if (typeof originalFlareOnload === 'function' && !originalFlareOnload.__flareInitialWriteGuard) {
+      const guardedFlareOnload = function(event) {
+        const originalPush = window.__flareCloudPush;
+        const originalUpload = window.__flareCloudUploadLocal;
+        window.__flareCloudPush = undefined;
+        window.__flareCloudUploadLocal = undefined;
+        try {
+          return originalFlareOnload.call(this, event);
+        } finally {
+          window.__flareCloudPush = originalPush;
+          window.__flareCloudUploadLocal = originalUpload;
+        }
+      };
+      guardedFlareOnload.__flareInitialWriteGuard = true;
+      window.onload = guardedFlareOnload;
+    }
+
+    if (!document.querySelector('script[data-ehs-flare-restore-actions]')) {
+      const flareRestoreActions = document.createElement('script');
+      flareRestoreActions.src = './restore-actions.js?v=20260824-1010';
+      flareRestoreActions.defer = true;
+      flareRestoreActions.dataset.ehsFlareRestoreActions = '1';
+      document.head.appendChild(flareRestoreActions);
+    }
   }
 }

@@ -1,0 +1,23 @@
+{
+  "module": "廠區廢氣燃燒塔管制表",
+  "year": 2026,
+  "createdAt": "2026-08-24T10:10:00+08:00",
+  "purpose": "保留 2026-08-24 同步異常前畫面中可確認的兩筆人工剔除資訊，待依原始事件日重新對應日期與工廠。不得直接刪除或覆寫。",
+  "status": "pending-remap",
+  "records": [
+    {
+      "recoveryId": "recovery-20260824-1",
+      "reasonVisibleInOriginalScreenshot": "製程廢氣未排放至廢氣燃燒…",
+      "date": null,
+      "factory": null,
+      "note": "原截圖因清單水平捲動，日期與工廠欄未顯示；不可猜填。"
+    },
+    {
+      "recoveryId": "recovery-20260824-2",
+      "reasonVisibleInOriginalScreenshot": "流量錯誤",
+      "date": null,
+      "factory": null,
+      "note": "原截圖因清單水平捲動，日期與工廠欄未顯示；不可猜填。"
+    }
+  ]
+}

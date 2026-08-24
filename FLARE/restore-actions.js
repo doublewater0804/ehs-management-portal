@@ -2,11 +2,39 @@
   if (window.__flareRestoreActionsLoaded) return;
   window.__flareRestoreActionsLoaded = true;
 
+  function normalizeText(value) {
+    return String(value ?? '').replace(/[\s　]+/g, '').trim();
+  }
+
+  function findMatchingExclusionKeys(exclusions, factory, dateISO) {
+    const normalizedFactory = normalizeText(factory);
+    const normalizedDate = normalizeText(dateISO);
+    const standardKey = `${normalizedDate.slice(0, 4)}|${factory}|${dateISO}`;
+
+    return Object.keys(exclusions || {}).filter((key) => {
+      if (key === standardKey) return true;
+
+      const item = exclusions[key] || {};
+      const itemFactory = normalizeText(item.factory || '');
+      const itemDate = normalizeText(item.date || '');
+      if (itemFactory === normalizedFactory && itemDate === normalizedDate) return true;
+
+      // 相容舊資料：若物件內沒有 factory/date，就從 key 本身判斷。
+      const parts = String(key).split('|');
+      if (parts.length >= 3) {
+        const keyFactory = normalizeText(parts.slice(1, -1).join('|'));
+        const keyDate = normalizeText(parts[parts.length - 1]);
+        if (keyFactory === normalizedFactory && keyDate === normalizedDate) return true;
+      }
+
+      return false;
+    });
+  }
+
   document.addEventListener('click', async (event) => {
     const button = event.target.closest('#excluded-days-body button, #excluded-days-modal-body button');
     if (!button || button.textContent.trim() !== '恢復') return;
 
-    // 使用 capture 階段接管恢復按鈕，避免動態產生的 inline onclick 在部分環境失效。
     event.preventDefault();
     event.stopImmediatePropagation();
 
@@ -25,8 +53,8 @@
       return;
     }
 
-    if (typeof window.__flareCloudPush !== 'function') {
-      alert('Firebase 尚未完成連線，為避免本機與雲端資料不一致，暫時無法恢復。請確認右上方雲端狀態後再試。');
+    if (!window.__flareCloudSyncFixReady || typeof window.__flareCloudPush !== 'function') {
+      alert('Firebase 雲端同步模組仍在初始化，請稍候數秒後再試；若持續出現，請重新整理頁面。');
       return;
     }
 
@@ -35,56 +63,59 @@
       ? state.excludedDays
       : {};
 
-    // 直接從已儲存的剔除資料找出真正的 key，不再由畫面文字重新組 key。
-    let targetKey = Object.keys(exclusions).find((key) => {
-      const item = exclusions[key] || {};
-      return String(item.factory || '').trim() === factory && String(item.date || '').trim() === dateISO;
-    });
-
-    // 相容較舊資料：若剔除物件內沒有 factory/date，才使用標準 key 做第二次查找。
-    if (!targetKey) {
-      const standardKey = `${dateISO.slice(0, 4)}|${factory}|${dateISO}`;
-      if (Object.prototype.hasOwnProperty.call(exclusions, standardKey)) targetKey = standardKey;
-    }
-
-    if (!targetKey) {
+    const targetKeys = findMatchingExclusionKeys(exclusions, factory, dateISO);
+    if (!targetKeys.length) {
       alert(`找不到 ${factory} / ${dateISO} 對應的原始剔除資料，因此沒有執行恢復。請保留此畫面並回報。`);
       return;
     }
 
     if (!confirm(`確定要恢復 ${factory} / ${dateISO}，重新納入統計嗎？`)) return;
 
-    const originalRecord = exclusions[targetKey];
+    const backup = targetKeys.map((key) => [key, exclusions[key]]);
     button.disabled = true;
     button.textContent = '恢復中…';
 
     try {
-      delete exclusions[targetKey];
+      // 同一工廠/日期可能存在歷史重複 key；全部刪除，避免只刪其中一筆後仍被判定為剔除。
+      targetKeys.forEach((key) => delete exclusions[key]);
 
-      // 先同步目前頁面的 in-memory state 與 localStorage，再寫入 Firestore。
+      const remaining = findMatchingExclusionKeys(exclusions, factory, dateISO);
+      if (remaining.length) {
+        throw new Error(`剔除資料仍殘留 ${remaining.length} 筆`);
+      }
+
       localStorage.setItem('flare_excluded_days_final', JSON.stringify(exclusions));
       if (typeof window.renderAll === 'function') window.renderAll();
       if (typeof window.setFirebaseSyncStatus === 'function') {
         window.setFirebaseSyncStatus('☁️ 雲端儲存中…', 'info');
       }
 
+      // cloud-sync-fix.js 會用 updateDoc 直接取代 top-level state，確保刪除 key 真正從 Firestore 消失。
       await window.__flareCloudPush(state);
 
       if (typeof window.setFirebaseSyncStatus === 'function') {
         window.setFirebaseSyncStatus('☁️ 已儲存雲端', 'ok');
       }
+
       if (typeof window.renderAll === 'function') window.renderAll();
+
+      const verifyState = window.__getFlareCloudState();
+      const verifyKeys = findMatchingExclusionKeys(verifyState?.excludedDays || {}, factory, dateISO);
+      if (verifyKeys.length) {
+        throw new Error(`恢復後仍偵測到 ${verifyKeys.length} 筆剔除資料`);
+      }
     } catch (error) {
       console.error('FLARE 恢復剔除資料失敗', error);
 
-      // 雲端失敗時回復原資料，避免只改到本機。
-      exclusions[targetKey] = originalRecord;
+      backup.forEach(([key, value]) => {
+        exclusions[key] = value;
+      });
       localStorage.setItem('flare_excluded_days_final', JSON.stringify(exclusions));
       if (typeof window.renderAll === 'function') window.renderAll();
       if (typeof window.setFirebaseSyncStatus === 'function') {
         window.setFirebaseSyncStatus('☁️ 雲端儲存失敗', 'err');
       }
-      alert('恢復失敗：雲端資料沒有成功儲存，已將本機狀態還原。請稍後再試。');
+      alert(`恢復失敗：${error?.message || error}。已將本機狀態還原。`);
     } finally {
       if (button.isConnected) {
         button.disabled = false;

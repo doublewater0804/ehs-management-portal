@@ -2,10 +2,31 @@
   if (window.__flareRestoreActionsLoaded) return;
   window.__flareRestoreActionsLoaded = true;
 
+  // FLARE 舊版 window.onload 會呼叫 saveData()。在第一份 Firestore snapshot 前，
+  // 先同步攔住該次雲端寫入，避免 localStorage 反向覆蓋雲端剔除資料。
+  window.__flareCloudHydrated = false;
+  const existingOnload = window.onload;
+  if (typeof existingOnload === 'function' && !existingOnload.__flareInitialWriteGuard) {
+    const guardedOnload = function(event) {
+      const originalPush = window.__flareCloudPush;
+      const originalUpload = window.__flareCloudUploadLocal;
+      window.__flareCloudPush = undefined;
+      window.__flareCloudUploadLocal = undefined;
+      try {
+        return existingOnload.call(this, event);
+      } finally {
+        window.__flareCloudPush = originalPush;
+        window.__flareCloudUploadLocal = originalUpload;
+      }
+    };
+    guardedOnload.__flareInitialWriteGuard = true;
+    window.onload = guardedOnload;
+  }
+
   if (!document.querySelector('script[data-flare-sync-guard]')) {
     const guard = document.createElement('script');
     guard.type = 'module';
-    guard.src = './sync-guard.js?v=20260824-1005';
+    guard.src = './sync-guard.js?v=20260824-1006';
     guard.dataset.flareSyncGuard = '1';
     document.head.appendChild(guard);
   }

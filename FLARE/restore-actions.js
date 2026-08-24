@@ -25,17 +25,9 @@
   if (!document.querySelector('script[data-flare-sync-guard]')) {
     const guard = document.createElement('script');
     guard.type = 'module';
-    guard.src = './sync-guard.js?v=20260824-1015';
+    guard.src = './sync-guard.js?v=20260824-1020';
     guard.dataset.flareSyncGuard = '1';
     document.head.appendChild(guard);
-  }
-
-  if (!document.querySelector('script[data-flare-exclusion-recovery-20260824]')) {
-    const recovery = document.createElement('script');
-    recovery.src = './recover-exclusions-20260824.js?v=20260824-1015';
-    recovery.defer = true;
-    recovery.dataset.flareExclusionRecovery20260824 = '1';
-    document.head.appendChild(recovery);
   }
 
   document.addEventListener('click', async (event) => {

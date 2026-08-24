@@ -2,8 +2,7 @@
   if (window.__flareRestoreActionsLoaded) return;
   window.__flareRestoreActionsLoaded = true;
 
-  // FLARE 舊版 window.onload 會呼叫 saveData()。在第一份 Firestore snapshot 前，
-  // 先同步攔住該次雲端寫入，避免 localStorage 反向覆蓋雲端剔除資料。
+  // 首次載入時先阻止舊版 window.onload 內 saveData() 把 localStorage 反向覆蓋 Firestore。
   window.__flareCloudHydrated = false;
   const existingOnload = window.onload;
   if (typeof existingOnload === 'function' && !existingOnload.__flareInitialWriteGuard) {
@@ -26,9 +25,17 @@
   if (!document.querySelector('script[data-flare-sync-guard]')) {
     const guard = document.createElement('script');
     guard.type = 'module';
-    guard.src = './sync-guard.js?v=20260824-1010';
+    guard.src = './sync-guard.js?v=20260824-1015';
     guard.dataset.flareSyncGuard = '1';
     document.head.appendChild(guard);
+  }
+
+  if (!document.querySelector('script[data-flare-exclusion-recovery-20260824]')) {
+    const recovery = document.createElement('script');
+    recovery.src = './recover-exclusions-20260824.js?v=20260824-1015';
+    recovery.defer = true;
+    recovery.dataset.flareExclusionRecovery20260824 = '1';
+    document.head.appendChild(recovery);
   }
 
   document.addEventListener('click', async (event) => {
@@ -47,7 +54,6 @@
       alert('無法讀取要恢復的資料，請重新整理頁面後再試。');
       return;
     }
-
     if (typeof window.__flareSafeRestore !== 'function') {
       alert('資料保護模組仍在初始化，請稍候數秒後再試。');
       return;

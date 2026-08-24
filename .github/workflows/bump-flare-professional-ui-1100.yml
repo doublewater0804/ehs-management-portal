@@ -1,0 +1,56 @@
+name: Bump FLARE professional UI 1100
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bump-flare-professional-ui-1100.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Bump production cache keys
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('FLARE/index.html')
+          s = index.read_text(encoding='utf-8')
+          s, n = re.subn(r'from "\.\./firebase-mobile-auth\.js(?:\?v=[^"]+)?";',
+                          'from "../firebase-mobile-auth.js?v=20260824-1100";', s, count=1)
+          if n != 1:
+              raise SystemExit('FLARE auth import not found')
+          index.write_text(s, encoding='utf-8')
+
+          auth = Path('firebase-mobile-auth.js')
+          s = auth.read_text(encoding='utf-8')
+          s, n = re.subn(r"flareLayoutRedesign\.src = '\./layout-redesign\.js(?:\?v=[^']+)?';",
+                          "flareLayoutRedesign.src = './layout-redesign.js?v=20260824-1100';", s, count=1)
+          if n != 1:
+              raise SystemExit('layout-redesign loader not found')
+          auth.write_text(s, encoding='utf-8')
+
+          data_input = Path('FLARE/data-input.html')
+          s = data_input.read_text(encoding='utf-8')
+          s = re.sub(r'index\.html\?view=input&layout=[0-9-]+',
+                     'index.html?view=input&layout=20260824-1100', s)
+          data_input.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit production cache bump
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add FLARE/index.html firebase-mobile-auth.js FLARE/data-input.html
+          git rm .github/workflows/bump-flare-professional-ui-1100.yml
+          git commit -m 'style: deploy FLARE professional UI v1100'
+          git push origin main

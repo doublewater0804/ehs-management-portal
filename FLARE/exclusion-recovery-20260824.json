@@ -2,22 +2,28 @@
   "module": "廠區廢氣燃燒塔管制表",
   "year": 2026,
   "createdAt": "2026-08-24T10:10:00+08:00",
-  "purpose": "保留 2026-08-24 同步異常前畫面中可確認的兩筆人工剔除資訊，待依原始事件日重新對應日期與工廠。不得直接刪除或覆寫。",
-  "status": "pending-remap",
+  "updatedAt": "2026-08-24T10:15:00+08:00",
+  "purpose": "保留並重新對應 2026-08-24 同步異常前的兩筆人工剔除資料。",
+  "status": "mapped",
   "records": [
     {
       "recoveryId": "recovery-20260824-1",
-      "reasonVisibleInOriginalScreenshot": "製程廢氣未排放至廢氣燃燒…",
-      "date": null,
-      "factory": null,
-      "note": "原截圖因清單水平捲動，日期與工廠欄未顯示；不可猜填。"
+      "date": "2026-01-03",
+      "factory": "SM廠麥寮",
+      "type": "非定檢",
+      "amount": 286856.27,
+      "reason": "製程廢氣未排放至廢氣燃燒塔",
+      "evidence": "原異常前畫面顯示麥寮區總計 5 天，PC廠 5 天均仍納入；匯出 CSV 中麥寮區唯一額外事件日為 SM廠麥寮 2026-01-03，因此此筆為原剔除資料。"
     },
     {
       "recoveryId": "recovery-20260824-2",
-      "reasonVisibleInOriginalScreenshot": "流量錯誤",
-      "date": null,
-      "factory": null,
-      "note": "原截圖因清單水平捲動，日期與工廠欄未顯示；不可猜填。"
+      "date": "2026-08-24",
+      "factory": "HAC廠",
+      "type": "定檢",
+      "amountTotal": 131566.6,
+      "eventCount": 4,
+      "reason": "流量錯誤",
+      "evidence": "原異常前畫面顯示 HAC 定檢僅 08/13 共 1 天；匯出 CSV 另有 HAC 2026-08-24 定檢事件，且原已剔除第二列為藍色定檢、原因為流量錯誤。"
     }
   ]
 }

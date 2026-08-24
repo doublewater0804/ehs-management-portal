@@ -1,0 +1,47 @@
+name: Bump FLARE cache 1005
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bump-flare-cache-1005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Bump FLARE module cache keys
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('FLARE/index.html')
+          text = index.read_text(encoding='utf-8')
+          text, n = re.subn(r'from "\.\./firebase-mobile-auth\.js(?:\?v=[^"]+)?";',
+                            'from "../firebase-mobile-auth.js?v=20260824-1005";', text, count=1)
+          if n != 1:
+              raise SystemExit('FLARE auth import not found')
+          index.write_text(text, encoding='utf-8')
+
+          auth = Path('firebase-mobile-auth.js')
+          text = auth.read_text(encoding='utf-8')
+          text, n = re.subn(r"flareRestoreActions\.src = '\./restore-actions\.js(?:\?v=[^']+)?';",
+                            "flareRestoreActions.src = './restore-actions.js?v=20260824-1005';", text, count=1)
+          if n != 1:
+              raise SystemExit('restore-actions loader not found')
+          auth.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add FLARE/index.html firebase-mobile-auth.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix: bump FLARE protected sync cache keys'
+          git push origin main

@@ -26,7 +26,7 @@
   if (!document.querySelector('script[data-flare-sync-guard]')) {
     const guard = document.createElement('script');
     guard.type = 'module';
-    guard.src = './sync-guard.js?v=20260824-1006';
+    guard.src = './sync-guard.js?v=20260824-1010';
     guard.dataset.flareSyncGuard = '1';
     document.head.appendChild(guard);
   }

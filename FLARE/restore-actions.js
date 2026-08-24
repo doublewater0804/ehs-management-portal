@@ -6,7 +6,7 @@
   if (!document.querySelector('script[data-flare-cloud-sync-fix]')) {
     const syncFix = document.createElement('script');
     syncFix.type = 'module';
-    syncFix.src = './cloud-sync-fix.js?v=3';
+    syncFix.src = './cloud-sync-fix.js?v=20260824-0940';
     syncFix.dataset.flareCloudSyncFix = '1';
     document.head.appendChild(syncFix);
   }

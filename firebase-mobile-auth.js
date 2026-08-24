@@ -228,4 +228,14 @@ if (typeof window !== "undefined") {
       document.head.appendChild(personnel);
     }
   }
+
+  // FLARE uses a delegated restore handler because its deleted-day rows are rendered dynamically.
+  const isFlareModule = /\/FLARE\/(?:index\.html)?$/.test(window.location.pathname);
+  if (isFlareModule && !document.querySelector('script[data-ehs-flare-restore-actions]')) {
+    const flareRestoreActions = document.createElement('script');
+    flareRestoreActions.src = './restore-actions.js?v=1';
+    flareRestoreActions.defer = true;
+    flareRestoreActions.dataset.ehsFlareRestoreActions = '1';
+    document.head.appendChild(flareRestoreActions);
+  }
 }

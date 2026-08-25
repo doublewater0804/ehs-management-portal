@@ -78,6 +78,35 @@
       cursor: col-resize;
       user-select: none;
     }
+    .task-floating-scrollbar {
+      position: fixed;
+      bottom: 0;
+      height: 20px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: rgba(255, 255, 255, .98);
+      border: 1px solid #cbd5e1;
+      border-bottom: 0;
+      border-radius: 8px 8px 0 0;
+      box-shadow: 0 -3px 12px rgba(15, 23, 42, .12);
+      scrollbar-color: #64748b #e2e8f0;
+      scrollbar-width: auto;
+      z-index: 90;
+    }
+    .task-floating-scrollbar[hidden] { display: none; }
+    .task-floating-scrollbar::-webkit-scrollbar { height: 14px; }
+    .task-floating-scrollbar::-webkit-scrollbar-track {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+    .task-floating-scrollbar::-webkit-scrollbar-thumb {
+      background: #64748b;
+      border: 2px solid #e2e8f0;
+      border-radius: 9999px;
+    }
+    .task-floating-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .task-floating-scrollbar-spacer { height: 1px; }
+    body.has-floating-table-scrollbar { padding-bottom: 20px; }
   </style>
 </head>
 
@@ -212,7 +241,7 @@
 
     <!-- Table -->
     <div class="bg-white rounded-b-xl border-x border-b border-slate-200 shadow-sm overflow-hidden">
-      <div class="overflow-x-auto custom-scrollbar">
+      <div id="task-table-scroll" class="overflow-x-auto custom-scrollbar">
         <table id="task-table" class="min-w-full text-left">
           <colgroup>
             <col style="width: 125px" />
@@ -253,6 +282,15 @@
     </div>
 
   </main>
+
+  <div
+    id="task-floating-scrollbar"
+    class="task-floating-scrollbar no-print"
+    aria-label="案件表格水平捲動條"
+    hidden
+  >
+    <div id="task-floating-scrollbar-spacer" class="task-floating-scrollbar-spacer"></div>
+  </div>
 
   <!-- Modal -->
   <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[100] p-4 no-print">
@@ -548,6 +586,7 @@
     let lastManualProgress = 0;
     let modalProgressLogs = [];
     let taskContentColumnWidth = TASK_CONTENT_COLUMN_DEFAULT_WIDTH;
+    let floatingTableScrollbarFrame = null;
 
     function clampTaskContentColumnWidth(width) {
       const parsed = Number.parseInt(width, 10);
@@ -562,6 +601,7 @@
       if (persist) {
         try { localStorage.setItem(TASK_CONTENT_COLUMN_WIDTH_KEY, String(taskContentColumnWidth)); } catch (e) {}
       }
+      scheduleFloatingTableScrollbarUpdate();
     }
 
     function initTaskContentColumnResizer() {
@@ -619,6 +659,73 @@
         const direction = event.key === 'ArrowRight' ? 1 : -1;
         applyTaskContentColumnWidth(taskContentColumnWidth + direction * 20, true);
       });
+    }
+
+    function scheduleFloatingTableScrollbarUpdate() {
+      if (floatingTableScrollbarFrame !== null || typeof requestAnimationFrame !== 'function') return;
+      floatingTableScrollbarFrame = requestAnimationFrame(() => {
+        floatingTableScrollbarFrame = null;
+        updateFloatingTableScrollbar();
+      });
+    }
+
+    function updateFloatingTableScrollbar() {
+      const tableScroll = document.getElementById('task-table-scroll');
+      const floatingScroll = document.getElementById('task-floating-scrollbar');
+      const spacer = document.getElementById('task-floating-scrollbar-spacer');
+      if (!tableScroll || !floatingScroll || !spacer) return;
+
+      const rect = tableScroll.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = window.innerHeight;
+      const visibleLeft = Math.max(0, rect.left);
+      const visibleRight = Math.min(viewportWidth, rect.right);
+      const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+      const hasHorizontalOverflow = tableScroll.scrollWidth > tableScroll.clientWidth + 1;
+      const tableIsVisible = rect.bottom > 0 && rect.top < viewportHeight;
+      const shouldShow = hasHorizontalOverflow && tableIsVisible && visibleWidth > 80;
+
+      floatingScroll.hidden = !shouldShow;
+      document.body.classList.toggle('has-floating-table-scrollbar', shouldShow);
+      if (!shouldShow) return;
+
+      floatingScroll.style.left = `${visibleLeft}px`;
+      floatingScroll.style.width = `${visibleWidth}px`;
+      const spacerWidth = tableScroll.scrollWidth - tableScroll.clientWidth + floatingScroll.clientWidth;
+      spacer.style.width = `${Math.max(floatingScroll.clientWidth, spacerWidth)}px`;
+      if (Math.abs(floatingScroll.scrollLeft - tableScroll.scrollLeft) > 1) {
+        floatingScroll.scrollLeft = tableScroll.scrollLeft;
+      }
+    }
+
+    function initFloatingTableScrollbar() {
+      const tableScroll = document.getElementById('task-table-scroll');
+      const floatingScroll = document.getElementById('task-floating-scrollbar');
+      const table = document.getElementById('task-table');
+      if (!tableScroll || !floatingScroll || !table) return;
+
+      tableScroll.addEventListener('scroll', () => {
+        if (Math.abs(floatingScroll.scrollLeft - tableScroll.scrollLeft) > 1) {
+          floatingScroll.scrollLeft = tableScroll.scrollLeft;
+        }
+      }, { passive: true });
+
+      floatingScroll.addEventListener('scroll', () => {
+        if (Math.abs(tableScroll.scrollLeft - floatingScroll.scrollLeft) > 1) {
+          tableScroll.scrollLeft = floatingScroll.scrollLeft;
+        }
+      }, { passive: true });
+
+      window.addEventListener('scroll', scheduleFloatingTableScrollbarUpdate, { passive: true });
+      window.addEventListener('resize', scheduleFloatingTableScrollbarUpdate, { passive: true });
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(scheduleFloatingTableScrollbarUpdate);
+        observer.observe(tableScroll);
+        observer.observe(table);
+      }
+
+      scheduleFloatingTableScrollbarUpdate();
     }
 
     const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -1518,6 +1625,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initTaskContentColumnResizer();
+      initFloatingTableScrollbar();
       loadDataFromStorage();
       loadCustomSources();
       loadCustomProgressTypes();

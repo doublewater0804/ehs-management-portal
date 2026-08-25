@@ -31,6 +31,11 @@
       #${MODAL_ID} th,#${MODAL_ID} td{padding:10px 12px;border-bottom:1px solid #e4e9f1;text-align:left;white-space:nowrap}
       #${MODAL_ID} th{background:#edf3fb;color:#34445c;font-weight:900}
       #${MODAL_ID} tr:last-child td{border-bottom:0}
+      #${MODAL_ID} .fae-zero-row{display:none}
+      #${MODAL_ID}.fae-show-zero .fae-zero-row{display:table-row}
+      #${MODAL_ID} .fae-zero-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:9px 11px;border:1px solid #dbe8fb;border-radius:8px;background:#f8fbff;color:#5b6b82;font-size:11.5px;line-height:1.5}
+      #${MODAL_ID} .fae-zero-toggle{flex:none;border:1px solid #b9cbea;border-radius:7px;background:#fff;color:#1d5fd0;padding:6px 9px;font-size:11.5px;font-weight:800;cursor:pointer}
+      #${MODAL_ID} .fae-zero-toggle:hover{background:#edf4ff;border-color:#8fb0e5}
       #${MODAL_ID} .fae-amount{width:160px;border:1px solid #b8c5d8;border-radius:8px;padding:8px 10px;text-align:right;font-size:14px;font-weight:800;color:#172033;background:#fff;outline:none}
       #${MODAL_ID} .fae-amount:focus{border-color:#1d5fd0;box-shadow:0 0 0 3px rgba(29,95,208,.12)}
       #${MODAL_ID} .fae-total{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;padding:14px 2px 4px;color:#526175;font-size:12px;font-weight:800}
@@ -192,13 +197,19 @@
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
 
+    const zeroCount = events.filter((event) => Number(event.amount || 0) === 0).length;
     const rows = events.map((event, index) => `
-      <tr>
+      <tr${Number(event.amount || 0) === 0 ? ' class="fae-zero-row"' : ''}>
         <td>${index + 1}</td>
         <td>${sourceLabel(event.source)}</td>
         <td>${typeLabel(event.type)}</td>
         <td><input class="fae-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(event.amount || 0)}" data-index="${index}" aria-label="第 ${index + 1} 筆排放量"></td>
       </tr>`).join('');
+    const zeroTools = zeroCount > 0 ? `
+      <div class="fae-zero-tools">
+        <span data-fae-zero-summary>另有 ${zeroCount} 筆 0 流量紀錄未顯示</span>
+        <button type="button" class="fae-zero-toggle" data-fae-zero-toggle>顯示全部原始紀錄</button>
+      </div>` : '';
 
     modal.innerHTML = `
       <div class="fae-card">
@@ -217,6 +228,7 @@
               <tbody>${rows}</tbody>
             </table>
           </div>
+          ${zeroTools}
           <div class="fae-total">當日合計 <strong data-fae-total>${fmt(events.reduce((sum, event) => sum + Number(event.amount || 0), 0))}</strong> NM3</div>
         </div>
         <div class="fae-foot">
@@ -231,6 +243,16 @@
       }
     });
     modal.querySelectorAll('.fae-amount').forEach((input) => input.addEventListener('input', () => updateLiveTotal(modal)));
+    modal.querySelector('[data-fae-zero-toggle]')?.addEventListener('click', () => {
+      const showAll = !modal.classList.contains('fae-show-zero');
+      modal.classList.toggle('fae-show-zero', showAll);
+      const toggle = modal.querySelector('[data-fae-zero-toggle]');
+      const summary = modal.querySelector('[data-fae-zero-summary]');
+      if (toggle) toggle.textContent = showAll ? '隱藏 0 流量紀錄' : '顯示全部原始紀錄';
+      if (summary) summary.textContent = showAll
+        ? `已顯示全部原始紀錄，其中 ${zeroCount} 筆為 0 流量`
+        : `另有 ${zeroCount} 筆 0 流量紀錄未顯示`;
+    });
     modal.querySelector('[data-fae-save]')?.addEventListener('click', () => saveChanges(modal, factory, dateISO, events));
     document.addEventListener('keydown', function esc(event) {
       if (event.key !== 'Escape' || !document.getElementById(MODAL_ID)) return;
@@ -240,7 +262,9 @@
 
     document.body.appendChild(modal);
     document.body.classList.add('overflow-hidden');
-    modal.querySelector('.fae-amount')?.focus();
+    const firstVisibleAmount = [...modal.querySelectorAll('.fae-amount')]
+      .find((input) => !input.closest('.fae-zero-row'));
+    firstVisibleAmount?.focus();
   }
 
   function enhanceBody(body) {

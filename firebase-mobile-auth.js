@@ -264,7 +264,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-flare-amount-edit]')) {
       const flareAmountEdit = document.createElement('script');
-      flareAmountEdit.src = './amount-edit.js?v=20260824-1110';
+      flareAmountEdit.src = './amount-edit.js?v=20260825-1356';
       flareAmountEdit.defer = true;
       flareAmountEdit.dataset.ehsFlareAmountEdit = '1';
       document.head.appendChild(flareAmountEdit);

@@ -16,7 +16,11 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     .chart-container { position: relative; width: 100%; height: 320px; }
     .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    @media print { .no-print { display: none; } }
+    @media print {
+      .no-print { display: none; }
+      #task-table { width: 100% !important; table-layout: auto; }
+      #task-content-column { width: auto !important; }
+    }
     #save-indicator { transition: opacity 0.5s; }
     .modal-checkbox { width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: #2563eb; }
     .progress-log-card { border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.75rem; background: #fff; }
@@ -33,6 +37,47 @@
     .status-row-active:hover { background-color: #d1fae5; }
     .status-row-done { background-color: #eff6ff; }
     .status-row-done:hover { background-color: #dbeafe; }
+    #task-table {
+      --task-content-column-width: 420px;
+      width: calc(1030px + var(--task-content-column-width));
+      min-width: 100%;
+      table-layout: fixed;
+    }
+    .task-content-header { position: relative; }
+    .task-column-resizer {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 9px;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: col-resize;
+      touch-action: none;
+      z-index: 10;
+    }
+    .task-column-resizer::after {
+      content: '';
+      position: absolute;
+      top: 20%;
+      bottom: 20%;
+      left: 4px;
+      width: 2px;
+      border-radius: 9999px;
+      background: #cbd5e1;
+      transition: background-color .15s, box-shadow .15s;
+    }
+    .task-column-resizer:hover::after,
+    .task-column-resizer:focus-visible::after,
+    body.is-resizing-task-column .task-column-resizer::after {
+      background: #2563eb;
+      box-shadow: 0 0 0 2px #dbeafe;
+    }
+    body.is-resizing-task-column {
+      cursor: col-resize;
+      user-select: none;
+    }
   </style>
 </head>
 
@@ -168,14 +213,34 @@
     <!-- Table -->
     <div class="bg-white rounded-b-xl border-x border-b border-slate-200 shadow-sm overflow-hidden">
       <div class="overflow-x-auto custom-scrollbar">
-        <table class="w-full text-left">
+        <table id="task-table" class="min-w-full text-left">
+          <colgroup>
+            <col style="width: 125px" />
+            <col style="width: 90px" />
+            <col style="width: 150px" />
+            <col style="width: 180px" />
+            <col id="task-content-column" style="width: var(--task-content-column-width)" />
+            <col style="width: 120px" />
+            <col style="width: 120px" />
+            <col style="width: 135px" />
+            <col style="width: 110px" />
+          </colgroup>
           <thead>
             <tr class="bg-slate-50 text-[11px] text-slate-400 font-black uppercase tracking-wider border-b border-slate-100">
               <th class="px-6 py-4 text-nowrap">狀態/提醒</th>
               <th class="px-6 py-4 text-nowrap">類別</th>
               <th class="px-6 py-4 text-nowrap">廠區/月份</th>
               <th class="px-6 py-4 text-nowrap">經辦人員/來源</th>
-              <th class="px-6 py-4">工作項目與內容</th>
+              <th id="task-content-header" class="task-content-header px-6 py-4 pr-8">
+                工作項目與內容
+                <button
+                  type="button"
+                  id="task-column-resizer"
+                  class="task-column-resizer no-print"
+                  aria-label="拖曳調整工作項目與內容欄寬"
+                  title="左右拖曳調整欄寬；雙擊恢復預設寬度"
+                ></button>
+              </th>
               <th class="px-6 py-4 text-center text-nowrap">建檔日期</th>
               <th class="px-6 py-4 text-center text-nowrap">截止日期</th>
               <th class="px-6 py-4 text-nowrap">進度</th>
@@ -461,6 +526,10 @@
     const LOCAL_STORAGE_BACKUP_KEY = 'ESH_MANAGEMENT_DATA_V86__BACKUP';
     const CUSTOM_SOURCE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_SOURCES_V1';
     const CUSTOM_PROGRESS_TYPE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_PROGRESS_TYPES_V1';
+    const TASK_CONTENT_COLUMN_WIDTH_KEY = 'ESH_TASK_CONTENT_COLUMN_WIDTH_V1';
+    const TASK_CONTENT_COLUMN_DEFAULT_WIDTH = 420;
+    const TASK_CONTENT_COLUMN_MIN_WIDTH = 320;
+    const TASK_CONTENT_COLUMN_MAX_WIDTH = 900;
     const DEFAULT_SOURCE_OPTIONS = Object.freeze([
       'NOTES', '速報表', '開會通知單', '環保通報單', '蓋用印申請單', '外來文',
       '主管交辦', '報告', '業洽函', '層峰指示', '法規要求', '全企業工安環保通報', '專案工作'
@@ -478,6 +547,79 @@
     let editingProgressLogId = null;
     let lastManualProgress = 0;
     let modalProgressLogs = [];
+    let taskContentColumnWidth = TASK_CONTENT_COLUMN_DEFAULT_WIDTH;
+
+    function clampTaskContentColumnWidth(width) {
+      const parsed = Number.parseInt(width, 10);
+      if (!Number.isFinite(parsed)) return TASK_CONTENT_COLUMN_DEFAULT_WIDTH;
+      return Math.min(TASK_CONTENT_COLUMN_MAX_WIDTH, Math.max(TASK_CONTENT_COLUMN_MIN_WIDTH, parsed));
+    }
+
+    function applyTaskContentColumnWidth(width, persist = false) {
+      taskContentColumnWidth = clampTaskContentColumnWidth(width);
+      document.getElementById('task-table')?.style.setProperty('--task-content-column-width', `${taskContentColumnWidth}px`);
+      document.getElementById('task-column-resizer')?.setAttribute('aria-valuenow', String(taskContentColumnWidth));
+      if (persist) {
+        try { localStorage.setItem(TASK_CONTENT_COLUMN_WIDTH_KEY, String(taskContentColumnWidth)); } catch (e) {}
+      }
+    }
+
+    function initTaskContentColumnResizer() {
+      const resizer = document.getElementById('task-column-resizer');
+      if (!resizer) return;
+
+      let savedWidth = TASK_CONTENT_COLUMN_DEFAULT_WIDTH;
+      try { savedWidth = localStorage.getItem(TASK_CONTENT_COLUMN_WIDTH_KEY) || savedWidth; } catch (e) {}
+      applyTaskContentColumnWidth(savedWidth);
+
+      resizer.setAttribute('role', 'separator');
+      resizer.setAttribute('aria-orientation', 'vertical');
+      resizer.setAttribute('aria-valuemin', String(TASK_CONTENT_COLUMN_MIN_WIDTH));
+      resizer.setAttribute('aria-valuemax', String(TASK_CONTENT_COLUMN_MAX_WIDTH));
+
+      let resizing = false;
+      let startX = 0;
+      let startWidth = taskContentColumnWidth;
+
+      const finishResize = (event) => {
+        if (!resizing) return;
+        resizing = false;
+        document.body.classList.remove('is-resizing-task-column');
+        if (event?.pointerId !== undefined && resizer.hasPointerCapture?.(event.pointerId)) {
+          resizer.releasePointerCapture(event.pointerId);
+        }
+        applyTaskContentColumnWidth(taskContentColumnWidth, true);
+      };
+
+      resizer.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        resizing = true;
+        startX = event.clientX;
+        startWidth = taskContentColumnWidth;
+        resizer.setPointerCapture?.(event.pointerId);
+        document.body.classList.add('is-resizing-task-column');
+        event.preventDefault();
+      });
+
+      resizer.addEventListener('pointermove', (event) => {
+        if (!resizing) return;
+        applyTaskContentColumnWidth(startWidth + event.clientX - startX);
+      });
+      resizer.addEventListener('pointerup', finishResize);
+      resizer.addEventListener('pointercancel', finishResize);
+
+      resizer.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        applyTaskContentColumnWidth(TASK_CONTENT_COLUMN_DEFAULT_WIDTH, true);
+      });
+
+      resizer.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        applyTaskContentColumnWidth(taskContentColumnWidth + direction * 20, true);
+      });
+    }
 
     const getTodayStr = () => new Date().toISOString().split('T')[0];
     const fixDate = (v) => {
@@ -1375,6 +1517,7 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+      initTaskContentColumnResizer();
       loadDataFromStorage();
       loadCustomSources();
       loadCustomProgressTypes();

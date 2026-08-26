@@ -1,4 +1,4 @@
-/* EHS Task Personnel Management v6
+/* EHS Task Personnel Management v7
  * Simplified model: Factory -> People.
  * Legacy group/category metadata is preserved but is no longer displayed or edited.
  */
@@ -54,6 +54,7 @@
   let showArchived = false;
   let customMode = '';
   let selectedOwners = new Set();
+  let progressPersonManuallyEdited = false;
   let firestoreApi = null;
   let basicRef = null;
   let metaRef = null;
@@ -162,6 +163,9 @@
       #handler-select-dropdown label{display:flex;align-items:center;gap:.6rem;padding:.65rem .7rem;border-radius:.55rem;cursor:pointer;color:#334155;font-size:.82rem;font-weight:700}
       #handler-select-dropdown label:hover{background:#eff6ff}
       #handler-select-dropdown input{width:1rem;height:1rem;accent-color:#2563eb}
+      #progress-person-select-dropdown label{display:flex;align-items:center;gap:.6rem;padding:.65rem .7rem;border-radius:.55rem;cursor:pointer;color:#334155;font-size:.82rem;font-weight:700}
+      #progress-person-select-dropdown label:hover{background:#eff6ff}
+      #progress-person-select-dropdown input{width:1rem;height:1rem;accent-color:#2563eb}
       @media(max-width:720px){#pm-v3-host .pm-row{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
@@ -359,10 +363,47 @@
     basic = readBasic();
     meta = readMeta();
     selectedOwners = new Set(splitNames(document.getElementById('f-owner')?.value));
+    progressPersonManuallyEdited = false;
     renderHandlerSelector();
     const readOnly = document.getElementById('btn-modal-save')?.classList.contains('hidden');
     const button = document.getElementById('handler-select-button');
     if (button) button.disabled = !!readOnly;
+    renderProgressPersonSelector();
+  }
+
+  function renderProgressPersonSelector() {
+    const dropdown = document.getElementById('progress-person-select-dropdown');
+    const input = document.getElementById('f-log-person');
+    if (!dropdown || !input) return;
+    const available = eligiblePeople();
+    const selectedNames = splitNames(input.value);
+    const selectedKeys = new Set(selectedNames.map(keyOf));
+    const availableKeys = new Set(available.map(person => keyOf(person.name)));
+    const rows = available.map(person =>
+      `<label><input type="checkbox" data-progress-person="${esc(person.name)}" ${selectedKeys.has(keyOf(person.name)) ? 'checked' : ''}><span>${esc(person.name)}</span></label>`
+    );
+    selectedNames.filter(name => !availableKeys.has(keyOf(name))).forEach(name => rows.push(
+      `<label><input type="checkbox" data-progress-person="${esc(name)}" checked><span>${esc(name)} <span class="text-[10px] text-amber-600">（手動輸入）</span></span></label>`
+    ));
+    dropdown.innerHTML = rows.length
+      ? rows.join('')
+      : '<div class="px-3 py-4 text-xs text-slate-400">此廠區目前沒有可選人員，仍可直接輸入姓名。</div>';
+    const readOnly = document.getElementById('btn-modal-save')?.classList.contains('hidden');
+    dropdown.querySelectorAll('input').forEach(item => { item.disabled = !!readOnly; });
+    const button = document.getElementById('progress-person-select-button');
+    if (button) button.disabled = !!readOnly;
+  }
+
+  function toggleProgressPerson(name, checked) {
+    const input = document.getElementById('f-log-person');
+    if (!input) return;
+    progressPersonManuallyEdited = true;
+    const names = splitNames(input.value);
+    const matchIndex = names.findIndex(item => keyOf(item) === keyOf(name));
+    if (checked && matchIndex < 0) names.push(name);
+    if (!checked && matchIndex >= 0) names.splice(matchIndex, 1);
+    input.value = names.join('、');
+    renderProgressPersonSelector();
   }
 
   async function setupFirestore() {
@@ -385,6 +426,7 @@
         saveLocal();
         if (customMode === 'people') renderPeople();
         renderHandlerSelector();
+        renderProgressPersonSelector();
       }, error => console.warn('People snapshot failed', error));
       firestoreApi.onSnapshot(metaRef, snapshot => {
         if (!snapshot.exists()) {
@@ -405,6 +447,7 @@
         if (inferred) saveMetaRemote();
         if (customMode === 'people') renderPeople();
         renderHandlerSelector();
+        renderProgressPersonSelector();
       }, error => console.warn('Personnel snapshot failed', error));
     } catch (error) {
       firestoreStarted = false;
@@ -436,8 +479,18 @@
         dropdown.classList.toggle('hidden');
         return;
       }
+      if (target.id === 'progress-person-select-button' || target.closest?.('#progress-person-select-button')) {
+        const dropdown = document.getElementById('progress-person-select-dropdown');
+        if (!dropdown || document.getElementById('progress-person-select-button')?.disabled) return;
+        renderProgressPersonSelector();
+        dropdown.classList.toggle('hidden');
+        return;
+      }
       if (!target.closest?.('#handler-field')) {
         document.getElementById('handler-select-dropdown')?.classList.add('hidden');
+      }
+      if (!target.closest?.('#progress-person-field')) {
+        document.getElementById('progress-person-select-dropdown')?.classList.add('hidden');
       }
       if (target.id === 'btn-basic-data') setTimeout(ensureTabs, 0);
     }, true);
@@ -479,12 +532,29 @@
         else selectedOwners.delete(name);
         syncOwnerInput();
         renderHandlerSelector();
+        const progressPerson = document.getElementById('f-log-person');
+        if (progressPerson && !progressPersonManuallyEdited) {
+          progressPerson.value = [...selectedOwners].join('、');
+          renderProgressPersonSelector();
+        }
+        return;
+      }
+      if (target.dataset?.progressPerson) {
+        toggleProgressPerson(String(target.dataset.progressPerson), target.checked);
         return;
       }
       if (target.id === 'f-factory') {
         selectedOwners.clear();
         syncOwnerInput();
         renderHandlerSelector();
+        renderProgressPersonSelector();
+      }
+    });
+
+    document.addEventListener('input', event => {
+      if (event.target?.id === 'f-log-person') {
+        progressPersonManuallyEdited = true;
+        renderProgressPersonSelector();
       }
     });
   }
@@ -496,6 +566,7 @@
     new MutationObserver(() => {
       if (!modal.classList.contains('hidden')) setTimeout(hydrateTaskModal, 0);
       else document.getElementById('handler-select-dropdown')?.classList.add('hidden');
+      if (modal.classList.contains('hidden')) document.getElementById('progress-person-select-dropdown')?.classList.add('hidden');
     }).observe(modal, { attributes: true, attributeFilter: ['class'] });
   }
 
@@ -523,7 +594,8 @@
   window.__ehsPersonnelManagement = {
     renderPeople,
     closeCustom,
-    refreshTaskForm: hydrateTaskModal
+    refreshTaskForm: hydrateTaskModal,
+    refreshProgressPersonSelector: renderProgressPersonSelector
   };
 
   if (document.readyState === 'loading') {

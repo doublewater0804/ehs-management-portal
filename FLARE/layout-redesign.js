@@ -786,9 +786,18 @@
     document.querySelector('.excel-panel')?.classList.add('flare-input-hide');
   }
 
+  function revealFlareUi() {
+    root.classList.remove('flare-ui-booting');
+    root.classList.add('flare-ui-ready');
+  }
+
   function applyLayout() {
-    if (isInputView) configureInputView();
-    else configureReportView();
+    try {
+      if (isInputView) configureInputView();
+      else configureReportView();
+    } finally {
+      requestAnimationFrame(revealFlareUi);
+    }
   }
 
   if (document.readyState === 'complete') setTimeout(applyLayout,0);

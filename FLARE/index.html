@@ -4,6 +4,12 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<style id="flare-boot-guard">
+html.flare-ui-booting .app-shell{visibility:hidden!important}
+html.flare-ui-booting body{background:#f4f7fb!important}
+html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入中…";position:fixed;inset:0;display:grid;place-items:center;color:#526175;font:700 14px/1.6 "Noto Sans TC","Microsoft JhengHei",sans-serif;letter-spacing:.02em;z-index:1;background:#f4f7fb}
+</style>
+<script>document.documentElement.classList.add('flare-ui-booting');</script>
 <title>廠區廢氣燃燒塔管制表</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -725,7 +731,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=20260825-1356";
+  import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=20260826-1128";
   import { initializeFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   const firebaseConfig = {

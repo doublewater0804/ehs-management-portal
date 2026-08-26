@@ -255,7 +255,7 @@ if (typeof window !== "undefined") {
 
     if (!document.querySelector('script[data-ehs-flare-layout-redesign]')) {
       const flareLayoutRedesign = document.createElement('script');
-      flareLayoutRedesign.src = './layout-redesign.js?v=20260824-1100';
+      flareLayoutRedesign.src = './layout-redesign.js?v=20260826-1128';
       flareLayoutRedesign.defer = true;
       flareLayoutRedesign.dataset.ehsFlareLayoutRedesign = '1';
       document.head.appendChild(flareLayoutRedesign);

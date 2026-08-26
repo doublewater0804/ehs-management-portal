@@ -7,7 +7,7 @@
   }
 
   const script = document.createElement('script');
-  script.src = './personnel-management.js?v=6';
+  script.src = './personnel-management.js?v=7';
   script.defer = true;
   script.dataset.ehsTaskPersonnelManagementV3 = '1';
   document.head.appendChild(script);

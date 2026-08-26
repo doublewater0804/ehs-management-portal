@@ -366,10 +366,13 @@
                   <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">日期</label>
                   <input type="date" id="f-log-date" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
                 </div>
-                <div>
+                <div class="relative" id="progress-person-field">
                   <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">人員</label>
-                  <input type="text" id="f-log-person" list="progress-person-options" autocomplete="off" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="可選既有負責人或手動輸入" />
-                  <datalist id="progress-person-options"></datalist>
+                  <div class="flex border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                    <input type="text" id="f-log-person" autocomplete="off" class="min-w-0 flex-1 rounded-l-lg p-2.5 text-sm outline-none bg-transparent" placeholder="可勾選或手動輸入人員" />
+                    <button type="button" id="progress-person-select-button" aria-label="展開人員清單" class="shrink-0 px-3 text-slate-500 border-l border-slate-200 hover:bg-blue-50 rounded-r-lg">▼</button>
+                  </div>
+                  <div id="progress-person-select-dropdown" class="hidden absolute z-[170] mt-1 w-full max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl custom-scrollbar p-2"></div>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">類型</label>
@@ -1146,7 +1149,7 @@
 
     function updateOwnerUnitOptions() {
       setDatalistOptions('owner-options', tasks.map(t => t.owner));
-      setDatalistOptions('progress-person-options', [...tasks.map(t => t.owner), ...tasks.flatMap(t => (t.progressLogs || []).map(log => log.person))], false);
+      window.__ehsPersonnelManagement?.refreshProgressPersonSelector?.();
       const dropdown = document.getElementById('unit-dropdown');
       if (dropdown && !dropdown.classList.contains('hidden')) {
         renderUnitDropdown(getAllUnitOptions(getSuggestedUnitForCurrentOwner()), document.getElementById('f-unit')?.value || '', true);
@@ -1649,10 +1652,10 @@
         document.getElementById('f-work-progress').value = '';
         document.getElementById('legacy-progress-container')?.classList.add('hidden');
         document.getElementById('f-close-note').value = '';
-        resetProgressLogForm('');
-        renderProgressLogList(false);
         document.getElementById('f-owner').value = "";
         document.getElementById('f-unit').value = "";
+        resetProgressLogForm('');
+        renderProgressLogList(false);
         document.getElementById('f-created').value = getTodayStr();
         document.getElementById('f-deadline').value = getTodayStr();
         document.getElementById('f-progress').value = 0;

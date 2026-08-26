@@ -38,8 +38,8 @@
     .status-row-done { background-color: #eff6ff; }
     .status-row-done:hover { background-color: #dbeafe; }
     #task-table {
-      --task-content-column-width: 420px;
-      width: calc(1030px + var(--task-content-column-width));
+      --task-content-column-width: 555px;
+      width: calc(895px + var(--task-content-column-width));
       min-width: 100%;
       table-layout: fixed;
     }
@@ -251,7 +251,6 @@
             <col id="task-content-column" style="width: var(--task-content-column-width)" />
             <col style="width: 120px" />
             <col style="width: 120px" />
-            <col style="width: 135px" />
             <col style="width: 110px" />
           </colgroup>
           <thead>
@@ -272,7 +271,6 @@
               </th>
               <th class="px-6 py-4 text-center text-nowrap">建檔日期</th>
               <th class="px-6 py-4 text-center text-nowrap">截止日期</th>
-              <th class="px-6 py-4 text-nowrap">進度</th>
               <th class="px-6 py-4 text-center text-nowrap">操作</th>
             </tr>
           </thead>
@@ -350,7 +348,7 @@
 
           <div class="col-span-2">
             <label class="block text-xs font-bold text-slate-400 uppercase mb-2">工作項目</label>
-            <input type="text" id="f-task" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            <textarea id="f-task" rows="1" class="w-full min-h-[50px] resize-y border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"></textarea>
           </div>
 
           <div class="col-span-2">
@@ -567,8 +565,8 @@
     const LOCAL_STORAGE_BACKUP_KEY = 'ESH_MANAGEMENT_DATA_V86__BACKUP';
     const CUSTOM_SOURCE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_SOURCES_V1';
     const CUSTOM_PROGRESS_TYPE_STORAGE_KEY = 'ESH_MANAGEMENT_CUSTOM_PROGRESS_TYPES_V1';
-    const TASK_CONTENT_COLUMN_WIDTH_KEY = 'ESH_TASK_CONTENT_COLUMN_WIDTH_V1';
-    const TASK_CONTENT_COLUMN_DEFAULT_WIDTH = 420;
+    const TASK_CONTENT_COLUMN_WIDTH_KEY = 'ESH_TASK_CONTENT_COLUMN_WIDTH_V2';
+    const TASK_CONTENT_COLUMN_DEFAULT_WIDTH = 555;
     const TASK_CONTENT_COLUMN_MIN_WIDTH = 320;
     const TASK_CONTENT_COLUMN_MAX_WIDTH = 900;
     const DEFAULT_SOURCE_OPTIONS = Object.freeze([
@@ -1297,14 +1295,6 @@
             </td>
             <td class="px-6 py-4 text-center font-mono text-xs ${isDone ? 'text-slate-500' : 'text-slate-400'}">${escapeHtml(t.createdAt)}</td>
             <td class="px-6 py-4 text-center font-mono text-xs font-bold text-slate-600">${escapeHtml(t.deadline)}</td>
-            <td class="px-6 py-4">
-              <div class="flex items-center space-x-2">
-                <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden w-16">
-                  <div class="bg-blue-600 h-full transition-all duration-500" style="width: ${t.progress}%"></div>
-                </div>
-                <span class="text-[10px] font-bold ${isDone ? 'text-slate-500' : 'text-slate-400'}">${t.progress}%</span>
-              </div>
-            </td>
             <td class="px-6 py-4 text-center">
               <div class="flex items-center justify-center space-x-1">
                 <button onclick="viewTask('${t.id}')" class="text-slate-500 hover:bg-slate-100 px-2 py-1 rounded transition font-bold text-xs">查看</button>

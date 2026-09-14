@@ -1,3 +1,4 @@
+import {registeredRows} from './builtins.js';
 import {categories,validateRows,sorted} from './model.js';
 import {CLOUD_ENABLED,ADMIN_EMAIL} from './config.js';
 const $=id=>document.getElementById(id);
@@ -69,7 +70,7 @@ $('system-form').onsubmit=async e=>{
  try{validateRows(next);button.disabled=true;await cloud.save(next,editingVersion);f.hidden=true;notice('已儲存至雲端。');}
  catch(error){notice(`儲存未完成：${error.message}`);}finally{button.disabled=false;}
 };
-let unsubscribe,authGeneration=0;
+let unsubscribe,authGeneration=0,snapshotGeneration=0;
 async function start(){
  render();$('login').hidden=true;
  $('auth-status').textContent='正在連接登入服務…';
@@ -77,7 +78,7 @@ async function start(){
  try{
   cloud=await import('./cloud.js');$('login').hidden=false;
   cloud.observeAuth(async user=>{
-   const generation=++authGeneration;
+   const generation=++authGeneration;++snapshotGeneration;
    if(unsubscribe){unsubscribe();unsubscribe=null;}
    authorized=false;ready=false;rows=[];version=0;editingRows=[];adminOpen=false;
    $('system-form').reset();$('system-form').hidden=true;
@@ -87,6 +88,7 @@ async function start(){
     await cloud.verifyAdmin();if(generation!==authGeneration)return;
     authorized=true;$('auth-status').textContent='登入成功，正在讀取系統清單…';
     unsubscribe=cloud.watch(async data=>{
+     const snapshot=++snapshotGeneration;
      if(generation!==authGeneration)return;
      try{
       let next;
@@ -96,11 +98,12 @@ async function start(){
        if(!response.ok)throw Error('預設清單載入失敗');
        next=validateRows(await response.json());
       }
-      if(generation!==authGeneration)return;
-      rows=next;version=data?.version||0;ready=true;
+      if(generation!==authGeneration||snapshot!==snapshotGeneration)return;
+      rows=validateRows(registeredRows(next));version=data?.version||0;ready=true;
       $('auth-status').textContent=`已登入：${user.email}`;notice('');render();
-     }catch(e){if(generation!==authGeneration)return;ready=false;rows=[];render();$('auth-status').textContent=`清單載入失敗，請重新整理：${e.message}`;}
+     }catch(e){if(generation!==authGeneration||snapshot!==snapshotGeneration)return;ready=false;rows=[];render();$('auth-status').textContent=`清單載入失敗，請重新整理：${e.message}`;}
     },()=>{
+     ++snapshotGeneration;
      if(generation!==authGeneration)return;
      ready=false;rows=[];render();$('auth-status').textContent='無法讀取雲端清單，請確認網路後重新整理。';
     });

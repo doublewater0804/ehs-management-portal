@@ -4,7 +4,7 @@ import {getFirestore,doc,onSnapshot,runTransaction,serverTimestamp} from 'https:
 import {firebaseConfig,ADMIN_EMAIL} from './config.js';
 const app=initializeApp(firebaseConfig,'ehs-portal');
 const auth=getAuth(app),db=getFirestore(app),ref=doc(db,'ehs_portal','catalog');
-export const watch=(ok,fail)=>onSnapshot(ref,s=>ok(s.exists()?s.data():null),fail);
+export const watch=(ok,fail)=>onSnapshot(ref,{includeMetadataChanges:true},s=>{if(s.metadata.fromCache||s.metadata.hasPendingWrites)return;ok(s.exists()?s.data():null);},fail);
 export const observeAuth=callback=>onAuthStateChanged(auth,callback);
 export const login=()=>signInWithPopup(auth,new GoogleAuthProvider());
 export const logout=()=>signOut(auth);

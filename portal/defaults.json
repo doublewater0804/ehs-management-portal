@@ -1,0 +1,122 @@
+[
+  {
+    "id": "system-1",
+    "title": "環安衛工作管理系統",
+    "description": "用於工作事項建檔、責任人追蹤、狀態燈號、KPI 與圖表統計，適合日常任務管制。",
+    "href": "task/index.html?v=20260826-2",
+    "category": "general",
+    "order": 10,
+    "visible": true,
+    "favorite": true
+  },
+  {
+    "id": "system-2",
+    "title": "年度安衛環專案管制總表",
+    "description": "用於年度專案、證照申請、改善事項與進度甘特圖管理，適合主管檢視專案推動狀態。",
+    "href": "project/index.html",
+    "category": "general",
+    "order": 20,
+    "visible": true,
+    "favorite": true
+  },
+  {
+    "id": "system-3",
+    "title": "工時分析表",
+    "description": "用於每日填報、請假公出、人員月負荷、工作日曆與工時報表分析。",
+    "href": "workhours/index.html",
+    "category": "admin",
+    "order": 30,
+    "visible": true,
+    "favorite": true
+  },
+  {
+    "id": "system-4",
+    "title": "廠區廢氣燃燒塔管制表",
+    "description": "統計各廠區燃燒塔排放使用事件日數，支援 Excel 匯入、人工剔除與報表列印。",
+    "href": "./FLARE/index.html?v=20260826-1128",
+    "category": "environment",
+    "order": 40,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-5",
+    "title": "個人工作績效 Dashboard",
+    "description": "用於每月工作內容、工作分類、專案推動、月報輸出與年度累積管理，協助個人工作績效追蹤與彙整。",
+    "href": "performance/index.html",
+    "category": "general",
+    "order": 50,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-6",
+    "title": "安衛處安衛環例行工作進度管制表",
+    "description": "用於每月環保例行工作、截止日期、負責單位、負責人、完成狀態、備註與逾期提醒管制，支援 Firebase 雲端同步。",
+    "href": "routine-work/index.html",
+    "category": "environment",
+    "order": 60,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-7",
+    "title": "台化環保罰單 Dashboard",
+    "description": "用於環保裁罰案件建檔、罰款趨勢、違規類型、訴願結果、單位排行與改善進度管理，支援 Firebase 雲端同步。",
+    "href": "environmental-fines/index.html",
+    "category": "environment",
+    "order": 70,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-8",
+    "title": "環保規費 Dashboard",
+    "description": "用於空污費(每季)、水污費(每半年)、土污費(每季)統計分析、跨年度趨勢圖表、比較分析與資料匯入匯出。",
+    "href": "env-fee/index.html",
+    "category": "environment",
+    "order": 80,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-9",
+    "title": "廢氣燃燒塔使用計畫書平台",
+    "description": "Excel 上傳、廠處對應、Markdown 章節瀏覽、圖片管理、比較表檢視、匯入匯出備份。",
+    "href": "flare-management/index.html",
+    "category": "environment",
+    "order": 90,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-10",
+    "title": "環評案件管理系統",
+    "description": "用於環評案件建檔、進度追蹤、統計分析與資料匯入匯出，支援 Firebase 雲端同步。",
+    "href": "eia/index.html",
+    "category": "environment",
+    "order": 100,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-11",
+    "title": "廢棄物清運合約管控系統",
+    "description": "掌握各廠區與生產廠的廢棄物種類、處理方式、合約期限、月清運量，以及清運與處理費用。",
+    "href": "waste-contract-control/index.html",
+    "category": "environment",
+    "order": 110,
+    "visible": true,
+    "favorite": false
+  },
+  {
+    "id": "system-12",
+    "title": "毒化物無預警應變演練統計管理",
+    "description": "管理歷年演練結果、週期排程、複測紀錄及跨年度比較分析，支援 Firebase 雲端同步。",
+    "href": "toxic-drill/index.html",
+    "category": "environment",
+    "order": 120,
+    "visible": true,
+    "favorite": false
+  }
+]

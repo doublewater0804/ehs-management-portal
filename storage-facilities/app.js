@@ -1,7 +1,8 @@
 import {TITLE,TYPES,CAPACITIES,REQUIREMENTS,METHODS,HEADERS,emptyState,emptyMonitoring,validateState,validateMonitoring,cleanup,filterFacilities,statistics,members,shareMonitoring,detachMonitoring,exportRows} from './model.js';
 import {makeWorkbook} from './xlsx.js';
+import {INITIAL_STATE} from './default-data.js';
 const $=id=>document.getElementById(id),escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state=emptyState(),version=0,ready=false,busy=false,owner=false,cloud,unsubscribe,authGeneration=0,selected=new Set(),editing=null;
+let state=emptyState(),version=0,ready=false,busy=false,owner=false,cloud,unsubscribe,authGeneration=0,selected=new Set(),editing=null,seeding=false;
 const ids=()=>crypto.randomUUID();
 const filters=()=>({type:$('filter-type').value,site:$('filter-site').value,department:$('filter-department').value,query:$('filter-query').value});
 const visibleRows=()=>filterFacilities(state,filters());
@@ -117,15 +118,25 @@ async function start(){
  try{
   cloud=await import('./cloud.js');$('login').disabled=false;
   cloud.observeAuth(user=>{
-   const generation=++authGeneration;if(unsubscribe)unsubscribe();unsubscribe=null;state=emptyState();version=0;ready=false;owner=false;selected.clear();editing=null;
+   const generation=++authGeneration;if(unsubscribe)unsubscribe();unsubscribe=null;state=emptyState();version=0;ready=false;owner=false;seeding=false;selected.clear();editing=null;
    document.querySelectorAll('dialog[open]').forEach(d=>d.close());$('facility-form').reset();$('monitor-form').reset();
    $('logout').hidden=!user;$('login').hidden=!!user;$('user-label').textContent=user?.email||'';message('');render();
    if(!user){$('sync').textContent='尚未登入';$('auth-message').textContent='請使用 doublewater0804@gmail.com 登入。';return;}
    if(!cloud.isOwner(user)){$('sync').textContent='未授權';$('auth-message').textContent='此帳號未獲授權。請登出後，使用管理者帳號登入。';return;}
    owner=true;$('sync').textContent='讀取中…';$('auth-message').textContent='正在讀取雲端基本資料…';$('reload').hidden=false;
-   unsubscribe=cloud.watch(data=>{
+   unsubscribe=cloud.watch(async data=>{
     if(generation!==authGeneration)return;
-    try{const incoming=data?validateState({facilities:data.facilities,groups:data.groups}):emptyState();if(data&&(!Number.isInteger(data.version)||data.version<1))throw Error('資料版本無效');state=incoming;version=data?.version||0;ready=true;$('sync').textContent='已同步';render();}
+    try{
+     if(!data&&!seeding){
+      seeding=true;$('sync').textContent='建立初始資料…';$('auth-message').textContent='正在將圖片中的 10 筆資料寫入雲端…';
+      await cloud.save(validateState(structuredClone(INITIAL_STATE)),0);
+      return;
+     }
+     if(!data)return;
+     const incoming=validateState({facilities:data.facilities,groups:data.groups});
+     if(!Number.isInteger(data.version)||data.version<1)throw Error('資料版本無效');
+     state=incoming;version=data.version;ready=true;seeding=false;$('sync').textContent='已同步';render();
+    }
     catch(e){ready=false;state=emptyState();$('auth-message').textContent=`資料載入失敗：${e.message}`;$('sync').textContent='資料異常';render();}
    },e=>{if(generation!==authGeneration)return;ready=false;state=emptyState();$('sync').textContent='連線失敗';$('auth-message').textContent=`無法讀取雲端資料：${e.code||e.message}。請確認連線後重新載入。`;render();});
   });

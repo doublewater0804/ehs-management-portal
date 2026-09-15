@@ -12,5 +12,6 @@ const registration = {
 };
 export function registeredRows(rows) {
  const exists=rows.some(r=>r.id===registration.id || new URL(r.href,'https://doublewater0804.github.io/ehs-management-portal/').pathname==='/ehs-management-portal/storage-facilities/index.html');
- return exists?rows:[...rows,{...registration}];
+ const next=exists?rows:[...rows,{...registration}];
+ return next.some(r=>r.id==='incident-investigation')?next:[...next,{id:'incident-investigation',title:'事故調查輪值人員管理',description:'各區輪值設定、人員名冊及 A4 橫式列印。',href:'incident-investigation/index.html',category:'incident',order:140,visible:true,favorite:false}];
 }

@@ -1,4 +1,5 @@
 export const categories = [
+ {id:'incident',title:'意外事故調查',color:'#995522',tint:'#fff1e5',path:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h4'},
  {id:'safety',title:'工安管理',color:'#27689b',tint:'#e8f2fc',path:'M4 17v-4a8 8 0 0 1 16 0v4M2 17h20v3H2zM9 5v8M15 5v8'},
  {id:'environment',title:'環保管理',color:'#187456',tint:'#e4f5ec',path:'M20 3C7 3 2 8 5 16c8 6 15-1 15-13ZM4 21 16 8'},
  {id:'fire',title:'消防管理',color:'#ac571d',tint:'#fff0df',path:'M9 9h8v13H9zM11 9V5h4v4M12 5V2h6M18 3h3M10 5C4 5 4 9 3 11'},

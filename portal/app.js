@@ -1,5 +1,5 @@
-import {registeredRows} from './builtins.js';
-import {categories,validateRows,sorted} from './model.js';
+import {registeredRows} from './builtins.js?v=20260915-v2';
+import {categories,validateRows,sorted} from './model.js?v=20260915-v2';
 import {CLOUD_ENABLED,ADMIN_EMAIL} from './config.js';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

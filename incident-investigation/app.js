@@ -1,41 +1,90 @@
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {getFirestore,doc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
-const app=initializeApp(firebaseConfig,'ehs-portal'),auth=getAuth(app),db=getFirestore(app),ref=doc(db,'incident_investigation','roster');
-const $=id=>document.getElementById(id),regions=['北區','中區','南區'],groups=['A','B','C'];
-const fields={department:'輪值事業部',supervisor:'督導主管',title:'職稱',supervisorMobile:'主管手機',supervisorPhone:'主管座機',leader:'組長姓名',unit:'單位',expertise:'專長',leaderMobile:'組長手機',leaderPhone:'組長座機'};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const empty=()=>({version:0,rows:regions.flatMap(region=>groups.map(group=>({region,group,...Object.fromEntries(Object.keys(fields).map(k=>[k,'']))}))),duty:{},notes:[],revision:''});
-let data=null,baseVersion=0,stop,generation=0,saving=false;
-const owner=()=>auth.currentUser?.email===ADMIN_EMAIL&&auth.currentUser?.emailVerified;
-function validate(d){if(!d||!d.duty||typeof d.duty!=='object'||typeof d.revision!=='string'||d.revision.length>100||!Array.isArray(d.rows)||d.rows.length!==9||!Number.isInteger(d.version)||!Array.isArray(d.notes)||d.notes.length>30)throw Error('名冊格式不正確');regions.forEach(region=>{if(d.duty[region]&&!groups.includes(d.duty[region]))throw Error('輪值組別不正確');groups.forEach(group=>{const matches=d.rows.filter(r=>r.region===region&&r.group===group);if(matches.length!==1)throw Error('區域組別不完整');for(const k in fields)if(typeof matches[0][k]!=='string'||matches[0][k].length>150)throw Error('欄位內容過長或格式錯誤');});});if(d.notes.some(n=>typeof n!=='string'||n.length>1000))throw Error('規定格式錯誤');return d;}
-function render(){ $('content').hidden=!data;$('edit').hidden=!owner();$('import').hidden=!owner();if(!data)return;
-$('current').innerHTML=regions.map(region=>{const r=data.rows.find(r=>r.region===region&&r.group===data.duty[region]);return `<article class="card"><h3>${region} · ${r?r.group+' 組':'尚未設定'}</h3>${r?`<p>督導主管：${esc(r.supervisor)}<br>${esc(r.supervisorMobile)} ／ ${esc(r.supervisorPhone)}</p><p>組長：${esc(r.leader)}（${esc(r.unit)}）<br>${esc(r.leaderMobile)} ／ ${esc(r.leaderPhone)}</p>`:''}</article>`;}).join('');
-$('rows').innerHTML=data.rows.map(r=>`<tr class="${data.duty[r.region]===r.group?'active':''}">${[r.region,r.group,data.duty[r.region]===r.group?'✓ 輪值':'',r.department,r.supervisor,r.title,r.supervisorMobile+'\n'+r.supervisorPhone,r.leader,r.unit,r.expertise,r.leaderMobile+'\n'+r.leaderPhone].map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('');$('notes').innerHTML=data.notes.map(n=>`<li>${esc(n)}</li>`).join('');$('revision').textContent=data.revision||'';}
-$('login').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>$('status').textContent='登入失敗：'+e.message);
-$('logout').onclick=()=>signOut(auth).catch(e=>$('status').textContent=e.message);
-$('print').onclick=()=>window.print();
-$('import').onclick=()=>{if(owner()&&data){$('importFile').value='';$('importFile').click();}};
-$('importFile').onchange=async e=>{
- const file=e.target.files[0];if(!file||!owner()||!data)return;
- const gen=generation,version=data.version;
- try{
-  if(file.size>100000)throw Error('檔案超過大小限制');
-  const imported=validate(JSON.parse(await file.text()));
-  if(gen!==generation||!owner()||!data||data.version!==version)throw Error('帳號或資料已更新，請重試。');
-  $('edit').click();
-  data.rows.forEach((r,i)=>{
-   const source=imported.rows.find(x=>x.region===r.region&&x.group===r.group);
-   for(const k in fields)$('form').elements.namedItem(`${i}-${k}`).value=source[k];
-  });
-  $('rulesText').value=imported.notes.join('\n');$('sourceRevision').value=imported.revision;
-  $('status').textContent='已載入圖片名冊，尚未儲存。請核對人名與電話、選擇三區輪值組別，再按「儲存至雲端」。';
- }catch(e){$('status').textContent='匯入失敗：'+e.message;}
+import {AREAS,REGIONS,OPTIONS,STATES,TW_FIELDS,PERSON_FIELDS,clone,normalize,validate,getDuty,setDuty,mergeSeed} from './model.js?v=20260915-v2';
+import * as cloud from './cloud.js?v=20260915-v2';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let live=null,draft=null,baseVersion=0,region='tw',tab='overview',generation=0,unsubscribe,busy=false,printOpen=[];
+const current=()=>draft||live;
+const areaName=a=>AREAS.find(x=>x[0]===a)?.[1]||a;
+const val=(obj,path)=>path.split('.').reduce((o,k)=>o[k],obj);
+function set(obj,path,value){const keys=path.split('.');const key=keys.pop();keys.reduce((o,k)=>o[k],obj)[key]=value;}
+const input=(path,value,label='',type='text')=>draft?`<input type="${type}" data-path="${path}" aria-label="${esc(label||path)}" value="${esc(value)}" maxlength="${path.includes('review')?250:200}">`:esc(value||'—');
+const select=(path,value,options,label='',blank=true)=>draft?`<select data-path="${path}" aria-label="${esc(label||path)}">${blank?'<option value="">尚未設定</option>':''}${options.map(o=>{const [v,t]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${v===value?'selected':''}>${esc(t)}</option>`;}).join('')}</select>`:esc(value||'尚未設定');
+const textarea=(path,value,label)=>draft?`<label>${esc(label)}<textarea rows="8" data-path="${path}" maxlength="20000">${esc(value)}</textarea></label>`:`<div class="rule-text">${esc(value||'尚未匯入')}</div>`;
+const dutyPath=a=>AREAS.findIndex(x=>x[0]===a)<3?'duty.'+REGIONS[AREAS.findIndex(x=>x[0]===a)]:'overseasDuty.'+a;
+function message(s){$('status').textContent=s;}
+function clear(){live=null;draft=null;$('content').hidden=true;for(const id of ['overview','roster','rules'])$(id).replaceChildren();$('import-panel').hidden=true;$('import-file').value='';$('apply-duty').checked=false;}
+function render(){
+ const d=current();$('content').hidden=!d;if(!d)return;
+ $('edit').hidden=!cloud.owner()||!!draft;$('import').hidden=!cloud.owner()||!!draft;$('editor-actions').hidden=!draft;$('print').disabled=!!draft;$('logout').disabled=busy;
+ for(const b of document.querySelectorAll('[data-tab]'))b.setAttribute('aria-pressed',String(b.dataset.tab===tab));
+ for(const name of ['overview','roster','rules'])$(name).hidden=name!==tab;
+ renderOverview(d);renderRoster(d);renderRules(d);
+}
+function renderOverview(d){
+ $('overview').innerHTML=`<div class="panel"><h2>下次出動組別</h2><div class="duty-grid">${AREAS.map(([a,label])=>{
+ const duty=getDuty(d,a);let contact='';
+ if(a.startsWith('tw')){const r=d.rows.find(x=>x.region===label.split(' · ')[1]&&x.group===duty[0]);if(r)contact=`<p>督導主管：${esc(r.supervisor||'未填寫')}<br>組長：${esc(r.leader||'未填寫')}</p>`;}
+ return `<div class="duty-item"><span>${label}</span><strong>${esc(duty||'尚未設定')}</strong>${draft?select(dutyPath(a),a.startsWith('tw')?(duty[0]||''):duty,a.startsWith('tw')?['A','B','C']:OPTIONS[a],label+'下次出動組別'):contact}</div>`;}).join('')}</div></div>
+ <div class="panel"><div class="toolbar"><h2>調查出動紀錄</h2>${draft?'<button data-action="add-record">＋ 新增紀錄</button>':''}</div><div class="scroll"><table><thead><tr><th>地區</th><th>出動組別</th><th>督導主管</th><th>調查日期</th><th>狀態</th><th>當次記錄的下次組別</th>${draft?'<th>操作</th>':''}</tr></thead><tbody>${d.records.map((r,i)=>`<tr class="${r.status==='暫停調查'?'pause':''}"><td>${draft?select('records.'+i+'.area',r.area,AREAS,'紀錄地區',false):esc(areaName(r.area))}</td><td>${select('records.'+i+'.group',r.group,OPTIONS[r.area],'出動組別',false)}</td><td>${input('records.'+i+'.supervisor',r.supervisor,'當次督導主管')}</td><td>${input('records.'+i+'.date',r.date,'調查日期','date')}</td><td>${draft?select('records.'+i+'.status',r.status,STATES,'調查狀態',false):`<span class="badge ${r.status==='暫停調查'?'pause':r.status==='已完成'?'done':''}">${r.status}</span>`}</td><td>${select('records.'+i+'.nextGroup',r.nextGroup,OPTIONS[r.area],'當次下次組別')}</td>${draft?`<td><button class="danger" data-delete="${i}">移除</button></td>`:''}</tr>`).join('')}</tbody></table></div>${!d.records.length?'<p class="muted">尚無調查紀錄。管理者可匯入資料或新增紀錄。</p>':''}</div>
+ <div class="panel"><h2>補充說明</h2>${textarea('supplement',d.supplement,'補充說明')}</div>`;
+}
+function renderRoster(d){
+ let html=`<div class="panel"><div class="toolbar controls"><h2>各地人員名冊</h2><nav aria-label="名冊地區">${[['tw','台灣'],['cn','大陸'],['vn','越南']].map(([a,n])=>`<button data-region="${a}" aria-pressed="${a===region}">${n}</button>`).join('')}</nav></div>`;
+ if(region==='tw'){
+ html+=`<p>名冊版本：${input('revision',d.revision,'台灣名冊版本')}</p>`;
+ for(const r of REGIONS){html+=`<h3>${r}</h3>`;
+ if(!draft)html+=`<div class="scroll"><table><thead><tr><th>組別</th><th>下次出動</th><th>事業部</th><th>督導主管／職稱</th><th>手機／座機</th><th>組長</th><th>單位／專長</th><th>手機／座機</th></tr></thead><tbody>${d.rows.filter(x=>x.region===r).map(x=>`<tr class="${d.duty[r]===x.group?'active':''}">${[x.group,d.duty[r]===x.group?'✓':'',x.department,x.supervisor+'\n'+x.title,x.supervisorMobile+'\n'+x.supervisorPhone,x.leader,x.unit+'\n'+x.expertise,x.leaderMobile+'\n'+x.leaderPhone].map(v=>`<td>${esc(v||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ else html+=d.rows.map((x,i)=>x.region!==r?'':`<details class="group"><summary>${r} ${x.group} 組</summary><div class="fields">${Object.entries(TW_FIELDS).map(([k,label])=>`<label>${label}${input('rows.'+i+'.'+k,x[k],r+x.group+label)}</label>`).join('')}</div></details>`).join('');}
+ }else{
+ html+=`<p>名冊版本：${input('sourceVersions.'+region,d.sourceVersions[region],'名冊來源版本')}</p><p class="muted">名冊與當次調查主管分別保留；人員異動可由管理者修正。</p>`;
+ d.overseas[region].forEach((t,i)=>{
+ const review=t.people.some(p=>p.review);
+ html+=`<details class="group" ${i===0?'open':''}><summary>${esc(t.company)} · ${esc(t.group)} ${review?'｜有待核對欄位':''}</summary>`;
+ if(draft)html+=t.people.map((p,j)=>`<div class="person"><div class="person-title">${esc(p.role)}</div><div class="fields">${Object.entries(PERSON_FIELDS).map(([k,label])=>`<label>${label}${input('overseas.'+region+'.'+i+'.people.'+j+'.'+k,p[k],t.group+p.role+label)}</label>`).join('')}</div></div>`).join('');
+ else html+=`<div class="scroll"><table><thead><tr><th>角色</th><th>姓名／職稱</th><th>單位</th><th>專長</th><th>手機</th><th>座機</th><th>核對註記</th></tr></thead><tbody>${t.people.map(p=>`<tr>${[p.role,[p.name,p.title].filter(Boolean).join('\n'),p.unit,p.expertise,p.mobile,p.phone,p.review].map(v=>`<td>${esc(v||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ html+='</details>';
+ });
+ if(region==='cn')html+=`<h3>備援人員</h3>${textarea('backupPersonnel',d.backupPersonnel,'備援人員')}`;
+ else html+='<p>河靜公司：調查小組由公司指派。</p>';
+ }
+ $('roster').innerHTML=html+'</div>';
+}
+function renderRules(d){$('rules').innerHTML=`<div class="panel"><h2>台灣調查作業規定</h2>${draft?`<label>每行一點<textarea data-notes rows="12" maxlength="20000">${esc(d.notes.join('\n'))}</textarea></label>`:`<ol>${d.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`}</div><div class="panel"><h2>大陸廠區執行方式</h2>${textarea('regionalRules.cn',d.regionalRules.cn,'大陸輪值規定')}</div><div class="panel"><h2>越南廠區輪值規定</h2>${textarea('regionalRules.vn',d.regionalRules.vn,'越南輪值規定')}</div>`;}
+function begin(){if(!cloud.owner()||!live||busy)return;draft=clone(live);baseVersion=live.version;$('import-panel').hidden=true;render();message('編輯中，修改後請按「儲存至雲端」。');}
+$('content').addEventListener('input',e=>{if(!draft||busy)return;const p=e.target.dataset.path;if(p)set(draft,p,e.target.value);if(e.target.hasAttribute('data-notes'))draft.notes=e.target.value.split('\n').map(s=>s.trim()).filter(Boolean);});
+$('content').addEventListener('change',e=>{
+ if(!draft||busy)return;const p=e.target.dataset.path;if(!p)return;set(draft,p,e.target.value);
+ if(/^records\.\d+\.area$/.test(p)){const i=Number(p.split('.')[1]);draft.records[i].group=OPTIONS[e.target.value][0];draft.records[i].nextGroup='';renderOverview(draft);}
+ else if(p.startsWith('duty.')||p.startsWith('overseasDuty.'))renderOverview(draft);
+});
+$('content').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b||busy)return;
+ if(b.dataset.tab){tab=b.dataset.tab;render();}
+ if(b.dataset.region){region=b.dataset.region;renderRoster(current());}
+ if(b.dataset.action==='add-record'&&draft){if(draft.records.length>=300){message('最多 300 筆紀錄。');return;}draft.records.push({id:crypto.randomUUID(),area:'tw-north',group:'A 組',supervisor:'',date:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'}),status:'調查中',nextGroup:''});renderOverview(draft);}
+ if(b.dataset.delete!==undefined&&draft){if(confirm('移除此筆調查紀錄？儲存後才會套用。')){draft.records.splice(Number(b.dataset.delete),1);renderOverview(draft);}}
+});
+$('edit').onclick=begin;
+$('cancel').onclick=()=>{if(busy)return;draft=null;render();message('已取消編輯，顯示雲端最新資料。');};
+$('save').onclick=async()=>{
+ if(!draft||busy||!cloud.owner())return;const gen=generation;const pending=clone(draft);
+ try{validate(pending);busy=true;document.querySelectorAll('#content button,#content input,#content textarea,#content select,#logout').forEach(e=>e.disabled=true);message('正在儲存至雲端…');const saved=await cloud.save(pending,baseVersion);if(gen!==generation)return;if(!live||live.version<=saved.version)live=saved;draft=null;message('已儲存至雲端。');}
+ catch(e){if(gen===generation)message('儲存失敗：'+e.message);}
+ finally{busy=false;document.querySelectorAll('#content button,#content input,#content textarea,#content select,#logout').forEach(e=>e.disabled=false);if(gen===generation)render();}
 };
-$('cancel').onclick=()=>{$('form').hidden=true;$('fields').replaceChildren();render();};
-$('edit').onclick=()=>{if(!owner()||!data)return;baseVersion=data.version;$('content').hidden=true;$('form').hidden=false;
-$('fields').innerHTML=regions.map(region=>`<fieldset><legend>${region}輪值</legend>${groups.map(group=>`<label><input required type="radio" name="duty-${region}" value="${group}" ${data.duty[region]===group?'checked':''}> ${group} 組</label>`).join('')}${data.rows.map((r,i)=>r.region!==region?'':`<div class="person"><strong>${r.group} 組</strong>${Object.entries(fields).map(([k,label])=>`<label>${label}<input maxlength="150" name="${i}-${k}" value="${esc(r[k])}"></label>`).join('')}</div>`).join('')}</fieldset>`).join('');$('rulesText').value=data.notes.join('\n');$('sourceRevision').value=data.revision||'';};
-$('form').onsubmit=async e=>{e.preventDefault();if(saving||!owner())return;const saveGeneration=generation;const form=new FormData(e.target),next={version:baseVersion+1,rows:data.rows.map((r,i)=>({region:r.region,group:r.group,...Object.fromEntries(Object.keys(fields).map(k=>[k,String(form.get(`${i}-${k}`)||'').trim()]))})),duty:Object.fromEntries(regions.map(region=>[region,form.get('duty-'+region)])),notes:$('rulesText').value.split('\n').map(s=>s.trim()).filter(Boolean),revision:$('sourceRevision').value.trim()};const button=e.target.querySelector('[type=submit]');
-try{validate(next);saving=true;button.disabled=true;$('cancel').disabled=true;await runTransaction(db,async tx=>{const s=await tx.get(ref);if((s.exists()?s.data().version:0)!==baseVersion)throw Error('資料已被其他視窗更新，請取消編輯後重新操作。');tx.set(ref,{...next,updatedAt:serverTimestamp(),updatedBy:auth.currentUser.uid});});if(saveGeneration!==generation)return;data=next;$('form').hidden=true;$('fields').replaceChildren();$('status').textContent='已儲存至雲端。';render();}catch(e){$('status').textContent='儲存失敗：'+e.message;}finally{saving=false;button.disabled=false;$('cancel').disabled=false;}};
-onAuthStateChanged(auth,user=>{const gen=++generation;stop?.();data=null;$('form').hidden=true;$('form').reset();$('fields').replaceChildren();$('rows').replaceChildren();$('current').replaceChildren();$('notes').replaceChildren();$('revision').textContent='';render();$('login').hidden=!!user;$('logout').hidden=!user;$('account').textContent=user?.email||'';if(!user){$('status').textContent='請登入後查看人員名冊。';return;}$('status').textContent='正在讀取雲端資料…';stop=onSnapshot(ref,{includeMetadataChanges:true},s=>{if(gen!==generation||s.metadata.fromCache||s.metadata.hasPendingWrites)return;try{data=validate(s.exists()?s.data():empty());$('status').textContent=s.exists()?(owner()?'你可以修改名冊與輪值。':'目前為唯讀模式。'):'尚未匯入初始名冊。';if($('form').hidden)render();}catch(e){data=null;render();$('status').textContent=e.message;}},e=>{if(gen!==generation)return;data=null;$('form').hidden=true;$('fields').replaceChildren();render();$('status').textContent='無法讀取名冊，請確認網路與 Firebase 權限：'+e.message;});});
+$('import').onclick=()=>{if(!cloud.owner()||draft)return;$('import-panel').hidden=!$('import-panel').hidden;$('import-file').value='';$('apply-duty').checked=false;};
+$('import-file').onchange=async e=>{
+ const file=e.target.files[0];if(!file||!cloud.owner()||!live||busy)return;const gen=generation;const base=clone(live);const apply=$('apply-duty').checked;
+ try{if(file.size>800000)throw Error('匯入檔過大。');const raw=JSON.parse(await file.text());if(gen!==generation||live.version!==base.version)throw Error('帳號或資料已變更，請重新匯入。');draft=mergeSeed(base,raw,apply);baseVersion=base.version;$('import-panel').hidden=true;render();message('已載入新增資料，尚未儲存。請核對各地名冊、調查紀錄與輪值設定後按「儲存至雲端」。');}
+ catch(e){message('匯入失敗：'+e.message);}
+};
+$('login').disabled=false;$('login').onclick=()=>cloud.login().catch(e=>message('登入失敗：'+e.message));
+$('logout').onclick=async()=>{if(busy)return;if(draft&&!confirm('尚有未儲存內容，確定登出並放棄修改？'))return;try{await cloud.logout();}catch(e){message(e.message);}};
+$('print').onclick=()=>{if(!draft&&live)window.print();};
+window.addEventListener('beforeprint',()=>{printOpen=[...document.querySelectorAll('details')].map(el=>[el,el.open]);printOpen.forEach(([el])=>el.open=true);});
+window.addEventListener('afterprint',()=>printOpen.forEach(([el,open])=>el.open=open));
+window.addEventListener('beforeunload',e=>{if(draft){e.preventDefault();e.returnValue='';}});
+cloud.observe(user=>{const gen=++generation;unsubscribe?.();clear();$('account').textContent=user?.email||'';$('login').hidden=!!user;$('logout').hidden=!user;
+ if(!user){message('請登入後查看人員名冊。');return;}message('正在讀取雲端資料…');
+ unsubscribe=cloud.watch(d=>{if(gen!==generation)return;live=d;if(draft){if(d.version!==baseVersion)message('其他視窗已更新資料。你的編輯仍保留；請取消後重新修改，以免覆蓋。');return;}render();message(d.version===0?'尚未建立資料。請由管理者匯入名冊，或按「編輯資料」填寫。':cloud.owner()?'已同步，可編輯名冊、輪值與調查紀錄。':'已同步，目前為唯讀模式。');},e=>{if(gen!==generation)return;clear();message('無法讀取資料：'+e.message+'。請確認網路及 Firebase 規則。');});
+});

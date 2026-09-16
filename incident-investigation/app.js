@@ -1,8 +1,9 @@
-import {AREAS,REGIONS,OPTIONS,STATES,TW_FIELDS,PERSON_FIELDS,clone,normalize,validate,getDuty,setDuty,mergeSeed} from './model.js?v=20260915-v2';
-import * as cloud from './cloud.js?v=20260915-v2';
+import {printMarkup,preparePrint} from './print.js?v=20260916-v3';
+import {AREAS,REGIONS,OPTIONS,STATES,TW_FIELDS,PERSON_FIELDS,clone,normalize,validate,getDuty,setDuty,mergeSeed} from './model.js?v=20260916-v3';
+import * as cloud from './cloud.js?v=20260916-v3';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let live=null,draft=null,baseVersion=0,region='tw',tab='overview',generation=0,unsubscribe,busy=false,printOpen=[];
+let live=null,draft=null,baseVersion=0,region='tw',tab='overview',generation=0,unsubscribe,busy=false,printOpen=[],printKind=null;
 const current=()=>draft||live;
 const areaName=a=>AREAS.find(x=>x[0]===a)?.[1]||a;
 const val=(obj,path)=>path.split('.').reduce((o,k)=>o[k],obj);
@@ -12,7 +13,7 @@ const select=(path,value,options,label='',blank=true)=>draft?`<select data-path=
 const textarea=(path,value,label)=>draft?`<label>${esc(label)}<textarea rows="8" data-path="${path}" maxlength="20000">${esc(value)}</textarea></label>`:`<div class="rule-text">${esc(value||'尚未匯入')}</div>`;
 const dutyPath=a=>AREAS.findIndex(x=>x[0]===a)<3?'duty.'+REGIONS[AREAS.findIndex(x=>x[0]===a)]:'overseasDuty.'+a;
 function message(s){$('status').textContent=s;}
-function clear(){live=null;draft=null;$('content').hidden=true;for(const id of ['overview','roster','rules'])$(id).replaceChildren();$('import-panel').hidden=true;$('import-file').value='';$('apply-duty').checked=false;}
+function clear(){live=null;draft=null;$('content').hidden=true;for(const id of ['overview','roster','rules'])$(id).replaceChildren();$('import-panel').hidden=true;$('import-file').value='';$('apply-duty').checked=false;$('replace-overseas').checked=false;$('print-root').replaceChildren();$('print-panel').hidden=true;}
 function render(){
  const d=current();$('content').hidden=!d;if(!d)return;
  $('edit').hidden=!cloud.owner()||!!draft;$('import').hidden=!cloud.owner()||!!draft;$('editor-actions').hidden=!draft;$('print').disabled=!!draft;$('logout').disabled=busy;
@@ -33,16 +34,15 @@ function renderRoster(d){
  if(region==='tw'){
  html+=`<p>名冊版本：${input('revision',d.revision,'台灣名冊版本')}</p>`;
  for(const r of REGIONS){html+=`<h3>${r}</h3>`;
- if(!draft)html+=`<div class="scroll"><table><thead><tr><th>組別</th><th>下次出動</th><th>事業部</th><th>督導主管／職稱</th><th>手機／座機</th><th>組長</th><th>單位／專長</th><th>手機／座機</th></tr></thead><tbody>${d.rows.filter(x=>x.region===r).map(x=>`<tr class="${d.duty[r]===x.group?'active':''}">${[x.group,d.duty[r]===x.group?'✓':'',x.department,x.supervisor+'\n'+x.title,x.supervisorMobile+'\n'+x.supervisorPhone,x.leader,x.unit+'\n'+x.expertise,x.leaderMobile+'\n'+x.leaderPhone].map(v=>`<td>${esc(v||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ if(!draft)html+=`<div class="scroll"><table><thead><tr><th>組別</th><th>下次出動</th><th>事業部</th><th>督導主管／職稱</th><th>手機／桌機</th><th>組長</th><th>單位／專長</th><th>手機／桌機</th></tr></thead><tbody>${d.rows.filter(x=>x.region===r).map(x=>`<tr class="${d.duty[r]===x.group?'active':''}">${[x.group,d.duty[r]===x.group?'✓':'',x.department,x.supervisor+'\n'+x.title,x.supervisorMobile+'\n'+x.supervisorPhone,x.leader,x.unit+'\n'+x.expertise,x.leaderMobile+'\n'+x.leaderPhone].map(v=>`<td>${esc(v||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
  else html+=d.rows.map((x,i)=>x.region!==r?'':`<details class="group"><summary>${r} ${x.group} 組</summary><div class="fields">${Object.entries(TW_FIELDS).map(([k,label])=>`<label>${label}${input('rows.'+i+'.'+k,x[k],r+x.group+label)}</label>`).join('')}</div></details>`).join('');}
  }else{
  html+=`<p>名冊版本：${input('sourceVersions.'+region,d.sourceVersions[region],'名冊來源版本')}</p><p class="muted">名冊與當次調查主管分別保留；人員異動可由管理者修正。</p>`;
- d.overseas[region].forEach((t,i)=>{
- const review=t.people.some(p=>p.review);
- html+=`<details class="group" ${i===0?'open':''}><summary>${esc(t.company)} · ${esc(t.group)} ${review?'｜有待核對欄位':''}</summary>`;
- if(draft)html+=t.people.map((p,j)=>`<div class="person"><div class="person-title">${esc(p.role)}</div><div class="fields">${Object.entries(PERSON_FIELDS).map(([k,label])=>`<label>${label}${input('overseas.'+region+'.'+i+'.people.'+j+'.'+k,p[k],t.group+p.role+label)}</label>`).join('')}</div></div>`).join('');
- else html+=`<div class="scroll"><table><thead><tr><th>角色</th><th>姓名／職稱</th><th>單位</th><th>專長</th><th>手機</th><th>座機</th><th>核對註記</th></tr></thead><tbody>${t.people.map(p=>`<tr>${[p.role,[p.name,p.title].filter(Boolean).join('\n'),p.unit,p.expertise,p.mobile,p.phone,p.review].map(v=>`<td>${esc(v||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
- html+='</details>';
+ if(!draft){
+ const roles=d.overseas[region][0].people.map(p=>p.role);
+ html+=`<div class="scroll"><table class="overseas-wide"><thead><tr><th>公司／組別</th><th>下次出動</th>${roles.map(role=>`<th>${esc(role)}</th>`).join('')}</tr></thead><tbody>${d.overseas[region].map(t=>`<tr class="${(region==='cn'?t.group:t.company+' '+t.group.split(' ').slice(-2).join(' '))===d.overseasDuty[region]?'active':''}"><td>${esc(t.company)}<br>${esc(t.group)}</td><td>${(region==='cn'?t.group:t.group)===d.overseasDuty[region]?'✓':''}</td>${t.people.map(p=>`<td><strong>${esc(p.name||'—')}</strong>${p.title?'<br>'+esc(p.title):''}${p.unit?'<br>'+esc(p.unit):''}${p.expertise?'<br>'+esc(p.expertise):''}<br>手機：${esc(p.mobile||'—')}<br>桌機：${esc(p.phone||'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ }else d.overseas[region].forEach((t,i)=>{
+ html+=`<details class="group" open><summary>${esc(t.company)} · ${esc(t.group)}</summary>${t.people.map((p,j)=>`<div class="person"><div class="person-title">${esc(p.role)}</div><div class="fields">${Object.entries(PERSON_FIELDS).map(([k,label])=>`<label>${label}${input('overseas.'+region+'.'+i+'.people.'+j+'.'+k,p[k],t.group+p.role+label)}</label>`).join('')}</div></div>`).join('')}</details>`;
  });
  if(region==='cn')html+=`<h3>備援人員</h3>${textarea('backupPersonnel',d.backupPersonnel,'備援人員')}`;
  else html+='<p>河靜公司：調查小組由公司指派。</p>';
@@ -50,7 +50,7 @@ function renderRoster(d){
  $('roster').innerHTML=html+'</div>';
 }
 function renderRules(d){$('rules').innerHTML=`<div class="panel"><h2>台灣調查作業規定</h2>${draft?`<label>每行一點<textarea data-notes rows="12" maxlength="20000">${esc(d.notes.join('\n'))}</textarea></label>`:`<ol>${d.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`}</div><div class="panel"><h2>大陸廠區執行方式</h2>${textarea('regionalRules.cn',d.regionalRules.cn,'大陸輪值規定')}</div><div class="panel"><h2>越南廠區輪值規定</h2>${textarea('regionalRules.vn',d.regionalRules.vn,'越南輪值規定')}</div>`;}
-function begin(){if(!cloud.owner()||!live||busy)return;draft=clone(live);baseVersion=live.version;$('import-panel').hidden=true;render();message('編輯中，修改後請按「儲存至雲端」。');}
+function begin(){if(!cloud.owner()||!live||busy)return;draft=clone(live);baseVersion=live.version;$('import-panel').hidden=true;$('print-panel').hidden=true;render();message('編輯中，修改後請按「儲存至雲端」。');}
 $('content').addEventListener('input',e=>{if(!draft||busy)return;const p=e.target.dataset.path;if(p)set(draft,p,e.target.value);if(e.target.hasAttribute('data-notes'))draft.notes=e.target.value.split('\n').map(s=>s.trim()).filter(Boolean);});
 $('content').addEventListener('change',e=>{
  if(!draft||busy)return;const p=e.target.dataset.path;if(!p)return;set(draft,p,e.target.value);
@@ -59,7 +59,7 @@ $('content').addEventListener('change',e=>{
 });
 $('content').addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b||busy)return;
- if(b.dataset.tab){tab=b.dataset.tab;render();}
+ if(b.dataset.tab){tab=b.dataset.tab;$('import-panel').hidden=true;$('print-panel').hidden=true;render();}
  if(b.dataset.region){region=b.dataset.region;renderRoster(current());}
  if(b.dataset.action==='add-record'&&draft){if(draft.records.length>=300){message('最多 300 筆紀錄。');return;}draft.records.push({id:crypto.randomUUID(),area:'tw-north',group:'A 組',supervisor:'',date:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'}),status:'調查中',nextGroup:''});renderOverview(draft);}
  if(b.dataset.delete!==undefined&&draft){if(confirm('移除此筆調查紀錄？儲存後才會套用。')){draft.records.splice(Number(b.dataset.delete),1);renderOverview(draft);}}
@@ -72,17 +72,19 @@ $('save').onclick=async()=>{
  catch(e){if(gen===generation)message('儲存失敗：'+e.message);}
  finally{busy=false;document.querySelectorAll('#content button,#content input,#content textarea,#content select,#logout').forEach(e=>e.disabled=false);if(gen===generation)render();}
 };
-$('import').onclick=()=>{if(!cloud.owner()||draft)return;$('import-panel').hidden=!$('import-panel').hidden;$('import-file').value='';$('apply-duty').checked=false;};
+$('import').onclick=()=>{if(!cloud.owner()||draft)return;$('import-panel').hidden=!$('import-panel').hidden;$('import-file').value='';$('apply-duty').checked=false;$('replace-overseas').checked=false;$('print-root').replaceChildren();$('print-panel').hidden=true;};
 $('import-file').onchange=async e=>{
- const file=e.target.files[0];if(!file||!cloud.owner()||!live||busy)return;const gen=generation;const base=clone(live);const apply=$('apply-duty').checked;
- try{if(file.size>800000)throw Error('匯入檔過大。');const raw=JSON.parse(await file.text());if(gen!==generation||live.version!==base.version)throw Error('帳號或資料已變更，請重新匯入。');draft=mergeSeed(base,raw,apply);baseVersion=base.version;$('import-panel').hidden=true;render();message('已載入新增資料，尚未儲存。請核對各地名冊、調查紀錄與輪值設定後按「儲存至雲端」。');}
+ const file=e.target.files[0];if(!file||!cloud.owner()||!live||busy)return;const gen=generation;const base=clone(live);const apply=$('apply-duty').checked;const replaceOverseas=$('replace-overseas').checked;
+ try{if(file.size>800000)throw Error('匯入檔過大。');const raw=JSON.parse(await file.text());if(gen!==generation||live.version!==base.version)throw Error('帳號或資料已變更，請重新匯入。');draft=mergeSeed(base,raw,apply,replaceOverseas);baseVersion=base.version;$('import-panel').hidden=true;render();message('已載入新增資料，尚未儲存。請核對各地名冊、調查紀錄與輪值設定後按「儲存至雲端」。');}
  catch(e){message('匯入失敗：'+e.message);}
 };
 $('login').disabled=false;$('login').onclick=()=>cloud.login().catch(e=>message('登入失敗：'+e.message));
 $('logout').onclick=async()=>{if(busy)return;if(draft&&!confirm('尚有未儲存內容，確定登出並放棄修改？'))return;try{await cloud.logout();}catch(e){message(e.message);}};
-$('print').onclick=()=>{if(!draft&&live)window.print();};
-window.addEventListener('beforeprint',()=>{printOpen=[...document.querySelectorAll('details')].map(el=>[el,el.open]);printOpen.forEach(([el])=>el.open=true);});
-window.addEventListener('afterprint',()=>printOpen.forEach(([el,open])=>el.open=open));
+$('print').onclick=()=>{if(draft||!live)return;$('print-panel').hidden=!$('print-panel').hidden;$('import-panel').hidden=true;$('print-kind').value=tab==='roster'?region:'overview';};
+$('print-close').onclick=()=>{$('print-panel').hidden=true;};
+$('print-go').onclick=async()=>{if(draft||!live)return;printKind=$('print-kind').value;await preparePrint($('print-root'),printMarkup(live,printKind));window.print();};
+window.addEventListener('beforeprint',()=>{if(live&&!draft){printKind=printKind||(tab==='roster'?region:'overview');$('print-root').innerHTML=printMarkup(live,printKind);preparePrint($('print-root'));}});
+window.addEventListener('afterprint',()=>{printKind=null;$('print-root').replaceChildren();});
 window.addEventListener('beforeunload',e=>{if(draft){e.preventDefault();e.returnValue='';}});
 cloud.observe(user=>{const gen=++generation;unsubscribe?.();clear();$('account').textContent=user?.email||'';$('login').hidden=!!user;$('logout').hidden=!user;
  if(!user){message('請登入後查看人員名冊。');return;}message('正在讀取雲端資料…');

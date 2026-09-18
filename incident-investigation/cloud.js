@@ -2,7 +2,7 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {getFirestore,doc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
-import {normalize,validate} from './model.js?v=20260916-v3';
+import {normalize,validate} from './model.js?v=20260918-v4';
 const app=initializeApp(firebaseConfig,'ehs-portal');const auth=getAuth(app),db=getFirestore(app),ref=doc(db,'incident_investigation','roster');
 export const owner=()=>!!(auth.currentUser?.email===ADMIN_EMAIL&&auth.currentUser?.emailVerified);
 export const observe=cb=>onAuthStateChanged(auth,cb);

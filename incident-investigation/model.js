@@ -1,4 +1,4 @@
-export const RELEASE='20260916-v3';
+export const RELEASE='20260918-v4';
 export const AREAS=[['tw-north','台灣 · 北區'],['tw-central','台灣 · 中區'],['tw-south','台灣 · 南區'],['cn','大陸 · 寧波'],['vn','越南 · 仁澤']];
 export const REGIONS=['北區','中區','南區'];
 export const OPTIONS={ 'tw-north':['A 組','B 組','C 組'],'tw-central':['A 組','B 組','C 組'],'tw-south':['A 組','B 組','C 組'],cn:['第一組','第二組','第三組','第四組'],vn:['南亞 A 組','南亞 B 組','南亞 C 組','台化 D 組','台化 E 組','台化 F 組','河靜公司指派']};

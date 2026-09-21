@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>安全衛生處組織編制管理</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-v1">
+  <link rel="stylesheet" href="styles.css?v=20260921-v2">
 </head>
 <body>
 <header class="app-header">
@@ -14,7 +14,8 @@
       <span><strong>安全衛生處組織編制管理</strong><small>組織圖・人員管理・版次追蹤</small></span>
     </a>
     <div class="header-actions">
-      <span id="cloud-status" class="status-chip">連線中</span>
+      <span id="cloud-status" class="status-chip">載入中</span>
+      <span id="auth-message" class="auth-inline muted"></span>
       <button id="login-btn" class="primary">Google 登入</button>
       <button id="logout-btn" class="quiet" hidden>登出</button>
     </div>
@@ -22,13 +23,7 @@
 </header>
 
 <main>
-  <section id="login-panel" class="panel login-panel">
-    <h1>安全衛生處組織編制管理</h1>
-    <p>請使用 EHS 管理入口平台管理者帳號登入。</p>
-    <p id="auth-message" class="muted"></p>
-  </section>
-
-  <div id="app" hidden>
+  <div id="app">
     <section class="topbar panel compact">
       <div>
         <h1>安全衛生處組織編制管理</h1>
@@ -48,7 +43,7 @@
       <button class="tab active" data-tab="chart">組織圖</button>
       <button class="tab" data-tab="staff">人員資料管理</button>
       <button class="tab" data-tab="versions">版次／異動紀錄</button>
-      <button class="tab" data-tab="staffing">編制設定</button>
+      <button class="tab" data-tab="staffing" data-admin-only>編制設定</button>
     </nav>
 
     <section id="tab-chart" class="tab-panel">
@@ -86,8 +81,8 @@
           <div><button id="clear-filter" class="quiet">清除篩選</button></div>
           <div>
             <input id="import-file" type="file" accept=".xlsx" hidden>
-            <button id="import-xlsx" class="quiet">匯入 Excel</button>
-            <button id="add-staff" class="primary">＋ 新增人員</button>
+            <button id="import-xlsx" class="quiet" data-admin-only>匯入 Excel</button>
+            <button id="add-staff" class="primary" data-admin-only>＋ 新增人員</button>
           </div>
         </div>
       </div>
@@ -106,7 +101,7 @@
       <div class="panel">
         <div class="toolbar between">
           <div><h2>版次／異動紀錄</h2><p class="muted">日常修改先形成「待發布異動」，確認後再建立新版。</p></div>
-          <button id="publish-version" class="primary">建立新版</button>
+          <button id="publish-version" class="primary" data-admin-only>建立新版</button>
         </div>
         <div id="pending-changes" class="pending-box"></div>
         <div class="table-wrap">
@@ -118,9 +113,9 @@
       </div>
     </section>
 
-    <section id="tab-staffing" class="tab-panel" hidden>
+    <section id="tab-staffing" class="tab-panel" data-admin-only hidden>
       <div class="panel">
-        <div class="toolbar between"><div><h2>編制設定</h2><p class="muted">編制人數手動設定；現有人數依在職人員自動計算。</p></div><button id="save-staffing" class="primary">儲存編制設定</button></div>
+        <div class="toolbar between"><div><h2>編制設定</h2><p class="muted">編制人數手動設定；現有人數依在職人員自動計算。</p></div><button id="save-staffing" class="primary" data-admin-only>儲存編制設定</button></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>組織節點</th><th>顯示名稱</th><th>編制人數</th><th>現有人數</th></tr></thead>
@@ -184,6 +179,6 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script type="module" src="app.js?v=20260921-v1"></script>
+<script type="module" src="app.js?v=20260921-v2"></script>
 </body>
 </html>

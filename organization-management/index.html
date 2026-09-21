@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>安全衛生處組織編制管理</title>
+  <link rel="stylesheet" href="styles.css?v=20260921-v1">
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html#administration">
+      <span class="brand-mark">EHS</span>
+      <span><strong>安全衛生處組織編制管理</strong><small>組織圖・人員管理・版次追蹤</small></span>
+    </a>
+    <div class="header-actions">
+      <span id="cloud-status" class="status-chip">連線中</span>
+      <button id="login-btn" class="primary">Google 登入</button>
+      <button id="logout-btn" class="quiet" hidden>登出</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="login-panel" class="panel login-panel">
+    <h1>安全衛生處組織編制管理</h1>
+    <p>請使用 EHS 管理入口平台管理者帳號登入。</p>
+    <p id="auth-message" class="muted"></p>
+  </section>
+
+  <div id="app" hidden>
+    <section class="topbar panel compact">
+      <div>
+        <h1>安全衛生處組織編制管理</h1>
+        <div class="version-line">
+          <span>現行版次：<b id="current-version">R41</b></span>
+          <span>修訂日期：<b id="revision-date">2026/09/10</b></span>
+          <span id="draft-badge" class="draft-badge" hidden>有待發布異動</span>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="export-xlsx" class="quiet">匯出 Excel</button>
+        <button id="export-pdf" class="primary">輸出 PDF</button>
+      </div>
+    </section>
+
+    <nav class="tabs panel compact" aria-label="功能頁籤">
+      <button class="tab active" data-tab="chart">組織圖</button>
+      <button class="tab" data-tab="staff">人員資料管理</button>
+      <button class="tab" data-tab="versions">版次／異動紀錄</button>
+      <button class="tab" data-tab="staffing">編制設定</button>
+    </nav>
+
+    <section id="tab-chart" class="tab-panel">
+      <div class="panel compact chart-tools">
+        <div>
+          <b>固定版型組織圖</b>
+          <span class="muted">依 R41 原稿比例 2976.22 × 1941.38 pt（約 1049.94 × 684.88 mm）</span>
+        </div>
+        <label class="switch"><input id="compare-template" type="checkbox"> 原稿比對</label>
+      </div>
+      <div class="chart-scroll panel">
+        <div id="org-page" class="org-page" aria-label="安全衛生處職務分類組織編制表">
+          <img id="template-image" src="assets/r41-template.png" alt="R41 原稿比對底圖" hidden>
+          <div class="chart-title">安全永續&nbsp;&nbsp;安全衛生處職務分類組織編制表</div>
+          <div class="revision-box">修訂日期：<span id="chart-revision-date">2026年9月10日</span></div>
+          <div class="summary-box" id="summary-box"></div>
+          <svg id="org-lines" viewBox="0 0 1533 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div id="org-nodes"></div>
+          <div id="chart-footer-table" class="chart-footer-table"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-staff" class="tab-panel" hidden>
+      <div class="panel filter-panel">
+        <div class="filter-grid">
+          <label>姓名<input id="filter-name" placeholder="輸入姓名"></label>
+          <label>單位<select id="filter-unit"><option value="">全部</option></select></label>
+          <label>職稱<select id="filter-title"><option value="">全部</option></select></label>
+          <label>職務層級<select id="filter-level"><option value="">全部</option></select></label>
+          <label>人員類別<select id="filter-type"><option value="">全部</option><option>正式</option><option>外包</option></select></label>
+          <label>在職狀態<select id="filter-status"><option value="active">在職</option><option value="">全部</option><option value="inactive">離職</option></select></label>
+        </div>
+        <div class="toolbar between">
+          <div><button id="clear-filter" class="quiet">清除篩選</button></div>
+          <div>
+            <input id="import-file" type="file" accept=".xlsx" hidden>
+            <button id="import-xlsx" class="quiet">匯入 Excel</button>
+            <button id="add-staff" class="primary">＋ 新增人員</button>
+          </div>
+        </div>
+      </div>
+      <section class="panel table-panel">
+        <div class="table-head"><b>人員資料</b><span id="staff-count" class="muted"></span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>姓名</th><th>職稱</th><th>單位</th><th>到職年月</th><th>職務層級</th><th>人員類別</th><th>狀態</th><th>版次</th><th>操作</th></tr></thead>
+            <tbody id="staff-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="tab-versions" class="tab-panel" hidden>
+      <div class="panel">
+        <div class="toolbar between">
+          <div><h2>版次／異動紀錄</h2><p class="muted">日常修改先形成「待發布異動」，確認後再建立新版。</p></div>
+          <button id="publish-version" class="primary">建立新版</button>
+        </div>
+        <div id="pending-changes" class="pending-box"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>版次</th><th>修訂日期</th><th>異動筆數</th><th>版本說明</th><th>操作</th></tr></thead>
+            <tbody id="version-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-staffing" class="tab-panel" hidden>
+      <div class="panel">
+        <div class="toolbar between"><div><h2>編制設定</h2><p class="muted">編制人數手動設定；現有人數依在職人員自動計算。</p></div><button id="save-staffing" class="primary">儲存編制設定</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>組織節點</th><th>顯示名稱</th><th>編制人數</th><th>現有人數</th></tr></thead>
+            <tbody id="staffing-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog id="staff-dialog">
+  <form method="dialog" id="staff-form" class="dialog-form">
+    <div class="dialog-head"><h2 id="staff-dialog-title">新增人員</h2><button value="cancel" class="icon-btn" aria-label="關閉">×</button></div>
+    <input name="id" type="hidden">
+    <div class="form-grid">
+      <label>姓名 *<input name="name" required maxlength="40"></label>
+      <label>職稱 *<input name="title" required maxlength="60"></label>
+      <label>單位 *<input name="unit" required maxlength="60"></label>
+      <label>到職年月 *<input name="joinMonth" required placeholder="2026/09" pattern="\d{4}/\d{1,2}"></label>
+      <label>職務層級 *<select name="level" required><option>經理級</option><option>一級主管</option><option>二級主管</option><option>基層主管</option><option selected>基層人員</option><option>事務人員</option><option>定期契約人員</option><option>培訓人員</option></select></label>
+      <label>人員類別 *<select name="employeeType" required><option selected>正式</option><option>外包</option></select></label>
+      <label>組織位置 *<select name="nodeId" id="form-node" required></select></label>
+      <label>在職狀態<select name="status"><option value="active">在職</option><option value="inactive">離職</option></select></label>
+    </div>
+    <label>異動說明<textarea name="changeNote" rows="3" maxlength="300" placeholder="例如：職稱調整、調環保組、新進、離職"></textarea></label>
+    <div class="toolbar end"><button value="cancel" class="quiet">取消</button><button id="save-staff" value="default" class="primary">儲存</button></div>
+  </form>
+</dialog>
+
+<dialog id="import-dialog" class="wide-dialog">
+  <form method="dialog" class="dialog-form">
+    <div class="dialog-head"><h2>Excel 匯入預覽</h2><button value="cancel" class="icon-btn">×</button></div>
+    <div id="import-summary"></div>
+    <div class="table-wrap import-table"><table><thead><tr><th>狀態</th><th>姓名</th><th>欄位</th><th>目前資料</th><th>Excel 資料</th><th>處理</th></tr></thead><tbody id="import-tbody"></tbody></table></div>
+    <div class="toolbar end"><button value="cancel" class="quiet">取消</button><button id="apply-import" value="default" class="primary">確認匯入</button></div>
+  </form>
+</dialog>
+
+<dialog id="publish-dialog">
+  <form method="dialog" id="publish-form" class="dialog-form">
+    <div class="dialog-head"><h2>建立新版</h2><button value="cancel" class="icon-btn">×</button></div>
+    <p>目前版次：<b id="publish-current-version"></b> → 新版：<b id="publish-next-version"></b></p>
+    <label>修訂日期 *<input name="date" type="date" required></label>
+    <label>版本說明<textarea name="summary" rows="3" maxlength="300" placeholder="例如：人員異動"></textarea></label>
+    <div id="publish-changes" class="pending-box"></div>
+    <div class="toolbar end"><button value="cancel" class="quiet">取消</button><button id="confirm-publish" value="default" class="primary">發布新版</button></div>
+  </form>
+</dialog>
+
+<dialog id="version-dialog" class="wide-dialog">
+  <form method="dialog" class="dialog-form">
+    <div class="dialog-head"><h2 id="version-detail-title">版次明細</h2><button value="cancel" class="icon-btn">×</button></div>
+    <div id="version-detail"></div>
+    <div class="toolbar end"><button value="cancel" class="quiet">關閉</button></div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script type="module" src="app.js?v=20260921-v1"></script>
+</body>
+</html>

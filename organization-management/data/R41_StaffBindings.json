@@ -1,0 +1,904 @@
+{
+  "schema": "r41-staff-bindings-v2",
+  "bindings": {
+    "馮吉宏": {
+      "baselineName": "馮吉宏",
+      "slotId": "node_001_處長::p01",
+      "parentNodeId": "node_001_處長",
+      "nameField": "node_001_處長_line_02",
+      "titleField": "node_001_處長_line_01",
+      "baselinePdfTitle": "處長",
+      "baselineAppTitle": "處長",
+      "educationFields": [
+        "node_001_處長_line_03"
+      ],
+      "baselineEducationLines": [
+        "中正大學勞工關係研究所"
+      ],
+      "baselineEducation": "中正大學勞工關係研究所",
+      "startField": "node_001_處長_line_04",
+      "baselinePdfJoin": "2004/8",
+      "baselineAppJoin": "2004/8",
+      "baselineAppNodeId": "president",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "鄭鎮杰": {
+      "baselineName": "鄭鎮杰",
+      "slotId": "node_003_環保副處長::p01",
+      "parentNodeId": "node_003_環保副處長",
+      "nameField": "node_003_環保副處長_line_02",
+      "titleField": "node_003_環保副處長_line_01",
+      "baselinePdfTitle": "環保副處長",
+      "baselineAppTitle": "環保副處長",
+      "educationFields": [
+        "node_003_環保副處長_line_03"
+      ],
+      "baselineEducationLines": [
+        "雲科大環安所"
+      ],
+      "baselineEducation": "雲科大環安所",
+      "startField": "node_003_環保副處長_line_04",
+      "baselinePdfJoin": "2007/1",
+      "baselineAppJoin": "2007/1",
+      "baselineAppNodeId": "env-vp",
+      "baselineAppUnit": "環保管理"
+    },
+    "盧晉標": {
+      "baselineName": "盧晉標",
+      "slotId": "node_009_安衛組::p01",
+      "parentNodeId": "node_009_安衛組",
+      "nameField": "node_009_安衛組_line_03",
+      "titleField": "node_009_安衛組_line_02",
+      "baselinePdfTitle": "副組長",
+      "baselineAppTitle": "副組長",
+      "educationFields": [
+        "node_009_安衛組_line_04"
+      ],
+      "baselineEducationLines": [
+        "高雄工專機械科"
+      ],
+      "baselineEducation": "高雄工專機械科",
+      "startField": "node_009_安衛組_line_05",
+      "baselinePdfJoin": "1998/4",
+      "baselineAppJoin": "1998/4",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "安衛組"
+    },
+    "許嘉麟": {
+      "baselineName": "許嘉麟",
+      "slotId": "node_011_(新港/彰化)組長::p01",
+      "parentNodeId": "node_011_(新港/彰化)組長",
+      "nameField": "node_011_(新港/彰化)組長_line_02",
+      "titleField": "node_011_(新港/彰化)組長_line_01",
+      "baselinePdfTitle": "(新港/彰化)組長",
+      "baselineAppTitle": "組長",
+      "educationFields": [
+        "node_011_(新港/彰化)組長_line_03"
+      ],
+      "baselineEducationLines": [
+        "中興大學環工所"
+      ],
+      "baselineEducation": "中興大學環工所",
+      "startField": "node_011_(新港/彰化)組長_line_04",
+      "baselinePdfJoin": "1998/7",
+      "baselineAppJoin": "1998/7",
+      "baselineAppNodeId": "env-xingang",
+      "baselineAppUnit": "環保組(新港/彰化)"
+    },
+    "劉志強": {
+      "baselineName": "劉志強",
+      "slotId": "node_013_安衛高工師::p01",
+      "parentNodeId": "node_013_安衛高工師",
+      "nameField": "node_013_安衛高工師_line_03",
+      "titleField": "node_013_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_013_安衛高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "淡江大學機械系"
+      ],
+      "baselineEducation": "淡江大學機械系",
+      "startField": "node_013_安衛高工師_line_05",
+      "baselinePdfJoin": "1995/4",
+      "baselineAppJoin": "1995/4",
+      "baselineAppNodeId": "mailiao",
+      "baselineAppUnit": "麥寮"
+    },
+    "楊士瑩": {
+      "baselineName": "楊士瑩",
+      "slotId": "node_020_環保組::p01",
+      "parentNodeId": "node_020_環保組",
+      "nameField": "node_020_環保組_line_04",
+      "titleField": "node_020_環保組_line_02",
+      "baselinePdfTitle": "環保高工師",
+      "baselineAppTitle": "環保高工師",
+      "educationFields": [
+        "node_020_環保組_line_05"
+      ],
+      "baselineEducationLines": [
+        "北科大環境所"
+      ],
+      "baselineEducation": "北科大環境所",
+      "startField": "node_020_環保組_line_06",
+      "baselinePdfJoin": "2019/10",
+      "baselineAppJoin": "2019/10",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "洪巧軒": {
+      "baselineName": "洪巧軒",
+      "slotId": "node_021_健康管理::p01",
+      "parentNodeId": "node_021_健康管理",
+      "nameField": "node_021_健康管理_line_04",
+      "titleField": "node_021_健康管理_line_02",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_021_健康管理_line_05"
+      ],
+      "baselineEducationLines": [
+        "中山大學職安所"
+      ],
+      "baselineEducation": "中山大學職安所",
+      "startField": "node_021_健康管理_line_06",
+      "baselinePdfJoin": "2021/01",
+      "baselineAppJoin": "2021/01",
+      "baselineAppNodeId": "taipei",
+      "baselineAppUnit": "安衛處(台北)"
+    },
+    "黃俊智": {
+      "baselineName": "黃俊智",
+      "slotId": "node_023_組長::p01",
+      "parentNodeId": "node_023_組長",
+      "nameField": "node_023_組長_line_04",
+      "titleField": "node_023_組長_line_02",
+      "baselinePdfTitle": "副組長",
+      "baselineAppTitle": "副組長",
+      "educationFields": [
+        "node_023_組長_line_05"
+      ],
+      "baselineEducationLines": [
+        "屏科大環工所"
+      ],
+      "baselineEducation": "屏科大環工所",
+      "startField": "node_023_組長_line_06",
+      "baselinePdfJoin": "2004/11",
+      "baselineAppJoin": "2004/11",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "王智寬": {
+      "baselineName": "王智寬",
+      "slotId": "node_024_消防管理::p01",
+      "parentNodeId": "node_024_消防管理",
+      "nameField": "node_024_消防管理_line_04",
+      "titleField": "node_024_消防管理_line_02",
+      "baselinePdfTitle": "消防資工師",
+      "baselineAppTitle": "消防資工師",
+      "educationFields": [
+        "node_024_消防管理_line_05"
+      ],
+      "baselineEducationLines": [
+        "中原大學機械所"
+      ],
+      "baselineEducation": "中原大學機械所",
+      "startField": "node_024_消防管理_line_06",
+      "baselinePdfJoin": "2011/9",
+      "baselineAppJoin": "2011/9",
+      "baselineAppNodeId": "fire",
+      "baselineAppUnit": "消防管理"
+    },
+    "王家宏": {
+      "baselineName": "王家宏",
+      "slotId": "node_025_績效管理::p01",
+      "parentNodeId": "node_025_績效管理",
+      "nameField": "node_025_績效管理_line_04",
+      "titleField": "node_025_績效管理_line_02",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_025_績效管理_line_05"
+      ],
+      "baselineEducationLines": [
+        "高雄工專電機科"
+      ],
+      "baselineEducation": "高雄工專電機科",
+      "startField": "node_025_績效管理_line_06",
+      "baselinePdfJoin": "1990/2",
+      "baselineAppJoin": "1990/2",
+      "baselineAppNodeId": "performance",
+      "baselineAppUnit": "績效管理"
+    },
+    "蕭子昭": {
+      "baselineName": "蕭子昭",
+      "slotId": "node_026_安衛高工師::p01",
+      "parentNodeId": "node_026_安衛高工師",
+      "nameField": "node_026_安衛高工師_line_02",
+      "titleField": "node_026_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_026_安衛高工師_line_03"
+      ],
+      "baselineEducationLines": [
+        "宜蘭大學化材所"
+      ],
+      "baselineEducation": "宜蘭大學化材所",
+      "startField": "node_026_安衛高工師_line_04",
+      "baselinePdfJoin": "2012/08",
+      "baselineAppJoin": "2012/08",
+      "baselineAppNodeId": "xingang",
+      "baselineAppUnit": "新港"
+    },
+    "邱柏承": {
+      "baselineName": "邱柏承",
+      "slotId": "node_027_安衛工程師::p01",
+      "parentNodeId": "node_027_安衛工程師",
+      "nameField": "node_027_安衛工程師_line_02",
+      "titleField": "node_027_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_027_安衛工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "高科大環工系"
+      ],
+      "baselineEducation": "高科大環工系",
+      "startField": "node_027_安衛工程師_line_04",
+      "baselinePdfJoin": "2024/3",
+      "baselineAppJoin": "2024/3",
+      "baselineAppNodeId": "mailiao",
+      "baselineAppUnit": "麥寮"
+    },
+    "陳學融": {
+      "baselineName": "陳學融",
+      "slotId": "node_035_安衛高工師::p01",
+      "parentNodeId": "node_035_安衛高工師",
+      "nameField": "node_035_安衛高工師_line_03",
+      "titleField": "node_035_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_035_安衛高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "中原大學化工所"
+      ],
+      "baselineEducation": "中原大學化工所",
+      "startField": "node_035_安衛高工師_line_05",
+      "baselinePdfJoin": "2011/11",
+      "baselineAppJoin": "2011/11",
+      "baselineAppNodeId": "mailiao",
+      "baselineAppUnit": "麥寮"
+    },
+    "許嘉方": {
+      "baselineName": "許嘉方",
+      "slotId": "node_036_事務人員::p01",
+      "parentNodeId": "node_036_事務人員",
+      "nameField": "node_036_事務人員_line_03",
+      "titleField": "node_036_事務人員_line_01",
+      "baselinePdfTitle": "事務人員",
+      "baselineAppTitle": "事務人員",
+      "educationFields": [
+        "node_036_事務人員_line_04"
+      ],
+      "baselineEducationLines": [
+        "吳鳳工專國貿科"
+      ],
+      "baselineEducation": "吳鳳工專國貿科",
+      "startField": "node_036_事務人員_line_05",
+      "baselinePdfJoin": "1996/12",
+      "baselineAppJoin": "1996/12",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "處務室"
+    },
+    "詹益昌": {
+      "baselineName": "詹益昌",
+      "slotId": "node_037_安衛高工師::p01",
+      "parentNodeId": "node_037_安衛高工師",
+      "nameField": "node_037_安衛高工師_line_02",
+      "titleField": "node_037_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_037_安衛高工師_line_03"
+      ],
+      "baselineEducationLines": [
+        "聯合工專機械科"
+      ],
+      "baselineEducation": "聯合工專機械科",
+      "startField": "node_037_安衛高工師_line_04",
+      "baselinePdfJoin": "2007/6",
+      "baselineAppJoin": "2007/6",
+      "baselineAppNodeId": "longde",
+      "baselineAppUnit": "龍德"
+    },
+    "陳昱綺": {
+      "baselineName": "陳昱綺",
+      "slotId": "node_042_環保高工師::p01",
+      "parentNodeId": "node_042_環保高工師",
+      "nameField": "node_042_環保高工師_line_03",
+      "titleField": "node_042_環保高工師_line_01",
+      "baselinePdfTitle": "環保高工師",
+      "baselineAppTitle": "環保高工師",
+      "educationFields": [
+        "node_042_環保高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "雲科大環安所"
+      ],
+      "baselineEducation": "雲科大環安所",
+      "startField": "node_042_環保高工師_line_05",
+      "baselinePdfJoin": "2022/7",
+      "baselineAppJoin": "2022/7",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "邱炫晉": {
+      "baselineName": "邱炫晉",
+      "slotId": "node_043_安衛高工師::p01",
+      "parentNodeId": "node_043_安衛高工師",
+      "nameField": "node_043_安衛高工師_line_03",
+      "titleField": "node_043_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_043_安衛高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "逢甲環境科學系"
+      ],
+      "baselineEducation": "逢甲環境科學系",
+      "startField": "node_043_安衛高工師_line_05",
+      "baselinePdfJoin": "1994/9",
+      "baselineAppJoin": "1994/9",
+      "baselineAppNodeId": "plastic",
+      "baselineAppUnit": "塑膠部"
+    },
+    "陳芋蓁": {
+      "baselineName": "陳芋蓁",
+      "slotId": "node_045_健康管理師::p01",
+      "parentNodeId": "node_045_健康管理師",
+      "nameField": "node_045_健康管理師_line_03",
+      "titleField": "node_045_健康管理師_line_01",
+      "baselinePdfTitle": "健康管理師",
+      "baselineAppTitle": "健康管理師",
+      "educationFields": [
+        "node_045_健康管理師_line_04"
+      ],
+      "baselineEducationLines": [
+        "長庚技術學院"
+      ],
+      "baselineEducation": "長庚技術學院",
+      "startField": "node_045_健康管理師_line_05",
+      "baselinePdfJoin": "2012/03",
+      "baselineAppJoin": "2012/03",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "穆柏勳": {
+      "baselineName": "穆柏勳",
+      "slotId": "node_046_安衛高工師::p01",
+      "parentNodeId": "node_046_安衛高工師",
+      "nameField": "node_046_安衛高工師_line_03",
+      "titleField": "node_046_安衛高工師_line_01",
+      "baselinePdfTitle": "安衛高工師",
+      "baselineAppTitle": "安衛高工師",
+      "educationFields": [
+        "node_046_安衛高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "逢甲國際經管所"
+      ],
+      "baselineEducation": "逢甲國際經管所",
+      "startField": "node_046_安衛高工師_line_05",
+      "baselinePdfJoin": "2015/4/13",
+      "baselineAppJoin": "2015/4",
+      "baselineAppNodeId": "chem3",
+      "baselineAppUnit": "化三部"
+    },
+    "李濬霖": {
+      "baselineName": "李濬霖",
+      "slotId": "node_048_環保高工師::p01",
+      "parentNodeId": "node_048_環保高工師",
+      "nameField": "node_048_環保高工師_line_03",
+      "titleField": "node_048_環保高工師_line_01",
+      "baselinePdfTitle": "環保高工師",
+      "baselineAppTitle": "環保高工師",
+      "educationFields": [
+        "node_048_環保高工師_line_04"
+      ],
+      "baselineEducationLines": [
+        "聯合工專化工科"
+      ],
+      "baselineEducation": "聯合工專化工科",
+      "startField": "node_048_環保高工師_line_05",
+      "baselinePdfJoin": "2002/1",
+      "baselineAppJoin": "2002/1",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "吳怡萱": {
+      "baselineName": "吳怡萱",
+      "slotId": "node_049_助理工程師::p01",
+      "parentNodeId": "node_049_助理工程師",
+      "nameField": "node_049_助理工程師_line_02",
+      "titleField": "node_049_助理工程師_line_01",
+      "baselinePdfTitle": "助理工程師",
+      "baselineAppTitle": "助理工程師",
+      "educationFields": [
+        "node_049_助理工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "中山醫大職安系"
+      ],
+      "baselineEducation": "中山醫大職安系",
+      "startField": "node_049_助理工程師_line_04",
+      "baselinePdfJoin": "2025/9",
+      "baselineAppJoin": "2025/9",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "林余津": {
+      "baselineName": "林余津",
+      "slotId": "node_050_安衛工程師::p01",
+      "parentNodeId": "node_050_安衛工程師",
+      "nameField": "node_050_安衛工程師_line_02",
+      "titleField": "node_050_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_050_安衛工程師_line_03",
+        "node_050_安衛工程師_line_04"
+      ],
+      "baselineEducationLines": [
+        "嘉南科大",
+        "職安衛系"
+      ],
+      "baselineEducation": "嘉南科大職安衛系",
+      "startField": "node_050_安衛工程師_line_05",
+      "baselinePdfJoin": "2011/11",
+      "baselineAppJoin": "2011/11",
+      "baselineAppNodeId": "chem1",
+      "baselineAppUnit": "化一部"
+    },
+    "黃偉嘉": {
+      "baselineName": "黃偉嘉",
+      "slotId": "node_051_安衛工程師::p01",
+      "parentNodeId": "node_051_安衛工程師",
+      "nameField": "node_051_安衛工程師_line_02",
+      "titleField": "node_051_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_051_安衛工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "雲科大機械所"
+      ],
+      "baselineEducation": "雲科大機械所",
+      "startField": "node_051_安衛工程師_line_04",
+      "baselinePdfJoin": "2011/9",
+      "baselineAppJoin": "2011/9",
+      "baselineAppNodeId": "plastic",
+      "baselineAppUnit": "塑膠部"
+    },
+    "陳曉琪": {
+      "baselineName": "陳曉琪",
+      "slotId": "node_052_安衛管理員::p01",
+      "parentNodeId": "node_052_安衛管理員",
+      "nameField": "node_052_安衛管理員_line_02",
+      "titleField": "node_052_安衛管理員_line_01",
+      "baselinePdfTitle": "安衛管理員",
+      "baselineAppTitle": "安衛管理員",
+      "educationFields": [
+        "node_052_安衛管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "長榮大學職安系"
+      ],
+      "baselineEducation": "長榮大學職安系",
+      "startField": "node_052_安衛管理員_line_04",
+      "baselinePdfJoin": "2011/11",
+      "baselineAppJoin": "2011/11",
+      "baselineAppNodeId": "chem1",
+      "baselineAppUnit": "化一部"
+    },
+    "吳玉珍": {
+      "baselineName": "吳玉珍",
+      "slotId": "node_053_健康管理員::p01",
+      "parentNodeId": "node_053_健康管理員",
+      "nameField": "node_053_健康管理員_line_02",
+      "titleField": "node_053_健康管理員_line_01",
+      "baselinePdfTitle": "健康管理員",
+      "baselineAppTitle": "健康管理員",
+      "educationFields": [
+        "node_053_健康管理員_line_03",
+        "node_053_健康管理員_line_04"
+      ],
+      "baselineEducationLines": [
+        "慈濟技術學院",
+        "醫管系"
+      ],
+      "baselineEducation": "慈濟技術學院醫管系",
+      "startField": "node_053_健康管理員_line_05",
+      "baselinePdfJoin": "2012/03",
+      "baselineAppJoin": "2012/03",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "林瑋新": {
+      "baselineName": "林瑋新",
+      "slotId": "node_054_安衛工程師::p01",
+      "parentNodeId": "node_054_安衛工程師",
+      "nameField": "node_054_安衛工程師_line_02",
+      "titleField": "node_054_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_054_安衛工程師_line_03",
+        "node_054_安衛工程師_line_04"
+      ],
+      "baselineEducationLines": [
+        "明志科大工業工",
+        "程與管理所"
+      ],
+      "baselineEducation": "明志科大工業工程與管理所",
+      "startField": "node_054_安衛工程師_line_05",
+      "baselinePdfJoin": "2023/8",
+      "baselineAppJoin": "2023/8",
+      "baselineAppNodeId": "chem2",
+      "baselineAppUnit": "化二部"
+    },
+    "莊晉昌": {
+      "baselineName": "莊晉昌",
+      "slotId": "node_055_環保工程師::p01",
+      "parentNodeId": "node_055_環保工程師",
+      "nameField": "node_055_環保工程師_line_02",
+      "titleField": "node_055_環保工程師_line_01",
+      "baselinePdfTitle": "環保工程師",
+      "baselineAppTitle": "環保工程師",
+      "educationFields": [
+        "node_055_環保工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "南台科大化工系"
+      ],
+      "baselineEducation": "南台科大化工系",
+      "startField": "node_055_環保工程師_line_04",
+      "baselinePdfJoin": "2003/2",
+      "baselineAppJoin": "2003/2",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "林谷威": {
+      "baselineName": "林谷威",
+      "slotId": "node_057_安衛工程師::p01",
+      "parentNodeId": "node_057_安衛工程師",
+      "nameField": "node_057_安衛工程師_line_02",
+      "titleField": "node_057_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_057_安衛工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "海洋大電訊系"
+      ],
+      "baselineEducation": "海洋大電訊系",
+      "startField": "node_057_安衛工程師_line_04",
+      "baselinePdfJoin": "2012/5",
+      "baselineAppJoin": "2012/5",
+      "baselineAppNodeId": "direct",
+      "baselineAppUnit": "直屬單位+工事處"
+    },
+    "謝富承": {
+      "baselineName": "謝富承",
+      "slotId": "node_058_環保工程師::p01",
+      "parentNodeId": "node_058_環保工程師",
+      "nameField": "node_058_環保工程師_line_02",
+      "titleField": "node_058_環保工程師_line_01",
+      "baselinePdfTitle": "環保工程師",
+      "baselineAppTitle": "環保工程師",
+      "educationFields": [
+        "node_058_環保工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "建國工專機械科"
+      ],
+      "baselineEducation": "建國工專機械科",
+      "startField": "node_058_環保工程師_line_04",
+      "baselinePdfJoin": "1998/8",
+      "baselineAppJoin": "1998/8",
+      "baselineAppNodeId": "env-xingang",
+      "baselineAppUnit": "環保組(新港/彰化)"
+    },
+    "陳炳煌": {
+      "baselineName": "陳炳煌",
+      "slotId": "node_059_安衛工程師::p01",
+      "parentNodeId": "node_059_安衛工程師",
+      "nameField": "node_059_安衛工程師_line_02",
+      "titleField": "node_059_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_059_安衛工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "宜蘭農工機械科"
+      ],
+      "baselineEducation": "宜蘭農工機械科",
+      "startField": "node_059_安衛工程師_line_04",
+      "baselinePdfJoin": "1987/5",
+      "baselineAppJoin": "1987/5",
+      "baselineAppNodeId": "xingang",
+      "baselineAppUnit": "新港"
+    },
+    "黃韻璇": {
+      "baselineName": "黃韻璇",
+      "slotId": "node_060_環保工程師::p01",
+      "parentNodeId": "node_060_環保工程師",
+      "nameField": "node_060_環保工程師_line_02",
+      "titleField": "node_060_環保工程師_line_01",
+      "baselinePdfTitle": "環保工程師",
+      "baselineAppTitle": "環保工程師",
+      "educationFields": [
+        "node_060_環保工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "北科大環境所"
+      ],
+      "baselineEducation": "北科大環境所",
+      "startField": "node_060_環保工程師_line_04",
+      "baselinePdfJoin": "2024/12",
+      "baselineAppJoin": "2024/12",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "黃淑芳": {
+      "baselineName": "黃淑芳",
+      "slotId": "node_062_安衛管理員::p01",
+      "parentNodeId": "node_062_安衛管理員",
+      "nameField": "node_062_安衛管理員_line_02",
+      "titleField": "node_062_安衛管理員_line_01",
+      "baselinePdfTitle": "安衛管理員",
+      "baselineAppTitle": "安衛管理員",
+      "educationFields": [
+        "node_062_安衛管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "高中"
+      ],
+      "baselineEducation": "高中",
+      "startField": "node_062_安衛管理員_line_04",
+      "baselinePdfJoin": "1989/2",
+      "baselineAppJoin": "1989/2",
+      "baselineAppNodeId": "direct",
+      "baselineAppUnit": "直屬單位+工事處"
+    },
+    "潘姮君": {
+      "baselineName": "潘姮君",
+      "slotId": "node_064_健康管理員::p01",
+      "parentNodeId": "node_064_健康管理員",
+      "nameField": "node_064_健康管理員_line_02",
+      "titleField": "node_064_健康管理員_line_01",
+      "baselinePdfTitle": "健康管理員",
+      "baselineAppTitle": "健康管理員",
+      "educationFields": [
+        "node_064_健康管理員_line_03",
+        "node_064_健康管理員_line_04"
+      ],
+      "baselineEducationLines": [
+        "敏惠護校",
+        "護理科"
+      ],
+      "baselineEducation": "敏惠護校護理科",
+      "startField": "node_064_健康管理員_line_05",
+      "baselinePdfJoin": "2012/03",
+      "baselineAppJoin": "2012/03",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "鄒智陽": {
+      "baselineName": "鄒智陽",
+      "slotId": "node_065_安衛管理員::p01",
+      "parentNodeId": "node_065_安衛管理員",
+      "nameField": "node_065_安衛管理員_line_02",
+      "titleField": "node_065_安衛管理員_line_01",
+      "baselinePdfTitle": "安衛管理員",
+      "baselineAppTitle": "安衛管理員",
+      "educationFields": [
+        "node_065_安衛管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "遠東工專化工科"
+      ],
+      "baselineEducation": "遠東工專化工科",
+      "startField": "node_065_安衛管理員_line_04",
+      "baselinePdfJoin": "2001/3",
+      "baselineAppJoin": "2001/3",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "吳幸娟": {
+      "baselineName": "吳幸娟",
+      "slotId": "node_066_健康管理員::p01",
+      "parentNodeId": "node_066_健康管理員",
+      "nameField": "node_066_健康管理員_line_02",
+      "titleField": "node_066_健康管理員_line_01",
+      "baselinePdfTitle": "健康管理員",
+      "baselineAppTitle": "健康管理員",
+      "educationFields": [
+        "node_066_健康管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "輔英科大護理科"
+      ],
+      "baselineEducation": "輔英科大護理科",
+      "startField": "node_066_健康管理員_line_04",
+      "baselinePdfJoin": "2021/9",
+      "baselineAppJoin": "2021/9",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "蘇鈺涵": {
+      "baselineName": "蘇鈺涵",
+      "slotId": "node_067_安衛工程師::p01",
+      "parentNodeId": "node_067_安衛工程師",
+      "nameField": "node_067_安衛工程師_line_02",
+      "titleField": "node_067_安衛工程師_line_01",
+      "baselinePdfTitle": "安衛工程師",
+      "baselineAppTitle": "安衛工程師",
+      "educationFields": [
+        "node_067_安衛工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "雲科大化材系"
+      ],
+      "baselineEducation": "雲科大化材系",
+      "startField": "node_067_安衛工程師_line_04",
+      "baselinePdfJoin": "2024/8",
+      "baselineAppJoin": "2024/8",
+      "baselineAppNodeId": "env-mailiao",
+      "baselineAppUnit": "環保組"
+    },
+    "林佩祺": {
+      "baselineName": "林佩祺",
+      "slotId": "node_068_健康助理員::p01",
+      "parentNodeId": "node_068_健康助理員",
+      "nameField": "node_068_健康助理員_line_02",
+      "titleField": "node_068_健康助理員_line_01",
+      "baselinePdfTitle": "健康助理員",
+      "baselineAppTitle": "健康助理員",
+      "educationFields": [
+        "node_068_健康助理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "輔英科大護理系"
+      ],
+      "baselineEducation": "輔英科大護理系",
+      "startField": "node_068_健康助理員_line_04",
+      "baselinePdfJoin": "2013/9",
+      "baselineAppJoin": "2013/9",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "陳芋婷": {
+      "baselineName": "陳芋婷",
+      "slotId": "node_069_健康管理員::p01",
+      "parentNodeId": "node_069_健康管理員",
+      "nameField": "node_069_健康管理員_line_02",
+      "titleField": "node_069_健康管理員_line_01",
+      "baselinePdfTitle": "健康管理員",
+      "baselineAppTitle": "健康管理員",
+      "educationFields": [
+        "node_069_健康管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "仁德醫專"
+      ],
+      "baselineEducation": "仁德醫專",
+      "startField": "node_069_健康管理員_line_04",
+      "baselinePdfJoin": "2016/06",
+      "baselineAppJoin": "2016/06",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "陳欣妤": {
+      "baselineName": "陳欣妤",
+      "slotId": "node_070_健康管理員::p01",
+      "parentNodeId": "node_070_健康管理員",
+      "nameField": "node_070_健康管理員_line_02",
+      "titleField": "node_070_健康管理員_line_01",
+      "baselinePdfTitle": "健康管理員",
+      "baselineAppTitle": "健康管理員",
+      "educationFields": [
+        "node_070_健康管理員_line_03"
+      ],
+      "baselineEducationLines": [
+        "崇仁醫專"
+      ],
+      "baselineEducation": "崇仁醫專",
+      "startField": "node_070_健康管理員_line_04",
+      "baselinePdfJoin": "2019/8",
+      "baselineAppJoin": "2019/8",
+      "baselineAppNodeId": "health",
+      "baselineAppUnit": "健康管理"
+    },
+    "蔡沂庭": {
+      "baselineName": "蔡沂庭",
+      "slotId": "node_071_助理工程師::p01",
+      "parentNodeId": "node_071_助理工程師",
+      "nameField": "node_071_助理工程師_line_02",
+      "titleField": "node_071_助理工程師_line_01",
+      "baselinePdfTitle": "助理工程師",
+      "baselineAppTitle": "助理工程師",
+      "educationFields": [
+        "node_071_助理工程師_line_03"
+      ],
+      "baselineEducationLines": [
+        "明志科大環安所"
+      ],
+      "baselineEducation": "明志科大環安所",
+      "startField": "node_071_助理工程師_line_04",
+      "baselinePdfJoin": "2026/5",
+      "baselineAppJoin": "2026/5",
+      "baselineAppNodeId": "office",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "溫瑞鑫": {
+      "baselineName": "溫瑞鑫",
+      "slotId": "node_072_定期契約人員::p01",
+      "parentNodeId": "node_072_定期契約人員",
+      "nameField": "node_072_定期契約人員_line_03",
+      "titleField": "node_072_定期契約人員_line_01",
+      "baselinePdfTitle": "定期契約人員",
+      "baselineAppTitle": "定期契約人員",
+      "educationFields": [],
+      "baselineEducationLines": [],
+      "baselineEducation": "",
+      "startField": null,
+      "baselinePdfJoin": "",
+      "baselineAppJoin": "",
+      "baselineAppNodeId": "contract",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "蔡仁正": {
+      "baselineName": "蔡仁正",
+      "slotId": "node_072_定期契約人員::p02",
+      "parentNodeId": "node_072_定期契約人員",
+      "nameField": "node_072_定期契約人員_line_04",
+      "titleField": null,
+      "baselinePdfTitle": null,
+      "baselineAppTitle": "定期契約人員",
+      "educationFields": [],
+      "baselineEducationLines": [],
+      "baselineEducation": "",
+      "startField": null,
+      "baselinePdfJoin": "",
+      "baselineAppJoin": "",
+      "baselineAppNodeId": "contract",
+      "baselineAppUnit": "安全衛生處"
+    },
+    "沈大為": {
+      "baselineName": "沈大為",
+      "slotId": "node_072_定期契約人員::p03",
+      "parentNodeId": "node_072_定期契約人員",
+      "nameField": "node_072_定期契約人員_line_05",
+      "titleField": null,
+      "baselinePdfTitle": null,
+      "baselineAppTitle": "定期契約人員",
+      "educationFields": [],
+      "baselineEducationLines": [],
+      "baselineEducation": "",
+      "startField": null,
+      "baselinePdfJoin": "",
+      "baselineAppJoin": "",
+      "baselineAppNodeId": "contract",
+      "baselineAppUnit": "安全衛生處"
+    }
+  }
+}

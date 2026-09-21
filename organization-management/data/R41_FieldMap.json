@@ -1,0 +1,6379 @@
+{
+  "schema": "ehs-org-r41-coordinate-map/v1",
+  "master_pdf": "安全衛生處組織編制表_R41_1to1_Master_Output.pdf",
+  "master_sha256": "c24b99d020d6916b480abb7128391d80b5bb4a6596d8d5bed670285049802ceb",
+  "page": {
+    "number": 1,
+    "width_pt": 2976.22,
+    "height_pt": 1941.38,
+    "coordinate_system": "top-left origin; x right; y down"
+  },
+  "policy": {
+    "master_is_authoritative": true,
+    "do_not_redraw_static_lines_or_boxes": true,
+    "only_replace_fields_whose_value_changed": true,
+    "unchanged_fields_remain_original_pdf_content": true
+  },
+  "node_count": 72,
+  "nodes": [
+    {
+      "node_id": "node_001_處長",
+      "bbox": [
+        1466.93,
+        107.197,
+        1679.53,
+        206.41
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_001_處長_line_01",
+          "original_text": "處長",
+          "bbox": [
+            1556.58,
+            115.16,
+            1591.924,
+            133.487
+          ],
+          "origin": [
+            1556.58,
+            129.84
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_001_處長_line_02",
+          "original_text": "馮吉宏",
+          "bbox": [
+            1548.07,
+            136.74,
+            1600.466,
+            155.092
+          ],
+          "origin": [
+            1548.07,
+            151.44
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_001_處長_line_03",
+          "original_text": "中正大學勞工關係研究所",
+          "bbox": [
+            1480.05,
+            158.38,
+            1668.547,
+            176.707
+          ],
+          "origin": [
+            1480.05,
+            173.06
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_001_處長_line_04",
+          "original_text": "2004/8",
+          "bbox": [
+            1549.58,
+            179.98,
+            1598.743,
+            198.307
+          ],
+          "origin": [
+            1549.58,
+            194.66
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_002_工安副處長",
+      "bbox": [
+        1076.76,
+        212.59,
+        1258.18,
+        324.34
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_002_工安副處長_line_01",
+          "original_text": "工安副處長",
+          "bbox": [
+            1122.72,
+            248.45,
+            1213.085,
+            266.802
+          ],
+          "origin": [
+            1122.72,
+            263.15
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_002_工安副處長_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            1131.71,
+            270.09,
+            1203.903,
+            288.417
+          ],
+          "origin": [
+            1131.71,
+            284.77
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_003_環保副處長",
+      "bbox": [
+        2301.11,
+        213.16,
+        2468.35,
+        324.91
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_003_環保副處長_line_01",
+          "original_text": "環保副處長",
+          "bbox": [
+            2340.24,
+            227.41,
+            2430.606,
+            245.762
+          ],
+          "origin": [
+            2340.24,
+            242.11
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_003_環保副處長_line_02",
+          "original_text": "鄭鎮杰",
+          "bbox": [
+            2358.25,
+            249.05,
+            2412.571,
+            267.377
+          ],
+          "origin": [
+            2358.25,
+            263.73
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_003_環保副處長_line_03",
+          "original_text": "雲科大環安所",
+          "bbox": [
+            2331.25,
+            270.65,
+            2439.892,
+            288.977
+          ],
+          "origin": [
+            2331.25,
+            285.33
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_003_環保副處長_line_04",
+          "original_text": "2007/1",
+          "bbox": [
+            2358.25,
+            292.23,
+            2412.426,
+            310.582
+          ],
+          "origin": [
+            2358.25,
+            306.93
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_004_麥寮",
+      "bbox": [
+        1476.49,
+        360.274,
+        1672.91,
+        417.6
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_004_麥寮_line_01",
+          "original_text": "麥寮",
+          "bbox": [
+            1557.04,
+            379.79,
+            1593.694,
+            398.117
+          ],
+          "origin": [
+            1557.04,
+            394.47
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_005_處務室",
+      "bbox": [
+        2301.11,
+        360.274,
+        2468.35,
+        417.6
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_005_處務室_line_01",
+          "original_text": "處務室",
+          "bbox": [
+            2358.25,
+            379.79,
+            2412.571,
+            398.117
+          ],
+          "origin": [
+            2358.25,
+            394.47
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_006_彰化",
+      "bbox": [
+        98.643,
+        361.484,
+        295.063,
+        418.81
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_006_彰化_line_01",
+          "original_text": "彰化",
+          "bbox": [
+            178.88,
+            381.0,
+            215.534,
+            399.327
+          ],
+          "origin": [
+            178.88,
+            395.68
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_007_龍德",
+      "bbox": [
+        370.64,
+        361.484,
+        567.06,
+        418.81
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_007_龍德_line_01",
+          "original_text": "龍德",
+          "bbox": [
+            450.96,
+            381.0,
+            487.614,
+            399.327
+          ],
+          "origin": [
+            450.96,
+            395.68
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_008_新港",
+      "bbox": [
+        683.45,
+        361.484,
+        879.87,
+        418.81
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_008_新港_line_01",
+          "original_text": "新港",
+          "bbox": [
+            759.32,
+            381.0,
+            804.998,
+            399.327
+          ],
+          "origin": [
+            759.32,
+            395.68
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_009_安衛組",
+      "bbox": [
+        1509.06,
+        465.81,
+        1645.12,
+        585.96
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_009_安衛組_line_01",
+          "original_text": "安衛組",
+          "bbox": [
+            1550.42,
+            473.58,
+            1604.796,
+            491.907
+          ],
+          "origin": [
+            1550.42,
+            488.26
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_009_安衛組_line_02",
+          "original_text": "副組長",
+          "bbox": [
+            1550.42,
+            495.18,
+            1604.796,
+            513.507
+          ],
+          "origin": [
+            1550.42,
+            509.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_009_安衛組_line_03",
+          "original_text": "盧晉標",
+          "bbox": [
+            1550.42,
+            516.78,
+            1604.796,
+            535.107
+          ],
+          "origin": [
+            1550.42,
+            531.46
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_009_安衛組_line_04",
+          "original_text": "高雄工專機械科",
+          "bbox": [
+            1514.42,
+            538.41,
+            1640.73,
+            556.737
+          ],
+          "origin": [
+            1514.42,
+            553.09
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_009_安衛組_line_05",
+          "original_text": "1998/4",
+          "bbox": [
+            1550.42,
+            560.01,
+            1604.603,
+            578.337
+          ],
+          "origin": [
+            1550.42,
+            574.69
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_010_環保組",
+      "bbox": [
+        975.77,
+        472.0,
+        1111.83,
+        592.15
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_010_環保組_line_01",
+          "original_text": "環保組",
+          "bbox": [
+            1017.02,
+            479.77,
+            1071.341,
+            498.097
+          ],
+          "origin": [
+            1017.02,
+            494.45
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_010_環保組_line_02",
+          "original_text": "組長",
+          "bbox": [
+            1026.04,
+            501.37,
+            1062.694,
+            519.697
+          ],
+          "origin": [
+            1026.04,
+            516.05
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_010_環保組_line_03",
+          "original_text": "計1人(0)",
+          "bbox": [
+            1008.02,
+            522.95,
+            1080.206,
+            541.302
+          ],
+          "origin": [
+            1008.02,
+            537.65
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_011_(新港/彰化)組長",
+      "bbox": [
+        694.18,
+        476.89,
+        868.84,
+        589.57
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_011_(新港/彰化)組長_line_01",
+          "original_text": "(新港/彰化)組長",
+          "bbox": [
+            714.16,
+            491.7,
+            849.87,
+            510.052
+          ],
+          "origin": [
+            714.16,
+            506.4
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_011_(新港/彰化)組長_line_02",
+          "original_text": "許嘉麟",
+          "bbox": [
+            754.67,
+            513.34,
+            809.046,
+            531.667
+          ],
+          "origin": [
+            754.67,
+            528.02
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_011_(新港/彰化)組長_line_03",
+          "original_text": "中興大學環工所",
+          "bbox": [
+            718.67,
+            534.94,
+            844.98,
+            553.267
+          ],
+          "origin": [
+            718.67,
+            549.62
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_011_(新港/彰化)組長_line_04",
+          "original_text": "1998/7",
+          "bbox": [
+            754.67,
+            556.54,
+            808.844,
+            574.867
+          ],
+          "origin": [
+            754.67,
+            571.22
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_012_安衛處(台北)",
+      "bbox": [
+        2678.74,
+        478.594,
+        2814.8,
+        535.92
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_012_安衛處(台北)_line_01",
+          "original_text": "安衛處(台北)",
+          "bbox": [
+            2693.36,
+            498.12,
+            2801.566,
+            516.472
+          ],
+          "origin": [
+            2693.36,
+            512.82
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_013_安衛高工師",
+      "bbox": [
+        127.59,
+        478.75,
+        266.1,
+        594.77
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_013_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            151.88,
+            484.45,
+            242.195,
+            502.777
+          ],
+          "origin": [
+            151.88,
+            499.13
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_013_安衛高工師_line_02",
+          "original_text": "計1人(1)",
+          "bbox": [
+            160.9,
+            506.05,
+            233.063,
+            524.377
+          ],
+          "origin": [
+            160.9,
+            520.73
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_013_安衛高工師_line_03",
+          "original_text": "劉志強",
+          "bbox": [
+            169.89,
+            527.63,
+            224.249,
+            545.982
+          ],
+          "origin": [
+            169.89,
+            542.33
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_013_安衛高工師_line_04",
+          "original_text": "淡江大學機械系",
+          "bbox": [
+            133.89,
+            549.27,
+            260.2,
+            567.597
+          ],
+          "origin": [
+            133.89,
+            563.95
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_013_安衛高工師_line_05",
+          "original_text": "1995/4",
+          "bbox": [
+            169.89,
+            570.87,
+            224.074,
+            589.197
+          ],
+          "origin": [
+            169.89,
+            585.55
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_014_組長",
+      "bbox": [
+        410.17,
+        478.755,
+        534.5,
+        555.29
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_014_組長_line_01",
+          "original_text": "組長",
+          "bbox": [
+            454.42,
+            497.08,
+            491.124,
+            515.432
+          ],
+          "origin": [
+            454.42,
+            511.78
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_014_組長_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            436.44,
+            518.72,
+            508.604,
+            537.047
+          ],
+          "origin": [
+            436.44,
+            533.4
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_015_環保管理",
+      "bbox": [
+        1961.51,
+        479.084,
+        2100.73,
+        536.41
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_015_環保管理_line_01",
+          "original_text": "環保管理",
+          "bbox": [
+            1995.56,
+            498.65,
+            2068.208,
+            516.977
+          ],
+          "origin": [
+            1995.56,
+            513.33
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_016_績效管理",
+      "bbox": [
+        2534.69,
+        479.084,
+        2670.75,
+        536.41
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_016_績效管理_line_01",
+          "original_text": "績效管理",
+          "bbox": [
+            2567.27,
+            498.65,
+            2639.973,
+            516.977
+          ],
+          "origin": [
+            2567.27,
+            513.33
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_017_健康管理",
+      "bbox": [
+        2106.19,
+        479.734,
+        2245.41,
+        537.06
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_017_健康管理_line_01",
+          "original_text": "健康管理",
+          "bbox": [
+            2140.27,
+            499.26,
+            2212.981,
+            517.612
+          ],
+          "origin": [
+            2140.27,
+            513.96
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_018_PSM",
+      "bbox": [
+        2251.13,
+        479.734,
+        2390.35,
+        537.06
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_018_PSM_line_01",
+          "original_text": "PSM",
+          "bbox": [
+            2307.76,
+            499.26,
+            2335.264,
+            517.612
+          ],
+          "origin": [
+            2307.76,
+            513.96
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_019_消防",
+      "bbox": [
+        2395.45,
+        480.064,
+        2530.1,
+        537.39
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_019_消防_line_01",
+          "original_text": "消防",
+          "bbox": [
+            2445.31,
+            499.62,
+            2481.964,
+            517.947
+          ],
+          "origin": [
+            2445.31,
+            514.3
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_020_環保組",
+      "bbox": [
+        1961.89,
+        580.85,
+        2096.54,
+        739.24
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_020_環保組_line_01",
+          "original_text": "環保組",
+          "bbox": [
+            2002.64,
+            583.86,
+            2056.961,
+            602.187
+          ],
+          "origin": [
+            2002.64,
+            598.54
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_020_環保組_line_02",
+          "original_text": "環保高工師",
+          "bbox": [
+            1984.65,
+            609.88,
+            2074.966,
+            628.207
+          ],
+          "origin": [
+            1984.65,
+            624.56
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_020_環保組_line_03",
+          "original_text": "計1人(1)",
+          "bbox": [
+            1993.65,
+            635.89,
+            2065.813,
+            654.217
+          ],
+          "origin": [
+            1993.65,
+            650.57
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_020_環保組_line_04",
+          "original_text": "楊士瑩",
+          "bbox": [
+            2002.64,
+            661.9,
+            2056.961,
+            680.227
+          ],
+          "origin": [
+            2002.64,
+            676.58
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_020_環保組_line_05",
+          "original_text": "北科大環境所",
+          "bbox": [
+            1975.64,
+            687.91,
+            2084.282,
+            706.237
+          ],
+          "origin": [
+            1975.64,
+            702.59
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_020_環保組_line_06",
+          "original_text": "2019/10",
+          "bbox": [
+            1998.16,
+            713.88,
+            2061.49,
+            732.232
+          ],
+          "origin": [
+            1998.16,
+            728.58
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_021_健康管理",
+      "bbox": [
+        2104.97,
+        581.06,
+        2241.03,
+        739.45
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_021_健康管理_line_01",
+          "original_text": "健康管理",
+          "bbox": [
+            2137.48,
+            584.08,
+            2210.128,
+            602.407
+          ],
+          "origin": [
+            2137.48,
+            598.76
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_021_健康管理_line_02",
+          "original_text": "安衛高工師",
+          "bbox": [
+            2128.46,
+            610.09,
+            2218.775,
+            628.417
+          ],
+          "origin": [
+            2128.46,
+            624.77
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_021_健康管理_line_03",
+          "original_text": "計1人(1)",
+          "bbox": [
+            2137.48,
+            636.11,
+            2209.644,
+            654.437
+          ],
+          "origin": [
+            2137.48,
+            650.79
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_021_健康管理_line_04",
+          "original_text": "洪巧軒",
+          "bbox": [
+            2146.47,
+            662.12,
+            2200.791,
+            680.447
+          ],
+          "origin": [
+            2146.47,
+            676.8
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_021_健康管理_line_05",
+          "original_text": "中山大學職安所",
+          "bbox": [
+            2110.47,
+            688.13,
+            2236.779,
+            706.457
+          ],
+          "origin": [
+            2110.47,
+            702.81
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_021_健康管理_line_06",
+          "original_text": "2021/01",
+          "bbox": [
+            2141.96,
+            714.1,
+            2205.32,
+            732.452
+          ],
+          "origin": [
+            2141.96,
+            728.8
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_022_風險管理",
+      "bbox": [
+        2248.63,
+        582.14,
+        2386.11,
+        740.53
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_022_風險管理_line_01",
+          "original_text": "風險管理",
+          "bbox": [
+            2281.87,
+            585.13,
+            2354.581,
+            603.482
+          ],
+          "origin": [
+            2281.87,
+            599.83
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_022_風險管理_line_02",
+          "original_text": "PSM資工師",
+          "bbox": [
+            2277.36,
+            611.16,
+            2358.736,
+            629.487
+          ],
+          "origin": [
+            2277.36,
+            625.84
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_022_風險管理_line_03",
+          "original_text": "計1人(0)",
+          "bbox": [
+            2281.87,
+            637.17,
+            2354.034,
+            655.497
+          ],
+          "origin": [
+            2281.87,
+            651.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_023_組長",
+      "bbox": [
+        2682.99,
+        582.14,
+        2820.47,
+        740.53
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_023_組長_line_01",
+          "original_text": "組長",
+          "bbox": [
+            2734.33,
+            585.13,
+            2771.01,
+            603.482
+          ],
+          "origin": [
+            2734.33,
+            599.83
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_023_組長_line_02",
+          "original_text": "副組長",
+          "bbox": [
+            2725.33,
+            611.16,
+            2779.651,
+            629.487
+          ],
+          "origin": [
+            2725.33,
+            625.84
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_023_組長_line_03",
+          "original_text": "計1人(1)",
+          "bbox": [
+            2716.34,
+            637.17,
+            2788.514,
+            655.497
+          ],
+          "origin": [
+            2716.34,
+            651.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_023_組長_line_04",
+          "original_text": "黃俊智",
+          "bbox": [
+            2725.33,
+            663.18,
+            2779.651,
+            681.507
+          ],
+          "origin": [
+            2725.33,
+            677.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_023_組長_line_05",
+          "original_text": "屏科大環工所",
+          "bbox": [
+            2698.33,
+            689.2,
+            2806.972,
+            707.527
+          ],
+          "origin": [
+            2698.33,
+            703.88
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_023_組長_line_06",
+          "original_text": "2004/11",
+          "bbox": [
+            2720.82,
+            715.21,
+            2784.167,
+            733.537
+          ],
+          "origin": [
+            2720.82,
+            729.89
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_024_消防管理",
+      "bbox": [
+        2394.29,
+        583.11,
+        2528.94,
+        741.5
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_024_消防管理_line_01",
+          "original_text": "消防管理",
+          "bbox": [
+            2426.13,
+            586.14,
+            2498.833,
+            604.467
+          ],
+          "origin": [
+            2426.13,
+            600.82
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_024_消防管理_line_02",
+          "original_text": "消防資工師",
+          "bbox": [
+            2417.14,
+            612.15,
+            2507.455,
+            630.477
+          ],
+          "origin": [
+            2417.14,
+            626.83
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_024_消防管理_line_03",
+          "original_text": "計1人(1)",
+          "bbox": [
+            2426.13,
+            638.12,
+            2498.336,
+            656.472
+          ],
+          "origin": [
+            2426.13,
+            652.82
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_024_消防管理_line_04",
+          "original_text": "王智寬",
+          "bbox": [
+            2435.15,
+            664.13,
+            2489.509,
+            682.482
+          ],
+          "origin": [
+            2435.15,
+            678.83
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_024_消防管理_line_05",
+          "original_text": "中原大學機械所",
+          "bbox": [
+            2399.13,
+            690.17,
+            2525.604,
+            708.497
+          ],
+          "origin": [
+            2399.13,
+            704.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_024_消防管理_line_06",
+          "original_text": "2011/9",
+          "bbox": [
+            2435.15,
+            716.18,
+            2489.313,
+            734.507
+          ],
+          "origin": [
+            2435.15,
+            730.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_025_績效管理",
+      "bbox": [
+        2537.01,
+        583.42,
+        2671.66,
+        742.79
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_025_績效管理_line_01",
+          "original_text": "績效管理",
+          "bbox": [
+            2568.9,
+            586.46,
+            2641.548,
+            604.787
+          ],
+          "origin": [
+            2568.9,
+            601.14
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_025_績效管理_line_02",
+          "original_text": "安衛高工師",
+          "bbox": [
+            2559.9,
+            612.43,
+            2650.266,
+            630.782
+          ],
+          "origin": [
+            2559.9,
+            627.13
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_025_績效管理_line_03",
+          "original_text": "計1(1)",
+          "bbox": [
+            2577.89,
+            638.46,
+            2632.073,
+            656.787
+          ],
+          "origin": [
+            2577.89,
+            653.14
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_025_績效管理_line_04",
+          "original_text": "王家宏",
+          "bbox": [
+            2577.89,
+            664.47,
+            2632.211,
+            682.797
+          ],
+          "origin": [
+            2577.89,
+            679.15
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_025_績效管理_line_05",
+          "original_text": "高雄工專電機科",
+          "bbox": [
+            2541.89,
+            690.48,
+            2668.199,
+            708.807
+          ],
+          "origin": [
+            2541.89,
+            705.16
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_025_績效管理_line_06",
+          "original_text": "1990/2",
+          "bbox": [
+            2577.89,
+            716.49,
+            2632.073,
+            734.817
+          ],
+          "origin": [
+            2577.89,
+            731.17
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_026_安衛高工師",
+      "bbox": [
+        403.59,
+        591.42,
+        541.07,
+        704.1
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_026_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            427.42,
+            597.15,
+            517.845,
+            615.477
+          ],
+          "origin": [
+            427.42,
+            611.83
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_026_安衛高工師_line_02",
+          "original_text": "蕭子昭",
+          "bbox": [
+            445.43,
+            621.73,
+            499.789,
+            640.082
+          ],
+          "origin": [
+            445.43,
+            636.43
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_026_安衛高工師_line_03",
+          "original_text": "宜蘭大學化材所",
+          "bbox": [
+            409.43,
+            646.34,
+            535.802,
+            664.692
+          ],
+          "origin": [
+            409.43,
+            661.04
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_026_安衛高工師_line_04",
+          "original_text": "2012/08",
+          "bbox": [
+            440.92,
+            670.95,
+            504.28,
+            689.302
+          ],
+          "origin": [
+            440.92,
+            685.65
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_027_安衛工程師",
+      "bbox": [
+        127.59,
+        627.354,
+        262.24,
+        722.83
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_027_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            149.94,
+            633.1,
+            240.365,
+            651.427
+          ],
+          "origin": [
+            149.94,
+            647.78
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_027_安衛工程師_line_02",
+          "original_text": "邱柏承",
+          "bbox": [
+            167.95,
+            654.7,
+            222.271,
+            673.027
+          ],
+          "origin": [
+            167.95,
+            669.38
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_027_安衛工程師_line_03",
+          "original_text": "高科大環工系",
+          "bbox": [
+            140.95,
+            676.28,
+            249.667,
+            694.632
+          ],
+          "origin": [
+            140.95,
+            690.98
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_027_安衛工程師_line_04",
+          "original_text": "2024/3",
+          "bbox": [
+            167.95,
+            697.92,
+            222.133,
+            716.247
+          ],
+          "origin": [
+            167.95,
+            712.6
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_028_化二部",
+      "bbox": [
+        1662.28,
+        638.579,
+        1795.51,
+        733.98
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_028_化二部_line_01",
+          "original_text": "化二部",
+          "bbox": [
+            1702.28,
+            666.43,
+            1756.601,
+            684.757
+          ],
+          "origin": [
+            1702.28,
+            681.11
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_028_化二部_line_02",
+          "original_text": "含保養處",
+          "bbox": [
+            1693.26,
+            688.03,
+            1765.908,
+            706.357
+          ],
+          "origin": [
+            1693.26,
+            702.71
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_029_化一部",
+      "bbox": [
+        1820.26,
+        638.579,
+        1954.91,
+        733.98
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_029_化一部_line_01",
+          "original_text": "化一部",
+          "bbox": [
+            1860.99,
+            666.43,
+            1915.311,
+            684.757
+          ],
+          "origin": [
+            1860.99,
+            681.11
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_029_化一部_line_02",
+          "original_text": "含保養處",
+          "bbox": [
+            1852.0,
+            688.03,
+            1924.648,
+            706.357
+          ],
+          "origin": [
+            1852.0,
+            702.71
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_030_化三部",
+      "bbox": [
+        1554.29,
+        641.894,
+        1649.251,
+        737.37
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_030_化三部_line_01",
+          "original_text": "化三部",
+          "bbox": [
+            1575.13,
+            669.76,
+            1629.489,
+            688.112
+          ],
+          "origin": [
+            1575.13,
+            684.46
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_030_化三部_line_02",
+          "original_text": "含保養處",
+          "bbox": [
+            1566.11,
+            691.4,
+            1638.813,
+            709.727
+          ],
+          "origin": [
+            1566.11,
+            706.08
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_031_塑膠部",
+      "bbox": [
+        1291.05,
+        641.958,
+        1424.28,
+        738.54
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_031_塑膠部_line_01",
+          "original_text": "塑膠部",
+          "bbox": [
+            1330.96,
+            670.41,
+            1385.281,
+            688.737
+          ],
+          "origin": [
+            1330.96,
+            685.09
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_031_塑膠部_line_02",
+          "original_text": "含保養處",
+          "bbox": [
+            1321.96,
+            692.01,
+            1394.608,
+            710.337
+          ],
+          "origin": [
+            1321.96,
+            706.69
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_032_直屬單位+",
+      "bbox": [
+        1439.22,
+        642.664,
+        1545.52,
+        738.14
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_032_直屬單位+_line_01",
+          "original_text": "直屬單位+",
+          "bbox": [
+            1452.19,
+            670.55,
+            1533.353,
+            688.877
+          ],
+          "origin": [
+            1452.19,
+            685.23
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_032_直屬單位+_line_02",
+          "original_text": "工事處",
+          "bbox": [
+            1465.7,
+            692.13,
+            1520.059,
+            710.482
+          ],
+          "origin": [
+            1465.7,
+            706.83
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_033_健康管理",
+      "bbox": [
+        1131.97,
+        644.364,
+        1266.62,
+        739.84
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_033_健康管理_line_01",
+          "original_text": "健康管理",
+          "bbox": [
+            1163.54,
+            683.06,
+            1236.243,
+            701.387
+          ],
+          "origin": [
+            1163.54,
+            697.74
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_034_健康管理師",
+      "bbox": [
+        127.59,
+        754.01,
+        262.24,
+        822.75
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_034_健康管理師_line_01",
+          "original_text": "健康管理師",
+          "bbox": [
+            149.94,
+            759.79,
+            240.365,
+            778.117
+          ],
+          "origin": [
+            149.94,
+            774.47
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_034_健康管理師_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            158.96,
+            781.42,
+            231.124,
+            799.747
+          ],
+          "origin": [
+            158.96,
+            796.1
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_035_安衛高工師",
+      "bbox": [
+        2678.42,
+        764.43,
+        2813.07,
+        878.74
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_035_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            2701.33,
+            770.22,
+            2791.645,
+            788.547
+          ],
+          "origin": [
+            2701.33,
+            784.9
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_035_安衛高工師_line_02",
+          "original_text": "計3人(1)",
+          "bbox": [
+            2710.33,
+            792.23,
+            2782.524,
+            810.557
+          ],
+          "origin": [
+            2710.33,
+            806.91
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_035_安衛高工師_line_03",
+          "original_text": "陳學融",
+          "bbox": [
+            2719.35,
+            813.97,
+            2773.671,
+            832.297
+          ],
+          "origin": [
+            2719.35,
+            828.65
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_035_安衛高工師_line_04",
+          "original_text": "中原大學化工所",
+          "bbox": [
+            2683.32,
+            835.57,
+            2809.794,
+            853.897
+          ],
+          "origin": [
+            2683.32,
+            850.25
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_035_安衛高工師_line_05",
+          "original_text": "2011/11",
+          "bbox": [
+            2714.84,
+            857.15,
+            2778.19,
+            875.502
+          ],
+          "origin": [
+            2714.84,
+            871.85
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_036_事務人員",
+      "bbox": [
+        2535.07,
+        765.19,
+        2669.72,
+        879.5
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_036_事務人員_line_01",
+          "original_text": "事務人員",
+          "bbox": [
+            2566.96,
+            770.95,
+            2639.671,
+            789.302
+          ],
+          "origin": [
+            2566.96,
+            785.65
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_036_事務人員_line_02",
+          "original_text": "計1人(1)",
+          "bbox": [
+            2566.96,
+            792.59,
+            2639.124,
+            810.917
+          ],
+          "origin": [
+            2566.96,
+            807.27
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_036_事務人員_line_03",
+          "original_text": "許嘉方",
+          "bbox": [
+            2575.95,
+            814.19,
+            2630.326,
+            832.517
+          ],
+          "origin": [
+            2575.95,
+            828.87
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_036_事務人員_line_04",
+          "original_text": "吳鳳工專國貿科",
+          "bbox": [
+            2539.95,
+            835.79,
+            2666.259,
+            854.117
+          ],
+          "origin": [
+            2539.95,
+            850.47
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_036_事務人員_line_05",
+          "original_text": "1996/12",
+          "bbox": [
+            2571.47,
+            857.37,
+            2634.824,
+            875.722
+          ],
+          "origin": [
+            2571.47,
+            872.07
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_037_安衛高工師",
+      "bbox": [
+        2249.91,
+        765.35,
+        2385.97,
+        878.17
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_037_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            2273.43,
+            771.14,
+            2363.745,
+            789.467
+          ],
+          "origin": [
+            2273.43,
+            785.82
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_037_安衛高工師_line_02",
+          "original_text": "詹益昌",
+          "bbox": [
+            2291.44,
+            795.74,
+            2345.761,
+            814.067
+          ],
+          "origin": [
+            2291.44,
+            810.42
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_037_安衛高工師_line_03",
+          "original_text": "聯合工專機械科",
+          "bbox": [
+            2255.44,
+            820.35,
+            2381.749,
+            838.677
+          ],
+          "origin": [
+            2255.44,
+            835.03
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_037_安衛高工師_line_04",
+          "original_text": "2007/6",
+          "bbox": [
+            2291.44,
+            844.93,
+            2345.636,
+            863.282
+          ],
+          "origin": [
+            2291.44,
+            859.63
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_038_消防高工師",
+      "bbox": [
+        2393.0,
+        766.68,
+        2527.65,
+        879.5
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_038_消防高工師_line_01",
+          "original_text": "消防高工師",
+          "bbox": [
+            2415.85,
+            772.47,
+            2506.165,
+            790.797
+          ],
+          "origin": [
+            2415.85,
+            787.15
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_038_消防高工師_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            2424.85,
+            794.07,
+            2497.043,
+            812.397
+          ],
+          "origin": [
+            2424.85,
+            808.75
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_039_環保高工師",
+      "bbox": [
+        319.32,
+        770.01,
+        457.83,
+        871.49
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_039_環保高工師_line_01",
+          "original_text": "環保高工師",
+          "bbox": [
+            343.66,
+            775.79,
+            433.975,
+            794.117
+          ],
+          "origin": [
+            343.66,
+            790.47
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_039_環保高工師_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            352.65,
+            797.37,
+            424.836,
+            815.722
+          ],
+          "origin": [
+            352.65,
+            812.07
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_040_安衛高工師",
+      "bbox": [
+        1664.08,
+        770.76,
+        1798.73,
+        889.37
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_040_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            1686.76,
+            776.52,
+            1777.199,
+            794.872
+          ],
+          "origin": [
+            1686.76,
+            791.22
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_040_安衛高工師_line_02",
+          "original_text": "計2人(0)",
+          "bbox": [
+            1695.78,
+            798.17,
+            1767.953,
+            816.497
+          ],
+          "origin": [
+            1695.78,
+            812.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_041_安衛高工師",
+      "bbox": [
+        1820.26,
+        770.76,
+        1954.91,
+        890.91
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_041_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            1842.98,
+            776.52,
+            1933.345,
+            794.872
+          ],
+          "origin": [
+            1842.98,
+            791.22
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_041_安衛高工師_line_02",
+          "original_text": "計2人(0)",
+          "bbox": [
+            1852.0,
+            798.17,
+            1924.173,
+            816.497
+          ],
+          "origin": [
+            1852.0,
+            812.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_042_環保高工師",
+      "bbox": [
+        628.45,
+        770.77,
+        765.93,
+        891.54
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_042_環保高工師_line_01",
+          "original_text": "環保高工師",
+          "bbox": [
+            652.34,
+            776.52,
+            742.705,
+            794.872
+          ],
+          "origin": [
+            652.34,
+            791.22
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_042_環保高工師_line_02",
+          "original_text": "計2人(1)",
+          "bbox": [
+            661.33,
+            798.17,
+            733.504,
+            816.497
+          ],
+          "origin": [
+            661.33,
+            812.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_042_環保高工師_line_03",
+          "original_text": "陳昱綺",
+          "bbox": [
+            670.33,
+            819.77,
+            724.706,
+            838.097
+          ],
+          "origin": [
+            670.33,
+            834.45
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_042_環保高工師_line_04",
+          "original_text": "雲科大環安所",
+          "bbox": [
+            643.32,
+            841.35,
+            752.111,
+            859.702
+          ],
+          "origin": [
+            643.32,
+            856.05
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_042_環保高工師_line_05",
+          "original_text": "2022/7",
+          "bbox": [
+            670.33,
+            865.95,
+            724.526,
+            884.302
+          ],
+          "origin": [
+            670.33,
+            880.65
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_043_安衛高工師",
+      "bbox": [
+        790.54,
+        771.39,
+        926.6,
+        891.54
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_043_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            813.75,
+            777.17,
+            904.066,
+            795.497
+          ],
+          "origin": [
+            813.75,
+            791.85
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_043_安衛高工師_line_02",
+          "original_text": "計3人(1)",
+          "bbox": [
+            822.76,
+            798.75,
+            894.946,
+            817.102
+          ],
+          "origin": [
+            822.76,
+            813.45
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_043_安衛高工師_line_03",
+          "original_text": "邱炫晉",
+          "bbox": [
+            831.76,
+            820.4,
+            886.081,
+            838.727
+          ],
+          "origin": [
+            831.76,
+            835.08
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_043_安衛高工師_line_04",
+          "original_text": "逢甲環境科學系",
+          "bbox": [
+            795.76,
+            842.0,
+            922.07,
+            860.327
+          ],
+          "origin": [
+            795.76,
+            856.68
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_043_安衛高工師_line_05",
+          "original_text": "1994/9",
+          "bbox": [
+            831.76,
+            863.58,
+            885.956,
+            881.932
+          ],
+          "origin": [
+            831.76,
+            878.28
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_044_安衛高工師",
+      "bbox": [
+        472.42,
+        772.617,
+        607.07,
+        871.83
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_044_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            494.86,
+            778.41,
+            585.176,
+            796.737
+          ],
+          "origin": [
+            494.86,
+            793.09
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_044_安衛高工師_line_02",
+          "original_text": "計2人(0)",
+          "bbox": [
+            503.85,
+            800.01,
+            576.023,
+            818.337
+          ],
+          "origin": [
+            503.85,
+            814.69
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_045_健康管理師",
+      "bbox": [
+        1133.65,
+        775.06,
+        1269.71,
+        891.08
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_045_健康管理師_line_01",
+          "original_text": "健康管理師",
+          "bbox": [
+            1156.95,
+            780.86,
+            1247.266,
+            799.187
+          ],
+          "origin": [
+            1156.95,
+            795.54
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_045_健康管理師_line_02",
+          "original_text": "計4人(1)",
+          "bbox": [
+            1165.94,
+            802.46,
+            1238.113,
+            820.787
+          ],
+          "origin": [
+            1165.94,
+            817.14
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_045_健康管理師_line_03",
+          "original_text": "陳芋蓁",
+          "bbox": [
+            1174.93,
+            824.04,
+            1229.326,
+            842.392
+          ],
+          "origin": [
+            1174.93,
+            838.74
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_045_健康管理師_line_04",
+          "original_text": "長庚技術學院",
+          "bbox": [
+            1147.93,
+            845.68,
+            1256.683,
+            864.007
+          ],
+          "origin": [
+            1147.93,
+            860.36
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_045_健康管理師_line_05",
+          "original_text": "2012/03",
+          "bbox": [
+            1170.45,
+            867.28,
+            1233.767,
+            885.607
+          ],
+          "origin": [
+            1170.45,
+            881.96
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_046_安衛高工師",
+      "bbox": [
+        1289.64,
+        775.06,
+        1424.29,
+        891.08
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_046_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            1312.24,
+            780.86,
+            1402.556,
+            799.187
+          ],
+          "origin": [
+            1312.24,
+            795.54
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_046_安衛高工師_line_02",
+          "original_text": "計2人(1)",
+          "bbox": [
+            1321.26,
+            802.46,
+            1393.433,
+            820.787
+          ],
+          "origin": [
+            1321.26,
+            817.14
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_046_安衛高工師_line_03",
+          "original_text": "穆柏勳",
+          "bbox": [
+            1330.25,
+            824.04,
+            1384.609,
+            842.392
+          ],
+          "origin": [
+            1330.25,
+            838.74
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_046_安衛高工師_line_04",
+          "original_text": "逢甲國際經管所",
+          "bbox": [
+            1294.25,
+            845.68,
+            1420.56,
+            864.007
+          ],
+          "origin": [
+            1294.25,
+            860.36
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_046_安衛高工師_line_05",
+          "original_text": "2015/4/13",
+          "bbox": [
+            1316.75,
+            867.28,
+            1398.087,
+            885.607
+          ],
+          "origin": [
+            1316.75,
+            881.96
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_047_安衛高工師",
+      "bbox": [
+        1442.83,
+        775.06,
+        1644.09,
+        889.37
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_047_安衛高工師_line_01",
+          "original_text": "安衛高工師",
+          "bbox": [
+            1498.79,
+            780.86,
+            1589.106,
+            799.187
+          ],
+          "origin": [
+            1498.79,
+            795.54
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_047_安衛高工師_line_02",
+          "original_text": "計2人(0)",
+          "bbox": [
+            1507.81,
+            802.46,
+            1579.974,
+            820.787
+          ],
+          "origin": [
+            1507.81,
+            817.14
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_048_環保高工師",
+      "bbox": [
+        972.74,
+        775.32,
+        1108.8,
+        891.08
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_048_環保高工師_line_01",
+          "original_text": "環保高工師",
+          "bbox": [
+            996.0,
+            781.12,
+            1086.316,
+            799.447
+          ],
+          "origin": [
+            996.0,
+            795.8
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_048_環保高工師_line_02",
+          "original_text": "計4人(1)",
+          "bbox": [
+            1004.99,
+            802.72,
+            1077.163,
+            821.047
+          ],
+          "origin": [
+            1004.99,
+            817.4
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_048_環保高工師_line_03",
+          "original_text": "李濬霖",
+          "bbox": [
+            1013.99,
+            824.32,
+            1068.311,
+            842.647
+          ],
+          "origin": [
+            1013.99,
+            839.0
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_048_環保高工師_line_04",
+          "original_text": "聯合工專化工科",
+          "bbox": [
+            977.99,
+            845.95,
+            1104.3,
+            864.277
+          ],
+          "origin": [
+            977.99,
+            860.63
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_048_環保高工師_line_05",
+          "original_text": "2002/1",
+          "bbox": [
+            1013.99,
+            867.55,
+            1068.173,
+            885.877
+          ],
+          "origin": [
+            1013.99,
+            882.23
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_049_助理工程師",
+      "bbox": [
+        2393.0,
+        901.01,
+        2533.63,
+        1015.32
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_049_助理工程師_line_01",
+          "original_text": "助理工程師",
+          "bbox": [
+            2418.84,
+            916.81,
+            2509.265,
+            935.137
+          ],
+          "origin": [
+            2418.84,
+            931.49
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_049_助理工程師_line_02",
+          "original_text": "吳怡萱",
+          "bbox": [
+            2436.85,
+            938.41,
+            2491.171,
+            956.737
+          ],
+          "origin": [
+            2436.85,
+            953.09
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_049_助理工程師_line_03",
+          "original_text": "中山醫大職安系",
+          "bbox": [
+            2400.85,
+            959.99,
+            2527.223,
+            978.342
+          ],
+          "origin": [
+            2400.85,
+            974.69
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_049_助理工程師_line_04",
+          "original_text": "2025/9",
+          "bbox": [
+            2436.85,
+            981.63,
+            2491.034,
+            999.957
+          ],
+          "origin": [
+            2436.85,
+            996.31
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_050_安衛工程師",
+      "bbox": [
+        1475.31,
+        921.26,
+        1614.53,
+        1041.41
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_050_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            1500.24,
+            927.07,
+            1590.605,
+            945.422
+          ],
+          "origin": [
+            1500.24,
+            941.77
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_050_安衛工程師_line_02",
+          "original_text": "林余津",
+          "bbox": [
+            1518.25,
+            948.71,
+            1572.571,
+            967.037
+          ],
+          "origin": [
+            1518.25,
+            963.39
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_050_安衛工程師_line_03",
+          "original_text": "嘉南科大",
+          "bbox": [
+            1509.24,
+            970.31,
+            1581.943,
+            988.637
+          ],
+          "origin": [
+            1509.24,
+            984.99
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_050_安衛工程師_line_04",
+          "original_text": "職安衛系",
+          "bbox": [
+            1509.24,
+            991.91,
+            1581.943,
+            1010.237
+          ],
+          "origin": [
+            1509.24,
+            1006.59
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_050_安衛工程師_line_05",
+          "original_text": "2011/11",
+          "bbox": [
+            1513.75,
+            1013.49,
+            1577.1,
+            1031.842
+          ],
+          "origin": [
+            1513.75,
+            1028.19
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_051_安衛工程師",
+      "bbox": [
+        1664.08,
+        921.26,
+        1798.73,
+        1041.41
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_051_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            1686.76,
+            927.07,
+            1777.199,
+            945.422
+          ],
+          "origin": [
+            1686.76,
+            941.77
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_051_安衛工程師_line_02",
+          "original_text": "黃偉嘉",
+          "bbox": [
+            1704.78,
+            948.71,
+            1759.101,
+            967.037
+          ],
+          "origin": [
+            1704.78,
+            963.39
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_051_安衛工程師_line_03",
+          "original_text": "雲科大機械所",
+          "bbox": [
+            1677.77,
+            970.31,
+            1786.413,
+            988.637
+          ],
+          "origin": [
+            1677.77,
+            984.99
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_051_安衛工程師_line_04",
+          "original_text": "2011/9",
+          "bbox": [
+            1704.78,
+            991.91,
+            1758.953,
+            1010.237
+          ],
+          "origin": [
+            1704.78,
+            1006.59
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_052_安衛管理員",
+      "bbox": [
+        1820.26,
+        921.26,
+        1954.91,
+        1037.28
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_052_安衛管理員_line_01",
+          "original_text": "安衛管理員",
+          "bbox": [
+            1842.98,
+            927.07,
+            1933.345,
+            945.422
+          ],
+          "origin": [
+            1842.98,
+            941.77
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_052_安衛管理員_line_02",
+          "original_text": "陳曉琪",
+          "bbox": [
+            1860.99,
+            948.71,
+            1915.311,
+            967.037
+          ],
+          "origin": [
+            1860.99,
+            963.39
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_052_安衛管理員_line_03",
+          "original_text": "長榮大學職安系",
+          "bbox": [
+            1824.99,
+            970.31,
+            1951.3,
+            988.637
+          ],
+          "origin": [
+            1824.99,
+            984.99
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_052_安衛管理員_line_04",
+          "original_text": "2011/11",
+          "bbox": [
+            1856.48,
+            991.91,
+            1919.827,
+            1010.237
+          ],
+          "origin": [
+            1856.48,
+            1006.59
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_053_健康管理員",
+      "bbox": [
+        1133.65,
+        926.31,
+        1269.71,
+        1038.51
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_053_健康管理員_line_01",
+          "original_text": "健康管理員",
+          "bbox": [
+            1156.95,
+            932.15,
+            1247.266,
+            950.477
+          ],
+          "origin": [
+            1156.95,
+            946.83
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_053_健康管理員_line_02",
+          "original_text": "吳玉珍",
+          "bbox": [
+            1174.93,
+            953.75,
+            1229.306,
+            972.077
+          ],
+          "origin": [
+            1174.93,
+            968.43
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_053_健康管理員_line_03",
+          "original_text": "慈濟技術學院",
+          "bbox": [
+            1147.93,
+            975.33,
+            1256.721,
+            993.682
+          ],
+          "origin": [
+            1147.93,
+            990.03
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_053_健康管理員_line_04",
+          "original_text": "醫管系",
+          "bbox": [
+            1174.93,
+            996.98,
+            1229.306,
+            1015.307
+          ],
+          "origin": [
+            1174.93,
+            1011.66
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_053_健康管理員_line_05",
+          "original_text": "2012/03",
+          "bbox": [
+            1170.45,
+            1018.58,
+            1233.767,
+            1036.907
+          ],
+          "origin": [
+            1170.45,
+            1033.26
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_054_安衛工程師",
+      "bbox": [
+        1295.98,
+        926.31,
+        1430.63,
+        1042.33
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_054_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            1318.59,
+            932.15,
+            1408.906,
+            950.477
+          ],
+          "origin": [
+            1318.59,
+            946.83
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_054_安衛工程師_line_02",
+          "original_text": "林瑋新",
+          "bbox": [
+            1336.61,
+            953.75,
+            1390.931,
+            972.077
+          ],
+          "origin": [
+            1336.61,
+            968.43
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_054_安衛工程師_line_03",
+          "original_text": "明志科大工業工",
+          "bbox": [
+            1300.58,
+            975.33,
+            1427.062,
+            993.682
+          ],
+          "origin": [
+            1300.58,
+            990.03
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_054_安衛工程師_line_04",
+          "original_text": "程與管理所",
+          "bbox": [
+            1318.59,
+            996.98,
+            1408.906,
+            1015.307
+          ],
+          "origin": [
+            1318.59,
+            1011.66
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_054_安衛工程師_line_05",
+          "original_text": "2023/8",
+          "bbox": [
+            1336.61,
+            1018.58,
+            1390.763,
+            1036.907
+          ],
+          "origin": [
+            1336.61,
+            1033.26
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_055_環保工程師",
+      "bbox": [
+        972.74,
+        929.051,
+        1107.39,
+        1019.79
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_055_環保工程師_line_01",
+          "original_text": "環保工程師",
+          "bbox": [
+            995.27,
+            934.89,
+            1085.696,
+            953.217
+          ],
+          "origin": [
+            995.27,
+            949.57
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_055_環保工程師_line_02",
+          "original_text": "莊晉昌",
+          "bbox": [
+            1013.28,
+            956.49,
+            1067.601,
+            974.817
+          ],
+          "origin": [
+            1013.28,
+            971.17
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_055_環保工程師_line_03",
+          "original_text": "南台科大化工系",
+          "bbox": [
+            977.28,
+            978.07,
+            1103.652,
+            996.422
+          ],
+          "origin": [
+            977.28,
+            992.77
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_055_環保工程師_line_04",
+          "original_text": "2003/2",
+          "bbox": [
+            1013.28,
+            999.72,
+            1067.464,
+            1018.047
+          ],
+          "origin": [
+            1013.28,
+            1014.4
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_056_環保工程師",
+      "bbox": [
+        632.42,
+        931.781,
+        767.07,
+        1022.52
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_056_環保工程師_line_01",
+          "original_text": "環保工程師",
+          "bbox": [
+            654.88,
+            937.63,
+            745.196,
+            955.957
+          ],
+          "origin": [
+            654.88,
+            952.31
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_056_環保工程師_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            663.88,
+            959.23,
+            736.073,
+            977.557
+          ],
+          "origin": [
+            663.88,
+            973.91
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_057_安衛工程師",
+      "bbox": [
+        792.66,
+        931.781,
+        927.31,
+        1022.52
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_057_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            815.18,
+            937.63,
+            905.496,
+            955.957
+          ],
+          "origin": [
+            815.18,
+            952.31
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_057_安衛工程師_line_02",
+          "original_text": "林谷威",
+          "bbox": [
+            833.16,
+            959.23,
+            887.481,
+            977.557
+          ],
+          "origin": [
+            833.16,
+            973.91
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_057_安衛工程師_line_03",
+          "original_text": "海洋大電訊系",
+          "bbox": [
+            806.16,
+            980.83,
+            914.803,
+            999.157
+          ],
+          "origin": [
+            806.16,
+            995.51
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_057_安衛工程師_line_04",
+          "original_text": "2012/5",
+          "bbox": [
+            833.16,
+            1002.41,
+            887.356,
+            1020.762
+          ],
+          "origin": [
+            833.16,
+            1017.11
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_058_環保工程師",
+      "bbox": [
+        319.32,
+        933.631,
+        453.97,
+        1024.37
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_058_環保工程師_line_01",
+          "original_text": "環保工程師",
+          "bbox": [
+            341.72,
+            939.48,
+            432.035,
+            957.807
+          ],
+          "origin": [
+            341.72,
+            954.16
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_058_環保工程師_line_02",
+          "original_text": "謝富承",
+          "bbox": [
+            359.73,
+            961.06,
+            414.089,
+            979.412
+          ],
+          "origin": [
+            359.73,
+            975.76
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_058_環保工程師_line_03",
+          "original_text": "建國工專機械科",
+          "bbox": [
+            323.71,
+            982.7,
+            450.185,
+            1001.027
+          ],
+          "origin": [
+            323.71,
+            997.38
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_058_環保工程師_line_04",
+          "original_text": "1998/8",
+          "bbox": [
+            359.73,
+            1004.3,
+            413.894,
+            1022.627
+          ],
+          "origin": [
+            359.73,
+            1018.98
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_059_安衛工程師",
+      "bbox": [
+        472.42,
+        933.631,
+        607.07,
+        1024.37
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_059_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            494.86,
+            939.48,
+            585.176,
+            957.807
+          ],
+          "origin": [
+            494.86,
+            954.16
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_059_安衛工程師_line_02",
+          "original_text": "陳炳煌",
+          "bbox": [
+            512.85,
+            961.06,
+            567.245,
+            979.412
+          ],
+          "origin": [
+            512.85,
+            975.76
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_059_安衛工程師_line_03",
+          "original_text": "宜蘭農工機械科",
+          "bbox": [
+            476.85,
+            982.7,
+            603.16,
+            1001.027
+          ],
+          "origin": [
+            476.85,
+            997.38
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_059_安衛工程師_line_04",
+          "original_text": "1987/5",
+          "bbox": [
+            512.85,
+            1004.3,
+            567.034,
+            1022.627
+          ],
+          "origin": [
+            512.85,
+            1018.98
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_060_環保工程師",
+      "bbox": [
+        972.64,
+        1035.83,
+        1107.29,
+        1148.03
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_060_環保工程師_line_01",
+          "original_text": "環保工程師",
+          "bbox": [
+            995.18,
+            1050.58,
+            1085.545,
+            1068.932
+          ],
+          "origin": [
+            995.18,
+            1065.28
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_060_環保工程師_line_02",
+          "original_text": "黃韻璇",
+          "bbox": [
+            1013.19,
+            1072.23,
+            1067.511,
+            1090.557
+          ],
+          "origin": [
+            1013.19,
+            1086.91
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_060_環保工程師_line_03",
+          "original_text": "北科大環境所",
+          "bbox": [
+            986.18,
+            1093.83,
+            1094.823,
+            1112.157
+          ],
+          "origin": [
+            986.18,
+            1108.51
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_060_環保工程師_line_04",
+          "original_text": "2024/12",
+          "bbox": [
+            1008.68,
+            1115.43,
+            1072.027,
+            1133.757
+          ],
+          "origin": [
+            1008.68,
+            1130.11
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_061_健康管理師",
+      "bbox": [
+        791.39,
+        1044.018,
+        930.61,
+        1113.8
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_061_健康管理師_line_01",
+          "original_text": "健康管理師",
+          "bbox": [
+            816.17,
+            1049.9,
+            906.486,
+            1068.227
+          ],
+          "origin": [
+            816.17,
+            1064.58
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_061_健康管理師_line_02",
+          "original_text": "計2人(0)",
+          "bbox": [
+            825.19,
+            1071.5,
+            897.354,
+            1089.827
+          ],
+          "origin": [
+            825.19,
+            1086.18
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_062_安衛管理員",
+      "bbox": [
+        632.42,
+        1044.021,
+        767.07,
+        1134.76
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_062_安衛管理員_line_01",
+          "original_text": "安衛管理員",
+          "bbox": [
+            654.88,
+            1049.9,
+            745.196,
+            1068.227
+          ],
+          "origin": [
+            654.88,
+            1064.58
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_062_安衛管理員_line_02",
+          "original_text": "黃淑芳",
+          "bbox": [
+            672.9,
+            1071.5,
+            727.221,
+            1089.827
+          ],
+          "origin": [
+            672.9,
+            1086.18
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_062_安衛管理員_line_03",
+          "original_text": "高中",
+          "bbox": [
+            681.89,
+            1093.08,
+            718.57,
+            1111.432
+          ],
+          "origin": [
+            681.89,
+            1107.78
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_062_安衛管理員_line_04",
+          "original_text": "1989/2",
+          "bbox": [
+            672.9,
+            1114.72,
+            727.054,
+            1133.047
+          ],
+          "origin": [
+            672.9,
+            1129.4
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_063_健康管理師",
+      "bbox": [
+        475.49,
+        1049.161,
+        611.55,
+        1139.9
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_063_健康管理師_line_01",
+          "original_text": "健康管理師",
+          "bbox": [
+            498.62,
+            1055.04,
+            589.046,
+            1073.367
+          ],
+          "origin": [
+            498.62,
+            1069.72
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_063_健康管理師_line_02",
+          "original_text": "計1人(0)",
+          "bbox": [
+            507.64,
+            1076.62,
+            579.816,
+            1094.972
+          ],
+          "origin": [
+            507.64,
+            1091.32
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_064_健康管理員",
+      "bbox": [
+        1135.07,
+        1058.46,
+        1269.72,
+        1170.66
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_064_健康管理員_line_01",
+          "original_text": "健康管理員",
+          "bbox": [
+            1157.65,
+            1062.99,
+            1247.966,
+            1081.317
+          ],
+          "origin": [
+            1157.65,
+            1077.67
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_064_健康管理員_line_02",
+          "original_text": "潘姮君",
+          "bbox": [
+            1175.66,
+            1082.8,
+            1229.981,
+            1101.127
+          ],
+          "origin": [
+            1175.66,
+            1097.48
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_064_健康管理員_line_03",
+          "original_text": "敏惠護校",
+          "bbox": [
+            1166.64,
+            1102.6,
+            1239.288,
+            1120.927
+          ],
+          "origin": [
+            1166.64,
+            1117.28
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_064_健康管理員_line_04",
+          "original_text": "護理科",
+          "bbox": [
+            1175.66,
+            1122.41,
+            1229.981,
+            1140.737
+          ],
+          "origin": [
+            1175.66,
+            1137.09
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_064_健康管理員_line_05",
+          "original_text": "2012/03",
+          "bbox": [
+            1171.15,
+            1142.22,
+            1234.497,
+            1160.547
+          ],
+          "origin": [
+            1171.15,
+            1156.9
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_065_安衛管理員",
+      "bbox": [
+        1664.08,
+        1072.78,
+        1798.73,
+        1184.98
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_065_安衛管理員_line_01",
+          "original_text": "安衛管理員",
+          "bbox": [
+            1686.76,
+            1078.68,
+            1777.186,
+            1097.007
+          ],
+          "origin": [
+            1686.76,
+            1093.36
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_065_安衛管理員_line_02",
+          "original_text": "鄒智陽",
+          "bbox": [
+            1704.78,
+            1100.28,
+            1759.101,
+            1118.607
+          ],
+          "origin": [
+            1704.78,
+            1114.96
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_065_安衛管理員_line_03",
+          "original_text": "遠東工專化工科",
+          "bbox": [
+            1668.78,
+            1121.86,
+            1795.152,
+            1140.212
+          ],
+          "origin": [
+            1668.78,
+            1136.56
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_065_安衛管理員_line_04",
+          "original_text": "2001/3",
+          "bbox": [
+            1704.78,
+            1143.5,
+            1758.953,
+            1161.827
+          ],
+          "origin": [
+            1704.78,
+            1158.18
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_066_健康管理員",
+      "bbox": [
+        794.82,
+        1136.771,
+        929.47,
+        1227.51
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_066_健康管理員_line_01",
+          "original_text": "健康管理員",
+          "bbox": [
+            817.33,
+            1142.68,
+            907.646,
+            1161.007
+          ],
+          "origin": [
+            817.33,
+            1157.36
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_066_健康管理員_line_02",
+          "original_text": "吳幸娟",
+          "bbox": [
+            835.32,
+            1164.26,
+            889.715,
+            1182.612
+          ],
+          "origin": [
+            835.32,
+            1178.96
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_066_健康管理員_line_03",
+          "original_text": "輔英科大護理科",
+          "bbox": [
+            799.32,
+            1185.9,
+            925.63,
+            1204.227
+          ],
+          "origin": [
+            799.32,
+            1200.58
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_066_健康管理員_line_04",
+          "original_text": "2021/9",
+          "bbox": [
+            835.32,
+            1207.5,
+            889.504,
+            1225.827
+          ],
+          "origin": [
+            835.32,
+            1222.18
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_067_安衛工程師",
+      "bbox": [
+        972.64,
+        1164.07,
+        1107.29,
+        1276.27
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_067_安衛工程師_line_01",
+          "original_text": "安衛工程師",
+          "bbox": [
+            995.18,
+            1178.89,
+            1085.495,
+            1197.217
+          ],
+          "origin": [
+            995.18,
+            1193.57
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_067_安衛工程師_line_02",
+          "original_text": "蘇鈺涵",
+          "bbox": [
+            1013.19,
+            1200.47,
+            1067.549,
+            1218.822
+          ],
+          "origin": [
+            1013.19,
+            1215.17
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_067_安衛工程師_line_03",
+          "original_text": "雲科大化材系",
+          "bbox": [
+            986.18,
+            1222.12,
+            1094.823,
+            1240.447
+          ],
+          "origin": [
+            986.18,
+            1236.8
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_067_安衛工程師_line_04",
+          "original_text": "2024/8",
+          "bbox": [
+            1013.19,
+            1243.72,
+            1067.344,
+            1262.047
+          ],
+          "origin": [
+            1013.19,
+            1258.4
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_068_健康助理員",
+      "bbox": [
+        476.9,
+        1167.031,
+        611.55,
+        1257.77
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_068_健康助理員_line_01",
+          "original_text": "健康助理員",
+          "bbox": [
+            499.35,
+            1172.95,
+            589.666,
+            1191.277
+          ],
+          "origin": [
+            499.35,
+            1187.63
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_068_健康助理員_line_02",
+          "original_text": "林佩祺",
+          "bbox": [
+            517.33,
+            1194.55,
+            571.651,
+            1212.877
+          ],
+          "origin": [
+            517.33,
+            1209.23
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_068_健康助理員_line_03",
+          "original_text": "輔英科大護理系",
+          "bbox": [
+            481.33,
+            1216.18,
+            607.64,
+            1234.507
+          ],
+          "origin": [
+            481.33,
+            1230.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_068_健康助理員_line_04",
+          "original_text": "2013/9",
+          "bbox": [
+            517.33,
+            1237.78,
+            571.513,
+            1256.107
+          ],
+          "origin": [
+            517.33,
+            1252.46
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_069_健康管理員",
+      "bbox": [
+        1135.07,
+        1196.39,
+        1269.72,
+        1298.1
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_069_健康管理員_line_01",
+          "original_text": "健康管理員",
+          "bbox": [
+            1157.65,
+            1202.31,
+            1247.966,
+            1220.637
+          ],
+          "origin": [
+            1157.65,
+            1216.99
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_069_健康管理員_line_02",
+          "original_text": "陳芋婷",
+          "bbox": [
+            1175.66,
+            1223.94,
+            1229.981,
+            1242.267
+          ],
+          "origin": [
+            1175.66,
+            1238.62
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_069_健康管理員_line_03",
+          "original_text": "仁德醫專",
+          "bbox": [
+            1166.64,
+            1245.54,
+            1239.288,
+            1263.867
+          ],
+          "origin": [
+            1166.64,
+            1260.22
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_069_健康管理員_line_04",
+          "original_text": "2016/06",
+          "bbox": [
+            1171.15,
+            1267.14,
+            1234.497,
+            1285.467
+          ],
+          "origin": [
+            1171.15,
+            1281.82
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_070_健康管理員",
+      "bbox": [
+        794.82,
+        1261.411,
+        929.47,
+        1352.15
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_070_健康管理員_line_01",
+          "original_text": "健康管理員",
+          "bbox": [
+            817.33,
+            1267.38,
+            907.646,
+            1285.707
+          ],
+          "origin": [
+            817.33,
+            1282.06
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_070_健康管理員_line_02",
+          "original_text": "陳欣妤",
+          "bbox": [
+            835.32,
+            1288.98,
+            889.696,
+            1307.307
+          ],
+          "origin": [
+            835.32,
+            1303.66
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_070_健康管理員_line_03",
+          "original_text": "崇仁醫專",
+          "bbox": [
+            826.33,
+            1310.58,
+            898.978,
+            1328.907
+          ],
+          "origin": [
+            826.33,
+            1325.26
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_070_健康管理員_line_04",
+          "original_text": "2019/8",
+          "bbox": [
+            835.32,
+            1332.16,
+            889.516,
+            1350.512
+          ],
+          "origin": [
+            835.32,
+            1346.86
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_071_助理工程師",
+      "bbox": [
+        972.64,
+        1292.31,
+        1107.29,
+        1404.51
+      ],
+      "border": "dashed",
+      "lines": [
+        {
+          "field_id": "node_071_助理工程師_line_01",
+          "original_text": "助理工程師",
+          "bbox": [
+            995.18,
+            1307.18,
+            1085.495,
+            1325.507
+          ],
+          "origin": [
+            995.18,
+            1321.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_071_助理工程師_line_02",
+          "original_text": "蔡沂庭",
+          "bbox": [
+            1013.19,
+            1328.78,
+            1067.511,
+            1347.107
+          ],
+          "origin": [
+            1013.19,
+            1343.46
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_071_助理工程師_line_03",
+          "original_text": "明志科大環安所",
+          "bbox": [
+            977.16,
+            1350.36,
+            1103.642,
+            1368.712
+          ],
+          "origin": [
+            977.16,
+            1365.06
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "education",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_071_助理工程師_line_04",
+          "original_text": "2026/5",
+          "bbox": [
+            1013.19,
+            1372.01,
+            1067.344,
+            1390.337
+          ],
+          "origin": [
+            1013.19,
+            1386.69
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "start_date",
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "node_id": "node_072_定期契約人員",
+      "bbox": [
+        974.05,
+        1420.55,
+        1107.28,
+        1578.1
+      ],
+      "border": "solid",
+      "lines": [
+        {
+          "field_id": "node_072_定期契約人員_line_01",
+          "original_text": "定期契約人員",
+          "bbox": [
+            986.88,
+            1426.55,
+            1095.523,
+            1444.877
+          ],
+          "origin": [
+            986.88,
+            1441.23
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "role_or_unit",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_072_定期契約人員_line_02",
+          "original_text": "計4人(3)",
+          "bbox": [
+            1004.9,
+            1448.18,
+            1077.063,
+            1466.507
+          ],
+          "origin": [
+            1004.9,
+            1462.86
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "staffing_count",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_072_定期契約人員_line_03",
+          "original_text": "溫瑞鑫",
+          "bbox": [
+            1013.89,
+            1469.78,
+            1068.211,
+            1488.107
+          ],
+          "origin": [
+            1013.89,
+            1484.46
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_072_定期契約人員_line_04",
+          "original_text": "蔡仁正",
+          "bbox": [
+            1013.89,
+            1491.38,
+            1068.211,
+            1509.707
+          ],
+          "origin": [
+            1013.89,
+            1506.06
+          ],
+          "font_size": 18.327,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        },
+        {
+          "field_id": "node_072_定期契約人員_line_05",
+          "original_text": "沈大為",
+          "bbox": [
+            1013.89,
+            1512.96,
+            1068.249,
+            1531.312
+          ],
+          "origin": [
+            1013.89,
+            1527.66
+          ],
+          "font_size": 18.352,
+          "font": "æ¨æ¥·é«",
+          "role": "person_name",
+          "alignment": "center"
+        }
+      ]
+    }
+  ],
+  "special_fields": [
+    {
+      "field_id": "revision_date",
+      "original_text": "修訂日期：2026年9月10日",
+      "bbox": [
+        2657.96,
+        40.621,
+        2934.228,
+        64.839
+      ],
+      "origin": [
+        2657.96,
+        60.02
+      ],
+      "font_size": 24.218,
+      "role": "revision_date",
+      "alignment": "center"
+    },
+    {
+      "field_id": "top_summary_01",
+      "original_text": "39",
+      "bbox": [
+        136.12,
+        119.918,
+        156.096,
+        140.233
+      ],
+      "origin": [
+        136.12,
+        136.19
+      ],
+      "font_size": 20.315,
+      "role": "top_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "top_summary_02",
+      "original_text": "13",
+      "bbox": [
+        190.16,
+        119.528,
+        210.136,
+        139.843
+      ],
+      "origin": [
+        190.16,
+        135.8
+      ],
+      "font_size": 20.315,
+      "role": "top_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "top_summary_03",
+      "original_text": "52",
+      "bbox": [
+        241.38,
+        119.918,
+        261.356,
+        140.233
+      ],
+      "origin": [
+        241.38,
+        136.19
+      ],
+      "font_size": 20.315,
+      "role": "top_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "top_summary_04",
+      "original_text": "0",
+      "bbox": [
+        299.05,
+        119.918,
+        309.207,
+        140.233
+      ],
+      "origin": [
+        299.05,
+        136.19
+      ],
+      "font_size": 20.315,
+      "role": "top_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "top_summary_05",
+      "original_text": "52",
+      "bbox": [
+        346.67,
+        119.148,
+        366.646,
+        139.463
+      ],
+      "origin": [
+        346.67,
+        135.42
+      ],
+      "font_size": 20.315,
+      "role": "top_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_001",
+      "original_text": "3(1)",
+      "bbox": [
+        2742.76,
+        1714.372,
+        2790.911,
+        1738.614
+      ],
+      "origin": [
+        2742.76,
+        1733.79
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_002",
+      "original_text": "7(4)",
+      "bbox": [
+        1830.88,
+        1684.621,
+        1868.53,
+        1708.839
+      ],
+      "origin": [
+        1830.88,
+        1704.02
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_003",
+      "original_text": "17(6)",
+      "bbox": [
+        1814.08,
+        1714.441,
+        1869.25,
+        1738.659
+      ],
+      "origin": [
+        1814.08,
+        1733.84
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_004",
+      "original_text": "0(7)",
+      "bbox": [
+        1831.15,
+        1769.961,
+        1868.79,
+        1794.179
+      ],
+      "origin": [
+        1831.15,
+        1789.36
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_005",
+      "original_text": "33(28)",
+      "bbox": [
+        1812.41,
+        1888.265,
+        1872.628,
+        1912.507
+      ],
+      "origin": [
+        1812.41,
+        1907.683
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_006",
+      "original_text": "4(7)",
+      "bbox": [
+        1830.84,
+        1741.112,
+        1868.508,
+        1765.354
+      ],
+      "origin": [
+        1830.84,
+        1760.53
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_007",
+      "original_text": "4(3)",
+      "bbox": [
+        1831.35,
+        1830.926,
+        1869.01,
+        1855.144
+      ],
+      "origin": [
+        1831.35,
+        1850.325
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_008",
+      "original_text": "1(1)",
+      "bbox": [
+        794.01,
+        1686.051,
+        842.149,
+        1710.269
+      ],
+      "origin": [
+        794.01,
+        1705.45
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_009",
+      "original_text": "5(2)",
+      "bbox": [
+        770.3,
+        1714.901,
+        842.409,
+        1739.119
+      ],
+      "origin": [
+        770.3,
+        1734.3
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_010",
+      "original_text": "0(3)",
+      "bbox": [
+        794.01,
+        1770.251,
+        842.149,
+        1794.469
+      ],
+      "origin": [
+        794.01,
+        1789.65
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_011",
+      "original_text": "8(7)",
+      "bbox": [
+        792.87,
+        1890.107,
+        840.991,
+        1914.349
+      ],
+      "origin": [
+        792.87,
+        1909.525
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_012",
+      "original_text": "2(1)",
+      "bbox": [
+        794.01,
+        1741.982,
+        842.161,
+        1766.224
+      ],
+      "origin": [
+        794.01,
+        1761.4
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_013",
+      "original_text": "10(6)",
+      "bbox": [
+        35.952,
+        1683.221,
+        96.061,
+        1707.439
+      ],
+      "origin": [
+        35.952,
+        1702.62
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_014",
+      "original_text": "29(11)",
+      "bbox": [
+        23.879,
+        1714.232,
+        96.0,
+        1738.474
+      ],
+      "origin": [
+        23.879,
+        1733.65
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_015",
+      "original_text": "8(11)",
+      "bbox": [
+        31.612,
+        1742.851,
+        91.745,
+        1767.069
+      ],
+      "origin": [
+        31.612,
+        1762.25
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_016",
+      "original_text": "0(10)",
+      "bbox": [
+        35.855,
+        1769.331,
+        95.964,
+        1793.549
+      ],
+      "origin": [
+        35.855,
+        1788.73
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_017",
+      "original_text": "1(2)",
+      "bbox": [
+        41.794,
+        1799.411,
+        89.903,
+        1823.629
+      ],
+      "origin": [
+        41.794,
+        1818.81
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_018",
+      "original_text": "4(3)",
+      "bbox": [
+        42.618,
+        1829.647,
+        90.763,
+        1853.889
+      ],
+      "origin": [
+        42.618,
+        1849.065
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_019",
+      "original_text": "52(43)",
+      "bbox": [
+        24.727,
+        1888.968,
+        96.848,
+        1913.21
+      ],
+      "origin": [
+        24.727,
+        1908.386
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_020",
+      "original_text": "1(1)",
+      "bbox": [
+        2741.67,
+        1685.312,
+        2789.791,
+        1709.554
+      ],
+      "origin": [
+        2741.67,
+        1704.73
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_021",
+      "original_text": "7(4)",
+      "bbox": [
+        964.05,
+        1685.572,
+        1012.171,
+        1709.814
+      ],
+      "origin": [
+        964.05,
+        1704.99
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_022",
+      "original_text": "17(6)",
+      "bbox": [
+        941.96,
+        1714.372,
+        1014.111,
+        1738.614
+      ],
+      "origin": [
+        941.96,
+        1733.79
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_023",
+      "original_text": "0(7)",
+      "bbox": [
+        963.37,
+        1769.981,
+        1011.479,
+        1794.199
+      ],
+      "origin": [
+        963.37,
+        1789.38
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_024",
+      "original_text": "33(28)",
+      "bbox": [
+        939.85,
+        1890.054,
+        1011.959,
+        1914.272
+      ],
+      "origin": [
+        939.85,
+        1909.453
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_025",
+      "original_text": "4(7)",
+      "bbox": [
+        963.35,
+        1741.112,
+        1011.491,
+        1765.354
+      ],
+      "origin": [
+        963.35,
+        1760.53
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_026",
+      "original_text": "4(3)",
+      "bbox": [
+        963.32,
+        1832.987,
+        1011.429,
+        1857.205
+      ],
+      "origin": [
+        963.32,
+        1852.386
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_027",
+      "original_text": "1(1)",
+      "bbox": [
+        963.37,
+        1800.791,
+        1011.479,
+        1825.009
+      ],
+      "origin": [
+        963.37,
+        1820.19
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_028",
+      "original_text": "1(1)",
+      "bbox": [
+        630.21,
+        1686.051,
+        678.319,
+        1710.269
+      ],
+      "origin": [
+        630.21,
+        1705.45
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_029",
+      "original_text": "5(2)",
+      "bbox": [
+        607.13,
+        1716.191,
+        679.239,
+        1740.409
+      ],
+      "origin": [
+        607.13,
+        1735.59
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_030",
+      "original_text": "0(3)",
+      "bbox": [
+        630.21,
+        1770.112,
+        678.331,
+        1794.354
+      ],
+      "origin": [
+        630.21,
+        1789.53
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_031",
+      "original_text": "8(7)",
+      "bbox": [
+        629.04,
+        1890.029,
+        677.149,
+        1914.247
+      ],
+      "origin": [
+        629.04,
+        1909.428
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_032",
+      "original_text": "2(1)",
+      "bbox": [
+        630.21,
+        1741.982,
+        678.331,
+        1766.224
+      ],
+      "origin": [
+        630.21,
+        1761.4
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_033",
+      "original_text": "1(0)",
+      "bbox": [
+        457.38,
+        1686.271,
+        505.489,
+        1710.489
+      ],
+      "origin": [
+        457.38,
+        1705.67
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_034",
+      "original_text": "3(1)",
+      "bbox": [
+        433.16,
+        1712.451,
+        505.299,
+        1736.669
+      ],
+      "origin": [
+        433.16,
+        1731.85
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_035",
+      "original_text": "5(4)",
+      "bbox": [
+        467.2,
+        1888.823,
+        515.321,
+        1913.065
+      ],
+      "origin": [
+        467.2,
+        1908.241
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_036",
+      "original_text": "1(2)",
+      "bbox": [
+        457.99,
+        1741.982,
+        506.111,
+        1766.224
+      ],
+      "origin": [
+        457.99,
+        1761.4
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_037",
+      "original_text": "1(0)",
+      "bbox": [
+        304.51,
+        1685.401,
+        352.619,
+        1709.619
+      ],
+      "origin": [
+        304.51,
+        1704.8
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_038",
+      "original_text": "3(1)",
+      "bbox": [
+        281.24,
+        1715.561,
+        353.349,
+        1739.779
+      ],
+      "origin": [
+        281.24,
+        1734.96
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_039",
+      "original_text": "5(4)",
+      "bbox": [
+        304.44,
+        1888.211,
+        352.569,
+        1912.429
+      ],
+      "origin": [
+        304.44,
+        1907.61
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_040",
+      "original_text": "1(2)",
+      "bbox": [
+        305.6,
+        1741.371,
+        353.709,
+        1765.589
+      ],
+      "origin": [
+        305.6,
+        1760.77
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_041",
+      "original_text": "1(1)",
+      "bbox": [
+        188.99,
+        1713.761,
+        237.099,
+        1737.979
+      ],
+      "origin": [
+        188.99,
+        1733.16
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_042",
+      "original_text": "2(2)",
+      "bbox": [
+        166.33,
+        1889.399,
+        238.459,
+        1913.617
+      ],
+      "origin": [
+        166.33,
+        1908.798
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_043",
+      "original_text": "1(1)",
+      "bbox": [
+        110.23,
+        1713.092,
+        158.371,
+        1737.334
+      ],
+      "origin": [
+        110.23,
+        1732.51
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_044",
+      "original_text": "2(2)",
+      "bbox": [
+        87.224,
+        1889.211,
+        159.341,
+        1913.453
+      ],
+      "origin": [
+        87.224,
+        1908.629
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_045",
+      "original_text": "1(1)",
+      "bbox": [
+        110.74,
+        1739.601,
+        158.849,
+        1763.819
+      ],
+      "origin": [
+        110.74,
+        1759.0
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_046",
+      "original_text": "1(1)",
+      "bbox": [
+        188.41,
+        1741.541,
+        236.549,
+        1765.759
+      ],
+      "origin": [
+        188.41,
+        1760.94
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_047",
+      "original_text": "4(2)",
+      "bbox": [
+        2740.95,
+        1890.374,
+        2789.071,
+        1914.616
+      ],
+      "origin": [
+        2740.95,
+        1909.792
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_048",
+      "original_text": "0(0)",
+      "bbox": [
+        110.01,
+        1801.231,
+        158.119,
+        1825.449
+      ],
+      "origin": [
+        110.01,
+        1820.63
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_049",
+      "original_text": "0(0)",
+      "bbox": [
+        188.63,
+        1802.172,
+        236.739,
+        1826.389
+      ],
+      "origin": [
+        188.63,
+        1821.57
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_050",
+      "original_text": "0(1)",
+      "bbox": [
+        460.0,
+        1801.741,
+        508.109,
+        1825.959
+      ],
+      "origin": [
+        460.0,
+        1821.14
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_051",
+      "original_text": "0(1)",
+      "bbox": [
+        300.95,
+        1801.741,
+        349.059,
+        1825.959
+      ],
+      "origin": [
+        300.95,
+        1821.14
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_052",
+      "original_text": "0(0)",
+      "bbox": [
+        188.24,
+        1769.331,
+        236.379,
+        1793.549
+      ],
+      "origin": [
+        188.24,
+        1788.73
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_053",
+      "original_text": "0(0)",
+      "bbox": [
+        110.69,
+        1769.281,
+        158.829,
+        1793.499
+      ],
+      "origin": [
+        110.69,
+        1788.68
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_054",
+      "original_text": "0(0)",
+      "bbox": [
+        109.5,
+        1858.296,
+        157.609,
+        1882.514
+      ],
+      "origin": [
+        109.5,
+        1877.695
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_055",
+      "original_text": "0(0)",
+      "bbox": [
+        42.642,
+        1860.866,
+        90.776,
+        1885.084
+      ],
+      "origin": [
+        42.642,
+        1880.265
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_056",
+      "original_text": "0(0)",
+      "bbox": [
+        965.16,
+        1859.945,
+        1013.269,
+        1884.163
+      ],
+      "origin": [
+        965.16,
+        1879.344
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_057",
+      "original_text": "0(0)",
+      "bbox": [
+        187.81,
+        1858.35,
+        235.931,
+        1882.592
+      ],
+      "origin": [
+        187.81,
+        1877.768
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_058",
+      "original_text": "1(1)",
+      "bbox": [
+        2678.08,
+        1684.331,
+        2726.189,
+        1708.549
+      ],
+      "origin": [
+        2678.08,
+        1703.73
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_059",
+      "original_text": "3(1)",
+      "bbox": [
+        2678.57,
+        1714.032,
+        2726.691,
+        1738.274
+      ],
+      "origin": [
+        2678.57,
+        1733.45
+      ],
+      "font_size": 24.242,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_060",
+      "original_text": "4(2)",
+      "bbox": [
+        2674.55,
+        1891.145,
+        2722.659,
+        1915.363
+      ],
+      "origin": [
+        2674.55,
+        1910.544
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_061",
+      "original_text": "1(1)",
+      "bbox": [
+        1831.15,
+        1802.201,
+        1868.79,
+        1826.419
+      ],
+      "origin": [
+        1831.15,
+        1821.6
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "bottom_summary_062",
+      "original_text": "0(0)",
+      "bbox": [
+        1832.46,
+        1859.29,
+        1870.13,
+        1883.508
+      ],
+      "origin": [
+        1832.46,
+        1878.689
+      ],
+      "font_size": 24.218,
+      "role": "bottom_summary_count",
+      "alignment": "center"
+    },
+    {
+      "field_id": "approval_date_text",
+      "original_text": "編制簽准日    年  月   日",
+      "bbox": [
+        100.15,
+        36.767,
+        350.501,
+        57.058
+      ],
+      "origin": [
+        100.15,
+        53.02
+      ],
+      "font_size": 20.291,
+      "role": "approval_date",
+      "alignment": "left"
+    }
+  ]
+}

@@ -1,0 +1,2173 @@
+{
+  "version": "production-r1",
+  "summaryCategories": [
+    "經理級",
+    "一級主管",
+    "二級主管",
+    "基層主管",
+    "基層人員",
+    "事務人員",
+    "定期契約人員",
+    "培訓人員",
+    "合計"
+  ],
+  "groups": [
+    {
+      "id": "彰化",
+      "label": "彰化",
+      "xMin": -1,
+      "xMax": 300
+    },
+    {
+      "id": "龍德",
+      "label": "龍德",
+      "xMin": 300,
+      "xMax": 600
+    },
+    {
+      "id": "新港",
+      "label": "新港",
+      "xMin": 600,
+      "xMax": 900
+    },
+    {
+      "id": "麥寮",
+      "label": "麥寮",
+      "xMin": 900,
+      "xMax": 2650
+    },
+    {
+      "id": "台北",
+      "label": "台北",
+      "xMin": 2650,
+      "xMax": 99999
+    }
+  ],
+  "staffingFields": [
+    {
+      "fieldId": "node_002_工安副處長_line_02",
+      "parentNodeId": "node_002_工安副處長",
+      "group": "麥寮",
+      "summaryClass": "一級主管",
+      "label": "工安副處長",
+      "roleTitle": "工安副處長",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        1076.76,
+        212.59,
+        1258.18,
+        324.34
+      ],
+      "vacancySlotIds": [
+        "vac::node_002_工安副處長::01"
+      ]
+    },
+    {
+      "fieldId": "node_010_環保組_line_03",
+      "parentNodeId": "node_010_環保組",
+      "group": "麥寮",
+      "summaryClass": "一級主管",
+      "label": "環保組 / 組長",
+      "roleTitle": "組長",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        975.77,
+        472.0,
+        1111.83,
+        592.15
+      ],
+      "vacancySlotIds": [
+        "vac::node_010_環保組::01"
+      ]
+    },
+    {
+      "fieldId": "node_013_安衛高工師_line_02",
+      "parentNodeId": "node_013_安衛高工師",
+      "group": "彰化",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_013_安衛高工師::p01"
+      ],
+      "parentBBox": [
+        127.59,
+        478.75,
+        266.1,
+        594.77
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_014_組長_line_02",
+      "parentNodeId": "node_014_組長",
+      "group": "龍德",
+      "summaryClass": "一級主管",
+      "label": "組長",
+      "roleTitle": "組長",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        410.17,
+        478.755,
+        534.5,
+        555.29
+      ],
+      "vacancySlotIds": [
+        "vac::node_014_組長::01"
+      ]
+    },
+    {
+      "fieldId": "node_020_環保組_line_03",
+      "parentNodeId": "node_020_環保組",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "環保組 / 環保高工師",
+      "roleTitle": "環保高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_020_環保組::p01"
+      ],
+      "parentBBox": [
+        1961.89,
+        580.85,
+        2096.54,
+        739.24
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_021_健康管理_line_03",
+      "parentNodeId": "node_021_健康管理",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "健康管理 / 安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_021_健康管理::p01"
+      ],
+      "parentBBox": [
+        2104.97,
+        581.06,
+        2241.03,
+        739.45
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_022_風險管理_line_03",
+      "parentNodeId": "node_022_風險管理",
+      "group": "麥寮",
+      "summaryClass": "基層主管",
+      "label": "風險管理 / PSM資工師",
+      "roleTitle": "PSM資工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        2248.63,
+        582.14,
+        2386.11,
+        740.53
+      ],
+      "vacancySlotIds": [
+        "vac::node_022_風險管理::01"
+      ]
+    },
+    {
+      "fieldId": "node_023_組長_line_03",
+      "parentNodeId": "node_023_組長",
+      "group": "台北",
+      "summaryClass": "一級主管",
+      "label": "組長 / 副組長",
+      "roleTitle": "副組長",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_023_組長::p01"
+      ],
+      "parentBBox": [
+        2682.99,
+        582.14,
+        2820.47,
+        740.53
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_024_消防管理_line_03",
+      "parentNodeId": "node_024_消防管理",
+      "group": "麥寮",
+      "summaryClass": "基層主管",
+      "label": "消防管理 / 消防資工師",
+      "roleTitle": "消防資工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_024_消防管理::p01"
+      ],
+      "parentBBox": [
+        2394.29,
+        583.11,
+        2528.94,
+        741.5
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_025_績效管理_line_03",
+      "parentNodeId": "node_025_績效管理",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "績效管理 / 安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_025_績效管理::p01"
+      ],
+      "parentBBox": [
+        2537.01,
+        583.42,
+        2671.66,
+        742.79
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_034_健康管理師_line_02",
+      "parentNodeId": "node_034_健康管理師",
+      "group": "彰化",
+      "summaryClass": "一級主管",
+      "label": "健康管理師",
+      "roleTitle": "健康管理師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        127.59,
+        754.01,
+        262.24,
+        822.75
+      ],
+      "vacancySlotIds": [
+        "vac::node_034_健康管理師::01"
+      ]
+    },
+    {
+      "fieldId": "node_035_安衛高工師_line_02",
+      "parentNodeId": "node_035_安衛高工師",
+      "group": "台北",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_035_安衛高工師::p01"
+      ],
+      "parentBBox": [
+        2678.42,
+        764.43,
+        2813.07,
+        878.74
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_036_事務人員_line_02",
+      "parentNodeId": "node_036_事務人員",
+      "group": "麥寮",
+      "summaryClass": "事務人員",
+      "label": "事務人員",
+      "roleTitle": "事務人員",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_036_事務人員::p01"
+      ],
+      "parentBBox": [
+        2535.07,
+        765.19,
+        2669.72,
+        879.5
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_038_消防高工師_line_02",
+      "parentNodeId": "node_038_消防高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "消防高工師",
+      "roleTitle": "消防高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        2393.0,
+        766.68,
+        2527.65,
+        879.5
+      ],
+      "vacancySlotIds": [
+        "vac::node_038_消防高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_039_環保高工師_line_02",
+      "parentNodeId": "node_039_環保高工師",
+      "group": "龍德",
+      "summaryClass": "二級主管",
+      "label": "環保高工師",
+      "roleTitle": "環保高工師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        319.32,
+        770.01,
+        457.83,
+        871.49
+      ],
+      "vacancySlotIds": [
+        "vac::node_039_環保高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_040_安衛高工師_line_02",
+      "parentNodeId": "node_040_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        1664.08,
+        770.76,
+        1798.73,
+        889.37
+      ],
+      "vacancySlotIds": [
+        "vac::node_040_安衛高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_041_安衛高工師_line_02",
+      "parentNodeId": "node_041_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        1820.26,
+        770.76,
+        1954.91,
+        890.91
+      ],
+      "vacancySlotIds": [
+        "vac::node_041_安衛高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_042_環保高工師_line_02",
+      "parentNodeId": "node_042_環保高工師",
+      "group": "新港",
+      "summaryClass": "二級主管",
+      "label": "環保高工師",
+      "roleTitle": "環保高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_042_環保高工師::p01"
+      ],
+      "parentBBox": [
+        628.45,
+        770.77,
+        765.93,
+        891.54
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_043_安衛高工師_line_02",
+      "parentNodeId": "node_043_安衛高工師",
+      "group": "新港",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_043_安衛高工師::p01"
+      ],
+      "parentBBox": [
+        790.54,
+        771.39,
+        926.6,
+        891.54
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_044_安衛高工師_line_02",
+      "parentNodeId": "node_044_安衛高工師",
+      "group": "龍德",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        472.42,
+        772.617,
+        607.07,
+        871.83
+      ],
+      "vacancySlotIds": [
+        "vac::node_044_安衛高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_045_健康管理師_line_02",
+      "parentNodeId": "node_045_健康管理師",
+      "group": "麥寮",
+      "summaryClass": "一級主管",
+      "label": "健康管理師",
+      "roleTitle": "健康管理師",
+      "baselinePlanned": 4,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_045_健康管理師::p01"
+      ],
+      "parentBBox": [
+        1133.65,
+        775.06,
+        1269.71,
+        891.08
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_046_安衛高工師_line_02",
+      "parentNodeId": "node_046_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_046_安衛高工師::p01"
+      ],
+      "parentBBox": [
+        1289.64,
+        775.06,
+        1424.29,
+        891.08
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_047_安衛高工師_line_02",
+      "parentNodeId": "node_047_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "安衛高工師",
+      "roleTitle": "安衛高工師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        1442.83,
+        775.06,
+        1644.09,
+        889.37
+      ],
+      "vacancySlotIds": [
+        "vac::node_047_安衛高工師::01"
+      ]
+    },
+    {
+      "fieldId": "node_048_環保高工師_line_02",
+      "parentNodeId": "node_048_環保高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "label": "環保高工師",
+      "roleTitle": "環保高工師",
+      "baselinePlanned": 4,
+      "baselineCurrent": 1,
+      "directSlotIds": [
+        "node_048_環保高工師::p01"
+      ],
+      "parentBBox": [
+        972.74,
+        775.32,
+        1108.8,
+        891.08
+      ],
+      "vacancySlotIds": []
+    },
+    {
+      "fieldId": "node_056_環保工程師_line_02",
+      "parentNodeId": "node_056_環保工程師",
+      "group": "新港",
+      "summaryClass": "基層主管",
+      "label": "環保工程師",
+      "roleTitle": "環保工程師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        632.42,
+        931.781,
+        767.07,
+        1022.52
+      ],
+      "vacancySlotIds": [
+        "vac::node_056_環保工程師::01"
+      ]
+    },
+    {
+      "fieldId": "node_061_健康管理師_line_02",
+      "parentNodeId": "node_061_健康管理師",
+      "group": "新港",
+      "summaryClass": "一級主管",
+      "label": "健康管理師",
+      "roleTitle": "健康管理師",
+      "baselinePlanned": 2,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        791.39,
+        1044.018,
+        930.61,
+        1113.8
+      ],
+      "vacancySlotIds": [
+        "vac::node_061_健康管理師::01"
+      ]
+    },
+    {
+      "fieldId": "node_063_健康管理師_line_02",
+      "parentNodeId": "node_063_健康管理師",
+      "group": "龍德",
+      "summaryClass": "一級主管",
+      "label": "健康管理師",
+      "roleTitle": "健康管理師",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0,
+      "directSlotIds": [],
+      "parentBBox": [
+        475.49,
+        1049.161,
+        611.55,
+        1139.9
+      ],
+      "vacancySlotIds": [
+        "vac::node_063_健康管理師::01"
+      ]
+    },
+    {
+      "fieldId": "node_072_定期契約人員_line_02",
+      "parentNodeId": "node_072_定期契約人員",
+      "group": "麥寮",
+      "summaryClass": "定期契約人員",
+      "label": "定期契約人員",
+      "roleTitle": "定期契約人員",
+      "baselinePlanned": 4,
+      "baselineCurrent": 3,
+      "directSlotIds": [
+        "node_072_定期契約人員::p01",
+        "node_072_定期契約人員::p02",
+        "node_072_定期契約人員::p03"
+      ],
+      "parentBBox": [
+        974.05,
+        1420.55,
+        1107.28,
+        1578.1
+      ],
+      "vacancySlotIds": []
+    }
+  ],
+  "slots": {
+    "node_001_處長::p01": {
+      "slotId": "node_001_處長::p01",
+      "type": "existing",
+      "parentNodeId": "node_001_處長",
+      "group": "麥寮",
+      "baselineName": "馮吉宏",
+      "baselineTitle": "處長",
+      "summaryClass": "一級主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜安全衛生處｜處長｜原 馮吉宏"
+    },
+    "node_003_環保副處長::p01": {
+      "slotId": "node_003_環保副處長::p01",
+      "type": "existing",
+      "parentNodeId": "node_003_環保副處長",
+      "group": "麥寮",
+      "baselineName": "鄭鎮杰",
+      "baselineTitle": "環保副處長",
+      "summaryClass": "一級主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜環保管理｜環保副處長｜原 鄭鎮杰"
+    },
+    "node_009_安衛組::p01": {
+      "slotId": "node_009_安衛組::p01",
+      "type": "existing",
+      "parentNodeId": "node_009_安衛組",
+      "group": "麥寮",
+      "baselineName": "盧晉標",
+      "baselineTitle": "副組長",
+      "summaryClass": "一級主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜安衛組｜副組長｜原 盧晉標"
+    },
+    "node_011_(新港/彰化)組長::p01": {
+      "slotId": "node_011_(新港/彰化)組長::p01",
+      "type": "existing",
+      "parentNodeId": "node_011_(新港/彰化)組長",
+      "group": "新港",
+      "baselineName": "許嘉麟",
+      "baselineTitle": "組長",
+      "summaryClass": "一級主管",
+      "staffingFieldId": null,
+      "label": "新港｜環保組(新港/彰化)｜組長｜原 許嘉麟"
+    },
+    "node_013_安衛高工師::p01": {
+      "slotId": "node_013_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_013_安衛高工師",
+      "group": "彰化",
+      "baselineName": "劉志強",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_013_安衛高工師_line_02",
+      "label": "彰化｜麥寮｜安衛高工師｜原 劉志強"
+    },
+    "node_020_環保組::p01": {
+      "slotId": "node_020_環保組::p01",
+      "type": "existing",
+      "parentNodeId": "node_020_環保組",
+      "group": "麥寮",
+      "baselineName": "楊士瑩",
+      "baselineTitle": "環保高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_020_環保組_line_03",
+      "label": "麥寮｜環保組｜環保高工師｜原 楊士瑩"
+    },
+    "node_021_健康管理::p01": {
+      "slotId": "node_021_健康管理::p01",
+      "type": "existing",
+      "parentNodeId": "node_021_健康管理",
+      "group": "麥寮",
+      "baselineName": "洪巧軒",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_021_健康管理_line_03",
+      "label": "麥寮｜安衛處(台北)｜安衛高工師｜原 洪巧軒"
+    },
+    "node_023_組長::p01": {
+      "slotId": "node_023_組長::p01",
+      "type": "existing",
+      "parentNodeId": "node_023_組長",
+      "group": "台北",
+      "baselineName": "黃俊智",
+      "baselineTitle": "副組長",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_023_組長_line_03",
+      "label": "台北｜安全衛生處｜副組長｜原 黃俊智"
+    },
+    "node_024_消防管理::p01": {
+      "slotId": "node_024_消防管理::p01",
+      "type": "existing",
+      "parentNodeId": "node_024_消防管理",
+      "group": "麥寮",
+      "baselineName": "王智寬",
+      "baselineTitle": "消防資工師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": "node_024_消防管理_line_03",
+      "label": "麥寮｜消防管理｜消防資工師｜原 王智寬"
+    },
+    "node_025_績效管理::p01": {
+      "slotId": "node_025_績效管理::p01",
+      "type": "existing",
+      "parentNodeId": "node_025_績效管理",
+      "group": "麥寮",
+      "baselineName": "王家宏",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_025_績效管理_line_03",
+      "label": "麥寮｜績效管理｜安衛高工師｜原 王家宏"
+    },
+    "node_026_安衛高工師::p01": {
+      "slotId": "node_026_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_026_安衛高工師",
+      "group": "龍德",
+      "baselineName": "蕭子昭",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": null,
+      "label": "龍德｜新港｜安衛高工師｜原 蕭子昭"
+    },
+    "node_027_安衛工程師::p01": {
+      "slotId": "node_027_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_027_安衛工程師",
+      "group": "彰化",
+      "baselineName": "邱柏承",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "彰化｜麥寮｜安衛工程師｜原 邱柏承"
+    },
+    "node_035_安衛高工師::p01": {
+      "slotId": "node_035_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_035_安衛高工師",
+      "group": "台北",
+      "baselineName": "陳學融",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_035_安衛高工師_line_02",
+      "label": "台北｜麥寮｜安衛高工師｜原 陳學融"
+    },
+    "node_036_事務人員::p01": {
+      "slotId": "node_036_事務人員::p01",
+      "type": "existing",
+      "parentNodeId": "node_036_事務人員",
+      "group": "麥寮",
+      "baselineName": "許嘉方",
+      "baselineTitle": "事務人員",
+      "summaryClass": "事務人員",
+      "staffingFieldId": "node_036_事務人員_line_02",
+      "label": "麥寮｜處務室｜事務人員｜原 許嘉方"
+    },
+    "node_037_安衛高工師::p01": {
+      "slotId": "node_037_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_037_安衛高工師",
+      "group": "麥寮",
+      "baselineName": "詹益昌",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜龍德｜安衛高工師｜原 詹益昌"
+    },
+    "node_042_環保高工師::p01": {
+      "slotId": "node_042_環保高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_042_環保高工師",
+      "group": "新港",
+      "baselineName": "陳昱綺",
+      "baselineTitle": "環保高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_042_環保高工師_line_02",
+      "label": "新港｜環保組｜環保高工師｜原 陳昱綺"
+    },
+    "node_043_安衛高工師::p01": {
+      "slotId": "node_043_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_043_安衛高工師",
+      "group": "新港",
+      "baselineName": "邱炫晉",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_043_安衛高工師_line_02",
+      "label": "新港｜塑膠部｜安衛高工師｜原 邱炫晉"
+    },
+    "node_045_健康管理師::p01": {
+      "slotId": "node_045_健康管理師::p01",
+      "type": "existing",
+      "parentNodeId": "node_045_健康管理師",
+      "group": "麥寮",
+      "baselineName": "陳芋蓁",
+      "baselineTitle": "健康管理師",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_045_健康管理師_line_02",
+      "label": "麥寮｜健康管理｜健康管理師｜原 陳芋蓁"
+    },
+    "node_046_安衛高工師::p01": {
+      "slotId": "node_046_安衛高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_046_安衛高工師",
+      "group": "麥寮",
+      "baselineName": "穆柏勳",
+      "baselineTitle": "安衛高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_046_安衛高工師_line_02",
+      "label": "麥寮｜化三部｜安衛高工師｜原 穆柏勳"
+    },
+    "node_048_環保高工師::p01": {
+      "slotId": "node_048_環保高工師::p01",
+      "type": "existing",
+      "parentNodeId": "node_048_環保高工師",
+      "group": "麥寮",
+      "baselineName": "李濬霖",
+      "baselineTitle": "環保高工師",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_048_環保高工師_line_02",
+      "label": "麥寮｜環保組｜環保高工師｜原 李濬霖"
+    },
+    "node_049_助理工程師::p01": {
+      "slotId": "node_049_助理工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_049_助理工程師",
+      "group": "麥寮",
+      "baselineName": "吳怡萱",
+      "baselineTitle": "助理工程師",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜安全衛生處｜助理工程師｜原 吳怡萱"
+    },
+    "node_050_安衛工程師::p01": {
+      "slotId": "node_050_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_050_安衛工程師",
+      "group": "麥寮",
+      "baselineName": "林余津",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜化一部｜安衛工程師｜原 林余津"
+    },
+    "node_051_安衛工程師::p01": {
+      "slotId": "node_051_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_051_安衛工程師",
+      "group": "麥寮",
+      "baselineName": "黃偉嘉",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜塑膠部｜安衛工程師｜原 黃偉嘉"
+    },
+    "node_052_安衛管理員::p01": {
+      "slotId": "node_052_安衛管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_052_安衛管理員",
+      "group": "麥寮",
+      "baselineName": "陳曉琪",
+      "baselineTitle": "安衛管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜化一部｜安衛管理員｜原 陳曉琪"
+    },
+    "node_053_健康管理員::p01": {
+      "slotId": "node_053_健康管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_053_健康管理員",
+      "group": "麥寮",
+      "baselineName": "吳玉珍",
+      "baselineTitle": "健康管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜健康管理｜健康管理員｜原 吳玉珍"
+    },
+    "node_054_安衛工程師::p01": {
+      "slotId": "node_054_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_054_安衛工程師",
+      "group": "麥寮",
+      "baselineName": "林瑋新",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜化二部｜安衛工程師｜原 林瑋新"
+    },
+    "node_055_環保工程師::p01": {
+      "slotId": "node_055_環保工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_055_環保工程師",
+      "group": "麥寮",
+      "baselineName": "莊晉昌",
+      "baselineTitle": "環保工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜環保組｜環保工程師｜原 莊晉昌"
+    },
+    "node_057_安衛工程師::p01": {
+      "slotId": "node_057_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_057_安衛工程師",
+      "group": "新港",
+      "baselineName": "林谷威",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "新港｜直屬單位+工事處｜安衛工程師｜原 林谷威"
+    },
+    "node_058_環保工程師::p01": {
+      "slotId": "node_058_環保工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_058_環保工程師",
+      "group": "龍德",
+      "baselineName": "謝富承",
+      "baselineTitle": "環保工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "龍德｜環保組(新港/彰化)｜環保工程師｜原 謝富承"
+    },
+    "node_059_安衛工程師::p01": {
+      "slotId": "node_059_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_059_安衛工程師",
+      "group": "龍德",
+      "baselineName": "陳炳煌",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "龍德｜新港｜安衛工程師｜原 陳炳煌"
+    },
+    "node_060_環保工程師::p01": {
+      "slotId": "node_060_環保工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_060_環保工程師",
+      "group": "麥寮",
+      "baselineName": "黃韻璇",
+      "baselineTitle": "環保工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜環保組｜環保工程師｜原 黃韻璇"
+    },
+    "node_062_安衛管理員::p01": {
+      "slotId": "node_062_安衛管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_062_安衛管理員",
+      "group": "新港",
+      "baselineName": "黃淑芳",
+      "baselineTitle": "安衛管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "新港｜直屬單位+工事處｜安衛管理員｜原 黃淑芳"
+    },
+    "node_064_健康管理員::p01": {
+      "slotId": "node_064_健康管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_064_健康管理員",
+      "group": "麥寮",
+      "baselineName": "潘姮君",
+      "baselineTitle": "健康管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜健康管理｜健康管理員｜原 潘姮君"
+    },
+    "node_065_安衛管理員::p01": {
+      "slotId": "node_065_安衛管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_065_安衛管理員",
+      "group": "麥寮",
+      "baselineName": "鄒智陽",
+      "baselineTitle": "安衛管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜安全衛生處｜安衛管理員｜原 鄒智陽"
+    },
+    "node_066_健康管理員::p01": {
+      "slotId": "node_066_健康管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_066_健康管理員",
+      "group": "新港",
+      "baselineName": "吳幸娟",
+      "baselineTitle": "健康管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "新港｜健康管理｜健康管理員｜原 吳幸娟"
+    },
+    "node_067_安衛工程師::p01": {
+      "slotId": "node_067_安衛工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_067_安衛工程師",
+      "group": "麥寮",
+      "baselineName": "蘇鈺涵",
+      "baselineTitle": "安衛工程師",
+      "summaryClass": "基層主管",
+      "staffingFieldId": null,
+      "label": "麥寮｜環保組｜安衛工程師｜原 蘇鈺涵"
+    },
+    "node_068_健康助理員::p01": {
+      "slotId": "node_068_健康助理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_068_健康助理員",
+      "group": "龍德",
+      "baselineName": "林佩祺",
+      "baselineTitle": "健康助理員",
+      "summaryClass": "事務人員",
+      "staffingFieldId": null,
+      "label": "龍德｜健康管理｜健康助理員｜原 林佩祺"
+    },
+    "node_069_健康管理員::p01": {
+      "slotId": "node_069_健康管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_069_健康管理員",
+      "group": "麥寮",
+      "baselineName": "陳芋婷",
+      "baselineTitle": "健康管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜健康管理｜健康管理員｜原 陳芋婷"
+    },
+    "node_070_健康管理員::p01": {
+      "slotId": "node_070_健康管理員::p01",
+      "type": "existing",
+      "parentNodeId": "node_070_健康管理員",
+      "group": "新港",
+      "baselineName": "陳欣妤",
+      "baselineTitle": "健康管理員",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "新港｜健康管理｜健康管理員｜原 陳欣妤"
+    },
+    "node_071_助理工程師::p01": {
+      "slotId": "node_071_助理工程師::p01",
+      "type": "existing",
+      "parentNodeId": "node_071_助理工程師",
+      "group": "麥寮",
+      "baselineName": "蔡沂庭",
+      "baselineTitle": "助理工程師",
+      "summaryClass": "基層人員",
+      "staffingFieldId": null,
+      "label": "麥寮｜安全衛生處｜助理工程師｜原 蔡沂庭"
+    },
+    "node_072_定期契約人員::p01": {
+      "slotId": "node_072_定期契約人員::p01",
+      "type": "existing",
+      "parentNodeId": "node_072_定期契約人員",
+      "group": "麥寮",
+      "baselineName": "溫瑞鑫",
+      "baselineTitle": "定期契約人員",
+      "summaryClass": "定期契約人員",
+      "staffingFieldId": "node_072_定期契約人員_line_02",
+      "label": "麥寮｜安全衛生處｜定期契約人員｜原 溫瑞鑫"
+    },
+    "node_072_定期契約人員::p02": {
+      "slotId": "node_072_定期契約人員::p02",
+      "type": "existing",
+      "parentNodeId": "node_072_定期契約人員",
+      "group": "麥寮",
+      "baselineName": "蔡仁正",
+      "baselineTitle": "定期契約人員",
+      "summaryClass": "定期契約人員",
+      "staffingFieldId": "node_072_定期契約人員_line_02",
+      "label": "麥寮｜安全衛生處｜定期契約人員｜原 蔡仁正"
+    },
+    "node_072_定期契約人員::p03": {
+      "slotId": "node_072_定期契約人員::p03",
+      "type": "existing",
+      "parentNodeId": "node_072_定期契約人員",
+      "group": "麥寮",
+      "baselineName": "沈大為",
+      "baselineTitle": "定期契約人員",
+      "summaryClass": "定期契約人員",
+      "staffingFieldId": "node_072_定期契約人員_line_02",
+      "label": "麥寮｜安全衛生處｜定期契約人員｜原 沈大為"
+    },
+    "vac::node_002_工安副處長::01": {
+      "slotId": "vac::node_002_工安副處長::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_002_工安副處長",
+      "group": "麥寮",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_002_工安副處長_line_02",
+      "expectedTitle": "工安副處長",
+      "titleField": "node_002_工安副處長_line_01",
+      "label": "麥寮｜工安副處長｜空缺固定槽位",
+      "nameBox": [
+        1081.76,
+        291.417,
+        1253.18,
+        301.058
+      ],
+      "educationBox": [
+        1081.76,
+        301.058,
+        1253.18,
+        310.69899999999996
+      ],
+      "startBox": [
+        1081.76,
+        310.69899999999996,
+        1253.18,
+        320.34
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_010_環保組::01": {
+      "slotId": "vac::node_010_環保組::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_010_環保組",
+      "group": "麥寮",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_010_環保組_line_03",
+      "expectedTitle": "組長",
+      "titleField": "node_010_環保組_line_02",
+      "label": "麥寮｜環保組 / 組長｜空缺固定槽位",
+      "nameBox": [
+        980.77,
+        544.302,
+        1106.83,
+        558.918
+      ],
+      "educationBox": [
+        980.77,
+        558.918,
+        1106.83,
+        573.534
+      ],
+      "startBox": [
+        980.77,
+        573.534,
+        1106.83,
+        588.15
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_014_組長::01": {
+      "slotId": "vac::node_014_組長::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_014_組長",
+      "group": "龍德",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_014_組長_line_02",
+      "expectedTitle": "組長",
+      "titleField": "node_014_組長_line_01",
+      "label": "龍德｜組長｜空缺固定槽位",
+      "nameBox": [
+        415.17,
+        540.047,
+        529.5,
+        548.047
+      ],
+      "educationBox": [
+        415.17,
+        548.047,
+        529.5,
+        556.047
+      ],
+      "startBox": [
+        415.17,
+        556.047,
+        529.5,
+        553.29
+      ],
+      "fontSize": 16.0
+    },
+    "vac::node_022_風險管理::01": {
+      "slotId": "vac::node_022_風險管理::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_022_風險管理",
+      "group": "麥寮",
+      "summaryClass": "基層主管",
+      "staffingFieldId": "node_022_風險管理_line_03",
+      "expectedTitle": "PSM資工師",
+      "titleField": "node_022_風險管理_line_02",
+      "label": "麥寮｜風險管理 / PSM資工師｜空缺固定槽位",
+      "nameBox": [
+        2253.63,
+        667.6705999999999,
+        2381.11,
+        690.6237333333332
+      ],
+      "educationBox": [
+        2253.63,
+        690.6237333333332,
+        2381.11,
+        713.5768666666667
+      ],
+      "startBox": [
+        2253.63,
+        713.5768666666667,
+        2381.11,
+        736.53
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_034_健康管理師::01": {
+      "slotId": "vac::node_034_健康管理師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_034_健康管理師",
+      "group": "彰化",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_034_健康管理師_line_02",
+      "expectedTitle": "健康管理師",
+      "titleField": "node_034_健康管理師_line_01",
+      "label": "彰化｜健康管理師｜空缺固定槽位",
+      "nameBox": [
+        132.59,
+        802.747,
+        257.24,
+        810.747
+      ],
+      "educationBox": [
+        132.59,
+        810.747,
+        257.24,
+        818.747
+      ],
+      "startBox": [
+        132.59,
+        818.747,
+        257.24,
+        820.75
+      ],
+      "fontSize": 16.0
+    },
+    "vac::node_038_消防高工師::01": {
+      "slotId": "vac::node_038_消防高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_038_消防高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_038_消防高工師_line_02",
+      "expectedTitle": "消防高工師",
+      "titleField": "node_038_消防高工師_line_01",
+      "label": "麥寮｜消防高工師｜空缺固定槽位",
+      "nameBox": [
+        2398.0,
+        827.6028,
+        2522.65,
+        843.5685333333333
+      ],
+      "educationBox": [
+        2398.0,
+        843.5685333333333,
+        2522.65,
+        859.5342666666667
+      ],
+      "startBox": [
+        2398.0,
+        859.5342666666667,
+        2522.65,
+        875.5
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_039_環保高工師::01": {
+      "slotId": "vac::node_039_環保高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_039_環保高工師",
+      "group": "龍德",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_039_環保高工師_line_02",
+      "expectedTitle": "環保高工師",
+      "titleField": "node_039_環保高工師_line_01",
+      "label": "龍德｜環保高工師｜空缺固定槽位",
+      "nameBox": [
+        324.32,
+        824.8092,
+        452.83,
+        839.0361333333334
+      ],
+      "educationBox": [
+        324.32,
+        839.0361333333334,
+        452.83,
+        853.2630666666666
+      ],
+      "startBox": [
+        324.32,
+        853.2630666666666,
+        452.83,
+        867.49
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_040_安衛高工師::01": {
+      "slotId": "vac::node_040_安衛高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_040_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_040_安衛高工師_line_02",
+      "expectedTitle": "安衛高工師",
+      "titleField": "node_040_安衛高工師_line_01",
+      "label": "麥寮｜安衛高工師｜空缺固定槽位",
+      "nameBox": [
+        1669.08,
+        834.8094,
+        1793.73,
+        851.6629333333333
+      ],
+      "educationBox": [
+        1669.08,
+        851.6629333333333,
+        1793.73,
+        868.5164666666667
+      ],
+      "startBox": [
+        1669.08,
+        868.5164666666667,
+        1793.73,
+        885.37
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_041_安衛高工師::01": {
+      "slotId": "vac::node_041_安衛高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_041_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_041_安衛高工師_line_02",
+      "expectedTitle": "安衛高工師",
+      "titleField": "node_041_安衛高工師_line_01",
+      "label": "麥寮｜安衛高工師｜空缺固定槽位",
+      "nameBox": [
+        1825.26,
+        835.641,
+        1949.91,
+        852.7306666666666
+      ],
+      "educationBox": [
+        1825.26,
+        852.7306666666666,
+        1949.91,
+        869.8203333333333
+      ],
+      "startBox": [
+        1825.26,
+        869.8203333333333,
+        1949.91,
+        886.91
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_044_安衛高工師::01": {
+      "slotId": "vac::node_044_安衛高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_044_安衛高工師",
+      "group": "龍德",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_044_安衛高工師_line_02",
+      "expectedTitle": "安衛高工師",
+      "titleField": "node_044_安衛高工師_line_01",
+      "label": "龍德｜安衛高工師｜空缺固定槽位",
+      "nameBox": [
+        477.42,
+        826.19202,
+        602.07,
+        840.0713466666666
+      ],
+      "educationBox": [
+        477.42,
+        840.0713466666666,
+        602.07,
+        853.9506733333334
+      ],
+      "startBox": [
+        477.42,
+        853.9506733333334,
+        602.07,
+        867.83
+      ],
+      "fontSize": 16.0
+    },
+    "vac::node_047_安衛高工師::01": {
+      "slotId": "vac::node_047_安衛高工師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_047_安衛高工師",
+      "group": "麥寮",
+      "summaryClass": "二級主管",
+      "staffingFieldId": "node_047_安衛高工師_line_02",
+      "expectedTitle": "安衛高工師",
+      "titleField": "node_047_安衛高工師_line_01",
+      "label": "麥寮｜安衛高工師｜空缺固定槽位",
+      "nameBox": [
+        1447.83,
+        836.7873999999999,
+        1639.09,
+        852.9816
+      ],
+      "educationBox": [
+        1447.83,
+        852.9816,
+        1639.09,
+        869.1758
+      ],
+      "startBox": [
+        1447.83,
+        869.1758,
+        1639.09,
+        885.37
+      ],
+      "fontSize": 18.0
+    },
+    "vac::node_056_環保工程師::01": {
+      "slotId": "vac::node_056_環保工程師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_056_環保工程師",
+      "group": "新港",
+      "summaryClass": "基層主管",
+      "staffingFieldId": "node_056_環保工程師_line_02",
+      "expectedTitle": "環保工程師",
+      "titleField": "node_056_環保工程師_line_01",
+      "label": "新港｜環保工程師｜空缺固定槽位",
+      "nameBox": [
+        637.42,
+        980.7800599999999,
+        762.07,
+        993.3600399999999
+      ],
+      "educationBox": [
+        637.42,
+        993.3600399999999,
+        762.07,
+        1005.94002
+      ],
+      "startBox": [
+        637.42,
+        1005.94002,
+        762.07,
+        1018.52
+      ],
+      "fontSize": 16.0
+    },
+    "vac::node_061_健康管理師::01": {
+      "slotId": "vac::node_061_健康管理師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_061_健康管理師",
+      "group": "新港",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_061_健康管理師_line_02",
+      "expectedTitle": "健康管理師",
+      "titleField": "node_061_健康管理師_line_01",
+      "label": "新港｜健康管理師｜空缺固定槽位",
+      "nameBox": [
+        796.39,
+        1092.827,
+        925.61,
+        1100.827
+      ],
+      "educationBox": [
+        796.39,
+        1100.827,
+        925.61,
+        1108.827
+      ],
+      "startBox": [
+        796.39,
+        1108.827,
+        925.61,
+        1111.8
+      ],
+      "fontSize": 16.0
+    },
+    "vac::node_063_健康管理師::01": {
+      "slotId": "vac::node_063_健康管理師::01",
+      "type": "vacancy-inline",
+      "parentNodeId": "node_063_健康管理師",
+      "group": "龍德",
+      "summaryClass": "一級主管",
+      "staffingFieldId": "node_063_健康管理師_line_02",
+      "expectedTitle": "健康管理師",
+      "titleField": "node_063_健康管理師_line_01",
+      "label": "龍德｜健康管理師｜空缺固定槽位",
+      "nameBox": [
+        480.49,
+        1098.1600600000002,
+        606.55,
+        1110.7400400000001
+      ],
+      "educationBox": [
+        480.49,
+        1110.7400400000001,
+        606.55,
+        1123.32002
+      ],
+      "startBox": [
+        480.49,
+        1123.32002,
+        606.55,
+        1135.9
+      ],
+      "fontSize": 16.0
+    }
+  },
+  "bottomSummaryFields": {
+    "bottom_summary_001": {
+      "fieldId": "bottom_summary_001",
+      "group": "台北",
+      "category": "二級主管",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_002": {
+      "fieldId": "bottom_summary_002",
+      "group": "麥寮",
+      "category": "一級主管",
+      "baselinePlanned": 7,
+      "baselineCurrent": 4
+    },
+    "bottom_summary_003": {
+      "fieldId": "bottom_summary_003",
+      "group": "麥寮",
+      "category": "二級主管",
+      "baselinePlanned": 17,
+      "baselineCurrent": 6
+    },
+    "bottom_summary_004": {
+      "fieldId": "bottom_summary_004",
+      "group": "麥寮",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_005": {
+      "fieldId": "bottom_summary_005",
+      "group": "麥寮",
+      "category": "合計",
+      "baselinePlanned": 33,
+      "baselineCurrent": 28
+    },
+    "bottom_summary_006": {
+      "fieldId": "bottom_summary_006",
+      "group": "麥寮",
+      "category": "基層主管",
+      "baselinePlanned": 4,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_007": {
+      "fieldId": "bottom_summary_007",
+      "group": "麥寮",
+      "category": "定期契約人員",
+      "baselinePlanned": 4,
+      "baselineCurrent": 3
+    },
+    "bottom_summary_008": {
+      "fieldId": "bottom_summary_008",
+      "group": "新港",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_009": {
+      "fieldId": "bottom_summary_009",
+      "group": "新港",
+      "category": "二級主管",
+      "baselinePlanned": 5,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_010": {
+      "fieldId": "bottom_summary_010",
+      "group": "新港",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 3
+    },
+    "bottom_summary_011": {
+      "fieldId": "bottom_summary_011",
+      "group": "新港",
+      "category": "合計",
+      "baselinePlanned": 8,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_012": {
+      "fieldId": "bottom_summary_012",
+      "group": "新港",
+      "category": "基層主管",
+      "baselinePlanned": 2,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_013": {
+      "fieldId": "bottom_summary_013",
+      "group": "總計",
+      "category": "一級主管",
+      "baselinePlanned": 10,
+      "baselineCurrent": 6
+    },
+    "bottom_summary_014": {
+      "fieldId": "bottom_summary_014",
+      "group": "總計",
+      "category": "二級主管",
+      "baselinePlanned": 29,
+      "baselineCurrent": 11
+    },
+    "bottom_summary_015": {
+      "fieldId": "bottom_summary_015",
+      "group": "總計",
+      "category": "基層主管",
+      "baselinePlanned": 8,
+      "baselineCurrent": 11
+    },
+    "bottom_summary_016": {
+      "fieldId": "bottom_summary_016",
+      "group": "總計",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 10
+    },
+    "bottom_summary_017": {
+      "fieldId": "bottom_summary_017",
+      "group": "總計",
+      "category": "事務人員",
+      "baselinePlanned": 1,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_018": {
+      "fieldId": "bottom_summary_018",
+      "group": "總計",
+      "category": "定期契約人員",
+      "baselinePlanned": 4,
+      "baselineCurrent": 3
+    },
+    "bottom_summary_019": {
+      "fieldId": "bottom_summary_019",
+      "group": "總計",
+      "category": "合計",
+      "baselinePlanned": 52,
+      "baselineCurrent": 43
+    },
+    "bottom_summary_020": {
+      "fieldId": "bottom_summary_020",
+      "group": "台北",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_021": {
+      "fieldId": "bottom_summary_021",
+      "group": "麥寮",
+      "category": "一級主管",
+      "baselinePlanned": 7,
+      "baselineCurrent": 4
+    },
+    "bottom_summary_022": {
+      "fieldId": "bottom_summary_022",
+      "group": "麥寮",
+      "category": "二級主管",
+      "baselinePlanned": 17,
+      "baselineCurrent": 6
+    },
+    "bottom_summary_023": {
+      "fieldId": "bottom_summary_023",
+      "group": "麥寮",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_024": {
+      "fieldId": "bottom_summary_024",
+      "group": "麥寮",
+      "category": "合計",
+      "baselinePlanned": 33,
+      "baselineCurrent": 28
+    },
+    "bottom_summary_025": {
+      "fieldId": "bottom_summary_025",
+      "group": "麥寮",
+      "category": "基層主管",
+      "baselinePlanned": 4,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_026": {
+      "fieldId": "bottom_summary_026",
+      "group": "麥寮",
+      "category": "定期契約人員",
+      "baselinePlanned": 4,
+      "baselineCurrent": 3
+    },
+    "bottom_summary_027": {
+      "fieldId": "bottom_summary_027",
+      "group": "麥寮",
+      "category": "事務人員",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_028": {
+      "fieldId": "bottom_summary_028",
+      "group": "新港",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_029": {
+      "fieldId": "bottom_summary_029",
+      "group": "新港",
+      "category": "二級主管",
+      "baselinePlanned": 5,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_030": {
+      "fieldId": "bottom_summary_030",
+      "group": "新港",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 3
+    },
+    "bottom_summary_031": {
+      "fieldId": "bottom_summary_031",
+      "group": "新港",
+      "category": "合計",
+      "baselinePlanned": 8,
+      "baselineCurrent": 7
+    },
+    "bottom_summary_032": {
+      "fieldId": "bottom_summary_032",
+      "group": "新港",
+      "category": "基層主管",
+      "baselinePlanned": 2,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_033": {
+      "fieldId": "bottom_summary_033",
+      "group": "龍德",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_034": {
+      "fieldId": "bottom_summary_034",
+      "group": "龍德",
+      "category": "二級主管",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_035": {
+      "fieldId": "bottom_summary_035",
+      "group": "龍德",
+      "category": "合計",
+      "baselinePlanned": 5,
+      "baselineCurrent": 4
+    },
+    "bottom_summary_036": {
+      "fieldId": "bottom_summary_036",
+      "group": "龍德",
+      "category": "基層主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_037": {
+      "fieldId": "bottom_summary_037",
+      "group": "龍德",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_038": {
+      "fieldId": "bottom_summary_038",
+      "group": "龍德",
+      "category": "二級主管",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_039": {
+      "fieldId": "bottom_summary_039",
+      "group": "龍德",
+      "category": "合計",
+      "baselinePlanned": 5,
+      "baselineCurrent": 4
+    },
+    "bottom_summary_040": {
+      "fieldId": "bottom_summary_040",
+      "group": "龍德",
+      "category": "基層主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_041": {
+      "fieldId": "bottom_summary_041",
+      "group": "彰化",
+      "category": "二級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_042": {
+      "fieldId": "bottom_summary_042",
+      "group": "彰化",
+      "category": "合計",
+      "baselinePlanned": 2,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_043": {
+      "fieldId": "bottom_summary_043",
+      "group": "彰化",
+      "category": "二級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_044": {
+      "fieldId": "bottom_summary_044",
+      "group": "彰化",
+      "category": "合計",
+      "baselinePlanned": 2,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_045": {
+      "fieldId": "bottom_summary_045",
+      "group": "彰化",
+      "category": "基層主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_046": {
+      "fieldId": "bottom_summary_046",
+      "group": "彰化",
+      "category": "基層主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_047": {
+      "fieldId": "bottom_summary_047",
+      "group": "台北",
+      "category": "合計",
+      "baselinePlanned": 4,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_048": {
+      "fieldId": "bottom_summary_048",
+      "group": "彰化",
+      "category": "事務人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_049": {
+      "fieldId": "bottom_summary_049",
+      "group": "彰化",
+      "category": "事務人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_050": {
+      "fieldId": "bottom_summary_050",
+      "group": "龍德",
+      "category": "事務人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_051": {
+      "fieldId": "bottom_summary_051",
+      "group": "龍德",
+      "category": "事務人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_052": {
+      "fieldId": "bottom_summary_052",
+      "group": "彰化",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_053": {
+      "fieldId": "bottom_summary_053",
+      "group": "彰化",
+      "category": "基層人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_054": {
+      "fieldId": "bottom_summary_054",
+      "group": "彰化",
+      "category": "培訓人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_055": {
+      "fieldId": "bottom_summary_055",
+      "group": "總計",
+      "category": "培訓人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_056": {
+      "fieldId": "bottom_summary_056",
+      "group": "麥寮",
+      "category": "培訓人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_057": {
+      "fieldId": "bottom_summary_057",
+      "group": "彰化",
+      "category": "培訓人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    },
+    "bottom_summary_058": {
+      "fieldId": "bottom_summary_058",
+      "group": "台北",
+      "category": "一級主管",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_059": {
+      "fieldId": "bottom_summary_059",
+      "group": "台北",
+      "category": "二級主管",
+      "baselinePlanned": 3,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_060": {
+      "fieldId": "bottom_summary_060",
+      "group": "台北",
+      "category": "合計",
+      "baselinePlanned": 4,
+      "baselineCurrent": 2
+    },
+    "bottom_summary_061": {
+      "fieldId": "bottom_summary_061",
+      "group": "麥寮",
+      "category": "事務人員",
+      "baselinePlanned": 1,
+      "baselineCurrent": 1
+    },
+    "bottom_summary_062": {
+      "fieldId": "bottom_summary_062",
+      "group": "麥寮",
+      "category": "培訓人員",
+      "baselinePlanned": 0,
+      "baselineCurrent": 0
+    }
+  },
+  "baselineSemantic": {
+    "台北::二級主管": {
+      "planned": 3,
+      "current": 1
+    },
+    "麥寮::一級主管": {
+      "planned": 7,
+      "current": 4
+    },
+    "麥寮::二級主管": {
+      "planned": 17,
+      "current": 6
+    },
+    "麥寮::基層人員": {
+      "planned": 0,
+      "current": 7
+    },
+    "麥寮::合計": {
+      "planned": 33,
+      "current": 28
+    },
+    "麥寮::基層主管": {
+      "planned": 4,
+      "current": 7
+    },
+    "麥寮::定期契約人員": {
+      "planned": 4,
+      "current": 3
+    },
+    "新港::一級主管": {
+      "planned": 1,
+      "current": 1
+    },
+    "新港::二級主管": {
+      "planned": 5,
+      "current": 2
+    },
+    "新港::基層人員": {
+      "planned": 0,
+      "current": 3
+    },
+    "新港::合計": {
+      "planned": 8,
+      "current": 7
+    },
+    "新港::基層主管": {
+      "planned": 2,
+      "current": 1
+    },
+    "總計::一級主管": {
+      "planned": 10,
+      "current": 6
+    },
+    "總計::二級主管": {
+      "planned": 29,
+      "current": 11
+    },
+    "總計::基層主管": {
+      "planned": 8,
+      "current": 11
+    },
+    "總計::基層人員": {
+      "planned": 0,
+      "current": 10
+    },
+    "總計::事務人員": {
+      "planned": 1,
+      "current": 2
+    },
+    "總計::定期契約人員": {
+      "planned": 4,
+      "current": 3
+    },
+    "總計::合計": {
+      "planned": 52,
+      "current": 43
+    },
+    "台北::一級主管": {
+      "planned": 1,
+      "current": 1
+    },
+    "麥寮::事務人員": {
+      "planned": 1,
+      "current": 1
+    },
+    "龍德::一級主管": {
+      "planned": 1,
+      "current": 0
+    },
+    "龍德::二級主管": {
+      "planned": 3,
+      "current": 1
+    },
+    "龍德::合計": {
+      "planned": 5,
+      "current": 4
+    },
+    "龍德::基層主管": {
+      "planned": 1,
+      "current": 2
+    },
+    "彰化::二級主管": {
+      "planned": 1,
+      "current": 1
+    },
+    "彰化::合計": {
+      "planned": 2,
+      "current": 2
+    },
+    "彰化::基層主管": {
+      "planned": 1,
+      "current": 1
+    },
+    "台北::合計": {
+      "planned": 4,
+      "current": 2
+    },
+    "彰化::事務人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "龍德::事務人員": {
+      "planned": 0,
+      "current": 1
+    },
+    "彰化::基層人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "彰化::培訓人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "總計::培訓人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "麥寮::培訓人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "總計::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "彰化::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "彰化::一級主管": {
+      "planned": 0,
+      "current": 0
+    },
+    "彰化::定期契約人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "龍德::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "龍德::基層人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "龍德::定期契約人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "龍德::培訓人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "新港::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "新港::事務人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "新港::定期契約人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "新港::培訓人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "麥寮::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::經理級": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::基層主管": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::基層人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::事務人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::定期契約人員": {
+      "planned": 0,
+      "current": 0
+    },
+    "台北::培訓人員": {
+      "planned": 0,
+      "current": 0
+    }
+  },
+  "classificationRules": {
+    "note": "由 R41 底部統計反推並以 43 位現有人員逐區驗證，可完全重現 R41 current counts。",
+    "order": [
+      "定期契約人員",
+      "培訓人員",
+      "事務人員/健康助理員",
+      "助理工程師",
+      "健康管理師",
+      "處長/副處長/組長/副組長",
+      "高工師",
+      "工程師/資工師",
+      "管理員"
+    ]
+  }
+}

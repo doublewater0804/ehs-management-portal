@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>安全衛生處組織編制表</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-v5">
+  <link rel="stylesheet" href="styles.css?v=20260921-v6">
 </head>
 <body>
 <header class="app-header">
@@ -566,15 +566,36 @@ $('apply-import').onclick=async e=>{e.preventDefault();const p=state.importPlan;
 
 async function reload(){const c=await ensureCloud();const data=await c.loadAll();state={...data,importPlan:null};renderAll();setCloudStatus('雲端已同步','ok');}
 async function initialize(){if(!isAdmin)return;if(!confirm('雲端尚無此模組資料。是否以目前 R41 原稿資料初始化？'))return;const c=await ensureCloud();await c.initializeData({meta:initialMeta,staff:seedStaff,nodes:seedNodes,versions:initialVersions});await reload();}
-async function loadVisibleData(){
+async function loadCloudAfterLogin(){
+  // Firestore Rules 僅允許指定管理者讀寫，因此只有管理者登入後才讀取雲端。
+  if(!isAdmin){
+    cloudLoadState='seed';
+    useSeedPreview();
+    setCloudStatus('R41 本機預覽','warn');
+    return 'not-admin';
+  }
   try{
     setCloudStatus('讀取雲端…');
-    const c=await ensureCloud();const data=await c.loadAll();
-    if(data.meta){state={...data,importPlan:null};cloudLoadState='loaded';renderAll();setCloudStatus('雲端已同步','ok');return 'loaded';}
-    cloudLoadState='empty';useSeedPreview();setCloudStatus('R41 預覽','warn');return 'empty';
+    const c=await ensureCloud();
+    const data=await c.loadAll();
+    if(data.meta){
+      state={...data,importPlan:null};
+      cloudLoadState='loaded';
+      renderAll();
+      setCloudStatus('雲端已同步','ok');
+      return 'loaded';
+    }
+    cloudLoadState='empty';
+    useSeedPreview();
+    setCloudStatus('雲端尚未初始化','warn');
+    return 'empty';
   }catch(err){
-    console.warn('公開雲端讀取失敗，改用 R41 內建預覽：',err);
-    cloudLoadState='error';useSeedPreview();setCloudStatus('R41 預覽','warn');return 'error';
+    console.error('管理者登入後讀取雲端失敗：',err);
+    cloudLoadState='error';
+    useSeedPreview();
+    setCloudStatus('雲端讀取失敗','warn');
+    $('auth-message').textContent=`管理者已登入，但雲端讀取失敗：${cloudErrorText(err)}`;
+    return 'error';
   }
 }
 
@@ -593,12 +614,12 @@ $('login-btn').onclick=async()=>{
 };
 $('logout-btn').onclick=async()=>{try{const c=await ensureCloud();await c.logout();}catch(e){alert(cloudErrorText(e));}};
 
-// v4：使用傳統 script 載入，UI 不再依賴 ES Module / Firebase 才能啟動。
+// v6：未登入時完全不讀 Firestore；登入指定管理者帳號後才同步雲端。
 useSeedPreview();
 applyAdminUi();
 setTab('chart');
 setCloudStatus('R41 本機預覽','warn');
-$('auth-message').textContent='未登入：可檢視、篩選及匯出';
+$('auth-message').textContent='未登入：目前顯示 R41 本機預覽；登入後同步雲端最新資料';
 
 async function bootCloud(){
   try{
@@ -608,13 +629,28 @@ async function bootCloud(){
       $('login-btn').hidden=!!user;
       $('logout-btn').hidden=!user;
       applyAdminUi();
-      if(user){
-        $('auth-message').textContent=isAdmin?`管理者：${user.email}`:`已登入 ${user.email}（僅檢視）`;
-      }else{
-        $('auth-message').textContent='未登入：可檢視、篩選及匯出';
+
+      // 未登入：只用內建 R41 預覽，絕不呼叫 Firestore。
+      if(!user){
+        cloudLoadState='seed';
+        useSeedPreview();
+        setCloudStatus('R41 本機預覽','warn');
+        $('auth-message').textContent='未登入：目前顯示 R41 本機預覽；登入後同步雲端最新資料';
+        return;
       }
-      const result=await loadVisibleData();
-      if(isAdmin && result==='empty'){
+
+      // 登入了非指定管理者帳號：同樣不讀 Firestore，避免權限錯誤。
+      if(!isAdmin){
+        cloudLoadState='seed';
+        useSeedPreview();
+        setCloudStatus('非管理者帳號','warn');
+        $('auth-message').textContent=`已登入 ${user.email}，但此帳號沒有雲端資料權限`;
+        return;
+      }
+
+      $('auth-message').textContent=`管理者：${user.email}`;
+      const result=await loadCloudAfterLogin();
+      if(result==='empty'){
         try{await initialize();}catch(e){alert(`初始化失敗：${cloudErrorText(e)}`);}
       }
     });
@@ -626,7 +662,7 @@ async function bootCloud(){
   }
 }
 
-// 背景連線；即使 Firebase SDK 載入失敗也不影響頁籤與組織圖。
+// 只監聽登入狀態；Firestore 讀取由管理者登入後觸發。
 bootCloud();
 
 window.__EHS_APP_READY = true;

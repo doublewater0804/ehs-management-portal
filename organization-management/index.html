@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>安全衛生處組織編制管理</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-v2">
+  <link rel="stylesheet" href="styles.css?v=20260921-v3">
 </head>
 <body>
 <header class="app-header">
@@ -43,7 +43,7 @@
       <button class="tab active" data-tab="chart">組織圖</button>
       <button class="tab" data-tab="staff">人員資料管理</button>
       <button class="tab" data-tab="versions">版次／異動紀錄</button>
-      <button class="tab" data-tab="staffing" data-admin-only>編制設定</button>
+      <button class="tab" data-tab="staffing">編制設定</button>
     </nav>
 
     <section id="tab-chart" class="tab-panel">
@@ -113,7 +113,7 @@
       </div>
     </section>
 
-    <section id="tab-staffing" class="tab-panel" data-admin-only hidden>
+    <section id="tab-staffing" class="tab-panel" hidden>
       <div class="panel">
         <div class="toolbar between"><div><h2>編制設定</h2><p class="muted">編制人數手動設定；現有人數依在職人員自動計算。</p></div><button id="save-staffing" class="primary" data-admin-only>儲存編制設定</button></div>
         <div class="table-wrap">
@@ -179,6 +179,6 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script type="module" src="app.js?v=20260921-v2"></script>
+<script type="module" src="app.js?v=20260921-v3"></script>
 </body>
 </html>

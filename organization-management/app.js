@@ -1,4 +1,3 @@
-import * as cloud from './cloud.js';
 import {initialMeta,staff as seedStaff,nodes as seedNodes,initialVersions} from './seed.js';
 
 const $=id=>document.getElementById(id);
@@ -8,7 +7,9 @@ const zhDate=s=>{if(!s)return '';const [y,m,d]=s.split('-').map(Number);return `
 const uid=()=>crypto.randomUUID();
 let state={meta:null,staff:[],nodes:[],versions:[],changes:[],importPlan:null};
 let isAdmin=false;
-let cloudLoadState='unknown';
+let cloudLoadState='seed';
+let cloud=null;
+let cloudInitPromise=null;
 
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800);}
 function setCloudStatus(text,type=''){const e=$('cloud-status');e.textContent=text;e.className=`status-chip ${type}`;}
@@ -17,6 +18,20 @@ function pendingChanges(){return state.changes.filter(c=>!c.publishedVersion).so
 function nodeById(id){return state.nodes.find(n=>n.id===id);}
 function nextVersion(v){const n=Number(String(v||'R0').replace(/\D/g,''))||0;return `R${n+1}`;}
 function cloneSeed(v){return JSON.parse(JSON.stringify(v));}
+async function ensureCloud(){
+  if(cloud) return cloud;
+  if(!cloudInitPromise){
+    cloudInitPromise=import('./cloud.js?v=20260921-v3').then(m=>{cloud=m;return m;}).catch(err=>{cloudInitPromise=null;throw err;});
+  }
+  return cloudInitPromise;
+}
+function cloudErrorText(err){
+  const code=err?.code||'';
+  if(code==='auth/unauthorized-domain') return '目前網域未加入 Firebase Authentication 授權網域。';
+  if(code==='auth/popup-blocked') return '瀏覽器封鎖登入視窗，系統將改用重新導向登入。';
+  if(code==='auth/popup-closed-by-user') return 'Google 登入視窗已關閉。';
+  return err?.message||'Firebase 服務載入失敗。';
+}
 function useSeedPreview(){state={meta:cloneSeed(initialMeta),staff:cloneSeed(seedStaff),nodes:cloneSeed(seedNodes),versions:cloneSeed(initialVersions),changes:[],importPlan:null};renderAll();}
 function applyAdminUi(){document.querySelectorAll('[data-admin-only]').forEach(el=>el.hidden=!isAdmin);document.body.classList.toggle('admin-mode',isAdmin);}
 function requireAdmin(){if(!isAdmin){toast('請先使用右上角 Google 管理者帳號登入。');return false;}return true;}
@@ -86,9 +101,9 @@ $('save-staff').onclick=async e=>{e.preventDefault();const f=$('staff-form');if(
   const diffs=[];if(!old)diffs.push({field:'新增',before:'',after:`${item.title} / ${item.unit}`});else for(const [k,label] of Object.entries({name:'姓名',title:'職稱',unit:'單位',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',nodeId:'組織位置',status:'在職狀態'}))if(old[k]!==item[k])diffs.push({field:label,before:old[k]??'',after:item[k]??''});
   if(!diffs.length){$('staff-dialog').close();return;}
   const change={id:uid(),name:item.name,type:old?'修改':'新增',diffs,note:f.elements.changeNote.value.trim(),at:new Date().toISOString()};
-  try{e.target.disabled=true;await cloud.saveStaff(item,change);$('staff-dialog').close();await reload();toast('人員資料已儲存，列入待發布異動。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
+  try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaff(item,change);$('staff-dialog').close();await reload();toast('人員資料已儲存，列入待發布異動。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
 };
-async function markLeave(id){const s=state.staff.find(x=>x.id===id);if(!s||!confirm(`確定將「${s.name}」標記為離職？\n離職後不顯示於組織圖，但資料仍保留。`))return;const item={...s,status:'inactive',version:state.meta.version};const change={id:uid(),name:s.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'離職',at:new Date().toISOString()};try{await cloud.saveStaff(item,change);await reload();toast('已標記離職。');}catch(e){alert(e.message);}}
+async function markLeave(id){const s=state.staff.find(x=>x.id===id);if(!s||!confirm(`確定將「${s.name}」標記為離職？\n離職後不顯示於組織圖，但資料仍保留。`))return;const item={...s,status:'inactive',version:state.meta.version};const change={id:uid(),name:s.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'離職',at:new Date().toISOString()};try{const c=await ensureCloud();await c.saveStaff(item,change);await reload();toast('已標記離職。');}catch(e){alert(e.message);}}
 
 function renderVersions(){
   const p=pendingChanges();$('pending-changes').innerHTML=p.length?`<b>待發布異動：${p.length} 筆</b>`+p.map(c=>`<div class="pending-item"><b>${esc(c.name)}</b>｜${esc(c.type)}｜${esc(c.note||c.diffs?.map(d=>`${d.field}: ${d.before} → ${d.after}`).join('；')||'')}</div>`).join(''):'目前沒有待發布異動。';
@@ -97,12 +112,12 @@ function renderVersions(){
 }
 $('version-tbody').onclick=e=>{const b=e.target.closest('[data-version]');if(!b)return;const v=state.versions.find(x=>x.version===b.dataset.version);$('version-detail-title').textContent=`${v.version}｜${fmtDate(v.revisionDate)}`;$('version-detail').innerHTML=`<p>${esc(v.summary||'')}</p><div class="table-wrap"><table><thead><tr><th>姓名</th><th>類型</th><th>異動內容</th></tr></thead><tbody>${(v.changes||[]).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.type)}</td><td>${esc(c.diffs?c.diffs.map(d=>`${d.field}: ${d.before} → ${d.after}`).join('；'):`${c.field||''}: ${c.before||''} → ${c.after||''}`)}</td></tr>`).join('')}</tbody></table></div>`;$('version-dialog').showModal();};
 $('publish-version').onclick=()=>{const p=pendingChanges();if(!p.length)return;const nv=nextVersion(state.meta.version);$('publish-current-version').textContent=state.meta.version;$('publish-next-version').textContent=nv;$('publish-form').elements.date.value=new Date().toISOString().slice(0,10);$('publish-form').elements.summary.value='人員編制異動';$('publish-changes').innerHTML=p.map(c=>`<div class="pending-item">${esc(c.name)}｜${esc(c.type)}｜${esc(c.note||'')}</div>`).join('');$('publish-dialog').showModal();};
-$('confirm-publish').onclick=async e=>{e.preventDefault();const f=$('publish-form');if(!f.reportValidity())return;const p=pendingChanges(),version={version:$('publish-next-version').textContent,revisionDate:f.elements.date.value,summary:f.elements.summary.value.trim()};try{e.target.disabled=true;await cloud.publishVersion(version,p,state.staff.map(x=>({...x})));$('publish-dialog').close();await reload();toast(`${version.version} 已發布。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
+$('confirm-publish').onclick=async e=>{e.preventDefault();const f=$('publish-form');if(!f.reportValidity())return;const p=pendingChanges(),version={version:$('publish-next-version').textContent,revisionDate:f.elements.date.value,summary:f.elements.summary.value.trim()};try{e.target.disabled=true;const c=await ensureCloud();await c.publishVersion(version,p,state.staff.map(x=>({...x})));$('publish-dialog').close();await reload();toast(`${version.version} 已發布。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
 
 function renderStaffing(){
-  $('staffing-tbody').innerHTML=state.nodes.slice().sort((a,b)=>a.label.localeCompare(b.label,'zh-Hant')).map(n=>{const actual=activeStaff().filter(s=>s.nodeId===n.id).length;return `<tr><td>${esc(n.id)}</td><td>${esc(n.label.replaceAll('\n',' '))}</td><td><input class="staffing-input" type="number" min="0" max="99" value="${Number(n.headcount)||0}" data-node-headcount="${esc(n.id)}"></td><td>${actual}</td></tr>`;}).join('');
+  $('staffing-tbody').innerHTML=state.nodes.slice().sort((a,b)=>a.label.localeCompare(b.label,'zh-Hant')).map(n=>{const actual=activeStaff().filter(s=>s.nodeId===n.id).length;return `<tr><td>${esc(n.id)}</td><td>${esc(n.label.replaceAll('\n',' '))}</td><td><input class="staffing-input" type="number" min="0" max="99" value="${Number(n.headcount)||0}" data-node-headcount="${esc(n.id)}" ${isAdmin?'':'disabled'}></td><td>${actual}</td></tr>`;}).join('');
 }
-$('save-staffing').onclick=async e=>{const next=state.nodes.map(n=>({...n,headcount:Number(document.querySelector(`[data-node-headcount="${CSS.escape(n.id)}"]`).value)||0}));try{e.target.disabled=true;await cloud.saveStaffing(next);await reload();toast('編制人數已儲存，列入待發布異動。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
+$('save-staffing').onclick=async e=>{const next=state.nodes.map(n=>({...n,headcount:Number(document.querySelector(`[data-node-headcount="${CSS.escape(n.id)}"]`).value)||0}));try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaffing(next);await reload();toast('編制人數已儲存，列入待發布異動。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
 
 async function exportExcel(){
   if(!window.ExcelJS||!window.saveAs){alert('Excel 元件尚未載入，請重新整理後再試。');return;}
@@ -125,14 +140,14 @@ $('import-file').onchange=async e=>{const file=e.target.files[0];e.target.value=
     const incoming=[];ws.eachRow((row,i)=>{if(i===1)return;const name=String(row.getCell(headers['姓名']).value??'').trim();if(!name)return;incoming.push({name,title:String(row.getCell(headers['職稱']).value??'').trim(),unit:String(row.getCell(headers['單位']).value??'').trim(),joinMonth:String(row.getCell(headers['到職年月']).value??'').trim(),level:String(row.getCell(headers['職務層級']).value??'').trim(),employeeType:String(row.getCell(headers['人員類別']).value??'正式').trim(),status:String(row.getCell(headers['在職狀態']).value??'在職').trim()==='離職'?'inactive':'active',nodeId:String(row.getCell(headers['組織節點']).value??'').trim(),changeNote:headers['異動說明']?String(row.getCell(headers['異動說明']).value??'').trim():''});});buildImportPlan(incoming);$('import-dialog').showModal();}catch(err){alert(`匯入檔案無法讀取：${err.message}`);}};
 function buildImportPlan(incoming){const fields={title:'職稱',unit:'單位',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',status:'在職狀態',nodeId:'組織節點'};const rows=[],upserts=[],changes=[];for(const x of incoming){const old=state.staff.find(s=>s.name===x.name);if(!old){const item={...x,id:uid(),version:state.meta.version};upserts.push(item);const c={id:uid(),name:x.name,type:'新增',diffs:[{field:'新增',before:'',after:`${x.title}/${x.unit}`}],note:x.changeNote||'Excel 匯入新增',at:new Date().toISOString()};changes.push(c);rows.push({kind:'new',name:x.name,field:'-',before:'-',after:`${x.title} / ${x.unit}`,action:'新增',item,change:c});continue;}const diffs=[];for(const [k,l] of Object.entries(fields))if((old[k]??'')!==(x[k]??''))diffs.push({field:l,before:old[k]??'',after:x[k]??''});if(diffs.length){const item={...old,...x,version:state.meta.version};upserts.push(item);const c={id:uid(),name:x.name,type:'修改',diffs,note:x.changeNote||'Excel 匯入修改',at:new Date().toISOString()};changes.push(c);diffs.forEach(d=>rows.push({kind:'change',name:x.name,field:d.field,before:d.before,after:d.after,action:'更新',item,change:c}));}}
   const names=new Set(incoming.map(x=>x.name));state.staff.filter(s=>s.status==='active'&&!names.has(s.name)).forEach(s=>rows.push({kind:'missing',name:s.name,field:'-',before:'目前在職',after:'Excel 無資料',action:'ignore',item:s}));state.importPlan={rows,upserts,changes};$('import-summary').innerHTML=`<p><b>新增 ${rows.filter(r=>r.kind==='new').length} 人｜修改 ${new Set(rows.filter(r=>r.kind==='change').map(r=>r.name)).size} 人｜Excel 未找到 ${rows.filter(r=>r.kind==='missing').length} 人</b></p>`;$('import-tbody').innerHTML=rows.map((r,i)=>`<tr><td><span class="import-tag ${r.kind}">${r.kind==='new'?'新增':r.kind==='change'?'修改':'缺少'}</span></td><td>${esc(r.name)}</td><td>${esc(r.field)}</td><td>${esc(r.before)}</td><td>${esc(r.after)}</td><td>${r.kind==='missing'?`<select data-missing-index="${i}"><option value="ignore">不處理</option><option value="leave">標記離職</option></select>`:esc(r.action)}</td></tr>`).join('');}
-$('apply-import').onclick=async e=>{e.preventDefault();const p=state.importPlan;if(!p)return;const upserts=[...p.upserts],changes=[...p.changes];document.querySelectorAll('[data-missing-index]').forEach(sel=>{if(sel.value!=='leave')return;const r=p.rows[Number(sel.dataset.missingIndex)],old=r.item,item={...old,status:'inactive',version:state.meta.version};upserts.push(item);changes.push({id:uid(),name:old.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'Excel 匯入：系統有人、Excel 無此人，人工確認標記離職',at:new Date().toISOString()});});try{e.target.disabled=true;await cloud.bulkImport({upserts,changes});$('import-dialog').close();await reload();toast(`Excel 匯入完成，共處理 ${upserts.length} 人。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
+$('apply-import').onclick=async e=>{e.preventDefault();const p=state.importPlan;if(!p)return;const upserts=[...p.upserts],changes=[...p.changes];document.querySelectorAll('[data-missing-index]').forEach(sel=>{if(sel.value!=='leave')return;const r=p.rows[Number(sel.dataset.missingIndex)],old=r.item,item={...old,status:'inactive',version:state.meta.version};upserts.push(item);changes.push({id:uid(),name:old.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'Excel 匯入：系統有人、Excel 無此人，人工確認標記離職',at:new Date().toISOString()});});try{e.target.disabled=true;const c=await ensureCloud();await c.bulkImport({upserts,changes});$('import-dialog').close();await reload();toast(`Excel 匯入完成，共處理 ${upserts.length} 人。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
 
-async function reload(){const data=await cloud.loadAll();state={...data,importPlan:null};renderAll();setCloudStatus('雲端已同步','ok');}
-async function initialize(){if(!isAdmin)return;if(!confirm('雲端尚無此模組資料。是否以目前 R41 原稿資料初始化？'))return;await cloud.initializeData({meta:initialMeta,staff:seedStaff,nodes:seedNodes,versions:initialVersions});await reload();}
+async function reload(){const c=await ensureCloud();const data=await c.loadAll();state={...data,importPlan:null};renderAll();setCloudStatus('雲端已同步','ok');}
+async function initialize(){if(!isAdmin)return;if(!confirm('雲端尚無此模組資料。是否以目前 R41 原稿資料初始化？'))return;const c=await ensureCloud();await c.initializeData({meta:initialMeta,staff:seedStaff,nodes:seedNodes,versions:initialVersions});await reload();}
 async function loadVisibleData(){
   try{
     setCloudStatus('讀取雲端…');
-    const data=await cloud.loadAll();
+    const c=await ensureCloud();const data=await c.loadAll();
     if(data.meta){state={...data,importPlan:null};cloudLoadState='loaded';renderAll();setCloudStatus('雲端已同步','ok');return 'loaded';}
     cloudLoadState='empty';useSeedPreview();setCloudStatus('R41 預覽','warn');return 'empty';
   }catch(err){
@@ -144,35 +159,50 @@ async function loadVisibleData(){
 $('login-btn').onclick=async()=>{
   const b=$('login-btn');
   try{
-    b.disabled=true;b.textContent='登入中…';$('auth-message').textContent='';
-    await cloud.login();
+    b.disabled=true;b.textContent='登入中…';$('auth-message').textContent='正在連接 Google 登入…';
+    const c=await ensureCloud();
+    await c.login();
   }catch(e){
-    console.error(e);
-    const msg=e?.code==='auth/unauthorized-domain'?'Google 登入網域尚未加入 Firebase Authorized domains。':(e?.message||'Google 登入失敗。');
+    console.error('Google login error',e);
+    const msg=cloudErrorText(e);
     $('auth-message').textContent=msg;
     alert(msg);
   }finally{b.disabled=false;b.textContent='Google 登入';}
 };
-$('logout-btn').onclick=()=>cloud.logout();
+$('logout-btn').onclick=async()=>{try{const c=await ensureCloud();await c.logout();}catch(e){alert(cloudErrorText(e));}};
 
-// 未登入也先顯示 R41 組織圖；登入只用來開啟管理功能。
+// v3：所有 UI 與 R41 預覽先啟動，不等待 Firebase。
 useSeedPreview();
 applyAdminUi();
+setTab('chart');
+setCloudStatus('R41 本機預覽','warn');
+$('auth-message').textContent='未登入：可檢視、篩選及匯出';
 
-cloud.observeAuth(async user=>{
-  isAdmin=cloud.isAdminUser(user);
-  $('login-btn').hidden=!!user;
-  $('logout-btn').hidden=!user;
-  applyAdminUi();
-  if(user){
-    $('auth-message').textContent=isAdmin?`管理者：${user.email}`:`已登入 ${user.email}（僅檢視）`;
-  }else{
-    $('auth-message').textContent='未登入：可檢視、匯出 Excel / PDF';
+async function bootCloud(){
+  try{
+    const c=await ensureCloud();
+    c.observeAuth(async user=>{
+      isAdmin=c.isAdminUser(user);
+      $('login-btn').hidden=!!user;
+      $('logout-btn').hidden=!user;
+      applyAdminUi();
+      if(user){
+        $('auth-message').textContent=isAdmin?`管理者：${user.email}`:`已登入 ${user.email}（僅檢視）`;
+      }else{
+        $('auth-message').textContent='未登入：可檢視、篩選及匯出';
+      }
+      const result=await loadVisibleData();
+      if(isAdmin && result==='empty'){
+        try{await initialize();}catch(e){alert(`初始化失敗：${cloudErrorText(e)}`);}
+      }
+    });
+  }catch(err){
+    console.error('Firebase module load failed',err);
+    cloudLoadState='error';
+    setCloudStatus('離線預覽','warn');
+    $('auth-message').textContent='Firebase 暫時無法載入；目前仍可使用 R41 本機預覽';
   }
+}
 
-  const result=await loadVisibleData();
-  // 舊 Firestore rules 可能只允許管理者讀取；登入管理者後會自動讀到正式資料。
-  if(isAdmin && result==='empty'){
-    try{await initialize();}catch(e){alert(`初始化失敗：${e.message}`);}
-  }
-});
+// 背景連線；即使失敗也不影響頁籤與組織圖。
+bootCloud();

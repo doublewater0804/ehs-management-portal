@@ -3,3 +3,11 @@
 
 /* v2：公開檢視、管理者登入後才顯示編輯控制 */
 [hidden]{display:none!important}.auth-inline{max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admin-mode .status-chip{font-weight:600}
+
+/* v3：頁籤與本機預覽永遠可操作；Firebase 僅負責同步與管理寫入 */
+#org-lines{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.tab{position:relative;z-index:2}
+.tab-panel[hidden]{display:none!important}
+#tab-staffing:not([hidden]) [data-admin-only][hidden]{display:none!important}
+body:not(.admin-mode) #tab-staffing .panel::before{content:"編制設定僅限管理者修改。未登入時可查看目前編制與現有人數。";display:block;background:#fff8df;border:1px solid #ead18a;color:#725c19;border-radius:8px;padding:10px 12px;margin-bottom:14px}
+body:not(.admin-mode) #staffing-tbody input{pointer-events:none;background:#f3f6f8;color:#667887}

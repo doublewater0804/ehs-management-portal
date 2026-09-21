@@ -1,6 +1,6 @@
-export const initialMeta = { version:'R41', revisionDate:'2026-09-10', title:'安全衛生處組織編制表' };
+const initialMeta = { version:'R41', revisionDate:'2026-09-10', title:'安全衛生處組織編制表' };
 
-export const nodes = [
+const nodes = [
   {id:'president',label:'處長',x:717,y:62,w:120,h:78,headcount:1,parent:null,level:'經理級'},
   {id:'safety-vp',label:'工安副處長',x:545,y:150,w:115,h:58,headcount:1,parent:'president',level:'一級主管'},
   {id:'office',label:'處務室',x:720,y:150,w:100,h:50,headcount:1,parent:'president',level:'一級主管'},
@@ -26,7 +26,7 @@ export const nodes = [
   {id:'training',label:'培訓人員',x:660,y:620,w:120,h:70,headcount:4,parent:'office',level:'培訓人員'}
 ];
 
-export const staff = [
+const staff = [
   {id:'s001',name:'馮吉宏',title:'處長',unit:'安全衛生處',joinMonth:'2004/8',level:'經理級',employeeType:'正式',status:'active',nodeId:'president',version:'R41'},
   {id:'s002',name:'鄭鎮杰',title:'環保副處長',unit:'環保管理',joinMonth:'2007/1',level:'一級主管',employeeType:'正式',status:'active',nodeId:'env-vp',version:'R41'},
   {id:'s003',name:'王家宏',title:'安衛高工師',unit:'績效管理',joinMonth:'1990/2',level:'基層人員',employeeType:'正式',status:'active',nodeId:'performance',version:'R41'},
@@ -72,7 +72,7 @@ export const staff = [
   {id:'s043',name:'蘇鈺涵',title:'安衛工程師',unit:'環保組',joinMonth:'2024/8',level:'基層人員',employeeType:'正式',status:'active',nodeId:'env-mailiao',version:'R41'}
 ];
 
-export const initialVersions = [{
+const initialVersions = [{
   id:'R41',version:'R41',revisionDate:'2026-09-10',summary:'吳念忠、沈漢威離職；蔡沂庭改助理工程師；蘇鈺涵調環保組',changeCount:4,changes:[
     {type:'離職',name:'吳念忠',field:'在職狀態',before:'在職',after:'離職'},
     {type:'離職',name:'沈漢威',field:'在職狀態',before:'在職',after:'離職'},
@@ -80,3 +80,6 @@ export const initialVersions = [{
     {type:'修改',name:'蘇鈺涵',field:'單位',before:'',after:'環保組'}
   ]
 }];
+
+
+window.EHS_ORG_SEED = { initialMeta, staff, nodes, initialVersions };

@@ -1,4 +1,4 @@
-import {initialMeta,staff as seedStaff,nodes as seedNodes,initialVersions} from './seed.js';
+const {initialMeta,staff:seedStaff,nodes:seedNodes,initialVersions}=window.EHS_ORG_SEED;
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,7 +9,6 @@ let state={meta:null,staff:[],nodes:[],versions:[],changes:[],importPlan:null};
 let isAdmin=false;
 let cloudLoadState='seed';
 let cloud=null;
-let cloudInitPromise=null;
 
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800);}
 function setCloudStatus(text,type=''){const e=$('cloud-status');e.textContent=text;e.className=`status-chip ${type}`;}
@@ -20,10 +19,9 @@ function nextVersion(v){const n=Number(String(v||'R0').replace(/\D/g,''))||0;ret
 function cloneSeed(v){return JSON.parse(JSON.stringify(v));}
 async function ensureCloud(){
   if(cloud) return cloud;
-  if(!cloudInitPromise){
-    cloudInitPromise=import('./cloud.js?v=20260921-v3').then(m=>{cloud=m;return m;}).catch(err=>{cloudInitPromise=null;throw err;});
-  }
-  return cloudInitPromise;
+  const c=window.EHSCloud;
+  if(c && c.available){cloud=c;return c;}
+  throw new Error((c && c.initError) || 'Firebase SDK 未載入；目前使用本機預覽。');
 }
 function cloudErrorText(err){
   const code=err?.code||'';
@@ -127,13 +125,13 @@ async function exportExcel(){
   try{const canvas=await captureChart();const base64=canvas.toDataURL('image/png').split(',')[1];const img=workbook.addImage({base64,extension:'png'});chart.addImage(img,{tl:{col:0,row:3},ext:{width:1200,height:783}});chart.getRow(4).height=590;}catch(e){chart.getCell('A4').value='組織圖影像產生失敗，請改用 PDF 輸出。';}
   const ws=workbook.addWorksheet('人員資料');ws.columns=[['姓名','name'],['職稱','title'],['單位','unit'],['到職年月','joinMonth'],['職務層級','level'],['人員類別','employeeType'],['在職狀態','status'],['組織節點','nodeId'],['異動說明','changeNote']].map(([header,key])=>({header,key,width:key==='unit'||key==='title'?20:15}));
   state.staff.forEach(s=>ws.addRow({...s,status:s.status==='active'?'在職':'離職',changeNote:''}));ws.getRow(1).font={bold:true};ws.autoFilter={from:'A1',to:'I1'};ws.views=[{state:'frozen',ySplit:1}];
-  ['E','F','G','H'].forEach(col=>{for(let r=2;r<=Math.max(ws.rowCount+100,200);r++){const cell=ws.getCell(`${col}${r}`);let formula='';if(col==='E')formula='"經理級,一級主管,二級主管,基層主管,基層人員,事務人員,定期契約人員,培訓人員"';if(col==='F')formula='"正式,外包"';if(col==='G')formula='"在職,離職"';if(col==='H')formula=`"${state.nodes.map(n=>n.id).join(',')}"`;cell.dataValidation={type:'list',allowBlank:true,formulae:[formula]};}}
-  const buf=await workbook.xlsx.writeBuffer();saveAs(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`安全衛生處組織編制_${state.meta.version}_${state.meta.revisionDate}.xlsx`);
+  ['E','F','G','H'].forEach(col=>{for(let r=2;r<=Math.max(ws.rowCount+100,200);r++){const cell=ws.getCell(`${col}${r}`);let formula='';if(col==='E')formula='"經理級,一級主管,二級主管,基層主管,基層人員,事務人員,定期契約人員,培訓人員"';if(col==='F')formula='"正式,外包"';if(col==='G')formula='"在職,離職"';if(col==='H')formula=`"${state.nodes.map(n=>n.id).join(',')}"`;cell.dataValidation={type:'list',allowBlank:true,formulae:[formula]};}});
+  const buf=await workbook.xlsx.writeBuffer();saveAs(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`安全衛生處組織編制表_${state.meta.version}_${state.meta.revisionDate}.xlsx`);
 }
 $('export-xlsx').onclick=exportExcel;
 
 async function captureChart(){const img=$('template-image'),wasHidden=img.hidden;img.hidden=true;await new Promise(r=>requestAnimationFrame(r));const canvas=await html2canvas($('org-page'),{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});img.hidden=wasHidden;return canvas;}
-$('export-pdf').onclick=async e=>{try{e.target.disabled=true;const canvas=await captureChart();const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[1049.944,684.876],compress:true});pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,1049.944,684.876,undefined,'FAST');pdf.save(`安全衛生處組織編制_${state.meta.version}_${state.meta.revisionDate}.pdf`);}catch(err){alert(`PDF 輸出失敗：${err.message}`);}finally{e.target.disabled=false;}};
+$('export-pdf').onclick=async e=>{try{e.target.disabled=true;const canvas=await captureChart();const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[1049.944,684.876],compress:true});pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,1049.944,684.876,undefined,'FAST');pdf.save(`安全衛生處組織編制表_${state.meta.version}_${state.meta.revisionDate}.pdf`);}catch(err){alert(`PDF 輸出失敗：${err.message}`);}finally{e.target.disabled=false;}};
 
 $('import-xlsx').onclick=()=>{if(requireAdmin())$('import-file').click();};
 $('import-file').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;try{const wb=new ExcelJS.Workbook();await wb.xlsx.load(await file.arrayBuffer());const ws=wb.getWorksheet('人員資料');if(!ws)throw Error('找不到「人員資料」工作表。');const headers={};ws.getRow(1).eachCell((c,i)=>headers[String(c.value).trim()]=i);for(const h of ['姓名','職稱','單位','到職年月','職務層級','人員類別','在職狀態','組織節點'])if(!headers[h])throw Error(`缺少必要欄位：${h}`);
@@ -171,7 +169,7 @@ $('login-btn').onclick=async()=>{
 };
 $('logout-btn').onclick=async()=>{try{const c=await ensureCloud();await c.logout();}catch(e){alert(cloudErrorText(e));}};
 
-// v3：所有 UI 與 R41 預覽先啟動，不等待 Firebase。
+// v4：使用傳統 script 載入，UI 不再依賴 ES Module / Firebase 才能啟動。
 useSeedPreview();
 applyAdminUi();
 setTab('chart');
@@ -204,5 +202,5 @@ async function bootCloud(){
   }
 }
 
-// 背景連線；即使失敗也不影響頁籤與組織圖。
+// 背景連線；即使 Firebase SDK 載入失敗也不影響頁籤與組織圖。
 bootCloud();

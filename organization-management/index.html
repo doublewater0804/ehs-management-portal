@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>安全衛生處組織編制管理</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-v3">
+  <title>安全衛生處組織編制表</title>
+  <link rel="stylesheet" href="styles.css?v=20260921-v4">
 </head>
 <body>
 <header class="app-header">
   <div class="header-inner">
     <a class="brand" href="../index.html#administration">
       <span class="brand-mark">EHS</span>
-      <span><strong>安全衛生處組織編制管理</strong><small>組織圖・人員管理・版次追蹤</small></span>
+      <span><strong>安全衛生處組織編制表</strong><small>組織圖・人員管理・版次追蹤</small></span>
     </a>
     <div class="header-actions">
       <span id="cloud-status" class="status-chip">載入中</span>
@@ -26,7 +26,7 @@
   <div id="app">
     <section class="topbar panel compact">
       <div>
-        <h1>安全衛生處組織編制管理</h1>
+        <h1>安全衛生處組織編制表</h1>
         <div class="version-line">
           <span>現行版次：<b id="current-version">R41</b></span>
           <span>修訂日期：<b id="revision-date">2026/09/10</b></span>
@@ -57,7 +57,7 @@
       <div class="chart-scroll panel">
         <div id="org-page" class="org-page" aria-label="安全衛生處職務分類組織編制表">
           <img id="template-image" src="assets/r41-template.png" alt="R41 原稿比對底圖" hidden>
-          <div class="chart-title">安全永續&nbsp;&nbsp;安全衛生處職務分類組織編制表</div>
+          <div class="chart-title">安全衛生處組織編制表</div>
           <div class="revision-box">修訂日期：<span id="chart-revision-date">2026年9月10日</span></div>
           <div class="summary-box" id="summary-box"></div>
           <svg id="org-lines" viewBox="0 0 1533 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -179,6 +179,11 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script type="module" src="app.js?v=20260921-v3"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script defer src="seed-global.js?v=20260921-v4"></script>
+<script defer src="cloud.js?v=20260921-v4"></script>
+<script defer src="app.js?v=20260921-v4"></script>
 </body>
 </html>

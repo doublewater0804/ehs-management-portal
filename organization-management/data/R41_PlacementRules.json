@@ -1,7 +1,7 @@
 {
-  "schema": "R41-placement-v3",
+  "schema": "R41-placement-v4-supervisor-role",
   "policy": {
-    "description": "固定組織/業務/轄區不動；人員依隸屬單位、業務、轄區、編制目標職務自動編排，符合目標職務為實線，其餘同區人員為虛線；超出既有位置時自動新增人員框。",
+    "description": "固定組織/業務/轄區不動；主管以「隸屬單位＋主管角色」優先歸屬，正式主管為實線、儲備主管為虛線；一般人員依隸屬單位、業務、轄區、編制目標職務自動編排。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -43,7 +43,28 @@
     ],
     "matchingRule": "隸屬單位＋業務＋轄區定位固定編排群組；實際職務=編制目標職務為實線並計入該編制括號數，否則為虛線但仍計入整體現有人數。",
     "dynamicPersonnelLayout": true,
-    "dynamicBottomLimitPt": 1655
+    "dynamicBottomLimitPt": 1655,
+    "supervisorRoles": [
+      "無",
+      "處長",
+      "工安副處長",
+      "環保副處長",
+      "組長",
+      "副組長",
+      "儲備主管"
+    ],
+    "officialSupervisorRoles": [
+      "處長",
+      "工安副處長",
+      "環保副處長",
+      "組長",
+      "副組長"
+    ],
+    "reserveSupervisorProfileByUnit": {
+      "龍德": "longde-manager",
+      "新港": "xingang-manager"
+    },
+    "supervisorMatchingRule": "主管角色優先於一般職務判斷：正式主管角色對應固定主管編制並以實線表示；儲備主管依隸屬廠區對應主管編制並以虛線表示，不計入主管編制括號現有人數。職務層級僅用於統計與排序。"
   },
   "profiles": [
     {
@@ -55,7 +76,16 @@
       "targetSlots": [
         "node_001_處長::p01"
       ],
-      "otherSlots": []
+      "otherSlots": [],
+      "supervisorRole": "處長",
+      "supervisorBox": {
+        "nodeId": "node_001_處長",
+        "fixedLines": [
+          "處長"
+        ],
+        "showCount": true,
+        "planned": 1
+      }
     },
     {
       "id": "exec-safety-vp",
@@ -67,7 +97,8 @@
         "vac::node_002_工安副處長::01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_002_工安副處長_line_02"
+      "staffingFieldId": "node_002_工安副處長_line_02",
+      "supervisorRole": "工安副處長"
     },
     {
       "id": "exec-env-vp",
@@ -78,7 +109,16 @@
       "targetSlots": [
         "node_003_環保副處長::p01"
       ],
-      "otherSlots": []
+      "otherSlots": [],
+      "supervisorRole": "環保副處長",
+      "supervisorBox": {
+        "nodeId": "node_003_環保副處長",
+        "fixedLines": [
+          "環保副處長"
+        ],
+        "showCount": true,
+        "planned": 1
+      }
     },
     {
       "id": "changhua-safety",
@@ -132,7 +172,8 @@
         "vac::node_014_組長::01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_014_組長_line_02"
+      "staffingFieldId": "node_014_組長_line_02",
+      "supervisorRole": "組長"
     },
     {
       "id": "longde-lead-support",
@@ -219,7 +260,16 @@
       "targetSlots": [
         "node_011_(新港/彰化)組長::p01"
       ],
-      "otherSlots": []
+      "otherSlots": [],
+      "supervisorRole": "組長",
+      "supervisorBox": {
+        "nodeId": "node_011_(新港/彰化)組長",
+        "fixedLines": [
+          "(新港/彰化)組長"
+        ],
+        "showCount": true,
+        "planned": 1
+      }
     },
     {
       "id": "xingang-env-high",
@@ -316,7 +366,8 @@
         "vac::node_010_環保組::01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_010_環保組_line_03"
+      "staffingFieldId": "node_010_環保組_line_03",
+      "supervisorRole": "組長"
     },
     {
       "id": "mailiao-safety-manager",
@@ -327,7 +378,17 @@
       "targetSlots": [
         "node_009_安衛組::p01"
       ],
-      "otherSlots": []
+      "otherSlots": [],
+      "supervisorRole": "副組長",
+      "supervisorBox": {
+        "nodeId": "node_009_安衛組",
+        "fixedLines": [
+          "安衛組",
+          "副組長"
+        ],
+        "showCount": true,
+        "planned": 1
+      }
     },
     {
       "id": "mailiao-environment",
@@ -535,7 +596,8 @@
         "node_023_組長::p01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_023_組長_line_03"
+      "staffingFieldId": "node_023_組長_line_03",
+      "supervisorRole": "副組長"
     },
     {
       "id": "office-taipei-safety",
@@ -555,13 +617,15 @@
       "unit": "安全衛生處",
       "business": "管理",
       "jurisdiction": "",
-      "targetRole": "處長"
+      "targetRole": "處長",
+      "supervisorRole": "處長"
     },
     "鄭鎮杰": {
       "unit": "安全衛生處",
       "business": "管理",
       "jurisdiction": "",
-      "targetRole": "環保副處長"
+      "targetRole": "環保副處長",
+      "supervisorRole": "環保副處長"
     },
     "劉志強": {
       "unit": "彰化",
@@ -579,7 +643,9 @@
       "unit": "龍德",
       "business": "管理",
       "jurisdiction": "",
-      "targetRole": "安衛高工師"
+      "targetRole": "組長",
+      "supervisorRole": "儲備主管",
+      "level": "基層主管"
     },
     "謝富承": {
       "unit": "龍德",
@@ -603,7 +669,8 @@
       "unit": "新港",
       "business": "管理",
       "jurisdiction": "",
-      "targetRole": "組長"
+      "targetRole": "組長",
+      "supervisorRole": "組長"
     },
     "陳昱綺": {
       "unit": "新港",
@@ -645,7 +712,8 @@
       "unit": "麥寮",
       "business": "安衛組",
       "jurisdiction": "",
-      "targetRole": "副組長"
+      "targetRole": "副組長",
+      "supervisorRole": "副組長"
     },
     "李濬霖": {
       "unit": "麥寮",
@@ -801,7 +869,8 @@
       "unit": "處務室",
       "business": "安衛處(台北)",
       "jurisdiction": "",
-      "targetRole": "副組長"
+      "targetRole": "副組長",
+      "supervisorRole": "副組長"
     },
     "陳學融": {
       "unit": "處務室",

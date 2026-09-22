@@ -5,8 +5,8 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260922-v8',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260922-v8',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260922-v9',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260922-v9',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -56,6 +56,11 @@
     return allowed.includes(fallbackLevel)?fallbackLevel:'基層人員';
   }
   api.inferSummaryClass=inferSummaryClass;
+  function summaryClassForStaff(s){
+    const allowed=['經理級','一級主管','二級主管','基層主管','基層人員','事務人員','定期契約人員','培訓人員'];
+    return allowed.includes(s?.level)?s.level:inferSummaryClass(s?.title,s?.level);
+  }
+  api.summaryClassForStaff=summaryClassForStaff;
 
   function findBindingBySlot(slotId){return Object.values(bindings||{}).find(b=>b.slotId===slotId)||null;}
   function getSlotMeta(slotId){return semantic?.slots?.[slotId]||null;}
@@ -65,6 +70,7 @@
   function hydrateStaff(staff){
     if(!Array.isArray(staff))return staff;
     const defaults=placement?.baselineStaffProfiles||{};
+    const allowedSupervisorRoles=placement?.policy?.supervisorRoles||['無','處長','工安副處長','環保副處長','組長','副組長','儲備主管'];
     for(const s of staff){
       if(!s)continue;
       let b=null;
@@ -74,18 +80,29 @@
         if(!s.pdfSlotId)s.pdfSlotId=b.slotId;
         if(!s.education)s.education=b.baselineEducation||'';
       }
-      // 舊版 Firestore 只有 unit，且 unit 曾混用業務/轄區。首次載入時依核准 R41 圖面校正為新欄位。
       const d=defaults[s.name];
-      if(d && Number(s.profileSchemaVersion||0)<3){
+      const schema=Number(s.profileSchemaVersion||0);
+      // v3：將舊版混用的單位欄位拆成隸屬單位／業務／轄區／編制目標職務。
+      if(d && schema<3){
         s.unit=d.unit||'';s.business=d.business||'';s.jurisdiction=d.jurisdiction||'';s.targetRole=d.targetRole||s.title||'';
         s.level=inferSummaryClass(s.title,s.level);
-        s.profileSchemaVersion=3;
-        if(s.layoutDirty==null)s.layoutDirty=false;
       }else{
         s.unit=normalizeKey(s.unit);s.business=normalizeKey(s.business);s.jurisdiction=normalizeKey(s.jurisdiction);s.targetRole=normalizeKey(s.targetRole||s.title);
-        if(s.profileSchemaVersion==null)s.profileSchemaVersion=3;
-        if(s.layoutDirty==null)s.layoutDirty=false;
       }
+      // v4：主管角色獨立於職務、職務層級。核准 R41 基準人員依固定圖面補上角色。
+      if(schema<4){
+        s.supervisorRole=normalizeKey(d?.supervisorRole||s.supervisorRole||'無')||'無';
+        if(d?.supervisorRole){
+          s.unit=normalizeKey(d.unit||s.unit);s.business=normalizeKey(d.business||s.business);s.jurisdiction=normalizeKey(d.jurisdiction||s.jurisdiction);s.targetRole=normalizeKey(d.targetRole||s.targetRole||s.title);if(d.level)s.level=d.level;
+          // 主管角色導入後需重新判斷主管位置，尤其儲備主管應改為虛線。
+          if(s.layoutDirty==null||s.supervisorRole==='儲備主管')s.layoutDirty=true;
+        }
+      }else{
+        s.supervisorRole=normalizeKey(s.supervisorRole||'無')||'無';
+      }
+      if(!allowedSupervisorRoles.includes(s.supervisorRole))s.supervisorRole='無';
+      s.profileSchemaVersion=4;
+      if(s.layoutDirty==null)s.layoutDirty=false;
     }
     return staff;
   }
@@ -96,7 +113,38 @@
     if(Array.isArray(opts)&&opts.length)return opts.map(normalizeKey).includes(normalizeKey(value));
     return normalizeKey(profile?.[key])===normalizeKey(value);
   }
+  function supervisorRoleOf(s){return normalizeKey(s?.supervisorRole||'無')||'無';}
+  function officialSupervisorRoles(){return placement?.policy?.officialSupervisorRoles||['處長','工安副處長','環保副處長','組長','副組長'];}
+  function isSupervisorProfile(p){return !!normalizeKey(p?.supervisorRole);}
+  function supervisorProfileCandidates(item){
+    if(!placement)return [];
+    const role=supervisorRoleOf(item),profiles=(placement.profiles||[]).filter(isSupervisorProfile);
+    if(role==='無')return [];
+    if(role==='儲備主管'){
+      const directId=placement?.policy?.reserveSupervisorProfileByUnit?.[normalizeKey(item?.unit)];
+      if(directId){const p=profiles.find(x=>x.id===directId);if(p)return [p];}
+      let c=profiles.filter(p=>dimensionMatches(p,'unit',item?.unit));
+      if(item?.business){const byBusiness=c.filter(p=>dimensionMatches(p,'business',item.business));if(byBusiness.length)c=byBusiness;}
+      if(item?.targetRole){const byTarget=c.filter(p=>normalizeKey(p.targetRole)===normalizeKey(item.targetRole));if(byTarget.length)c=byTarget;}
+      return c;
+    }
+    let c=profiles.filter(p=>normalizeKey(p.supervisorRole)===role);
+    if(item?.unit){const byUnit=c.filter(p=>dimensionMatches(p,'unit',item.unit));if(!byUnit.length)return [];c=byUnit;}
+    if(c.length>1&&item?.business){const byBusiness=c.filter(p=>dimensionMatches(p,'business',item.business));if(byBusiness.length)c=byBusiness;}
+    return c;
+  }
+  function getSupervisorProfileForStaff(s){
+    const c=supervisorProfileCandidates(s);if(!c.length)return null;
+    if(c.length===1)return c[0];
+    const exactTarget=c.find(p=>normalizeKey(p.targetRole)===normalizeKey(s?.targetRole));return exactTarget||null;
+  }
   function profileMatches(profile,s){
+    const sr=supervisorRoleOf(s);
+    if(isSupervisorProfile(profile)){
+      if(sr==='無')return false;
+      const p=getSupervisorProfileForStaff(s);return !!p&&p.id===profile.id;
+    }
+    if(sr!=='無')return false;
     return dimensionMatches(profile,'unit',s.unit)
       && dimensionMatches(profile,'business',s.business)
       && dimensionMatches(profile,'jurisdiction',s.jurisdiction)
@@ -104,23 +152,36 @@
   }
   function getProfileForStaff(s){
     if(!s||!placement)return null;
-    return (placement.profiles||[]).find(p=>profileMatches(p,s))||null;
+    const sr=supervisorRoleOf(s);
+    if(sr!=='無')return getSupervisorProfileForStaff(s);
+    return (placement.profiles||[]).find(p=>!isSupervisorProfile(p)&&profileMatches(p,s))||null;
   }
   api.getProfileForStaff=getProfileForStaff;
   function profileCandidates(item){
     if(!placement)return [];
-    return (placement.profiles||[]).filter(p=>dimensionMatches(p,'unit',item?.unit)&&dimensionMatches(p,'business',item?.business)&&dimensionMatches(p,'jurisdiction',item?.jurisdiction));
+    if(supervisorRoleOf(item)!=='無')return supervisorProfileCandidates(item);
+    return (placement.profiles||[]).filter(p=>!isSupervisorProfile(p)&&dimensionMatches(p,'unit',item?.unit)&&dimensionMatches(p,'business',item?.business)&&dimensionMatches(p,'jurisdiction',item?.jurisdiction));
   }
   function targetRoleOptions(item){return [...new Set(profileCandidates(item).map(p=>p.targetRole).filter(Boolean))];}
   api.getTargetRoleOptions=targetRoleOptions;
   function suggestTargetRole(item){
     const c=profileCandidates(item);if(!c.length)return '';
+    const sr=supervisorRoleOf(item);
+    if(sr!=='無'){
+      const p=getSupervisorProfileForStaff(item)||c[0];return p?.targetRole||'';
+    }
     const current=normalizeKey(item?.targetRole);if(current&&c.some(p=>normalizeKey(p.targetRole)===current))return current;
     const title=normalizeKey(item?.title);const exact=c.find(p=>normalizeKey(p.targetRole)===title);if(exact)return exact.targetRole;
     return c.length===1?c[0].targetRole:'';
   }
   api.suggestTargetRole=suggestTargetRole;
   api.getPlacementSuggestions=()=>placement?.policy||{};
+  function isFormalProfileMatch(profile,s){
+    if(!profile||!s)return false;
+    if(isSupervisorProfile(profile))return supervisorRoleOf(s)===normalizeKey(profile.supervisorRole);
+    return normalizeKey(s.title)===normalizeKey(profile.targetRole);
+  }
+  api.isFormalProfileMatch=isFormalProfileMatch;
 
   function levelRank(level){const a=placement?.policy?.levelOrder||[];const i=a.indexOf(level);return i<0?999:i;}
   function joinRank(v){const m=String(v||'').match(/^(\d{4})[\/-](\d{1,2})/);return m?Number(m[1])*12+Number(m[2]):999999;}
@@ -158,8 +219,8 @@
       const members=source.filter(s=>s.status!=='inactive'&&profileMatches(p,s)).sort(sortPeople);
       const owned=new Set([...(p.targetSlots||[]),...(p.otherSlots||[])]);
       for(const person of source){if(owned.has(person.pdfSlotId)||members.includes(person)){person.pdfSlotId='';delete person.__dynamicBox;delete person.__desiredBorder;delete person.__placementProfileId;}}
-      const matching=members.filter(s=>normalizeKey(s.title)===normalizeKey(p.targetRole));
-      const other=members.filter(s=>normalizeKey(s.title)!==normalizeKey(p.targetRole));
+      const matching=members.filter(s=>isFormalProfileMatch(p,s));
+      const other=members.filter(s=>!isFormalProfileMatch(p,s));
       const targetSlots=[...(p.targetSlots||[])];
       let ti=0;
       for(const person of matching.slice(0,targetSlots.length)){const slot=targetSlots[ti++];person.pdfSlotId=slot;person.__desiredBorder='solid';person.__placementProfileId=p.id;}
@@ -241,7 +302,7 @@
     for(const s of activeStaff(state)){
       const slot=getSlotMeta(s.pdfSlotId),p=s.__placementProfileId?(placement?.profiles||[]).find(x=>x.id===s.__placementProfileId):getProfileForStaff(s);
       const group=slot?.group||profileGroup(p);if(!group||!current[group])continue;
-      const cls=inferSummaryClass(s.title,s.level);
+      const cls=summaryClassForStaff(s);
       if(current[group][cls]==null)current[group][cls]=0;
       current[group][cls]++;
     }
@@ -269,7 +330,7 @@
     const eff=effectiveStaff(state).filter(s=>s.status!=='inactive');
     for(const p of placement?.profiles||[]){
       if(!p.staffingFieldId||!dirty.has(p.id))continue;
-      staffingCurrent[p.staffingFieldId]=eff.filter(s=>profileMatches(p,s)&&normalizeKey(s.title)===normalizeKey(p.targetRole)).length;
+      staffingCurrent[p.staffingFieldId]=eff.filter(s=>profileMatches(p,s)&&isFormalProfileMatch(p,s)).length;
     }
     return {plan,planned,current,staffingCurrent};
   }
@@ -296,7 +357,7 @@
     for(const [,b] of Object.entries(bindings||{})){
       const s=resolveStaffForBinding(state,b),active=!!s;
       values[b.nameField]=active?String(s.name||''):'';
-      if(b.titleField){let title=b.baselinePdfTitle||'';if(active&&s.title&&s.title!==b.baselineAppTitle)title=String(s.title);values[b.titleField]=title;}
+      if(b.titleField){const owner=profileForSlot(b.slotId);let title=b.baselinePdfTitle||'';if(!owner?.supervisorRole&&active&&s.title&&s.title!==b.baselineAppTitle)title=String(s.title);values[b.titleField]=title;}
       if((b.educationFields||[]).length){
         const education=active?String(s.education||b.baselineEducation||''):'';
         const parts=splitEducation(education,b.baselineEducationLines||[]);
@@ -311,8 +372,8 @@
     // Empty fixed vacancy slots may reuse a static role/title field.
     for(const sm of Object.values(semantic?.slots||{})){
       if(sm.type!=='vacancy-inline'||!sm.titleField)continue;
-      const person=activeStaff(state).find(s=>s.pdfSlotId===sm.slotId);
-      values[sm.titleField]=person?String(person.title||sm.expectedTitle||snapshot?.[sm.titleField]||''):(snapshot?.[sm.titleField]||'');
+      const person=activeStaff(state).find(s=>s.pdfSlotId===sm.slotId),owner=profileForSlot(sm.slotId);
+      values[sm.titleField]=person?String(owner?.supervisorRole?(sm.expectedTitle||owner.targetRole||snapshot?.[sm.titleField]||''):(person.title||sm.expectedTitle||snapshot?.[sm.titleField]||'')):(snapshot?.[sm.titleField]||'');
     }
     // 28 staffing count fields.
     for(const r of semantic?.staffingFields||[]){
@@ -367,10 +428,39 @@
     hydrateStaff([item]);const p=getProfileForStaff(item);
     const previewState=state?{...state,staff:[...(state.staff||[]).filter(s=>s.id!==item.id),item]}:{staff:[item]};
     const eff=effectiveStaff(previewState).find(s=>s.id===item.id||s.name===item.name)||item;
-    const match=!!p&&normalizeKey(item.title)===normalizeKey(p.targetRole);
-    return {profile:p,slotId:eff.pdfSlotId||'',lineStyle:p?(match?'solid':'dashed'):'',regionLabel:p?[item.unit,item.business,item.jurisdiction].filter(Boolean).join(' → '):'',label:p?(match?'實線｜符合編制目標職務':'虛線｜同區但職務未符合'):'尚未對應固定組織區塊'};
+    const match=!!p&&isFormalProfileMatch(p,item),sr=supervisorRoleOf(item);
+    const label=!p?'尚未對應固定組織區塊':(isSupervisorProfile(p)?(sr==='儲備主管'?'虛線｜儲備主管，未計入正式主管編制':'實線｜正式主管角色'):(match?'實線｜符合編制目標職務':'虛線｜同區但職務未符合'));
+    return {profile:p,slotId:eff.pdfSlotId||'',lineStyle:p?(match?'solid':'dashed'):'',regionLabel:p?[item.unit,item.business,item.jurisdiction].filter(Boolean).join(' → '):'',label};
   }
   api.getPlacementInfo=placementInfo;
+
+  function supervisorBoxOverlays(state){
+    const eff=effectiveStaff(state).filter(s=>s&&s.status!=='inactive'),out=[];
+    for(const p of placement?.profiles||[]){
+      const cfg=p.supervisorBox;if(!cfg?.nodeId)continue;
+      const node=nodesById.get(cfg.nodeId);if(!node?.bbox)continue;
+      const formal=eff.filter(s=>profileMatches(p,s)&&isFormalProfileMatch(p,s)).sort(sortPeople);
+      const person=formal[0]||null,planned=Math.max(0,Number(cfg.planned??1)||0),current=formal.length;
+      const lines=[...(cfg.fixedLines||[p.supervisorRole||p.targetRole]).filter(Boolean),`計${planned}人(${current})`];
+      if(person){lines.push(person.name||'');if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
+      out.push({profileId:p.id,nodeId:cfg.nodeId,bbox:node.bbox.slice(),lines,person,planned,current});
+    }
+    return out;
+  }
+  api.getSupervisorBoxOverlays=supervisorBoxOverlays;
+
+  function drawSupervisorBoxCanvas(ctx,item,scale){
+    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,pad=Math.max(1.2*scale,2);
+    ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale+pad,y0*scale+pad,Math.max(0,w-2*pad),Math.max(0,h-2*pad));
+    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
+    const lines=(item.lines||[]).filter(x=>x!==''),lineH=h/(Math.max(1,lines.length)+1);let baseFont=Math.min(18*scale,lineH*.78);
+    for(let i=0;i<lines.length;i++){
+      let f=baseFont;ctx.font=fontString(f);const maxW=w-10*scale;
+      while(ctx.measureText(lines[i]).width>maxW&&f>8.5*scale){f-=.5*scale;ctx.font=fontString(f);}
+      ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));
+    }
+    ctx.restore();
+  }
 
   function borderOverrides(state){
     const out=[];for(const s of activeStaff(state)){
@@ -383,7 +473,7 @@
 
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
-    for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole].filter(Boolean).join('／')}）`);}
+    for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);}
     const dyn=dynamicLayout(state);for(const b of dyn.boxes){if(!b.bbox||b.bbox[1]<0||b.bbox[3]>(Number(placement?.policy?.dynamicBottomLimitPt)||1655))out.push(`「${b.person.name}」自動新增的人員框超出可編排範圍，請調整組織版型。`);}
     return [...new Set(out)];
   }
@@ -445,7 +535,7 @@
     const dpi=Number(opts.dpi||CONFIG.previewDpi),widthPt=fieldMap.page.width_pt,heightPt=fieldMap.page.height_pt;
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
-    if(!opts.masterOnly){const scale=width/widthPt,dyn=dynamicLayout(state);for(const c of dyn.clears){const [x0,y0,x1,y1]=c.bbox;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
+    if(!opts.masterOnly){const scale=width/widthPt,dyn=dynamicLayout(state);for(const c of dyn.clears){const [x0,y0,x1,y1]=c.bbox;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const item of supervisorBoxOverlays(state))drawSupervisorBoxCanvas(ctx,item,scale);for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
     return canvas;
   }
   api.renderCanvas=renderCanvas;
@@ -453,7 +543,7 @@
   async function renderPreview(state,targetCanvas,opts={}){
     const c=await renderCanvas(state,{dpi:opts.dpi||CONFIG.previewDpi,masterOnly:!!opts.masterOnly});targetCanvas.width=c.width;targetCanvas.height=c.height;
     targetCanvas.getContext('2d',{alpha:false}).drawImage(c,0,0);
-    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
+    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),supervisorBoxes:supervisorBoxOverlays(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
   }
   api.renderPreview=renderPreview;
 
@@ -483,6 +573,10 @@
     const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
     const shifted={...item,bbox:[0,0,w,h]};drawDynamicBoxCanvas(ctx,shifted,scale);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
   }
+  function makeSupervisorBoxPatch(item,scale=4){
+    const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
+    const shifted={...item,bbox:[0,0,w,h]};drawSupervisorBoxCanvas(ctx,shifted,scale);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
+  }
   async function exportMasterOverlayPdf(state,filename,changes,synthetic){
     if(!window.PDFLib?.PDFDocument)throw new Error('pdf-lib 元件尚未載入。');
     const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');
@@ -493,18 +587,19 @@
     for(const item of changes){const b=item.field.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const item of supervisorBoxOverlays(state)){const patch=makeSupervisorBoxPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const c of dyn.connectors){const midY=c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2);const points=[[c.from[0],c.from[1]],[c.from[0],midY],[c.to[0],midY],[c.to[0],c.to[1]]];for(let i=1;i<points.length;i++)page.drawLine({start:{x:points[i-1][0],y:pageH-points[i-1][1]},end:{x:points[i][0],y:pageH-points[i][1]},thickness:1,color:rgb(0,0,0)});}
     for(const item of dyn.boxes){const patch=makeDynamicBoxPatch(item,4);const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
     const out=await pdf.save({useObjectStreams:false});const blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-    return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length+dyn.boxes.length};
+    return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length+supervisorBoxOverlays(state).length+dyn.boxes.length};
   }
 
   async function exportPdf(state,filename){
     await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的組織區塊編排問題：\n- '+unsupported.join('\n- '));
-    const changes=changedFields(state),synthetic=syntheticItems(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
-    if(changes.length===0&&synthetic.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
+    const changes=changedFields(state),synthetic=syntheticItems(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
+    if(changes.length===0&&synthetic.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};
     }
@@ -513,7 +608,7 @@
     if(!window.jspdf?.jsPDF)throw new Error('PDF 輸出元件尚未載入。');
     const canvas=await renderCanvas(state,{dpi:CONFIG.exportDpi}),mmW=fieldMap.page.width_pt/72*25.4,mmH=fieldMap.page.height_pt/72*25.4,{jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[mmW,mmH],compress:true});pdf.addImage(canvas,'PNG',0,0,mmW,mmH,undefined,'FAST');pdf.save(filename);
-    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+dyn.boxes.length};
+    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+supervisorBoxes.length+dyn.boxes.length};
   }
   api.exportPdf=exportPdf;
 })();

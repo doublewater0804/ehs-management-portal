@@ -5,7 +5,8 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260921-final',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260921-v7',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260921-v7',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -16,8 +17,8 @@
   const api = { ready:false, error:'', CONFIG };
   window.EHSMasterPdf = api;
 
-  let fieldMap=null, snapshot=null, bindings=null, semantic=null, masterImage=null;
-  let fieldsById=new Map(), parentByFieldId=new Map(), initPromise=null;
+  let fieldMap=null, snapshot=null, bindings=null, semantic=null, placement=null, masterImage=null;
+  let fieldsById=new Map(), parentByFieldId=new Map(), nodesById=new Map(), initPromise=null;
 
   function jsonFetch(url){
     return fetch(url,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`${url} 載入失敗 (${r.status})`);return r.json();});
@@ -28,10 +29,10 @@
   function init(){
     if(initPromise)return initPromise;
     initPromise=Promise.all([
-      jsonFetch(CONFIG.fieldMapUrl),jsonFetch(CONFIG.snapshotUrl),jsonFetch(CONFIG.bindingsUrl),jsonFetch(CONFIG.semanticUrl),loadImage(CONFIG.masterImageUrl)
-    ]).then(([fm,ss,bd,se,img])=>{
-      fieldMap=fm;snapshot=ss.fields||ss;bindings=bd.bindings||bd;semantic=se;masterImage=img;
-      fieldsById=new Map();parentByFieldId=new Map();
+      jsonFetch(CONFIG.fieldMapUrl),jsonFetch(CONFIG.snapshotUrl),jsonFetch(CONFIG.bindingsUrl),jsonFetch(CONFIG.semanticUrl),jsonFetch(CONFIG.placementUrl),loadImage(CONFIG.masterImageUrl)
+    ]).then(([fm,ss,bd,se,pl,img])=>{
+      fieldMap=fm;snapshot=ss.fields||ss;bindings=bd.bindings||bd;semantic=se;placement=pl;masterImage=img;
+      fieldsById=new Map();parentByFieldId=new Map();nodesById=new Map((fieldMap.nodes||[]).map(n=>[n.node_id,n]));
       for(const node of fieldMap.nodes||[]){for(const f of node.lines||[]){fieldsById.set(f.field_id,f);parentByFieldId.set(f.field_id,node.bbox||null);}}
       for(const f of fieldMap.special_fields||[]){fieldsById.set(f.field_id,f);parentByFieldId.set(f.field_id,null);}
       api.ready=true;api.error='';return api;
@@ -60,20 +61,111 @@
   function getSlotMeta(slotId){return semantic?.slots?.[slotId]||null;}
   api.getSlotMeta=getSlotMeta;
 
+  function normalizeKey(v){return String(v??'').trim().replace(/\s+/g,' ');}
   function hydrateStaff(staff){
-    if(!bindings||!Array.isArray(staff))return staff;
+    if(!Array.isArray(staff))return staff;
+    const defaults=placement?.baselineStaffProfiles||{};
     for(const s of staff){
       if(!s)continue;
       let b=null;
       if(s.pdfSlotId)b=findBindingBySlot(s.pdfSlotId);
-      if(!b&&bindings[s.name])b=bindings[s.name];
-      if(!b)continue;
-      if(!s.pdfSlotId)s.pdfSlotId=b.slotId;
-      if(!s.education)s.education=b.baselineEducation||'';
+      if(!b&&bindings?.[s.name])b=bindings[s.name];
+      if(b){
+        if(!s.pdfSlotId)s.pdfSlotId=b.slotId;
+        if(!s.education)s.education=b.baselineEducation||'';
+      }
+      // 舊版 Firestore 只有 unit，且 unit 曾混用業務/轄區。首次載入時依核准 R41 圖面校正為新欄位。
+      const d=defaults[s.name];
+      if(d && Number(s.profileSchemaVersion||0)<3){
+        s.unit=d.unit||'';s.business=d.business||'';s.jurisdiction=d.jurisdiction||'';s.targetRole=d.targetRole||s.title||'';
+        s.level=inferSummaryClass(s.title,s.level);
+        s.profileSchemaVersion=3;
+        if(s.layoutDirty==null)s.layoutDirty=false;
+      }else{
+        s.unit=normalizeKey(s.unit);s.business=normalizeKey(s.business);s.jurisdiction=normalizeKey(s.jurisdiction);s.targetRole=normalizeKey(s.targetRole||s.title);
+        if(s.profileSchemaVersion==null)s.profileSchemaVersion=3;
+        if(s.layoutDirty==null)s.layoutDirty=false;
+      }
     }
     return staff;
   }
   api.hydrateStaff=hydrateStaff;
+
+  function dimensionMatches(profile,key,value){
+    const opts=profile?.[`${key}Options`];
+    if(Array.isArray(opts)&&opts.length)return opts.map(normalizeKey).includes(normalizeKey(value));
+    return normalizeKey(profile?.[key])===normalizeKey(value);
+  }
+  function profileMatches(profile,s){
+    return dimensionMatches(profile,'unit',s.unit)
+      && dimensionMatches(profile,'business',s.business)
+      && dimensionMatches(profile,'jurisdiction',s.jurisdiction)
+      && normalizeKey(profile.targetRole)===normalizeKey(s.targetRole);
+  }
+  function getProfileForStaff(s){
+    if(!s||!placement)return null;
+    return (placement.profiles||[]).find(p=>profileMatches(p,s))||null;
+  }
+  api.getProfileForStaff=getProfileForStaff;
+  function profileCandidates(item){
+    if(!placement)return [];
+    return (placement.profiles||[]).filter(p=>dimensionMatches(p,'unit',item?.unit)&&dimensionMatches(p,'business',item?.business)&&dimensionMatches(p,'jurisdiction',item?.jurisdiction));
+  }
+  function targetRoleOptions(item){return [...new Set(profileCandidates(item).map(p=>p.targetRole).filter(Boolean))];}
+  api.getTargetRoleOptions=targetRoleOptions;
+  function suggestTargetRole(item){
+    const c=profileCandidates(item);if(!c.length)return '';
+    const current=normalizeKey(item?.targetRole);if(current&&c.some(p=>normalizeKey(p.targetRole)===current))return current;
+    const title=normalizeKey(item?.title);const exact=c.find(p=>normalizeKey(p.targetRole)===title);if(exact)return exact.targetRole;
+    return c.length===1?c[0].targetRole:'';
+  }
+  api.suggestTargetRole=suggestTargetRole;
+  api.getPlacementSuggestions=()=>placement?.policy||{};
+
+  function levelRank(level){const a=placement?.policy?.levelOrder||[];const i=a.indexOf(level);return i<0?999:i;}
+  function joinRank(v){const m=String(v||'').match(/^(\d{4})[\/-](\d{1,2})/);return m?Number(m[1])*12+Number(m[2]):999999;}
+  function sortPeople(a,b){return levelRank(a.level)-levelRank(b.level)||joinRank(a.joinMonth)-joinRank(b.joinMonth)||String(a.name||'').localeCompare(String(b.name||''),'zh-Hant');}
+
+  function effectiveStaff(state){
+    const source=hydrateStaff((state?.staff||[]).map(s=>({...s})));
+    if(!placement)return source;
+    const dirty=new Set();
+    for(const s of source){
+      if(!s.layoutDirty)continue;
+      const p=getProfileForStaff(s);if(p)dirty.add(p.id);
+      if(s.previousPlacementProfileId)dirty.add(s.previousPlacementProfileId);
+    }
+    if(!dirty.size)return source;
+    const profileById=new Map((placement.profiles||[]).map(p=>[p.id,p]));
+    for(const pid of dirty){
+      const p=profileById.get(pid);if(!p)continue;
+      const members=source.filter(s=>s.status!=='inactive'&&profileMatches(p,s)).sort(sortPeople);
+      const owned=new Set([...(p.targetSlots||[]),...(p.otherSlots||[])]);
+      for(const s of source){if(s.status!=='inactive'&&(members.includes(s)||owned.has(s.pdfSlotId)))s.pdfSlotId='';}
+      const matching=members.filter(s=>normalizeKey(s.title)===normalizeKey(p.targetRole));
+      const other=members.filter(s=>normalizeKey(s.title)!==normalizeKey(p.targetRole));
+      const targetSlots=[...(p.targetSlots||[])],otherSlots=[...(p.otherSlots||[])];
+      const used=new Set();
+      const assign=(person,slot,border)=>{if(!person||!slot)return;person.pdfSlotId=slot;person.__desiredBorder=border;person.__placementProfileId=p.id;used.add(slot);};
+      let ti=0,oi=0;
+      for(const person of matching){
+        let slot=targetSlots[ti++];
+        if(!slot){while(oi<otherSlots.length&&used.has(otherSlots[oi]))oi++;slot=otherSlots[oi++];}
+        assign(person,slot,'solid');
+      }
+      for(const person of other){
+        while(oi<otherSlots.length&&used.has(otherSlots[oi]))oi++;
+        const slot=otherSlots[oi++];assign(person,slot,'dashed');
+      }
+    }
+    return source;
+  }
+  api.getEffectiveStaff=effectiveStaff;
+  function dirtyProfileIds(state){
+    const out=new Set();hydrateStaff(state?.staff||[]);
+    for(const s of state?.staff||[]){if(!s?.layoutDirty)continue;const p=getProfileForStaff(s);if(p)out.add(p.id);if(s.previousPlacementProfileId)out.add(s.previousPlacementProfileId);}
+    return out;
+  }
 
   function zhRevisionDate(iso){
     const m=String(iso||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -94,14 +186,14 @@
     while(out.length<count)out.push('');return out;
   }
 
-  function activeStaff(state){return (state?.staff||[]).filter(s=>s&&s.status!=='inactive');}
+  function activeStaff(state){return effectiveStaff(state).filter(s=>s&&s.status!=='inactive');}
   function occupiedBySlot(state){
     const map=new Map();
     for(const s of activeStaff(state)){if(s.pdfSlotId){if(!map.has(s.pdfSlotId))map.set(s.pdfSlotId,[]);map.get(s.pdfSlotId).push(s);}}
     return map;
   }
   function resolveStaffForBinding(state,b){
-    const staff=(state&&state.staff)||[];
+    const staff=effectiveStaff(state);
     const bySlot=staff.find(s=>s.pdfSlotId===b.slotId&&s.status!=='inactive');
     if(bySlot)return bySlot;
     const baselinePerson=staff.find(s=>s.name===b.baselineName);
@@ -158,6 +250,13 @@
       let n=0;
       for(const [slotId,people] of occ){const sm=getSlotMeta(slotId);if(sm?.staffingFieldId===r.fieldId)n+=people.length;}
       staffingCurrent[r.fieldId]=n;
+    }
+    // 只有人員歸屬/職務異動後才依新規則重算該 profile，未異動 R41 維持 Master 原始統計。
+    const dirty=dirtyProfileIds(state);
+    const eff=effectiveStaff(state).filter(s=>s.status!=='inactive');
+    for(const p of placement?.profiles||[]){
+      if(!p.staffingFieldId||!dirty.has(p.id))continue;
+      staffingCurrent[p.staffingFieldId]=eff.filter(s=>profileMatches(p,s)&&normalizeKey(s.title)===normalizeKey(p.targetRole)).length;
     }
     return {plan,planned,current,staffingCurrent};
   }
@@ -236,6 +335,25 @@
   }
   api.syntheticItems=syntheticItems;
 
+  function placementInfo(item,state){
+    if(!item)return {profile:null,slotId:'',lineStyle:'',label:'未判定'};
+    hydrateStaff([item]);const p=getProfileForStaff(item);
+    const previewState=state?{...state,staff:[...(state.staff||[]).filter(s=>s.id!==item.id),item]}:{staff:[item]};
+    const eff=effectiveStaff(previewState).find(s=>s.id===item.id||s.name===item.name)||item;
+    const match=!!p&&normalizeKey(item.title)===normalizeKey(p.targetRole);
+    return {profile:p,slotId:eff.pdfSlotId||'',lineStyle:p?(match?'solid':'dashed'):'',label:p?(match?'實線｜符合編制目標職務':'虛線｜同區但職務未符合'):'未找到固定編排規則'};
+  }
+  api.getPlacementInfo=placementInfo;
+
+  function borderOverrides(state){
+    const out=[];for(const s of activeStaff(state)){
+      if(s.__desiredBorder!=='solid'||!s.pdfSlotId)continue;
+      const sm=getSlotMeta(s.pdfSlotId),node=sm?nodesById.get(sm.parentNodeId):null;
+      if(node&&node.border!=='solid')out.push({slotId:s.pdfSlotId,bbox:node.bbox,border:'solid'});
+    }return out;
+  }
+  api.borderOverrides=borderOverrides;
+
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
     const occ=occupiedBySlot(state);
@@ -262,11 +380,10 @@
   api.getSlotOptions=slotOptions;
 
   function suggestSlot(item,state,reserved=new Set()){
-    const desired=inferSummaryClass(item?.title||'',item?.level||'');
-    const opts=slotOptions(state,item?.id).filter(x=>x.available&&!reserved.has(x.slotId));
-    const sameClass=opts.filter(x=>x.summaryClass===desired);
-    // Prefer an explicit vacant box, then a released existing slot.
-    return sameClass.find(x=>x.type==='vacancy-inline')||sameClass.find(x=>x.type==='existing')||null;
+    hydrateStaff([item]);const p=getProfileForStaff(item);if(!p)return null;
+    const eff=effectiveStaff({...state,staff:[...(state?.staff||[]).filter(s=>s.id!==item.id),item]});
+    const s=eff.find(x=>x.id===item.id||x.name===item.name);if(!s?.pdfSlotId||reserved.has(s.pdfSlotId))return null;
+    return getSlotMeta(s.pdfSlotId)||{slotId:s.pdfSlotId,label:s.pdfSlotId};
   }
   api.suggestSlot=suggestSlot;
 
@@ -301,7 +418,7 @@
     const dpi=Number(opts.dpi||CONFIG.previewDpi),widthPt=fieldMap.page.width_pt,heightPt=fieldMap.page.height_pt;
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
-    if(!opts.masterOnly){const scale=width/widthPt;for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);}
+    if(!opts.masterOnly){const scale=width/widthPt;for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
     return canvas;
   }
   api.renderCanvas=renderCanvas;
@@ -309,7 +426,7 @@
   async function renderPreview(state,targetCanvas,opts={}){
     const c=await renderCanvas(state,{dpi:opts.dpi||CONFIG.previewDpi,masterOnly:!!opts.masterOnly});targetCanvas.width=c.width;targetCanvas.height=c.height;
     targetCanvas.getContext('2d',{alpha:false}).drawImage(c,0,0);
-    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
+    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
   }
   api.renderPreview=renderPreview;
 
@@ -343,6 +460,7 @@
     for(const item of changes){const b=item.field.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
     const out=await pdf.save({useObjectStreams:false});const blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
     return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length};
@@ -350,8 +468,8 @@
 
   async function exportPdf(state,filename){
     await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的固定槽位問題：\n- '+unsupported.join('\n- '));
-    const changes=changedFields(state),synthetic=syntheticItems(state);
-    if(changes.length===0&&synthetic.length===0){
+    const changes=changedFields(state),synthetic=syntheticItems(state),borders=borderOverrides(state);
+    if(changes.length===0&&synthetic.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};
     }

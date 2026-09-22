@@ -1,0 +1,742 @@
+{
+  "schema": "R41-placement-v3",
+  "policy": {
+    "description": "固定 Master 組織架構不變；人員依隸屬單位、業務、轄區、編制目標職務自動編排。符合目標職務顯示實線；同區但未符合者顯示虛線。排序先職務層級，再到職年月。",
+    "levelOrder": [
+      "經理級",
+      "一級主管",
+      "二級主管",
+      "基層主管",
+      "基層人員",
+      "事務人員",
+      "定期契約人員",
+      "培訓人員"
+    ],
+    "unitSuggestions": [
+      "安全衛生處",
+      "彰化",
+      "龍德",
+      "新港",
+      "麥寮",
+      "處務室"
+    ],
+    "businessSuggestions": [
+      "管理",
+      "工安",
+      "環保",
+      "環保組",
+      "安衛組",
+      "環保管理",
+      "健康管理",
+      "PSM",
+      "消防",
+      "績效管理",
+      "安衛處(台北)"
+    ],
+    "jurisdictionSuggestions": [
+      "健康管理",
+      "塑膠部含保養處",
+      "直屬單位+工事處",
+      "化三部含保養處",
+      "化二部含保養處",
+      "化一部含保養處"
+    ],
+    "matchingRule": "隸屬單位＋業務＋轄區定位固定編排群組；實際職務=編制目標職務為實線並計入該編制括號數，否則為虛線但仍計入整體現有人數。"
+  },
+  "profiles": [
+    {
+      "id": "exec-president",
+      "unit": "安全衛生處",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "處長",
+      "targetSlots": [
+        "node_001_處長::p01"
+      ],
+      "otherSlots": []
+    },
+    {
+      "id": "exec-safety-vp",
+      "unit": "安全衛生處",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "工安副處長",
+      "targetSlots": [
+        "vac::node_002_工安副處長::01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_002_工安副處長_line_02"
+    },
+    {
+      "id": "exec-env-vp",
+      "unit": "安全衛生處",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "環保副處長",
+      "targetSlots": [
+        "node_003_環保副處長::p01"
+      ],
+      "otherSlots": []
+    },
+    {
+      "id": "changhua-safety",
+      "unit": "彰化",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_013_安衛高工師::p01"
+      ],
+      "otherSlots": [
+        "node_027_安衛工程師::p01"
+      ],
+      "staffingFieldId": "node_013_安衛高工師_line_02"
+    },
+    {
+      "id": "changhua-health",
+      "unit": "彰化",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師",
+      "targetSlots": [
+        "vac::node_034_健康管理師::01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_034_健康管理師_line_02"
+    },
+    {
+      "id": "longde-manager",
+      "unit": "龍德",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "組長",
+      "targetSlots": [
+        "vac::node_014_組長::01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_014_組長_line_02"
+    },
+    {
+      "id": "longde-lead-support",
+      "unit": "龍德",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_026_安衛高工師::p01"
+      ],
+      "otherSlots": []
+    },
+    {
+      "id": "longde-environment",
+      "unit": "龍德",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保高工師",
+      "targetSlots": [
+        "vac::node_039_環保高工師::01"
+      ],
+      "otherSlots": [
+        "node_058_環保工程師::p01"
+      ],
+      "staffingFieldId": "node_039_環保高工師_line_02"
+    },
+    {
+      "id": "longde-safety",
+      "unit": "龍德",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "vac::node_044_安衛高工師::01"
+      ],
+      "otherSlots": [
+        "node_059_安衛工程師::p01"
+      ],
+      "staffingFieldId": "node_044_安衛高工師_line_02"
+    },
+    {
+      "id": "longde-health",
+      "unit": "龍德",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師",
+      "targetSlots": [
+        "vac::node_063_健康管理師::01"
+      ],
+      "otherSlots": [
+        "node_068_健康助理員::p01"
+      ],
+      "staffingFieldId": "node_063_健康管理師_line_02"
+    },
+    {
+      "id": "xingang-manager",
+      "unit": "新港",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "組長",
+      "targetSlots": [
+        "node_011_(新港/彰化)組長::p01"
+      ],
+      "otherSlots": []
+    },
+    {
+      "id": "xingang-env-high",
+      "unit": "新港",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保高工師",
+      "targetSlots": [
+        "node_042_環保高工師::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_042_環保高工師_line_02"
+    },
+    {
+      "id": "xingang-env-engineer",
+      "unit": "新港",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保工程師",
+      "targetSlots": [
+        "vac::node_056_環保工程師::01"
+      ],
+      "otherSlots": [
+        "node_062_安衛管理員::p01"
+      ],
+      "staffingFieldId": "node_056_環保工程師_line_02"
+    },
+    {
+      "id": "xingang-safety",
+      "unit": "新港",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_043_安衛高工師::p01"
+      ],
+      "otherSlots": [
+        "node_057_安衛工程師::p01"
+      ],
+      "staffingFieldId": "node_043_安衛高工師_line_02"
+    },
+    {
+      "id": "xingang-health",
+      "unit": "新港",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師",
+      "targetSlots": [
+        "vac::node_061_健康管理師::01"
+      ],
+      "otherSlots": [
+        "node_066_健康管理員::p01",
+        "node_070_健康管理員::p01"
+      ],
+      "staffingFieldId": "node_061_健康管理師_line_02"
+    },
+    {
+      "id": "mailiao-env-manager",
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "組長",
+      "targetSlots": [
+        "vac::node_010_環保組::01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_010_環保組_line_03"
+    },
+    {
+      "id": "mailiao-safety-manager",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "",
+      "targetRole": "副組長",
+      "targetSlots": [
+        "node_009_安衛組::p01"
+      ],
+      "otherSlots": []
+    },
+    {
+      "id": "mailiao-environment",
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師",
+      "targetSlots": [
+        "node_048_環保高工師::p01"
+      ],
+      "otherSlots": [
+        "node_055_環保工程師::p01",
+        "node_060_環保工程師::p01",
+        "node_067_安衛工程師::p01",
+        "node_071_助理工程師::p01"
+      ],
+      "staffingFieldId": "node_048_環保高工師_line_02"
+    },
+    {
+      "id": "mailiao-contract",
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "定期契約人員",
+      "targetSlots": [
+        "node_072_定期契約人員::p01",
+        "node_072_定期契約人員::p02",
+        "node_072_定期契約人員::p03"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_072_定期契約人員_line_02"
+    },
+    {
+      "id": "mailiao-health",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "健康管理",
+      "targetRole": "健康管理師",
+      "targetSlots": [
+        "node_045_健康管理師::p01"
+      ],
+      "otherSlots": [
+        "node_053_健康管理員::p01",
+        "node_064_健康管理員::p01",
+        "node_069_健康管理員::p01"
+      ],
+      "staffingFieldId": "node_045_健康管理師_line_02"
+    },
+    {
+      "id": "mailiao-plastic",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "塑膠部含保養處",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_046_安衛高工師::p01"
+      ],
+      "otherSlots": [
+        "node_054_安衛工程師::p01"
+      ],
+      "staffingFieldId": "node_046_安衛高工師_line_02"
+    },
+    {
+      "id": "mailiao-direct-chem3",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "vac::node_047_安衛高工師::01"
+      ],
+      "otherSlots": [
+        "node_050_安衛工程師::p01"
+      ],
+      "staffingFieldId": "node_047_安衛高工師_line_02",
+      "jurisdictionOptions": [
+        "直屬單位+工事處",
+        "化三部含保養處"
+      ]
+    },
+    {
+      "id": "mailiao-chem2",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化二部含保養處",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "vac::node_040_安衛高工師::01"
+      ],
+      "otherSlots": [
+        "node_051_安衛工程師::p01",
+        "node_065_安衛管理員::p01"
+      ],
+      "staffingFieldId": "node_040_安衛高工師_line_02"
+    },
+    {
+      "id": "mailiao-chem1",
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化一部含保養處",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "vac::node_041_安衛高工師::01"
+      ],
+      "otherSlots": [
+        "node_052_安衛管理員::p01"
+      ],
+      "staffingFieldId": "node_041_安衛高工師_line_02"
+    },
+    {
+      "id": "office-environment",
+      "unit": "處務室",
+      "business": "環保管理",
+      "jurisdiction": "",
+      "targetRole": "環保高工師",
+      "targetSlots": [
+        "node_020_環保組::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_020_環保組_line_03"
+    },
+    {
+      "id": "office-health",
+      "unit": "處務室",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_021_健康管理::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_021_健康管理_line_03"
+    },
+    {
+      "id": "office-psm",
+      "unit": "處務室",
+      "business": "PSM",
+      "jurisdiction": "",
+      "targetRole": "PSM資工師",
+      "targetSlots": [
+        "vac::node_022_風險管理::01"
+      ],
+      "otherSlots": [
+        "node_037_安衛高工師::p01"
+      ],
+      "staffingFieldId": "node_022_風險管理_line_03"
+    },
+    {
+      "id": "office-fire-engineer",
+      "unit": "處務室",
+      "business": "消防",
+      "jurisdiction": "",
+      "targetRole": "消防資工師",
+      "targetSlots": [
+        "node_024_消防管理::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_024_消防管理_line_03"
+    },
+    {
+      "id": "office-fire-high",
+      "unit": "處務室",
+      "business": "消防",
+      "jurisdiction": "",
+      "targetRole": "消防高工師",
+      "targetSlots": [
+        "vac::node_038_消防高工師::01"
+      ],
+      "otherSlots": [
+        "node_049_助理工程師::p01"
+      ],
+      "staffingFieldId": "node_038_消防高工師_line_02"
+    },
+    {
+      "id": "office-performance-safety",
+      "unit": "處務室",
+      "business": "績效管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_025_績效管理::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_025_績效管理_line_03"
+    },
+    {
+      "id": "office-performance-clerical",
+      "unit": "處務室",
+      "business": "績效管理",
+      "jurisdiction": "",
+      "targetRole": "事務人員",
+      "targetSlots": [
+        "node_036_事務人員::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_036_事務人員_line_02"
+    },
+    {
+      "id": "office-taipei-manager",
+      "unit": "處務室",
+      "business": "安衛處(台北)",
+      "jurisdiction": "",
+      "targetRole": "副組長",
+      "targetSlots": [
+        "node_023_組長::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_023_組長_line_03"
+    },
+    {
+      "id": "office-taipei-safety",
+      "unit": "處務室",
+      "business": "安衛處(台北)",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師",
+      "targetSlots": [
+        "node_035_安衛高工師::p01"
+      ],
+      "otherSlots": [],
+      "staffingFieldId": "node_035_安衛高工師_line_02"
+    }
+  ],
+  "baselineStaffProfiles": {
+    "馮吉宏": {
+      "unit": "安全衛生處",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "處長"
+    },
+    "鄭鎮杰": {
+      "unit": "安全衛生處",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "環保副處長"
+    },
+    "劉志強": {
+      "unit": "彰化",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "邱柏承": {
+      "unit": "彰化",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "蕭子昭": {
+      "unit": "龍德",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "謝富承": {
+      "unit": "龍德",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "陳炳煌": {
+      "unit": "龍德",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "林佩祺": {
+      "unit": "龍德",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師"
+    },
+    "許嘉麟": {
+      "unit": "新港",
+      "business": "管理",
+      "jurisdiction": "",
+      "targetRole": "組長"
+    },
+    "陳昱綺": {
+      "unit": "新港",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "黃淑芳": {
+      "unit": "新港",
+      "business": "環保",
+      "jurisdiction": "",
+      "targetRole": "環保工程師"
+    },
+    "邱炫晉": {
+      "unit": "新港",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "林谷威": {
+      "unit": "新港",
+      "business": "工安",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "吳幸娟": {
+      "unit": "新港",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師"
+    },
+    "陳欣妤": {
+      "unit": "新港",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "健康管理師"
+    },
+    "盧晉標": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "",
+      "targetRole": "副組長"
+    },
+    "李濬霖": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "莊晉昌": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "黃韻璇": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "蘇鈺涵": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "蔡沂庭": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "溫瑞鑫": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "定期契約人員"
+    },
+    "蔡仁正": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "定期契約人員"
+    },
+    "沈大為": {
+      "unit": "麥寮",
+      "business": "環保組",
+      "jurisdiction": "",
+      "targetRole": "定期契約人員"
+    },
+    "陳芋蓁": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "健康管理",
+      "targetRole": "健康管理師"
+    },
+    "吳玉珍": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "健康管理",
+      "targetRole": "健康管理師"
+    },
+    "潘姮君": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "健康管理",
+      "targetRole": "健康管理師"
+    },
+    "陳芋婷": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "健康管理",
+      "targetRole": "健康管理師"
+    },
+    "穆柏勳": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "塑膠部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "林瑋新": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "塑膠部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "林余津": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化三部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "黃偉嘉": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化二部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "鄒智陽": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化二部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "陳曉琪": {
+      "unit": "麥寮",
+      "business": "安衛組",
+      "jurisdiction": "化一部含保養處",
+      "targetRole": "安衛高工師"
+    },
+    "楊士瑩": {
+      "unit": "處務室",
+      "business": "環保管理",
+      "jurisdiction": "",
+      "targetRole": "環保高工師"
+    },
+    "洪巧軒": {
+      "unit": "處務室",
+      "business": "健康管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "詹益昌": {
+      "unit": "處務室",
+      "business": "PSM",
+      "jurisdiction": "",
+      "targetRole": "PSM資工師"
+    },
+    "王智寬": {
+      "unit": "處務室",
+      "business": "消防",
+      "jurisdiction": "",
+      "targetRole": "消防資工師"
+    },
+    "吳怡萱": {
+      "unit": "處務室",
+      "business": "消防",
+      "jurisdiction": "",
+      "targetRole": "消防高工師"
+    },
+    "王家宏": {
+      "unit": "處務室",
+      "business": "績效管理",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    },
+    "許嘉方": {
+      "unit": "處務室",
+      "business": "績效管理",
+      "jurisdiction": "",
+      "targetRole": "事務人員"
+    },
+    "黃俊智": {
+      "unit": "處務室",
+      "business": "安衛處(台北)",
+      "jurisdiction": "",
+      "targetRole": "副組長"
+    },
+    "陳學融": {
+      "unit": "處務室",
+      "business": "安衛處(台北)",
+      "jurisdiction": "",
+      "targetRole": "安衛高工師"
+    }
+  }
+}

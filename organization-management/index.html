@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>安全衛生處組織編制表</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-final">
+  <link rel="stylesheet" href="styles.css?v=20260921-v7">
 </head>
 <body>
 <header class="app-header">
@@ -67,8 +67,10 @@
       <div class="panel filter-panel">
         <div class="filter-grid">
           <label>姓名<input id="filter-name" placeholder="輸入姓名"></label>
-          <label>單位<select id="filter-unit"><option value="">全部</option></select></label>
-          <label>職稱<select id="filter-title"><option value="">全部</option></select></label>
+          <label>隸屬單位<select id="filter-unit"><option value="">全部</option></select></label>
+          <label>業務<select id="filter-business"><option value="">全部</option></select></label>
+          <label>轄區<select id="filter-jurisdiction"><option value="">全部</option></select></label>
+          <label>職務<select id="filter-title"><option value="">全部</option></select></label>
           <label>職務層級<select id="filter-level"><option value="">全部</option></select></label>
           <label>人員類別<select id="filter-type"><option value="">全部</option><option>正式</option><option>外包</option></select></label>
           <label>在職狀態<select id="filter-status"><option value="active">在職</option><option value="">全部</option><option value="inactive">離職</option></select></label>
@@ -86,7 +88,7 @@
         <div class="table-head"><b>人員資料</b><span id="staff-count" class="muted"></span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>姓名</th><th>職稱</th><th>單位</th><th>到職年月</th><th>職務層級</th><th>人員類別</th><th>狀態</th><th>版次</th><th>操作</th></tr></thead>
+            <thead><tr><th>姓名</th><th>隸屬單位</th><th>業務</th><th>轄區</th><th>職務</th><th>編制目標職務</th><th>到職年月</th><th>職務層級</th><th>人員類別</th><th>狀態</th><th>編排判斷</th><th>版次</th><th>操作</th></tr></thead>
             <tbody id="staff-tbody"></tbody>
           </table>
         </div>
@@ -142,17 +144,23 @@
     <input name="id" type="hidden">
     <div class="form-grid">
       <label>姓名 *<input name="name" required maxlength="40"></label>
-      <label>職稱 *<input name="title" required maxlength="60"></label>
+      <label>職務 *<input name="title" required maxlength="60"></label>
+      <label>隸屬單位 *<input name="unit" required maxlength="60" list="unit-suggestions" placeholder="可直接輸入，例如：麥寮"></label>
+      <label>業務<input name="business" maxlength="60" list="business-suggestions" placeholder="例如：健康管理、消防、環保組"></label>
+      <label>轄區<input name="jurisdiction" maxlength="80" list="jurisdiction-suggestions" placeholder="例如：化一部含保養處"></label>
+      <label>編制目標職務 *<input name="targetRole" required maxlength="60" list="target-role-suggestions" placeholder="依隸屬單位／業務／轄區自動建議，可修正"></label>
       <label>學歷／科系<input name="education" maxlength="100" placeholder="例如：中正大學勞工關係研究所"></label>
-      <label>單位 *<input name="unit" required maxlength="60"></label>
       <label>到職年月 *<input name="joinMonth" required placeholder="2026/09" pattern="\d{4}/\d{1,2}"></label>
       <label>職務層級 *<select name="level" required><option>經理級</option><option>一級主管</option><option>二級主管</option><option>基層主管</option><option selected>基層人員</option><option>事務人員</option><option>定期契約人員</option><option>培訓人員</option></select></label>
       <label>人員類別 *<select name="employeeType" required><option selected>正式</option><option>外包</option></select></label>
-      <label>組織位置 *<select name="nodeId" id="form-node" required></select></label>
-      <label>PDF 固定顯示槽位<select name="pdfSlotId" id="form-pdf-slot"><option value="">自動／尚未指定</option></select></label>
       <label>在職狀態<select name="status"><option value="active">在職</option><option value="inactive">離職</option></select></label>
     </div>
-    <label>異動說明<textarea name="changeNote" rows="3" maxlength="300" placeholder="例如：職稱調整、調環保組、新進、離職"></textarea></label>
+    <datalist id="unit-suggestions"></datalist>
+    <datalist id="business-suggestions"></datalist>
+    <datalist id="jurisdiction-suggestions"></datalist>
+    <datalist id="target-role-suggestions"></datalist>
+    <div id="placement-preview" class="placement-preview muted">系統會依「隸屬單位＋業務＋轄區＋編制目標職務」自動判斷 PDF 位置及實線／虛線。</div>
+    <label>異動說明<textarea name="changeNote" rows="3" maxlength="300" placeholder="例如：職務調整、隸屬單位異動、新進、離職"></textarea></label>
     <div class="toolbar end"><button value="cancel" class="quiet">取消</button><button id="save-staff" value="default" class="primary">儲存</button></div>
   </form>
 </dialog>
@@ -219,7 +227,7 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script src="pdf-engine.js?v=20260921-final"></script>
+<script src="pdf-engine.js?v=20260921-v7"></script>
 <!-- Firebase 改為同步載入；即使 Firebase 失敗，前面的本機 UI 仍可操作 -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
@@ -305,7 +313,7 @@ const initialVersions = [{
     {type:'離職',name:'吳念忠',field:'在職狀態',before:'在職',after:'離職'},
     {type:'離職',name:'沈漢威',field:'在職狀態',before:'在職',after:'離職'},
     {type:'修改',name:'蔡沂庭',field:'職稱',before:'',after:'助理工程師'},
-    {type:'修改',name:'蘇鈺涵',field:'單位',before:'',after:'環保組'}
+    {type:'修改',name:'蘇鈺涵',field:'隸屬單位',before:'',after:'麥寮'}
   ]
 }];
 
@@ -484,14 +492,24 @@ function renderAll(){
   $('current-version').textContent=state.meta.version;
   $('revision-date').textContent=fmtDate(state.meta.revisionDate);
   $('draft-badge').hidden=!pendingChanges().length;
-  fillFilters(); fillNodeSelect(); renderChart(); renderStaff(); renderVersions(); renderStaffing();
+  fillFilters(); fillPlacementSuggestions(); renderChart(); renderStaff(); renderVersions(); renderStaffing();
+  if(!window.EHSMasterPdf?.ready){
+    window.EHSMasterPdf?.init().then(()=>{window.EHSMasterPdf.hydrateStaff(state.staff);fillFilters();fillPlacementSuggestions();renderStaff();renderStaffing();}).catch(()=>{});
+  }
 }
 
 function fillFilters(){
   const fill=(id,vals)=>{const cur=$(id).value;$(id).innerHTML='<option value="">全部</option>'+[...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant')).map(v=>`<option>${esc(v)}</option>`).join('');$(id).value=cur;};
-  fill('filter-unit',state.staff.map(x=>x.unit));fill('filter-title',state.staff.map(x=>x.title));fill('filter-level',state.staff.map(x=>x.level));
+  fill('filter-unit',state.staff.map(x=>x.unit));fill('filter-business',state.staff.map(x=>x.business));fill('filter-jurisdiction',state.staff.map(x=>x.jurisdiction));fill('filter-title',state.staff.map(x=>x.title));fill('filter-level',state.staff.map(x=>x.level));
 }
-function fillNodeSelect(){$('form-node').innerHTML=state.nodes.slice().sort((a,b)=>a.label.localeCompare(b.label,'zh-Hant')).map(n=>`<option value="${esc(n.id)}">${esc(n.label.replaceAll('\n',' '))}</option>`).join('');}
+function fillDatalist(id,vals){const el=$(id);if(!el)return;el.innerHTML=[...new Set((vals||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant')).map(v=>`<option value="${esc(v)}"></option>`).join('');}
+function fillPlacementSuggestions(){
+  const policy=window.EHSMasterPdf?.getPlacementSuggestions?.()||{};
+  fillDatalist('unit-suggestions',[...(policy.unitSuggestions||[]),...state.staff.map(x=>x.unit)]);
+  fillDatalist('business-suggestions',[...(policy.businessSuggestions||[]),...state.staff.map(x=>x.business)]);
+  fillDatalist('jurisdiction-suggestions',[...(policy.jurisdictionSuggestions||[]),...state.staff.map(x=>x.jurisdiction)]);
+  fillDatalist('target-role-suggestions',state.staff.map(x=>x.targetRole));
+}
 
 async function renderChart(){
   if(!state.meta)return;
@@ -517,41 +535,68 @@ async function renderChart(){
 $('compare-template').addEventListener('change',()=>renderChart());
 
 function filteredStaff(){
-  const q=$('filter-name').value.trim().toLowerCase(),unit=$('filter-unit').value,title=$('filter-title').value,level=$('filter-level').value,type=$('filter-type').value,status=$('filter-status').value;
-  return state.staff.filter(s=>(!q||s.name.toLowerCase().includes(q))&&(!unit||s.unit===unit)&&(!title||s.title===title)&&(!level||s.level===level)&&(!type||s.employeeType===type)&&(!status||s.status===status)).sort((a,b)=>a.unit.localeCompare(b.unit,'zh-Hant')||a.name.localeCompare(b.name,'zh-Hant'));
+  const q=$('filter-name').value.trim().toLowerCase(),unit=$('filter-unit').value,business=$('filter-business').value,jurisdiction=$('filter-jurisdiction').value,title=$('filter-title').value,level=$('filter-level').value,type=$('filter-type').value,status=$('filter-status').value;
+  return state.staff.filter(s=>(!q||s.name.toLowerCase().includes(q))&&(!unit||s.unit===unit)&&(!business||s.business===business)&&(!jurisdiction||s.jurisdiction===jurisdiction)&&(!title||s.title===title)&&(!level||s.level===level)&&(!type||s.employeeType===type)&&(!status||s.status===status)).sort((a,b)=>String(a.unit||'').localeCompare(String(b.unit||''),'zh-Hant')||String(a.business||'').localeCompare(String(b.business||''),'zh-Hant')||String(a.name||'').localeCompare(String(b.name||''),'zh-Hant'));
 }
 function renderStaff(){
   const list=filteredStaff(); $('staff-count').textContent=`${list.length} 筆`;
-  $('staff-tbody').innerHTML=list.length?list.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.title)}</td><td>${esc(s.unit)}</td><td>${esc(s.joinMonth)}</td><td>${esc(s.level)}</td><td>${esc(s.employeeType)}</td><td class="${s.status==='active'?'status-active':'status-inactive'}">${s.status==='active'?'在職':'離職'}</td><td>${esc(s.version||state.meta.version)}</td><td>${isAdmin?`<button class="action-btn" data-edit="${esc(s.id)}">編輯</button>${s.status==='active'?`<button class="action-btn danger" data-leave="${esc(s.id)}">離職</button>`:''}`:'<span class="muted">查看</span>'}</td></tr>`).join(''):'<tr><td colspan="9" class="muted">沒有符合條件的資料。</td></tr>';
+  $('staff-tbody').innerHTML=list.length?list.map(s=>{const pi=window.EHSMasterPdf?.ready?window.EHSMasterPdf.getPlacementInfo(s,state):null;return `<tr><td>${esc(s.name)}</td><td>${esc(s.unit)}</td><td>${esc(s.business||'-')}</td><td>${esc(s.jurisdiction||'-')}</td><td>${esc(s.title)}</td><td>${esc(s.targetRole||'-')}</td><td>${esc(s.joinMonth)}</td><td>${esc(s.level)}</td><td>${esc(s.employeeType)}</td><td class="${s.status==='active'?'status-active':'status-inactive'}">${s.status==='active'?'在職':'離職'}</td><td><span class="placement-badge ${pi?.lineStyle||''}">${esc(pi?.label||'待判定')}</span></td><td>${esc(s.version||state.meta.version)}</td><td>${isAdmin?`<button class="action-btn" data-edit="${esc(s.id)}">編輯</button>${s.status==='active'?`<button class="action-btn danger" data-leave="${esc(s.id)}">離職</button>`:''}`:'<span class="muted">查看</span>'}</td></tr>`;}).join(''):'<tr><td colspan="13" class="muted">沒有符合條件的資料。</td></tr>';
 }
-for(const id of ['filter-name','filter-unit','filter-title','filter-level','filter-type','filter-status'])$(id).addEventListener('input',renderStaff);
-$('clear-filter').onclick=()=>{for(const id of ['filter-name','filter-unit','filter-title','filter-level','filter-type'])$(id).value='';$('filter-status').value='active';renderStaff();};
+for(const id of ['filter-name','filter-unit','filter-business','filter-jurisdiction','filter-title','filter-level','filter-type','filter-status'])$(id).addEventListener('input',renderStaff);
+$('clear-filter').onclick=()=>{for(const id of ['filter-name','filter-unit','filter-business','filter-jurisdiction','filter-title','filter-level','filter-type'])$(id).value='';$('filter-status').value='active';renderStaff();};
 
+function formProfileItem(){
+  const f=$('staff-form');
+  return {id:f.elements.id.value||'__preview__',name:f.elements.name.value.trim(),title:f.elements.title.value.trim(),unit:f.elements.unit.value.trim(),business:f.elements.business.value.trim(),jurisdiction:f.elements.jurisdiction.value.trim(),targetRole:f.elements.targetRole.value.trim(),joinMonth:f.elements.joinMonth.value.trim(),level:f.elements.level.value,employeeType:f.elements.employeeType.value,status:f.elements.status.value,profileSchemaVersion:3,layoutDirty:true};
+}
+function refreshTargetRoleAndPlacement(forceSuggestion=false){
+  if(!window.EHSMasterPdf?.ready)return;
+  const f=$('staff-form'),item=formProfileItem();
+  const opts=window.EHSMasterPdf.getTargetRoleOptions?.(item)||[];fillDatalist('target-role-suggestions',opts.length?opts:state.staff.map(x=>x.targetRole));
+  const suggestion=window.EHSMasterPdf.suggestTargetRole?.(item)||'';
+  if(forceSuggestion){
+    if(suggestion)f.elements.targetRole.value=suggestion;
+    else if(opts.length&&!opts.includes(f.elements.targetRole.value.trim()))f.elements.targetRole.value='';
+  }else if(!f.elements.targetRole.value.trim()&&suggestion)f.elements.targetRole.value=suggestion;
+  const preview=formProfileItem(),info=window.EHSMasterPdf.getPlacementInfo?.(preview,state);
+  const box=$('placement-preview');
+  if(info?.profile){
+    const criteria=[preview.unit,preview.business,preview.jurisdiction].filter(Boolean).join('／');
+    box.innerHTML=`編排判斷：<b>${esc(info.label)}</b>｜${esc(criteria)}｜編制目標：${esc(preview.targetRole)}${info.slotId?`｜固定槽位：${esc(info.slotId)}`:''}`;
+    box.className=`placement-preview ${info.lineStyle||''}`;
+  }else{
+    box.textContent='目前「隸屬單位／業務／轄區／編制目標職務」找不到固定 PDF 編排規則，請修正欄位。';
+    box.className='placement-preview warn';
+  }
+}
 async function openStaff(item){
   const f=$('staff-form');f.reset();f.elements.id.value=item?.id||'';
   try{await window.EHSMasterPdf.init();if(item)window.EHSMasterPdf.hydrateStaff([item]);}catch(_){ }
-  for(const k of ['name','title','education','unit','joinMonth','level','employeeType','nodeId','status'])if(item?.[k]!=null&&f.elements[k])f.elements[k].value=item[k];
-  if(!item){f.elements.status.value='active';f.elements.employeeType.value='正式';}
-  const slotSelect=f.elements.pdfSlotId;slotSelect.innerHTML='<option value="">自動／尚未指定</option>';
-  if(window.EHSMasterPdf?.ready){
-    const opts=window.EHSMasterPdf.getSlotOptions(state,item?.id||'');
-    for(const o of opts){const op=document.createElement('option');op.value=o.slotId;op.textContent=`${o.label}${o.available?'':'（已使用：'+o.occupiedBy.join('、')+'）'}`;op.disabled=!o.available;slotSelect.appendChild(op);}
-    if(item?.pdfSlotId)slotSelect.value=item.pdfSlotId;
-  }
+  for(const k of ['name','title','education','unit','business','jurisdiction','targetRole','joinMonth','level','employeeType','status'])if(item?.[k]!=null&&f.elements[k])f.elements[k].value=item[k];
+  if(!item){f.elements.status.value='active';f.elements.employeeType.value='正式';f.elements.level.value='基層人員';}
+  fillPlacementSuggestions();refreshTargetRoleAndPlacement(!item);
   $('staff-dialog-title').textContent=item?'編輯人員':'新增人員';$('staff-dialog').showModal();
 }
+for(const name of ['unit','business','jurisdiction'])$('staff-form').elements[name].addEventListener('input',()=>refreshTargetRoleAndPlacement(true));
+for(const name of ['title','targetRole','level','joinMonth'])$('staff-form').elements[name].addEventListener('input',()=>refreshTargetRoleAndPlacement(false));
 $('add-staff').onclick=()=>{if(requireAdmin())openStaff();};
 $('staff-tbody').onclick=e=>{const edit=e.target.closest('[data-edit]'),leave=e.target.closest('[data-leave]');if(edit)openStaff(state.staff.find(s=>s.id===edit.dataset.edit));if(leave)markLeave(leave.dataset.leave);};
-$('save-staff').onclick=async e=>{e.preventDefault();const f=$('staff-form');if(!f.reportValidity())return;const old=state.staff.find(s=>s.id===f.elements.id.value);const item={id:old?.id||uid(),name:f.elements.name.value.trim(),title:f.elements.title.value.trim(),education:f.elements.education.value.trim(),unit:f.elements.unit.value.trim(),joinMonth:f.elements.joinMonth.value.trim(),level:f.elements.level.value,employeeType:f.elements.employeeType.value,nodeId:f.elements.nodeId.value,status:f.elements.status.value,pdfSlotId:f.elements.pdfSlotId.value||old?.pdfSlotId||'',version:state.meta.version};
-  if(item.status==='active'&&!item.pdfSlotId&&window.EHSMasterPdf?.ready){const sug=window.EHSMasterPdf.suggestSlot(item,state);if(sug)item.pdfSlotId=sug.slotId;}
-  if(item.status==='active'&&!item.pdfSlotId){alert('在職人員必須指定可用的 PDF 固定顯示槽位，才能維持原稿版型。');return;}
-  if(item.status==='active'&&window.EHSMasterPdf?.ready){const opt=window.EHSMasterPdf.getSlotOptions(state,old?.id||'').find(x=>x.slotId===item.pdfSlotId);if(opt&&!opt.available){alert('此 PDF 固定顯示槽位已被其他在職人員使用。');return;}}
-  const diffs=[];if(!old)diffs.push({field:'新增',before:'',after:`${item.title} / ${item.unit}`});else for(const [k,label] of Object.entries({name:'姓名',title:'職稱',education:'學歷／科系',unit:'單位',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',nodeId:'組織位置',pdfSlotId:'PDF顯示槽位',status:'在職狀態'}))if((old[k]??'')!==(item[k]??''))diffs.push({field:label,before:old[k]??'',after:item[k]??''});
+$('save-staff').onclick=async e=>{e.preventDefault();const f=$('staff-form');if(!f.reportValidity())return;await window.EHSMasterPdf.init();const old=state.staff.find(s=>s.id===f.elements.id.value);const draft=formProfileItem();
+  if(!draft.targetRole){alert('請確認「編制目標職務」。');return;}
+  const newProfile=window.EHSMasterPdf.getProfileForStaff?.(draft);if(draft.status==='active'&&!newProfile){alert('目前欄位組合找不到固定 PDF 編排規則。請確認「隸屬單位／業務／轄區／編制目標職務」。');return;}
+  const oldProfile=old?window.EHSMasterPdf.getProfileForStaff?.(old):null;
+  const layoutKeys=['title','unit','business','jurisdiction','targetRole','level','joinMonth','status'];
+  const layoutChanged=!old||layoutKeys.some(k=>(old?.[k]??'')!==(draft[k]??''));
+  const item={...(old||{}),...draft,id:old?.id||uid(),education:f.elements.education.value.trim(),version:state.meta.version,profileSchemaVersion:3,layoutDirty:old?.layoutDirty||layoutChanged};
+  if(layoutChanged&&oldProfile?.id&&oldProfile.id!==newProfile?.id)item.previousPlacementProfileId=oldProfile.id;
+  const diffs=[];if(!old)diffs.push({field:'新增',before:'',after:`${item.title} / ${item.unit}`});else for(const [k,label] of Object.entries({name:'姓名',unit:'隸屬單位',business:'業務',jurisdiction:'轄區',title:'職務',targetRole:'編制目標職務',education:'學歷／科系',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',status:'在職狀態'}))if((old[k]??'')!==(item[k]??''))diffs.push({field:label,before:old[k]??'',after:item[k]??''});
   if(!diffs.length){$('staff-dialog').close();return;}
+  const previewState={...state,staff:[...state.staff.filter(s=>s.id!==item.id),item]};const problems=window.EHSMasterPdf.unsupportedChanges?.(previewState)||[];
+  if(item.status==='active'&&problems.some(x=>x.includes(item.name))){alert('無法依固定原稿安全編排：\n- '+problems.filter(x=>x.includes(item.name)).join('\n- '));return;}
   const change={id:uid(),name:item.name,type:old?'修改':'新增',diffs,note:f.elements.changeNote.value.trim(),at:new Date().toISOString()};
-  try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaff(item,change);$('staff-dialog').close();await reload();toast('人員資料已儲存，列入待發布異動。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
+  try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaff(item,change);$('staff-dialog').close();await reload();toast('人員資料已儲存，組織圖將依隸屬單位／業務／轄區／職務自動編排。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
 };
-async function markLeave(id){const s=state.staff.find(x=>x.id===id);if(!s||!confirm(`確定將「${s.name}」標記為離職？\n離職後不顯示於組織圖，但資料仍保留。`))return;const item={...s,status:'inactive',version:state.meta.version};const change={id:uid(),name:s.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'離職',at:new Date().toISOString()};try{const c=await ensureCloud();await c.saveStaff(item,change);await reload();toast('已標記離職。');}catch(e){alert(e.message);}}
+async function markLeave(id){const s=state.staff.find(x=>x.id===id);if(!s||!confirm(`確定將「${s.name}」標記為離職？\n離職後不顯示於組織圖，但資料仍保留。`))return;await window.EHSMasterPdf.init();const oldProfile=window.EHSMasterPdf.getProfileForStaff?.(s);const item={...s,status:'inactive',layoutDirty:true,previousPlacementProfileId:oldProfile?.id||s.previousPlacementProfileId||'',version:state.meta.version};const change={id:uid(),name:s.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'離職',at:new Date().toISOString()};try{const c=await ensureCloud();await c.saveStaff(item,change);await reload();toast('已標記離職，該編排群組將自動重排。');}catch(e){alert(e.message);}}
 
 function renderVersions(){
   const p=pendingChanges();$('pending-changes').innerHTML=p.length?`<b>待發布異動：${p.length} 筆</b>`+p.map(c=>`<div class="pending-item"><b>${esc(c.name)}</b>｜${esc(c.type)}｜${esc(c.note||c.diffs?.map(d=>`${d.field}: ${d.before} → ${d.after}`).join('；')||'')}</div>`).join(''):'目前沒有待發布異動。';
@@ -605,13 +650,13 @@ async function exportExcel(){
 
   const lists=workbook.addWorksheet('_系統選單');lists.state='veryHidden';
   const levels=['經理級','一級主管','二級主管','基層主管','基層人員','事務人員','定期契約人員','培訓人員'];
-  const types=['正式','外包'],statuses=['在職','離職'],nodeIds=state.nodes.map(n=>n.id),slotIds=window.EHSMasterPdf.getSlotOptions(state,'').map(x=>x.slotId);
-  [levels,types,statuses,nodeIds,slotIds].forEach((arr,ci)=>arr.forEach((v,ri)=>lists.getCell(ri+1,ci+1).value=v));
+  const types=['正式','外包'],statuses=['在職','離職'];
+  [levels,types,statuses].forEach((arr,ci)=>arr.forEach((v,ri)=>lists.getCell(ri+1,ci+1).value=v));
 
   const ws=workbook.addWorksheet('人員資料');
-  ws.columns=[['姓名','name'],['職稱','title'],['學歷/科系','education'],['單位','unit'],['到職年月','joinMonth'],['職務層級','level'],['人員類別','employeeType'],['在職狀態','status'],['組織節點','nodeId'],['PDF顯示槽位','pdfSlotId'],['異動說明','changeNote']].map(([header,key])=>({header,key,width:key==='unit'||key==='title'||key==='education'||key==='pdfSlotId'?30:15}));
-  state.staff.forEach(s=>ws.addRow({...s,status:s.status==='active'?'在職':'離職',changeNote:''}));ws.getRow(1).font={bold:true};ws.autoFilter={from:'A1',to:'K1'};ws.views=[{state:'frozen',ySplit:1}];
-  const refs={F:`'_系統選單'!$A$1:$A$${levels.length}`,G:`'_系統選單'!$B$1:$B$${types.length}`,H:`'_系統選單'!$C$1:$C$${statuses.length}`,I:`'_系統選單'!$D$1:$D$${nodeIds.length}`,J:`'_系統選單'!$E$1:$E$${slotIds.length}`};
+  ws.columns=[['姓名','name'],['隸屬單位','unit'],['業務','business'],['轄區','jurisdiction'],['職務','title'],['編制目標職務','targetRole'],['學歷/科系','education'],['到職年月','joinMonth'],['職務層級','level'],['人員類別','employeeType'],['在職狀態','status'],['異動說明','changeNote']].map(([header,key])=>({header,key,width:['unit','business','jurisdiction','title','targetRole','education'].includes(key)?28:15}));
+  state.staff.forEach(s=>ws.addRow({...s,status:s.status==='active'?'在職':'離職',changeNote:''}));ws.getRow(1).font={bold:true};ws.autoFilter={from:'A1',to:'L1'};ws.views=[{state:'frozen',ySplit:1}];
+  const refs={I:`'_系統選單'!$A$1:$A$${levels.length}`,J:`'_系統選單'!$B$1:$B$${types.length}`,K:`'_系統選單'!$C$1:$C$${statuses.length}`};
   for(const col of Object.keys(refs)){for(let r=2;r<=Math.max(ws.rowCount+100,200);r++)ws.getCell(`${col}${r}`).dataValidation={type:'list',allowBlank:true,formulae:[refs[col]]};}
   const buf=await workbook.xlsx.writeBuffer();saveAs(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`安全衛生處組織編制表_${state.meta.version}_${state.meta.revisionDate}.xlsx`);
 }
@@ -633,17 +678,20 @@ $('export-pdf').onclick=async e=>{
 };
 
 $('import-xlsx').onclick=()=>{if(requireAdmin())$('import-file').click();};
-$('import-file').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;try{await window.EHSMasterPdf.init();const wb=new ExcelJS.Workbook();await wb.xlsx.load(await file.arrayBuffer());const ws=wb.getWorksheet('人員資料');if(!ws)throw Error('找不到「人員資料」工作表。');const headers={};ws.getRow(1).eachCell((c,i)=>headers[String(c.value).trim()]=i);for(const h of ['姓名','職稱','學歷/科系','單位','到職年月','職務層級','人員類別','在職狀態','組織節點'])if(!headers[h])throw Error(`缺少必要欄位：${h}`);
-    const incoming=[];ws.eachRow((row,i)=>{if(i===1)return;const name=String(row.getCell(headers['姓名']).value??'').trim();if(!name)return;incoming.push({name,title:String(row.getCell(headers['職稱']).value??'').trim(),education:String(row.getCell(headers['學歷/科系']).value??'').trim(),unit:String(row.getCell(headers['單位']).value??'').trim(),joinMonth:String(row.getCell(headers['到職年月']).value??'').trim(),level:String(row.getCell(headers['職務層級']).value??'').trim(),employeeType:String(row.getCell(headers['人員類別']).value??'正式').trim(),status:String(row.getCell(headers['在職狀態']).value??'在職').trim()==='離職'?'inactive':'active',nodeId:String(row.getCell(headers['組織節點']).value??'').trim(),pdfSlotId:headers['PDF顯示槽位']?String(row.getCell(headers['PDF顯示槽位']).value??'').trim():'',changeNote:headers['異動說明']?String(row.getCell(headers['異動說明']).value??'').trim():''});});buildImportPlan(incoming);$('import-dialog').showModal();}catch(err){alert(`匯入檔案無法讀取：${err.message}`);}};
+$('import-file').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;try{await window.EHSMasterPdf.init();const wb=new ExcelJS.Workbook();await wb.xlsx.load(await file.arrayBuffer());const ws=wb.getWorksheet('人員資料');if(!ws)throw Error('找不到「人員資料」工作表。');const headers={};ws.getRow(1).eachCell((c,i)=>headers[String(c.value).trim()]=i);
+    const hName=headers['姓名'],hTitle=headers['職務']||headers['職稱'],hUnit=headers['隸屬單位']||headers['單位'],hBusiness=headers['業務'],hJurisdiction=headers['轄區'],hTarget=headers['編制目標職務'];
+    for(const [label,idx] of [['姓名',hName],['職務',hTitle],['隸屬單位',hUnit],['業務',hBusiness],['轄區',hJurisdiction],['編制目標職務',hTarget],['學歷/科系',headers['學歷/科系']],['到職年月',headers['到職年月']],['職務層級',headers['職務層級']],['人員類別',headers['人員類別']],['在職狀態',headers['在職狀態']]])if(!idx)throw Error(`缺少必要欄位：${label}`);
+    const incoming=[];ws.eachRow((row,i)=>{if(i===1)return;const name=String(row.getCell(hName).value??'').trim();if(!name)return;incoming.push({name,title:String(row.getCell(hTitle).value??'').trim(),unit:String(row.getCell(hUnit).value??'').trim(),business:String(row.getCell(hBusiness).value??'').trim(),jurisdiction:String(row.getCell(hJurisdiction).value??'').trim(),targetRole:String(row.getCell(hTarget).value??'').trim(),education:String(row.getCell(headers['學歷/科系']).value??'').trim(),joinMonth:String(row.getCell(headers['到職年月']).value??'').trim(),level:String(row.getCell(headers['職務層級']).value??'').trim(),employeeType:String(row.getCell(headers['人員類別']).value??'正式').trim(),status:String(row.getCell(headers['在職狀態']).value??'在職').trim()==='離職'?'inactive':'active',profileSchemaVersion:3,changeNote:headers['異動說明']?String(row.getCell(headers['異動說明']).value??'').trim():''});});buildImportPlan(incoming);$('import-dialog').showModal();}catch(err){alert(`匯入檔案無法讀取：${err.message}`);}};
 function buildImportPlan(incoming){
-  const fields={title:'職稱',education:'學歷／科系',unit:'單位',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',status:'在職狀態',nodeId:'組織節點',pdfSlotId:'PDF顯示槽位'};
+  const fields={unit:'隸屬單位',business:'業務',jurisdiction:'轄區',title:'職務',targetRole:'編制目標職務',education:'學歷／科系',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',status:'在職狀態'};
   const rows=[],upserts=[],changes=[],reserved=new Set();
   for(const x0 of incoming){
     const old=state.staff.find(s=>s.name===x0.name),x={...x0};
-    if(old&&!x.pdfSlotId)x.pdfSlotId=old.pdfSlotId||'';
-    if(x.status==='active'&&!x.pdfSlotId&&window.EHSMasterPdf?.ready){const sug=window.EHSMasterPdf.suggestSlot({...old,...x},state,reserved);if(sug)x.pdfSlotId=sug.slotId;}
-    if(x.status==='active'&&!x.pdfSlotId)throw Error(`「${x.name}」沒有可用的 PDF 固定顯示槽位，請先在人員管理頁指定。`);
-    if(x.pdfSlotId)reserved.add(x.pdfSlotId);
+    const oldProfile=old?window.EHSMasterPdf.getProfileForStaff?.(old):null;
+    const next={...old,...x};const newProfile=window.EHSMasterPdf.getProfileForStaff?.(next);
+    if(x.status==='active'&&!newProfile)throw Error(`「${x.name}」的隸屬單位／業務／轄區／編制目標職務找不到固定 PDF 編排規則。`);
+    const layoutKeys=['title','unit','business','jurisdiction','targetRole','level','joinMonth','status'];x.layoutDirty=!old||old.layoutDirty||layoutKeys.some(k=>(old?.[k]??'')!==(x[k]??''));
+    if(x.layoutDirty&&oldProfile?.id&&oldProfile.id!==newProfile?.id)x.previousPlacementProfileId=oldProfile.id;
     if(!old){const item={...x,id:uid(),version:state.meta.version};upserts.push(item);const c={id:uid(),name:x.name,type:'新增',diffs:[{field:'新增',before:'',after:`${x.title}/${x.unit}`}],note:x.changeNote||'Excel 匯入新增',at:new Date().toISOString()};changes.push(c);rows.push({kind:'new',name:x.name,field:'-',before:'-',after:`${x.title} / ${x.unit}`,action:'新增',item,change:c});continue;}
     const diffs=[];for(const [k,l] of Object.entries(fields))if((old[k]??'')!==(x[k]??''))diffs.push({field:l,before:old[k]??'',after:x[k]??''});
     if(diffs.length){const item={...old,...x,version:state.meta.version};upserts.push(item);const c={id:uid(),name:x.name,type:'修改',diffs,note:x.changeNote||'Excel 匯入修改',at:new Date().toISOString()};changes.push(c);diffs.forEach(d=>rows.push({kind:'change',name:x.name,field:d.field,before:d.before,after:d.after,action:'更新',item,change:c}));}
@@ -651,10 +699,10 @@ function buildImportPlan(incoming){
   const names=new Set(incoming.map(x=>x.name));state.staff.filter(s=>s.status==='active'&&!names.has(s.name)).forEach(s=>rows.push({kind:'missing',name:s.name,field:'-',before:'目前在職',after:'Excel 無資料',action:'ignore',item:s}));
   state.importPlan={rows,upserts,changes};$('import-summary').innerHTML=`<p><b>新增 ${rows.filter(r=>r.kind==='new').length} 人｜修改 ${new Set(rows.filter(r=>r.kind==='change').map(r=>r.name)).size} 人｜Excel 未找到 ${rows.filter(r=>r.kind==='missing').length} 人</b></p>`;$('import-tbody').innerHTML=rows.map((r,i)=>`<tr><td><span class="import-tag ${r.kind}">${r.kind==='new'?'新增':r.kind==='change'?'修改':'缺少'}</span></td><td>${esc(r.name)}</td><td>${esc(r.field)}</td><td>${esc(r.before)}</td><td>${esc(r.after)}</td><td>${r.kind==='missing'?`<select data-missing-index="${i}"><option value="ignore">不處理</option><option value="leave">標記離職</option></select>`:esc(r.action)}</td></tr>`).join('');
 }
-$('apply-import').onclick=async e=>{e.preventDefault();const p=state.importPlan;if(!p)return;const upserts=[...p.upserts],changes=[...p.changes];document.querySelectorAll('[data-missing-index]').forEach(sel=>{if(sel.value!=='leave')return;const r=p.rows[Number(sel.dataset.missingIndex)],old=r.item,item={...old,status:'inactive',version:state.meta.version};upserts.push(item);changes.push({id:uid(),name:old.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'Excel 匯入：系統有人、Excel 無此人，人工確認標記離職',at:new Date().toISOString()});});try{e.target.disabled=true;const c=await ensureCloud();await c.bulkImport({upserts,changes});$('import-dialog').close();await reload();toast(`Excel 匯入完成，共處理 ${upserts.length} 人。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
+$('apply-import').onclick=async e=>{e.preventDefault();const p=state.importPlan;if(!p)return;const upserts=[...p.upserts],changes=[...p.changes];document.querySelectorAll('[data-missing-index]').forEach(sel=>{if(sel.value!=='leave')return;const r=p.rows[Number(sel.dataset.missingIndex)],old=r.item,oldProfile=window.EHSMasterPdf.getProfileForStaff?.(old),item={...old,status:'inactive',layoutDirty:true,previousPlacementProfileId:oldProfile?.id||old.previousPlacementProfileId||'',profileSchemaVersion:3,version:state.meta.version};upserts.push(item);changes.push({id:uid(),name:old.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'Excel 匯入：系統有人、Excel 無此人，人工確認標記離職',at:new Date().toISOString()});});try{e.target.disabled=true;const c=await ensureCloud();await c.bulkImport({upserts,changes});$('import-dialog').close();await reload();toast(`Excel 匯入完成，共處理 ${upserts.length} 人。`);}catch(err){alert(err.message);}finally{e.target.disabled=false;}};
 
-async function reload(){const c=await ensureCloud();const data=await c.loadAll();state={...data,importPlan:null};renderAll();setCloudStatus('雲端已同步','ok');}
-async function initialize(){if(!isAdmin)return;if(!confirm('雲端尚無此模組資料。是否以目前 R41 原稿資料初始化？'))return;const c=await ensureCloud();await c.initializeData({meta:initialMeta,staff:seedStaff,nodes:seedNodes,versions:initialVersions});await reload();}
+async function reload(){const c=await ensureCloud();const data=await c.loadAll();await window.EHSMasterPdf.init();window.EHSMasterPdf.hydrateStaff(data.staff||[]);state={...data,importPlan:null};renderAll();setCloudStatus('雲端已同步','ok');}
+async function initialize(){if(!isAdmin)return;if(!confirm('雲端尚無此模組資料。是否以目前 R41 原稿資料初始化？'))return;await window.EHSMasterPdf.init();const staff=cloneSeed(seedStaff);window.EHSMasterPdf.hydrateStaff(staff);const c=await ensureCloud();await c.initializeData({meta:initialMeta,staff,nodes:seedNodes,versions:initialVersions});await reload();}
 async function loadCloudAfterLogin(){
   // Firestore Rules 僅允許指定管理者讀寫，因此只有管理者登入後才讀取雲端。
   if(!isAdmin){
@@ -668,6 +716,8 @@ async function loadCloudAfterLogin(){
     const c=await ensureCloud();
     const data=await c.loadAll();
     if(data.meta){
+      await window.EHSMasterPdf.init();
+      window.EHSMasterPdf.hydrateStaff(data.staff||[]);
       state={...data,importPlan:null};
       cloudLoadState='loaded';
       renderAll();

@@ -5,8 +5,8 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260921-v7',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260921-v7',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260922-v8',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260922-v8',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -125,38 +125,47 @@
   function levelRank(level){const a=placement?.policy?.levelOrder||[];const i=a.indexOf(level);return i<0?999:i;}
   function joinRank(v){const m=String(v||'').match(/^(\d{4})[\/-](\d{1,2})/);return m?Number(m[1])*12+Number(m[2]):999999;}
   function sortPeople(a,b){return levelRank(a.level)-levelRank(b.level)||joinRank(a.joinMonth)-joinRank(b.joinMonth)||String(a.name||'').localeCompare(String(b.name||''),'zh-Hant');}
+  function profileRegionLabel(p){return [p?.unit,p?.business,p?.jurisdiction].filter(Boolean).join(' → ');}
+  function profileGroup(p){for(const sid of [...(p?.targetSlots||[]),...(p?.otherSlots||[])]){const sm=getSlotMeta(sid);if(sm?.group)return sm.group;}return p?.unit||'';}
+  api.getProfileRegionLabel=profileRegionLabel;
+
+  function nodeBoxForSlot(slotId){const sm=getSlotMeta(slotId),node=sm?nodesById.get(sm.parentNodeId):null;return node?.bbox?node.bbox.slice():null;}
+  function uniqueBoxesForSlots(slotIds){const seen=new Set(),out=[];for(const sid of slotIds||[]){const sm=getSlotMeta(sid);if(!sm?.parentNodeId||seen.has(sm.parentNodeId))continue;const node=nodesById.get(sm.parentNodeId);if(node?.bbox){seen.add(sm.parentNodeId);out.push({nodeId:sm.parentNodeId,bbox:node.bbox.slice(),border:node.border||'dashed'});}}return out.sort((a,b)=>a.bbox[1]-b.bbox[1]||a.bbox[0]-b.bbox[0]);}
+  function dynamicBoxesForProfile(p,count){
+    if(count<=0)return [];
+    const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=nodeBoxForSlot((p.targetSlots||[])[0]);
+    const template=legacy[0]?.bbox||anchor||[0,0,130,110],w=template[2]-template[0],h=template[3]-template[1];
+    const baseX=template[0],baseY=legacy[0]?.bbox[1]??((anchor?.[3]||0)+24);
+    let step=h+20;if(legacy.length>1){const diffs=[];for(let i=1;i<legacy.length;i++)diffs.push(legacy[i].bbox[1]-legacy[i-1].bbox[1]);diffs.sort((a,b)=>a-b);step=diffs[Math.floor(diffs.length/2)]||step;}
+    const bottomLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;const perCol=Math.max(1,Math.floor((bottomLimit-h-baseY)/step)+1),pageW=Number(fieldMap?.page?.width_pt)||2976;
+    const boxes=[];
+    for(let i=0;i<count;i++){
+      if(i<legacy.length){boxes.push(legacy[i].bbox.slice());continue;}
+      const col=Math.floor(i/perCol),row=i%perCol;let x0=baseX+col*(w+18);if(x0+w>pageW-18)x0=baseX-col*(w+18);const y0=baseY+row*step;boxes.push([x0,y0,x0+w,y0+h]);
+    }
+    return boxes;
+  }
 
   function effectiveStaff(state){
     const source=hydrateStaff((state?.staff||[]).map(s=>({...s})));
     if(!placement)return source;
     const dirty=new Set();
-    for(const s of source){
-      if(!s.layoutDirty)continue;
-      const p=getProfileForStaff(s);if(p)dirty.add(p.id);
-      if(s.previousPlacementProfileId)dirty.add(s.previousPlacementProfileId);
-    }
+    for(const s of source){if(!s.layoutDirty)continue;const p=getProfileForStaff(s);if(p)dirty.add(p.id);if(s.previousPlacementProfileId)dirty.add(s.previousPlacementProfileId);}
     if(!dirty.size)return source;
     const profileById=new Map((placement.profiles||[]).map(p=>[p.id,p]));
     for(const pid of dirty){
       const p=profileById.get(pid);if(!p)continue;
       const members=source.filter(s=>s.status!=='inactive'&&profileMatches(p,s)).sort(sortPeople);
       const owned=new Set([...(p.targetSlots||[]),...(p.otherSlots||[])]);
-      for(const s of source){if(s.status!=='inactive'&&(members.includes(s)||owned.has(s.pdfSlotId)))s.pdfSlotId='';}
+      for(const person of source){if(owned.has(person.pdfSlotId)||members.includes(person)){person.pdfSlotId='';delete person.__dynamicBox;delete person.__desiredBorder;delete person.__placementProfileId;}}
       const matching=members.filter(s=>normalizeKey(s.title)===normalizeKey(p.targetRole));
       const other=members.filter(s=>normalizeKey(s.title)!==normalizeKey(p.targetRole));
-      const targetSlots=[...(p.targetSlots||[])],otherSlots=[...(p.otherSlots||[])];
-      const used=new Set();
-      const assign=(person,slot,border)=>{if(!person||!slot)return;person.pdfSlotId=slot;person.__desiredBorder=border;person.__placementProfileId=p.id;used.add(slot);};
-      let ti=0,oi=0;
-      for(const person of matching){
-        let slot=targetSlots[ti++];
-        if(!slot){while(oi<otherSlots.length&&used.has(otherSlots[oi]))oi++;slot=otherSlots[oi++];}
-        assign(person,slot,'solid');
-      }
-      for(const person of other){
-        while(oi<otherSlots.length&&used.has(otherSlots[oi]))oi++;
-        const slot=otherSlots[oi++];assign(person,slot,'dashed');
-      }
+      const targetSlots=[...(p.targetSlots||[])];
+      let ti=0;
+      for(const person of matching.slice(0,targetSlots.length)){const slot=targetSlots[ti++];person.pdfSlotId=slot;person.__desiredBorder='solid';person.__placementProfileId=p.id;}
+      const secondary=[...matching.slice(targetSlots.length).map(x=>({person:x,border:'solid'})),...other.map(x=>({person:x,border:'dashed'}))].sort((a,b)=>sortPeople(a.person,b.person));
+      const boxes=dynamicBoxesForProfile(p,secondary.length);
+      secondary.forEach((x,i)=>{x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox:boxes[i],border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i};});
     }
     return source;
   }
@@ -192,12 +201,15 @@
     for(const s of activeStaff(state)){if(s.pdfSlotId){if(!map.has(s.pdfSlotId))map.set(s.pdfSlotId,[]);map.get(s.pdfSlotId).push(s);}}
     return map;
   }
+  function profileForSlot(slotId){return (placement?.profiles||[]).find(p=>[...(p.targetSlots||[]),...(p.otherSlots||[])].includes(slotId))||null;}
   function resolveStaffForBinding(state,b){
     const staff=effectiveStaff(state);
     const bySlot=staff.find(s=>s.pdfSlotId===b.slotId&&s.status!=='inactive');
     if(bySlot)return bySlot;
+    const owner=profileForSlot(b.slotId),dirty=dirtyProfileIds(state);
+    if(owner&&dirty.has(owner.id))return null;
     const baselinePerson=staff.find(s=>s.name===b.baselineName);
-    if(baselinePerson&&!baselinePerson.pdfSlotId&&baselinePerson.status!=='inactive')return baselinePerson;
+    if(baselinePerson&&!baselinePerson.pdfSlotId&&!baselinePerson.__dynamicBox&&baselinePerson.status!=='inactive')return baselinePerson;
     return null;
   }
 
@@ -227,10 +239,11 @@
     }
     // Current bottom statistics are derived from active people + fixed PDF display slots.
     for(const s of activeStaff(state)){
-      const slot=getSlotMeta(s.pdfSlotId);if(!slot||!current[slot.group])continue;
+      const slot=getSlotMeta(s.pdfSlotId),p=s.__placementProfileId?(placement?.profiles||[]).find(x=>x.id===s.__placementProfileId):getProfileForStaff(s);
+      const group=slot?.group||profileGroup(p);if(!group||!current[group])continue;
       const cls=inferSummaryClass(s.title,s.level);
-      if(current[slot.group][cls]==null)current[slot.group][cls]=0;
-      current[slot.group][cls]++;
+      if(current[group][cls]==null)current[group][cls]=0;
+      current[group][cls]++;
     }
     for(const g of groups){
       planned[g]['合計']=categories.reduce((a,c)=>a+(Number(planned[g][c])||0),0);
@@ -335,13 +348,27 @@
   }
   api.syntheticItems=syntheticItems;
 
+  function dynamicLayout(state){
+    const eff=effectiveStaff(state),dirty=dirtyProfileIds(state),profileById=new Map((placement?.profiles||[]).map(p=>[p.id,p])),boxes=[],clears=[],connectors=[];
+    for(const pid of dirty){
+      const p=profileById.get(pid);if(!p)continue;
+      const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=nodeBoxForSlot((p.targetSlots||[])[0]);
+      if(legacy.length){const x0=Math.min(...legacy.map(x=>x.bbox[0]))-3,x1=Math.max(...legacy.map(x=>x.bbox[2]))+3,y1=Math.max(...legacy.map(x=>x.bbox[3]))+4;const y0=(anchor?.[3]??Math.min(...legacy.map(x=>x.bbox[1])))-1;clears.push({profileId:pid,bbox:[x0,y0,x1,y1]});}
+      const people=eff.filter(s=>s.status!=='inactive'&&s.__dynamicBox?.profileId===pid).sort((a,b)=>(a.__dynamicBox.order||0)-(b.__dynamicBox.order||0));
+      const prevByColumn=new Map();
+      for(const person of people){const box=person.__dynamicBox.bbox,cx=(box[0]+box[2])/2,key=Math.round(cx);boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel});const prev=prevByColumn.get(key)||anchor;if(prev){connectors.push({profileId:pid,from:[(prev[0]+prev[2])/2,prev[3]],to:[cx,box[1]]});}prevByColumn.set(key,box);}
+    }
+    return {boxes,clears,connectors};
+  }
+  api.getDynamicLayout=dynamicLayout;
+
   function placementInfo(item,state){
     if(!item)return {profile:null,slotId:'',lineStyle:'',label:'未判定'};
     hydrateStaff([item]);const p=getProfileForStaff(item);
     const previewState=state?{...state,staff:[...(state.staff||[]).filter(s=>s.id!==item.id),item]}:{staff:[item]};
     const eff=effectiveStaff(previewState).find(s=>s.id===item.id||s.name===item.name)||item;
     const match=!!p&&normalizeKey(item.title)===normalizeKey(p.targetRole);
-    return {profile:p,slotId:eff.pdfSlotId||'',lineStyle:p?(match?'solid':'dashed'):'',label:p?(match?'實線｜符合編制目標職務':'虛線｜同區但職務未符合'):'未找到固定編排規則'};
+    return {profile:p,slotId:eff.pdfSlotId||'',lineStyle:p?(match?'solid':'dashed'):'',regionLabel:p?[item.unit,item.business,item.jurisdiction].filter(Boolean).join(' → '):'',label:p?(match?'實線｜符合編制目標職務':'虛線｜同區但職務未符合'):'尚未對應固定組織區塊'};
   }
   api.getPlacementInfo=placementInfo;
 
@@ -356,16 +383,8 @@
 
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
-    const occ=occupiedBySlot(state);
-    for(const [slotId,people] of occ){if(people.length>1)out.push(`PDF 顯示槽位「${slotId}」同時指派給 ${people.map(x=>x.name).join('、')}`);}
-    for(const s of activeStaff(state)){
-      if(!s.pdfSlotId){out.push(`「${s.name}」尚未指定 PDF 固定顯示槽位`);continue;}
-      const sm=getSlotMeta(s.pdfSlotId);
-      if(!sm){out.push(`「${s.name}」使用未知 PDF 槽位「${s.pdfSlotId}」`);continue;}
-      if(sm.type==='vacancy-inline'&&inferSummaryClass(s.title,s.level)!==sm.summaryClass){
-        out.push(`「${s.name}」職務分類「${inferSummaryClass(s.title,s.level)}」與空缺槽位「${sm.label}」不一致`);
-      }
-    }
+    for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole].filter(Boolean).join('／')}）`);}
+    const dyn=dynamicLayout(state);for(const b of dyn.boxes){if(!b.bbox||b.bbox[1]<0||b.bbox[3]>(Number(placement?.policy?.dynamicBottomLimitPt)||1655))out.push(`「${b.person.name}」自動新增的人員框超出可編排範圍，請調整組織版型。`);}
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;
@@ -413,12 +432,20 @@
     ctx.fillText(text,((x0+x1)/2)*scale,((y0+y1)/2)*scale);ctx.restore();
   }
 
+  function wrapTextChars(text,maxChars=9){const chars=[...String(text||'')],out=[];for(let i=0;i<chars.length;i+=maxChars)out.push(chars.slice(i,i+maxChars).join(''));return out.slice(0,2);}
+  function drawDynamicBoxCanvas(ctx,item,scale){
+    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,person=item.person;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,w,h);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.15*scale);ctx.setLineDash(item.border==='dashed'?[5*scale,3*scale]:[]);ctx.strokeRect(x0*scale,y0*scale,w,h);ctx.setLineDash([]);ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
+    const lines=[person.title||'',person.name||'',...wrapTextChars(person.education||'',9),person.joinMonth||''].filter(Boolean);const maxLines=Math.max(1,lines.length),lineH=h/(maxLines+1);let fontPx=Math.min(18*scale,lineH*.72);
+    for(let i=0;i<lines.length;i++){let f=fontPx;ctx.font=fontString(f);const maxW=w-8*scale;while(ctx.measureText(lines[i]).width>maxW&&f>9*scale){f-=.6*scale;ctx.font=fontString(f);}ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));}ctx.restore();
+  }
+  function drawConnectorCanvas(ctx,c,scale){ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.1*scale);ctx.setLineDash([]);ctx.beginPath();const mx=c.from[0]*scale,my=(c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2))*scale;ctx.moveTo(c.from[0]*scale,c.from[1]*scale);ctx.lineTo(c.from[0]*scale,my);ctx.lineTo(c.to[0]*scale,my);ctx.lineTo(c.to[0]*scale,c.to[1]*scale);ctx.stroke();ctx.restore();}
+
   async function renderCanvas(state,opts={}){
     await init();
     const dpi=Number(opts.dpi||CONFIG.previewDpi),widthPt=fieldMap.page.width_pt,heightPt=fieldMap.page.height_pt;
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
-    if(!opts.masterOnly){const scale=width/widthPt;for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
+    if(!opts.masterOnly){const scale=width/widthPt,dyn=dynamicLayout(state);for(const c of dyn.clears){const [x0,y0,x1,y1]=c.bbox;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
     return canvas;
   }
   api.renderCanvas=renderCanvas;
@@ -426,7 +453,7 @@
   async function renderPreview(state,targetCanvas,opts={}){
     const c=await renderCanvas(state,{dpi:opts.dpi||CONFIG.previewDpi,masterOnly:!!opts.masterOnly});targetCanvas.width=c.width;targetCanvas.height=c.height;
     targetCanvas.getContext('2d',{alpha:false}).drawImage(c,0,0);
-    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
+    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
   }
   api.renderPreview=renderPreview;
 
@@ -452,24 +479,32 @@
     const maxW=Math.max(8,(widthPt-4)*scale),measured=ctx.measureText(text).width;if(measured>maxW){fontPx*=Math.max(.62,maxW/measured);ctx.font=fontString(fontPx);}ctx.fillText(text,canvas.width/2,canvas.height/2);
     return {canvas,xPt:x0,yTopPt:y0,widthPt,heightPt};
   }
+  function makeDynamicBoxPatch(item,scale=4){
+    const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
+    const shifted={...item,bbox:[0,0,w,h]};drawDynamicBoxCanvas(ctx,shifted,scale);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
+  }
   async function exportMasterOverlayPdf(state,filename,changes,synthetic){
     if(!window.PDFLib?.PDFDocument)throw new Error('pdf-lib 元件尚未載入。');
     const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');
-    const bytes=await r.arrayBuffer(),{PDFDocument,rgb}=window.PDFLib,pdf=await PDFDocument.load(bytes),page=pdf.getPages()[0],pageH=fieldMap.page.height_pt;
+    const bytes=await r.arrayBuffer(),{PDFDocument,rgb}=window.PDFLib,pdf=await PDFDocument.load(bytes),page=pdf.getPages()[0],pageH=fieldMap.page.height_pt,dyn=dynamicLayout(state);
+    // 固定組織/業務/轄區不動；只有 dirty profile 的舊人員區塊清除後依資料重排。
+    for(const c of dyn.clears){const b=c.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
     // 只清除原文字 bbox，靜態框線與表格仍保留 Master PDF 向量內容。
     for(const item of changes){const b=item.field.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const c of dyn.connectors){const midY=c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2);const points=[[c.from[0],c.from[1]],[c.from[0],midY],[c.to[0],midY],[c.to[0],c.to[1]]];for(let i=1;i<points.length;i++)page.drawLine({start:{x:points[i-1][0],y:pageH-points[i-1][1]},end:{x:points[i][0],y:pageH-points[i][1]},thickness:1,color:rgb(0,0,0)});}
+    for(const item of dyn.boxes){const patch=makeDynamicBoxPatch(item,4);const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
     const out=await pdf.save({useObjectStreams:false});const blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-    return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length};
+    return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length+dyn.boxes.length};
   }
 
   async function exportPdf(state,filename){
-    await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的固定槽位問題：\n- '+unsupported.join('\n- '));
-    const changes=changedFields(state),synthetic=syntheticItems(state),borders=borderOverrides(state);
-    if(changes.length===0&&synthetic.length===0&&borders.length===0){
+    await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的組織區塊編排問題：\n- '+unsupported.join('\n- '));
+    const changes=changedFields(state),synthetic=syntheticItems(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
+    if(changes.length===0&&synthetic.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};
     }
@@ -478,7 +513,7 @@
     if(!window.jspdf?.jsPDF)throw new Error('PDF 輸出元件尚未載入。');
     const canvas=await renderCanvas(state,{dpi:CONFIG.exportDpi}),mmW=fieldMap.page.width_pt/72*25.4,mmH=fieldMap.page.height_pt/72*25.4,{jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[mmW,mmH],compress:true});pdf.addImage(canvas,'PNG',0,0,mmW,mmH,undefined,'FAST');pdf.save(filename);
-    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length};
+    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+dyn.boxes.length};
   }
   api.exportPdf=exportPdf;
 })();

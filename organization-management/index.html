@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>安全衛生處組織編制表</title>
-  <link rel="stylesheet" href="styles.css?v=20260921-v7">
+  <link rel="stylesheet" href="styles.css?v=20260922-v8">
 </head>
 <body>
 <header class="app-header">
@@ -159,7 +159,7 @@
     <datalist id="business-suggestions"></datalist>
     <datalist id="jurisdiction-suggestions"></datalist>
     <datalist id="target-role-suggestions"></datalist>
-    <div id="placement-preview" class="placement-preview muted">系統會依「隸屬單位＋業務＋轄區＋編制目標職務」自動判斷 PDF 位置及實線／虛線。</div>
+    <div id="placement-preview" class="placement-preview muted">系統會依「隸屬單位＋業務＋轄區＋編制目標職務」自動判斷組織圖區塊及實線／虛線；人員增加時會自動新增人員框。</div>
     <label>異動說明<textarea name="changeNote" rows="3" maxlength="300" placeholder="例如：職務調整、隸屬單位異動、新進、離職"></textarea></label>
     <div class="toolbar end"><button value="cancel" class="quiet">取消</button><button id="save-staff" value="default" class="primary">儲存</button></div>
   </form>
@@ -227,7 +227,7 @@
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script src="pdf-engine.js?v=20260921-v7"></script>
+<script src="pdf-engine.js?v=20260922-v8"></script>
 <!-- Firebase 改為同步載入；即使 Firebase 失敗，前面的本機 UI 仍可操作 -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
@@ -525,7 +525,7 @@ async function renderChart(){
     note.textContent=$('compare-template').checked
       ? '目前顯示未套用任何資料異動的 R41 Master 原稿。'
       : (unsupported.length
-          ? `1:1 Master 預覽已啟用；另有 ${unsupported.length} 項固定槽位問題需處理。`
+          ? `1:1 Master 預覽已啟用；另有 ${unsupported.length} 項組織區塊編排問題需處理。`
           : `1:1 Master 預覽已啟用；已同步人員、28 個編制欄位與底部統計；目前套用 ${changed.length} 個動態文字欄位。`);
   }catch(err){
     loading.hidden=false;loading.textContent='1:1 Master 預覽載入失敗：'+(err?.message||err);
@@ -562,10 +562,10 @@ function refreshTargetRoleAndPlacement(forceSuggestion=false){
   const box=$('placement-preview');
   if(info?.profile){
     const criteria=[preview.unit,preview.business,preview.jurisdiction].filter(Boolean).join('／');
-    box.innerHTML=`編排判斷：<b>${esc(info.label)}</b>｜${esc(criteria)}｜編制目標：${esc(preview.targetRole)}${info.slotId?`｜固定槽位：${esc(info.slotId)}`:''}`;
+    box.innerHTML=`編排判斷：<b>${esc(info.label)}</b>｜區塊：${esc(info.regionLabel||criteria)}｜編制目標：${esc(preview.targetRole)}`;
     box.className=`placement-preview ${info.lineStyle||''}`;
   }else{
-    box.textContent='目前「隸屬單位／業務／轄區／編制目標職務」找不到固定 PDF 編排規則，請修正欄位。';
+    box.textContent='目前尚未找到對應的固定組織區塊；人員資料仍可儲存，但輸出正式 PDF 前需補齊／修正「隸屬單位、業務、轄區、編制目標職務」。';
     box.className='placement-preview warn';
   }
 }
@@ -583,7 +583,7 @@ $('add-staff').onclick=()=>{if(requireAdmin())openStaff();};
 $('staff-tbody').onclick=e=>{const edit=e.target.closest('[data-edit]'),leave=e.target.closest('[data-leave]');if(edit)openStaff(state.staff.find(s=>s.id===edit.dataset.edit));if(leave)markLeave(leave.dataset.leave);};
 $('save-staff').onclick=async e=>{e.preventDefault();const f=$('staff-form');if(!f.reportValidity())return;await window.EHSMasterPdf.init();const old=state.staff.find(s=>s.id===f.elements.id.value);const draft=formProfileItem();
   if(!draft.targetRole){alert('請確認「編制目標職務」。');return;}
-  const newProfile=window.EHSMasterPdf.getProfileForStaff?.(draft);if(draft.status==='active'&&!newProfile){alert('目前欄位組合找不到固定 PDF 編排規則。請確認「隸屬單位／業務／轄區／編制目標職務」。');return;}
+  const newProfile=window.EHSMasterPdf.getProfileForStaff?.(draft);
   const oldProfile=old?window.EHSMasterPdf.getProfileForStaff?.(old):null;
   const layoutKeys=['title','unit','business','jurisdiction','targetRole','level','joinMonth','status'];
   const layoutChanged=!old||layoutKeys.some(k=>(old?.[k]??'')!==(draft[k]??''));
@@ -591,10 +591,8 @@ $('save-staff').onclick=async e=>{e.preventDefault();const f=$('staff-form');if(
   if(layoutChanged&&oldProfile?.id&&oldProfile.id!==newProfile?.id)item.previousPlacementProfileId=oldProfile.id;
   const diffs=[];if(!old)diffs.push({field:'新增',before:'',after:`${item.title} / ${item.unit}`});else for(const [k,label] of Object.entries({name:'姓名',unit:'隸屬單位',business:'業務',jurisdiction:'轄區',title:'職務',targetRole:'編制目標職務',education:'學歷／科系',joinMonth:'到職年月',level:'職務層級',employeeType:'人員類別',status:'在職狀態'}))if((old[k]??'')!==(item[k]??''))diffs.push({field:label,before:old[k]??'',after:item[k]??''});
   if(!diffs.length){$('staff-dialog').close();return;}
-  const previewState={...state,staff:[...state.staff.filter(s=>s.id!==item.id),item]};const problems=window.EHSMasterPdf.unsupportedChanges?.(previewState)||[];
-  if(item.status==='active'&&problems.some(x=>x.includes(item.name))){alert('無法依固定原稿安全編排：\n- '+problems.filter(x=>x.includes(item.name)).join('\n- '));return;}
   const change={id:uid(),name:item.name,type:old?'修改':'新增',diffs,note:f.elements.changeNote.value.trim(),at:new Date().toISOString()};
-  try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaff(item,change);$('staff-dialog').close();await reload();toast('人員資料已儲存，組織圖將依隸屬單位／業務／轄區／職務自動編排。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
+  try{e.target.disabled=true;const c=await ensureCloud();await c.saveStaff(item,change);$('staff-dialog').close();await reload();if(item.status==='active'&&!newProfile)toast('人員資料已儲存；目前尚未對應固定組織區塊，正式 PDF 輸出前請補齊編排欄位。');else toast('人員資料已儲存，組織圖將依隸屬單位／業務／轄區／職務自動編排。');}catch(err){alert(err.message);}finally{e.target.disabled=false;}
 };
 async function markLeave(id){const s=state.staff.find(x=>x.id===id);if(!s||!confirm(`確定將「${s.name}」標記為離職？\n離職後不顯示於組織圖，但資料仍保留。`))return;await window.EHSMasterPdf.init();const oldProfile=window.EHSMasterPdf.getProfileForStaff?.(s);const item={...s,status:'inactive',layoutDirty:true,previousPlacementProfileId:oldProfile?.id||s.previousPlacementProfileId||'',version:state.meta.version};const change={id:uid(),name:s.name,type:'離職',diffs:[{field:'在職狀態',before:'在職',after:'離職'}],note:'離職',at:new Date().toISOString()};try{const c=await ensureCloud();await c.saveStaff(item,change);await reload();toast('已標記離職，該編排群組將自動重排。');}catch(e){alert(e.message);}}
 
@@ -689,7 +687,6 @@ function buildImportPlan(incoming){
     const old=state.staff.find(s=>s.name===x0.name),x={...x0};
     const oldProfile=old?window.EHSMasterPdf.getProfileForStaff?.(old):null;
     const next={...old,...x};const newProfile=window.EHSMasterPdf.getProfileForStaff?.(next);
-    if(x.status==='active'&&!newProfile)throw Error(`「${x.name}」的隸屬單位／業務／轄區／編制目標職務找不到固定 PDF 編排規則。`);
     const layoutKeys=['title','unit','business','jurisdiction','targetRole','level','joinMonth','status'];x.layoutDirty=!old||old.layoutDirty||layoutKeys.some(k=>(old?.[k]??'')!==(x[k]??''));
     if(x.layoutDirty&&oldProfile?.id&&oldProfile.id!==newProfile?.id)x.previousPlacementProfileId=oldProfile.id;
     if(!old){const item={...x,id:uid(),version:state.meta.version};upserts.push(item);const c={id:uid(),name:x.name,type:'新增',diffs:[{field:'新增',before:'',after:`${x.title}/${x.unit}`}],note:x.changeNote||'Excel 匯入新增',at:new Date().toISOString()};changes.push(c);rows.push({kind:'new',name:x.name,field:'-',before:'-',after:`${x.title} / ${x.unit}`,action:'新增',item,change:c});continue;}
@@ -753,7 +750,7 @@ $('login-btn').onclick=async()=>{
 };
 $('logout-btn').onclick=async()=>{try{const c=await ensureCloud();await c.logout();}catch(e){alert(cloudErrorText(e));}};
 
-// 正式版：Master PDF 固定版型、動態人員/編制/統計、Excel 匯入匯出、版次紀錄與 Firestore 管理。
+// v8 正式版：固定組織/業務/轄區；人員依資料自動編排，實線/虛線與新增人員框皆由系統判斷。
 window.EHSMasterPdf.init().then(()=>{if(state.meta)renderAll();}).catch(e=>console.error('R41 Master engine load failed',e));
 
 // v6：未登入時完全不讀 Firestore；登入指定管理者帳號後才同步雲端。

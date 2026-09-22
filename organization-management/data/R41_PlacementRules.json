@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v3",
   "policy": {
-    "description": "固定 Master 組織架構不變；人員依隸屬單位、業務、轄區、編制目標職務自動編排。符合目標職務顯示實線；同區但未符合者顯示虛線。排序先職務層級，再到職年月。",
+    "description": "固定組織/業務/轄區不動；人員依隸屬單位、業務、轄區、編制目標職務自動編排，符合目標職務為實線，其餘同區人員為虛線；超出既有位置時自動新增人員框。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -41,7 +41,9 @@
       "化二部含保養處",
       "化一部含保養處"
     ],
-    "matchingRule": "隸屬單位＋業務＋轄區定位固定編排群組；實際職務=編制目標職務為實線並計入該編制括號數，否則為虛線但仍計入整體現有人數。"
+    "matchingRule": "隸屬單位＋業務＋轄區定位固定編排群組；實際職務=編制目標職務為實線並計入該編制括號數，否則為虛線但仍計入整體現有人數。",
+    "dynamicPersonnelLayout": true,
+    "dynamicBottomLimitPt": 1655
   },
   "profiles": [
     {
@@ -90,7 +92,15 @@
       "otherSlots": [
         "node_027_安衛工程師::p01"
       ],
-      "staffingFieldId": "node_013_安衛高工師_line_02"
+      "staffingFieldId": "node_013_安衛高工師_line_02",
+      "businessOptions": [
+        "工安",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "工安"
+      ]
     },
     {
       "id": "changhua-health",
@@ -102,7 +112,15 @@
         "vac::node_034_健康管理師::01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_034_健康管理師_line_02"
+      "staffingFieldId": "node_034_健康管理師_line_02",
+      "businessOptions": [
+        "健康管理",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "健康管理"
+      ]
     },
     {
       "id": "longde-manager",
@@ -139,7 +157,14 @@
       "otherSlots": [
         "node_058_環保工程師::p01"
       ],
-      "staffingFieldId": "node_039_環保高工師_line_02"
+      "staffingFieldId": "node_039_環保高工師_line_02",
+      "businessOptions": [
+        "環保",
+        "環保組"
+      ],
+      "jurisdictionOptions": [
+        ""
+      ]
     },
     {
       "id": "longde-safety",
@@ -153,7 +178,15 @@
       "otherSlots": [
         "node_059_安衛工程師::p01"
       ],
-      "staffingFieldId": "node_044_安衛高工師_line_02"
+      "staffingFieldId": "node_044_安衛高工師_line_02",
+      "businessOptions": [
+        "工安",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "工安"
+      ]
     },
     {
       "id": "longde-health",
@@ -167,7 +200,15 @@
       "otherSlots": [
         "node_068_健康助理員::p01"
       ],
-      "staffingFieldId": "node_063_健康管理師_line_02"
+      "staffingFieldId": "node_063_健康管理師_line_02",
+      "businessOptions": [
+        "健康管理",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "健康管理"
+      ]
     },
     {
       "id": "xingang-manager",
@@ -190,7 +231,14 @@
         "node_042_環保高工師::p01"
       ],
       "otherSlots": [],
-      "staffingFieldId": "node_042_環保高工師_line_02"
+      "staffingFieldId": "node_042_環保高工師_line_02",
+      "businessOptions": [
+        "環保",
+        "環保組"
+      ],
+      "jurisdictionOptions": [
+        ""
+      ]
     },
     {
       "id": "xingang-env-engineer",
@@ -204,7 +252,14 @@
       "otherSlots": [
         "node_062_安衛管理員::p01"
       ],
-      "staffingFieldId": "node_056_環保工程師_line_02"
+      "staffingFieldId": "node_056_環保工程師_line_02",
+      "businessOptions": [
+        "環保",
+        "環保組"
+      ],
+      "jurisdictionOptions": [
+        ""
+      ]
     },
     {
       "id": "xingang-safety",
@@ -218,7 +273,15 @@
       "otherSlots": [
         "node_057_安衛工程師::p01"
       ],
-      "staffingFieldId": "node_043_安衛高工師_line_02"
+      "staffingFieldId": "node_043_安衛高工師_line_02",
+      "businessOptions": [
+        "工安",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "工安"
+      ]
     },
     {
       "id": "xingang-health",
@@ -233,7 +296,15 @@
         "node_066_健康管理員::p01",
         "node_070_健康管理員::p01"
       ],
-      "staffingFieldId": "node_061_健康管理師_line_02"
+      "staffingFieldId": "node_061_健康管理師_line_02",
+      "businessOptions": [
+        "健康管理",
+        "安衛組"
+      ],
+      "jurisdictionOptions": [
+        "",
+        "健康管理"
+      ]
     },
     {
       "id": "mailiao-env-manager",

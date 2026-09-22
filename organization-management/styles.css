@@ -22,7 +22,7 @@ body:not(.admin-mode) #staffing-tbody input{pointer-events:none;background:#f3f6
 /* 左上角編制總表與簽准日設定 */
 .staffing-summary-card{border:1px solid #dce5eb;background:#f8fafb;border-radius:12px;padding:16px;margin:14px 0 18px}.staffing-summary-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.staffing-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:12px}.staffing-summary-grid label{display:flex;flex-direction:column;gap:5px;font-size:14px}.staffing-summary-grid input{border:1px solid #cbd8e1;border-radius:8px;padding:8px 9px;background:#fff;color:#18334d}.staffing-summary-grid input[readonly]{background:#eef3f6;color:#607488}.staffing-summary-grid input:disabled{background:#f3f6f8;color:#667887}@media(max-width:1100px){.staffing-summary-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.staffing-summary-grid{grid-template-columns:1fr 1fr}}
 
-/* v7：人員歸屬／業務／轄區自動編排 */
+/* v8：固定組織／業務／轄區，動態人員框自動編排 */
 .placement-preview{margin:4px 0 14px;padding:11px 12px;border:1px solid #d7e3e9;border-radius:9px;background:#f8fbfc}
 .placement-preview.ok{border-color:#b9ddd8;background:#eff9f7;color:#176b66}
 .placement-preview.warn{border-color:#ead18a;background:#fff8df;color:#725c19}

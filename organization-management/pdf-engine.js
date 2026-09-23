@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v12',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v12',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v12',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v13',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v13',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v13',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -228,15 +228,24 @@
     for(const sid of slotIds||[]){const sm=getSlotMeta(sid);if(!sm?.parentNodeId||seen.has(sm.parentNodeId))continue;const node=nodesById.get(sm.parentNodeId);if(node?.bbox){seen.add(sm.parentNodeId);out.push({nodeId:sm.parentNodeId,bbox:node.bbox.slice(),border:node.border||'dashed'});}}
     return out.sort((a,b)=>a.bbox[1]-b.bbox[1]||a.bbox[0]-b.bbox[0]);
   }
-  function dynamicBoxesForProfile(p,count){
+  function localGridForProfile(p){
+    const g=gridEntry(p),id=g?.localGridId;return id?layoutGrid?.localGrids?.[id]||null:null;
+  }
+  function fixedSuccessorProfile(p){
+    const id=gridEntry(p)?.fixedSuccessorProfileId;return id?(placement?.profiles||[]).find(x=>x.id===id)||null:null;
+  }
+  function dynamicBoxesForProfile(p,count,opts={}){
     const result=[];if(count<=0)return result;
     const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return result;
-    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,defaultGap=Number(st.personGapPt)||18,minGap=Number(st.personMinGapPt)||8;
-    const cx=(anchor[0]+anchor[2])/2,baseX=cx-w/2,baseY=anchor[3]+defaultGap,limitY=profileDynamicBottomLimit(p);
-    let gap=defaultGap;
-    if(count>1){const maxGap=(limitY-baseY-count*h)/(count-1);if(Number.isFinite(maxGap))gap=Math.max(minGap,Math.min(defaultGap,maxGap));}
-    const step=h+gap;
-    for(let i=0;i<count;i++)result.push([baseX,baseY+i*step,baseX+w,baseY+i*step+h]);
+    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
+    const grid=localGridForProfile(p),cx=Number(gridEntry(p)?.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
+    const afterBottom=Number(opts?.afterBox?.[3]);
+    const startAfter=(Number.isFinite(afterBottom)?afterBottom:anchor[3])+minStartGap;
+    let rows=(grid?.rowTops||[]).map(Number).filter(Number.isFinite).filter(y=>y+0.01>=startAfter);
+    const step=Number(grid?.rowStep)||Math.max(h+18,128);
+    let y=rows.length?rows[rows.length-1]:Math.max(startAfter,anchor[3]+18);
+    while(rows.length<count){y=(rows.length?rows[rows.length-1]:y)+step;rows.push(y);}
+    for(let i=0;i<count;i++){const top=rows[i];result.push([baseX,top,baseX+w,top+h]);}
     return result;
   }
 
@@ -258,7 +267,7 @@
       for(const person of matching.slice(0,targetSlots.length)){const slot=targetSlots[ti++];person.pdfSlotId=slot;person.__desiredBorder='solid';person.__placementProfileId=p.id;}
       const secondary=[...matching.slice(targetSlots.length).map(x=>({person:x,border:'solid'})),...other.map(x=>({person:x,border:'dashed'}))].sort((a,b)=>sortPeople(a.person,b.person));
       const reserveFixed=(p.reserveSlotId&&secondary.length&&supervisorRoleOf(secondary[0].person)==='儲備主管')?standardPersonBox(nodeBoxForSlotRaw(p.reserveSlotId)):null;
-      const dynamicCount=secondary.length-(reserveFixed?1:0),normalBoxes=dynamicBoxesForProfile(p,dynamicCount);let di=0;
+      const dynamicCount=secondary.length-(reserveFixed?1:0),normalBoxes=dynamicBoxesForProfile(p,dynamicCount,{afterBox:reserveFixed});let di=0;
       secondary.forEach((x,i)=>{
         const fixedReserve=!!reserveFixed&&i===0,bbox=fixedReserve?reserveFixed:(normalBoxes[di++]||null);
         x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox,border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i,limitY:fixedReserve?bbox?.[3]:profileDynamicBottomLimit(p),fixedReserve,sourceSlotId:fixedReserve?p.reserveSlotId:''};
@@ -451,21 +460,25 @@
       const p=profileById.get(pid);if(!p)continue;
       const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=profileAnchorBox(p),people=eff.filter(s=>s.status!=='inactive'&&s.__dynamicBox?.profileId===pid).sort((a,b)=>(a.__dynamicBox.order||0)-(b.__dynamicBox.order||0));
       const reserveLegacy=p.reserveSlotId?uniqueBoxesForSlots([p.reserveSlotId]):[];
-      // 舊人員框逐一清除，避免大面積抹除相鄰固定組織線。
       for(const item of [...legacy,...reserveLegacy]){const r=item.bbox;clears.push({profileId:pid,bbox:[r[0]-4,r[1]-4,r[2]+4,r[3]+4]});}
-      // 清除原本同欄的垂直連線，再以單一中心線重畫。
+      // 僅清除這個 profile 原有的人員中心線；不預先產生任何空白尾線。
       const rawAnchor=nodeBoxForSlotRaw((p.targetSlots||[])[0]);
       const legacySorted=[...legacy,...reserveLegacy].sort((a,b)=>a.bbox[1]-b.bbox[1]);
-      let prevY=rawAnchor?.[3]??anchor?.[3]??0;
       const cx=anchor?(anchor[0]+anchor[2])/2:0;
+      let prevY=rawAnchor?.[3]??anchor?.[3]??0;
       for(const item of legacySorted){const top=item.bbox[1],bottom=item.bbox[3];connectorClears.push({bbox:[cx-half,Math.min(prevY,top)-2,cx+half,Math.max(prevY,top)+2]});prevY=bottom;}
+      // 如果插入動態人員會位在固定下一節點之前，先清掉舊的中心直線，再依實際框重新畫。
+      const succ=fixedSuccessorProfile(p),succBox=succ?profileAnchorBox(succ):null;
+      if(people.length&&succBox&&anchor){connectorClears.push({bbox:[cx-half,Math.min(anchor[3],succBox[1])-2,cx+half,Math.max(anchor[3],succBox[1])+2]});}
       let prev=anchor;
       for(const person of people){
         const box=person.__dynamicBox?.bbox;if(!box)continue;const pcx=(box[0]+box[2])/2;
-        boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel,limitY:person.__dynamicBox.limitY});
-        if(prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],ty=box[1];connectors.push({profileId:pid,from:[fx,fy],to:[pcx,ty]});connectorClears.push({bbox:[fx-half,Math.min(fy,ty)-2,fx+half,Math.max(fy,ty)+2]});}
+        boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel,limitY:person.__dynamicBox.limitY,localGridId:gridEntry(p)?.localGridId||''});
+        if(prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],ty=box[1];connectors.push({profileId:pid,from:[fx,fy],to:[pcx,ty],kind:'person'});connectorClears.push({bbox:[fx-half,Math.min(fy,ty)-2,fx+half,Math.max(fy,ty)+2]});}
         prev=box;
       }
+      // 有動態人員且此欄還有固定下一節點時，最後一框再接回固定節點；沒有動態人員則保留 Master 原本固定連線。
+      if(people.length&&succBox&&prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],tx=(succBox[0]+succBox[2])/2,ty=succBox[1];connectors.push({profileId:pid,from:[fx,fy],to:[tx,ty],kind:'fixed-successor',targetProfileId:succ.id});}
     }
     return {boxes,clears,connectors,connectorClears};
   }
@@ -494,7 +507,7 @@
       if(cfg?.fixedLines?.length){lines=[...cfg.fixedLines,`計${planned}人(${current})`];if(person){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}}
       else{lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);if(!lines.length)lines=[p.supervisorRole||p.targetRole,`計${planned}人(${current})`];}
       const g=gridEntry(p),bbox=g?.anchorBbox?.length===4?g.anchorBbox.slice():standardSupervisorBox(node.bbox,p.supervisorRole);
-      out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox,lines,person,planned,current,role:p.supervisorRole});
+      const dynCount=eff.filter(s=>s.__dynamicBox?.profileId===p.id).length,bridgeBottom=!!gridEntry(p)?.preserveBottomBridge|| (!!fixedSuccessorProfile(p)&&dynCount===0);out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox,lines,person,planned,current,role:p.supervisorRole,bridgeBottom});
     }
     return out;
   }
@@ -512,7 +525,7 @@
       const raw=node.bbox.slice(),g=gridEntry(p),bbox=g?.anchorBbox?.length===4?g.anchorBbox.slice():standardJobBox(raw),lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);
       const person=eff.find(s=>s.pdfSlotId===sid)||null,binding=findBindingBySlot(sid);
       if(person&&!binding){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
-      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBbox:unionBbox(raw,bbox,4),lines,person});
+      const dynCount=eff.filter(s=>s.__dynamicBox?.profileId===p.id).length,bridgeBottom=!!gridEntry(p)?.preserveBottomBridge|| (!!fixedSuccessorProfile(p)&&dynCount===0);out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBbox:unionBbox(raw,bbox,4),lines,person,bridgeBottom});
     }
     return out;
   }
@@ -546,30 +559,28 @@
     return Math.min(a[2]-pad,b[2]-pad)>Math.max(a[0]+pad,b[0]+pad)
       && Math.min(a[3]-pad,b[3]-pad)>Math.max(a[1]+pad,b[1]+pad);
   }
+  function segmentIntersectsRect(c,b,pad=0){
+    if(!c||!b)return false;const x1=c.from[0],y1=c.from[1],x2=c.to[0],y2=c.to[1];
+    if(Math.abs(x1-x2)<2){const x=(x1+x2)/2,minY=Math.min(y1,y2),maxY=Math.max(y1,y2);return x>b[0]+pad&&x<b[2]-pad&&maxY>b[1]+pad&&minY<b[3]-pad;}
+    return false;
+  }
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
-    for(const s of activeStaff(state)){
-      const p=getProfileForStaff(s);
-      if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);
-    }
-    const dyn=dynamicLayout(state),pageLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
-    const fixed=[];
-    for(const q of placement?.profiles||[]){
-      const qb=profileAnchorBox(q);if(qb)fixed.push({profile:q,bbox:qb,label:profileRegionLabel(q)||q.targetRole||q.supervisorRole||q.id});
-    }
-    const collisionPad=Number(layoutStyle().actualCollisionPadPt)||2;
-    const overflowMsg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';
+    for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);}
+    const dyn=dynamicLayout(state),pageLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655,fixed=[];
+    for(const q of placement?.profiles||[]){const qb=profileAnchorBox(q);if(qb)fixed.push({profile:q,bbox:qb,label:[profileRegionLabel(q),q.targetRole||q.supervisorRole].filter(Boolean).join(' → ')||q.id});}
+    const collisionPad=Number(layoutStyle().actualCollisionPadPt)||2,connectorPad=Number(layoutStyle().connectorCollisionPadPt)||1.5,overflowMsg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';
+    const badProfiles=new Set();
+    // Preflight 1：所有動態框完成後一次檢查固定框、頁面安全線。
     for(const b of dyn.boxes){
-      if(!b.bbox||b.bbox[1]<0||b.bbox[3]>pageLimit){out.push(`「${b.person.name}」${overflowMsg}`);continue;}
-      // 只在「實際矩形重疊」時判定撞到固定框；左右相鄰欄位不再誤判。
-      const hit=fixed.find(x=>x.profile.id!==b.profileId&&rectOverlap(b.bbox,x.bbox,collisionPad));
-      if(hit)out.push(`「${b.person.name}」的人員框會與固定區塊「${hit.label}」重疊，請調整該區版面。`);
+      if(!b.bbox||b.bbox[1]<0||b.bbox[3]>pageLimit){out.push(`「${b.person.name}」${overflowMsg}`);badProfiles.add(b.profileId);continue;}
+      const owner=(placement?.profiles||[]).find(p=>p.id===b.profileId),exempt=new Set(gridEntry(owner)?.collisionExemptProfileIds||[]);const hit=fixed.find(x=>x.profile.id!==b.profileId&&!exempt.has(x.profile.id)&&rectOverlap(b.bbox,x.bbox,collisionPad));
+      if(hit){out.push(`「${b.person.name}」的人員框會與固定區塊「${hit.label}」重疊，請調整該區版面。`);badProfiles.add(b.profileId);}
     }
-    // 動態人員彼此也不可重疊（不同 profile 但剛好共用同一欄時）。
-    for(let i=0;i<dyn.boxes.length;i++)for(let j=i+1;j<dyn.boxes.length;j++){
-      const a=dyn.boxes[i],b=dyn.boxes[j];
-      if(a.profileId!==b.profileId&&rectOverlap(a.bbox,b.bbox,collisionPad))out.push(`「${a.person.name}」與「${b.person.name}」的人員框會互相重疊，請調整該區版面。`);
-    }
+    // Preflight 2：動態框彼此不得重疊。
+    for(let i=0;i<dyn.boxes.length;i++)for(let j=i+1;j<dyn.boxes.length;j++){const a=dyn.boxes[i],b=dyn.boxes[j];if(a.profileId!==b.profileId&&rectOverlap(a.bbox,b.bbox,collisionPad))out.push(`「${a.person.name}」與「${b.person.name}」的人員框會互相重疊，請調整該區版面。`);}
+    // Preflight 3：中心連線不可穿越不屬於該分支的固定框（端點目標除外）。
+    for(const c of dyn.connectors||[]){if(badProfiles.has(c.profileId))continue;const owner=(placement?.profiles||[]).find(p=>p.id===c.profileId),exempt=new Set(gridEntry(owner)?.collisionExemptProfileIds||[]);const hit=fixed.find(x=>x.profile.id!==c.profileId&&x.profile.id!==c.targetProfileId&&!exempt.has(x.profile.id)&&segmentIntersectsRect(c,x.bbox,connectorPad));if(hit)out.push(`「${profileRegionLabel((placement?.profiles||[]).find(p=>p.id===c.profileId))||c.profileId}」的連線會穿越固定區塊「${hit.label}」，請調整該區版面。`);}
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;
@@ -628,7 +639,8 @@
   function clearCanvasBbox(ctx,b,scale){if(!b)return;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(b[0]*scale,b[1]*scale,(b[2]-b[0])*scale,(b[3]-b[1])*scale);ctx.restore();}
   function drawBoxBridgeCanvas(ctx,item,scale){
     if(!item?.rawBbox||!item?.bbox)return;const r=item.rawBbox,b=item.bbox,cx=(r[0]+r[2])/2;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.05*scale);ctx.setLineDash([]);ctx.beginPath();
-    if(Math.abs(r[1]-b[1])>.5){ctx.moveTo(cx*scale,r[1]*scale);ctx.lineTo(cx*scale,b[1]*scale);}if(Math.abs(r[3]-b[3])>.5){ctx.moveTo(cx*scale,b[3]*scale);ctx.lineTo(cx*scale,r[3]*scale);}ctx.stroke();ctx.restore();
+    // 只補上方進線。下方出線由「實際存在的下一框」或 Master 固定骨架負責，避免懸空尾線。
+    if(Math.abs(r[1]-b[1])>.5){ctx.moveTo(cx*scale,r[1]*scale);ctx.lineTo(cx*scale,b[1]*scale);}if(item.bridgeBottom&&Math.abs(r[3]-b[3])>.5){ctx.moveTo(cx*scale,b[3]*scale);ctx.lineTo(cx*scale,r[3]*scale);}ctx.stroke();ctx.restore();
   }
 
   async function renderCanvas(state,opts={}){
@@ -703,7 +715,7 @@
     for(const item of jobs)clearRect(item.clearBbox);for(const item of sup)clearRect(unionBbox(item.rawBbox,item.bbox,1));
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
-    const drawBridge=item=>{if(!item?.rawBbox||!item?.bbox)return;const rr=item.rawBbox,bb=item.bbox,cx=(rr[0]+rr[2])/2;if(Math.abs(rr[1]-bb[1])>.5)page.drawLine({start:{x:cx,y:pageH-rr[1]},end:{x:cx,y:pageH-bb[1]},thickness:1,color:rgb(0,0,0)});if(Math.abs(rr[3]-bb[3])>.5)page.drawLine({start:{x:cx,y:pageH-bb[3]},end:{x:cx,y:pageH-rr[3]},thickness:1,color:rgb(0,0,0)});};
+    const drawBridge=item=>{if(!item?.rawBbox||!item?.bbox)return;const rr=item.rawBbox,bb=item.bbox,cx=(rr[0]+rr[2])/2;if(Math.abs(rr[1]-bb[1])>.5)page.drawLine({start:{x:cx,y:pageH-rr[1]},end:{x:cx,y:pageH-bb[1]},thickness:1,color:rgb(0,0,0)});if(item.bridgeBottom&&Math.abs(rr[3]-bb[3])>.5)page.drawLine({start:{x:cx,y:pageH-bb[3]},end:{x:cx,y:pageH-rr[3]},thickness:1,color:rgb(0,0,0)});};
     for(const item of jobs){drawBridge(item);const patch=makeUniformBoxPatch(item,4,'solid'),img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of sup){drawBridge(item);const patch=makeSupervisorBoxPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const c of dyn.connectors){

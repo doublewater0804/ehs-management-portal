@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v12",
-  "description": "固定組織骨架使用固定 X/Y 錨點；動態人員固定 X、沿 Y 軸排列；容量以實際矩形碰撞判斷，避免相鄰欄位誤判。",
+  "schema": "R41-layout-grid-v13",
+  "description": "固定組織骨架 X/Y 鎖定；每個主要區塊採 Local Grid。動態人員固定欄中心 X，依共同 Row Y 對齊；只有實際存在的下一框才產生連線。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -14,7 +14,9 @@
       "centerX": 196.845,
       "topY": 478.75,
       "bottomY": 604.75,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "changhua",
+      "fixedSuccessorProfileId": "changhua-health"
     },
     "changhua-health": {
       "profileId": "changhua-health",
@@ -28,7 +30,8 @@
       "centerX": 194.915,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "changhua"
     },
     "longde-environment": {
       "profileId": "longde-environment",
@@ -42,7 +45,8 @@
       "centerX": 388.575,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "longde-safety": {
       "profileId": "longde-safety",
@@ -56,7 +60,9 @@
       "centerX": 539.745,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle",
+      "fixedSuccessorProfileId": "longde-health"
     },
     "longde-health": {
       "profileId": "longde-health",
@@ -70,7 +76,8 @@
       "centerX": 543.52,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "xingang-env-high": {
       "profileId": "xingang-env-high",
@@ -84,7 +91,9 @@
       "centerX": 697.19,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle",
+      "fixedSuccessorProfileId": "xingang-env-engineer"
     },
     "xingang-env-engineer": {
       "profileId": "xingang-env-engineer",
@@ -98,7 +107,8 @@
       "centerX": 699.745,
       "topY": 931.781,
       "bottomY": 1057.781,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "xingang-safety": {
       "profileId": "xingang-safety",
@@ -112,7 +122,9 @@
       "centerX": 858.57,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle",
+      "fixedSuccessorProfileId": "xingang-health"
     },
     "xingang-health": {
       "profileId": "xingang-health",
@@ -126,7 +138,8 @@
       "centerX": 861.0,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "mailiao-environment": {
       "profileId": "mailiao-environment",
@@ -140,7 +153,9 @@
       "centerX": 1040.77,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle",
+      "fixedSuccessorProfileId": "mailiao-contract"
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -154,7 +169,8 @@
       "centerX": 1201.68,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "mailiao-plastic": {
       "profileId": "mailiao-plastic",
@@ -168,7 +184,8 @@
       "centerX": 1356.965,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "mailiao-direct-chem3": {
       "profileId": "mailiao-direct-chem3",
@@ -182,7 +199,8 @@
       "centerX": 1543.46,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "mailiao-chem2": {
       "profileId": "mailiao-chem2",
@@ -196,7 +214,8 @@
       "centerX": 1731.405,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "mailiao-chem1": {
       "profileId": "mailiao-chem1",
@@ -210,7 +229,8 @@
       "centerX": 1887.585,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "middle"
     },
     "office-environment": {
       "profileId": "office-environment",
@@ -224,7 +244,8 @@
       "centerX": 2029.215,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "office-health": {
       "profileId": "office-health",
@@ -238,7 +259,8 @@
       "centerX": 2173.0,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "office-psm": {
       "profileId": "office-psm",
@@ -252,7 +274,8 @@
       "centerX": 2317.37,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "office-fire-engineer": {
       "profileId": "office-fire-engineer",
@@ -266,7 +289,9 @@
       "centerX": 2461.615,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office",
+      "fixedSuccessorProfileId": "office-fire-high"
     },
     "office-fire-high": {
       "profileId": "office-fire-high",
@@ -280,7 +305,8 @@
       "centerX": 2460.325,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "office-performance-safety": {
       "profileId": "office-performance-safety",
@@ -294,7 +320,9 @@
       "centerX": 2604.335,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office",
+      "fixedSuccessorProfileId": "office-performance-clerical"
     },
     "office-performance-clerical": {
       "profileId": "office-performance-clerical",
@@ -308,7 +336,8 @@
       "centerX": 2602.395,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "office-taipei-safety": {
       "profileId": "office-taipei-safety",
@@ -322,7 +351,8 @@
       "centerX": 2745.745,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office"
     },
     "exec-president": {
       "profileId": "exec-president",
@@ -336,7 +366,9 @@
       "centerX": 1573.23,
       "topY": 107.197,
       "bottomY": 206.41,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "executive",
+      "preserveBottomBridge": true
     },
     "exec-safety-vp": {
       "profileId": "exec-safety-vp",
@@ -350,7 +382,9 @@
       "centerX": 1167.47,
       "topY": 212.59,
       "bottomY": 324.34,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "executive",
+      "preserveBottomBridge": true
     },
     "exec-env-vp": {
       "profileId": "exec-env-vp",
@@ -364,7 +398,9 @@
       "centerX": 2384.73,
       "topY": 213.16,
       "bottomY": 324.91,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "executive",
+      "preserveBottomBridge": true
     },
     "longde-manager": {
       "profileId": "longde-manager",
@@ -378,7 +414,11 @@
       "centerX": 472.335,
       "topY": 478.755,
       "bottomY": 588.755,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "manager",
+      "collisionExemptProfileIds": [
+        "longde-lead-support"
+      ]
     },
     "xingang-manager": {
       "profileId": "xingang-manager",
@@ -392,7 +432,9 @@
       "centerX": 781.51,
       "topY": 476.89,
       "bottomY": 586.89,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "manager",
+      "preserveBottomBridge": true
     },
     "mailiao-env-manager": {
       "profileId": "mailiao-env-manager",
@@ -406,7 +448,9 @@
       "centerX": 1043.8,
       "topY": 472,
       "bottomY": 582,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "manager",
+      "preserveBottomBridge": true
     },
     "mailiao-safety-manager": {
       "profileId": "mailiao-safety-manager",
@@ -420,7 +464,9 @@
       "centerX": 1577.09,
       "topY": 465.81,
       "bottomY": 575.81,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "manager",
+      "preserveBottomBridge": true
     },
     "office-taipei-manager": {
       "profileId": "office-taipei-manager",
@@ -434,7 +480,9 @@
       "centerX": 2751.73,
       "topY": 582.14,
       "bottomY": 692.14,
-      "source": "v10-normalized-anchor"
+      "source": "v10-normalized-anchor",
+      "localGridId": "office",
+      "fixedSuccessorProfileId": "office-taipei-safety"
     },
     "longde-lead-support": {
       "profileId": "longde-lead-support",
@@ -448,7 +496,8 @@
       "centerX": 472.33,
       "topY": 591.42,
       "bottomY": 704.1,
-      "source": "master-raw-anchor"
+      "source": "master-raw-anchor",
+      "localGridId": "manager"
     },
     "mailiao-contract": {
       "profileId": "mailiao-contract",
@@ -462,7 +511,69 @@
       "centerX": 1040.665,
       "topY": 1420.55,
       "bottomY": 1578.1,
-      "source": "master-raw-anchor"
+      "source": "master-raw-anchor",
+      "localGridId": "middle"
+    }
+  },
+  "localGrids": {
+    "changhua": {
+      "rowTops": [
+        627.354,
+        754.01,
+        881.0,
+        1008.0,
+        1135.0,
+        1262.0,
+        1389.0,
+        1516.0
+      ],
+      "rowStep": 127.0
+    },
+    "middle": {
+      "rowTops": [
+        922.0,
+        1042.0,
+        1162.0,
+        1282.0,
+        1402.0,
+        1522.0
+      ],
+      "rowStep": 120.0
+    },
+    "office": {
+      "rowTops": [
+        769.794,
+        916.0,
+        1036.0,
+        1156.0,
+        1276.0,
+        1396.0,
+        1516.0
+      ],
+      "rowStep": 120.0
+    },
+    "manager": {
+      "rowTops": [
+        591.42,
+        718.0,
+        845.0,
+        972.0,
+        1099.0,
+        1226.0,
+        1353.0,
+        1480.0
+      ],
+      "rowStep": 127.0
+    },
+    "executive": {
+      "rowTops": [
+        350.0,
+        477.0,
+        604.0,
+        731.0,
+        858.0
+      ],
+      "rowStep": 127.0
     }
   }
 }

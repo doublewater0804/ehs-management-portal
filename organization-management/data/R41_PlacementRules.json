@@ -64,7 +64,24 @@
       "龍德": "longde-manager",
       "新港": "xingang-manager"
     },
-    "supervisorMatchingRule": "主管角色優先於一般職務判斷：正式主管角色對應固定主管編制並以實線表示；儲備主管依隸屬廠區對應主管編制並以虛線表示，不計入主管編制括號現有人數。職務層級僅用於統計與排序。"
+    "supervisorMatchingRule": "主管角色優先於一般職務判斷：正式主管角色對應固定主管編制並以實線表示；儲備主管依隸屬廠區對應主管編制並以虛線表示，不計入主管編制括號現有人數。職務層級僅用於統計與排序。",
+    "layoutNormalization": true,
+    "normalizeLayoutAlways": true,
+    "layoutBoxStyle": {
+      "jobWidthPt": 138,
+      "jobHeightPt": 126,
+      "personWidthPt": 138,
+      "personHeightPt": 110,
+      "supervisorWidthPt": 140,
+      "supervisorHeightPt": 110,
+      "rowClusterTolerancePt": 18,
+      "personGapPt": 22,
+      "personMinGapPt": 10,
+      "connectorClearHalfWidthPt": 3.5,
+      "minFontPt": 9
+    },
+    "overflowMode": "warn-only-single-page",
+    "overflowMessage": "本區人數已超出單頁可編排容量，請調整組織版型。"
   },
   "profiles": [
     {

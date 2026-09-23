@@ -5,8 +5,8 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260922-v9',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260922-v9',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v10',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v10',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -190,28 +190,63 @@
   function profileGroup(p){for(const sid of [...(p?.targetSlots||[]),...(p?.otherSlots||[])]){const sm=getSlotMeta(sid);if(sm?.group)return sm.group;}return p?.unit||'';}
   api.getProfileRegionLabel=profileRegionLabel;
 
-  function nodeBoxForSlot(slotId){const sm=getSlotMeta(slotId),node=sm?nodesById.get(sm.parentNodeId):null;return node?.bbox?node.bbox.slice():null;}
-  function uniqueBoxesForSlots(slotIds){const seen=new Set(),out=[];for(const sid of slotIds||[]){const sm=getSlotMeta(sid);if(!sm?.parentNodeId||seen.has(sm.parentNodeId))continue;const node=nodesById.get(sm.parentNodeId);if(node?.bbox){seen.add(sm.parentNodeId);out.push({nodeId:sm.parentNodeId,bbox:node.bbox.slice(),border:node.border||'dashed'});}}return out.sort((a,b)=>a.bbox[1]-b.bbox[1]||a.bbox[0]-b.bbox[0]);}
+  function layoutStyle(){return placement?.policy?.layoutBoxStyle||{};}
+  function boxCenter(b){return b?[(b[0]+b[2])/2,(b[1]+b[3])/2]:[0,0];}
+  function resizeBoxAroundCenter(b,w,h,topOverride=null){
+    if(!b)return null;const cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2,y0=topOverride==null?cy-h/2:topOverride;return [cx-w/2,y0,cx+w/2,y0+h];
+  }
+  function clusterValues(values,tol){
+    const arr=[...values].filter(Number.isFinite).sort((a,b)=>a-b),groups=[];
+    for(const v of arr){const g=groups[groups.length-1];if(!g||v-g[g.length-1]>tol)groups.push([v]);else g.push(v);}
+    return groups.map(g=>g.reduce((a,b)=>a+b,0)/g.length);
+  }
+  let layoutRowsCache=null;
+  function layoutRows(){
+    if(layoutRowsCache)return layoutRowsCache;const st=layoutStyle(),tol=Number(st.rowClusterTolerancePt)||18,target=[],person=[];
+    for(const p of placement?.profiles||[]){
+      if((p.targetSlots||[]).length===1){const b=nodeBoxForSlotRaw(p.targetSlots[0]);if(b&&!isSupervisorProfile(p)&&p.staffingFieldId)target.push(b[1]);}
+      for(const sid of p.otherSlots||[]){const b=nodeBoxForSlotRaw(sid);if(b)person.push(b[1]);}
+    }
+    layoutRowsCache={target:clusterValues(target,tol),person:clusterValues(person,tol)};return layoutRowsCache;
+  }
+  function snapToRow(y,kind){const rows=layoutRows()[kind]||[];if(!rows.length)return y;let best=rows[0],d=Math.abs(y-best);for(const r of rows){const nd=Math.abs(y-r);if(nd<d){best=r;d=nd;}}return best;}
+  function nodeBoxForSlotRaw(slotId){const sm=getSlotMeta(slotId),node=sm?nodesById.get(sm.parentNodeId):null;return node?.bbox?node.bbox.slice():null;}
+  function standardPersonBox(raw){const st=layoutStyle(),w=Number(st.personWidthPt)||138,h=Number(st.personHeightPt)||110;return resizeBoxAroundCenter(raw,w,h,snapToRow(raw[1],'person'));}
+  function standardJobBox(raw){const st=layoutStyle(),w=Number(st.jobWidthPt)||138,h=Number(st.jobHeightPt)||126;return resizeBoxAroundCenter(raw,w,h,snapToRow(raw[1],'target'));}
+  function standardSupervisorBox(raw,role){if(!raw)return null;if(!['組長','副組長'].includes(normalizeKey(role)))return raw.slice();const st=layoutStyle(),w=Number(st.supervisorWidthPt)||138,h=Number(st.supervisorHeightPt)||100;return resizeBoxAroundCenter(raw,w,h,raw[1]);}
+
+  function profileAnchorBox(p){const raw=nodeBoxForSlotRaw((p?.targetSlots||[])[0]);if(!raw)return null;if(isSupervisorProfile(p))return standardSupervisorBox(raw,p.supervisorRole);if(p?.staffingFieldId&&(p.targetSlots||[]).length===1)return standardJobBox(raw);return raw.slice();}
+
+  function nodeBoxForSlot(slotId){return nodeBoxForSlotRaw(slotId);}
+  function uniqueBoxesForSlots(slotIds){
+    const seen=new Set(),out=[];
+    for(const sid of slotIds||[]){const sm=getSlotMeta(sid);if(!sm?.parentNodeId||seen.has(sm.parentNodeId))continue;const node=nodesById.get(sm.parentNodeId);if(node?.bbox){seen.add(sm.parentNodeId);out.push({nodeId:sm.parentNodeId,bbox:node.bbox.slice(),border:node.border||'dashed'});}}
+    return out.sort((a,b)=>a.bbox[1]-b.bbox[1]||a.bbox[0]-b.bbox[0]);
+  }
+  function reserveBaselineBox(person){
+    if(supervisorRoleOf(person)!=='儲備主管')return null;const b=bindings?.[person?.name];if(!b?.slotId)return null;const raw=nodeBoxForSlotRaw(b.slotId);if(!raw)return null;const st=layoutStyle(),bbox=resizeBoxAroundCenter(raw,Number(st.personWidthPt)||138,Number(st.personHeightPt)||110);return {raw,bbox};
+  }
   function dynamicBoxesForProfile(p,count){
     if(count<=0)return [];
-    const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=nodeBoxForSlot((p.targetSlots||[])[0]);
-    const template=legacy[0]?.bbox||anchor||[0,0,130,110],w=template[2]-template[0],h=template[3]-template[1];
-    const baseX=template[0],baseY=legacy[0]?.bbox[1]??((anchor?.[3]||0)+24);
-    let step=h+20;if(legacy.length>1){const diffs=[];for(let i=1;i<legacy.length;i++)diffs.push(legacy[i].bbox[1]-legacy[i-1].bbox[1]);diffs.sort((a,b)=>a-b);step=diffs[Math.floor(diffs.length/2)]||step;}
-    const bottomLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;const perCol=Math.max(1,Math.floor((bottomLimit-h-baseY)/step)+1),pageW=Number(fieldMap?.page?.width_pt)||2976;
-    const boxes=[];
-    for(let i=0;i<count;i++){
-      if(i<legacy.length){boxes.push(legacy[i].bbox.slice());continue;}
-      const col=Math.floor(i/perCol),row=i%perCol;let x0=baseX+col*(w+18);if(x0+w>pageW-18)x0=baseX-col*(w+18);const y0=baseY+row*step;boxes.push([x0,y0,x0+w,y0+h]);
-    }
+    const st=layoutStyle(),legacy=uniqueBoxesForSlots(p.otherSlots||[]),rawAnchor=nodeBoxForSlotRaw((p.targetSlots||[])[0]),anchor=profileAnchorBox(p);
+    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,defaultGap=Number(st.personGapPt)||22,minGap=Number(st.personMinGapPt)||10;
+    const firstRaw=legacy[0]?.bbox||rawAnchor||[0,0,w,h],firstStd=legacy[0]?standardPersonBox(firstRaw):null;
+    const baseX=(firstStd?.[0]??((firstRaw[0]+firstRaw[2])/2-w/2));
+    const candidateY=firstStd?.[1]??((anchor?.[3]||rawAnchor?.[3]||0)+defaultGap),baseY=Math.max(candidateY,(anchor?.[3]||0)+defaultGap);
+    const bottomLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
+    let gap=defaultGap;
+    if(count>1){const maxGap=(bottomLimit-baseY-count*h)/(count-1);if(Number.isFinite(maxGap))gap=Math.max(minGap,Math.min(defaultGap,maxGap));}
+    const step=h+gap,boxes=[];
+    for(let i=0;i<count;i++)boxes.push([baseX,baseY+i*step,baseX+w,baseY+i*step+h]);
     return boxes;
   }
 
   function effectiveStaff(state){
     const source=hydrateStaff((state?.staff||[]).map(s=>({...s})));
     if(!placement)return source;
-    const dirty=new Set();
-    for(const s of source){if(!s.layoutDirty)continue;const p=getProfileForStaff(s);if(p)dirty.add(p.id);if(s.previousPlacementProfileId)dirty.add(s.previousPlacementProfileId);}
+    const dirty=new Set(),normalizeAll=!!placement?.policy?.normalizeLayoutAlways;
+    if(normalizeAll)for(const p of placement.profiles||[])dirty.add(p.id);
+    for(const s of source){if(!s.layoutDirty&&!normalizeAll)continue;const p=getProfileForStaff(s);if(p)dirty.add(p.id);if(s.previousPlacementProfileId)dirty.add(s.previousPlacementProfileId);}
     if(!dirty.size)return source;
     const profileById=new Map((placement.profiles||[]).map(p=>[p.id,p]));
     for(const pid of dirty){
@@ -219,22 +254,24 @@
       const members=source.filter(s=>s.status!=='inactive'&&profileMatches(p,s)).sort(sortPeople);
       const owned=new Set([...(p.targetSlots||[]),...(p.otherSlots||[])]);
       for(const person of source){if(owned.has(person.pdfSlotId)||members.includes(person)){person.pdfSlotId='';delete person.__dynamicBox;delete person.__desiredBorder;delete person.__placementProfileId;}}
-      const matching=members.filter(s=>isFormalProfileMatch(p,s));
-      const other=members.filter(s=>!isFormalProfileMatch(p,s));
-      const targetSlots=[...(p.targetSlots||[])];
+      const matching=members.filter(s=>isFormalProfileMatch(p,s)),other=members.filter(s=>!isFormalProfileMatch(p,s)),targetSlots=[...(p.targetSlots||[])];
       let ti=0;
       for(const person of matching.slice(0,targetSlots.length)){const slot=targetSlots[ti++];person.pdfSlotId=slot;person.__desiredBorder='solid';person.__placementProfileId=p.id;}
       const secondary=[...matching.slice(targetSlots.length).map(x=>({person:x,border:'solid'})),...other.map(x=>({person:x,border:'dashed'}))].sort((a,b)=>sortPeople(a.person,b.person));
-      const boxes=dynamicBoxesForProfile(p,secondary.length);
-      secondary.forEach((x,i)=>{x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox:boxes[i],border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i};});
+      const normalBoxes=dynamicBoxesForProfile(p,secondary.length);let normalIndex=0;
+      secondary.forEach((x,i)=>{
+        let bbox=null,sourceBox=null,preserveConnector=false;
+        const reserve=reserveBaselineBox(x.person);
+        if(reserve){bbox=reserve.bbox;sourceBox=reserve.raw;preserveConnector=true;}else{bbox=normalBoxes[normalIndex++];}
+        x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox,border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i,sourceBox,preserveConnector};
+      });
     }
     return source;
   }
   api.getEffectiveStaff=effectiveStaff;
   function dirtyProfileIds(state){
-    const out=new Set();hydrateStaff(state?.staff||[]);
-    for(const s of state?.staff||[]){if(!s?.layoutDirty)continue;const p=getProfileForStaff(s);if(p)out.add(p.id);if(s.previousPlacementProfileId)out.add(s.previousPlacementProfileId);}
-    return out;
+    const out=new Set();hydrateStaff(state?.staff||[]);if(placement?.policy?.normalizeLayoutAlways)for(const p of placement.profiles||[])out.add(p.id);
+    for(const s of state?.staff||[]){if(!s?.layoutDirty)continue;const p=getProfileForStaff(s);if(p)out.add(p.id);if(s.previousPlacementProfileId)out.add(s.previousPlacementProfileId);}return out;
   }
 
   function zhRevisionDate(iso){
@@ -410,17 +447,26 @@
   api.syntheticItems=syntheticItems;
 
   function dynamicLayout(state){
-    const eff=effectiveStaff(state),dirty=dirtyProfileIds(state),profileById=new Map((placement?.profiles||[]).map(p=>[p.id,p])),boxes=[],clears=[],connectors=[];
+    const eff=effectiveStaff(state),dirty=dirtyProfileIds(state),profileById=new Map((placement.profiles||[]).map(p=>[p.id,p])),boxes=[],clears=[],connectors=[],connectorClears=[];
+    const half=Number(layoutStyle().connectorClearHalfWidthPt)||3.5;
     for(const pid of dirty){
       const p=profileById.get(pid);if(!p)continue;
-      const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=nodeBoxForSlot((p.targetSlots||[])[0]);
-      if(legacy.length){const x0=Math.min(...legacy.map(x=>x.bbox[0]))-3,x1=Math.max(...legacy.map(x=>x.bbox[2]))+3,y1=Math.max(...legacy.map(x=>x.bbox[3]))+4;const y0=(anchor?.[3]??Math.min(...legacy.map(x=>x.bbox[1])))-1;clears.push({profileId:pid,bbox:[x0,y0,x1,y1]});}
-      const people=eff.filter(s=>s.status!=='inactive'&&s.__dynamicBox?.profileId===pid).sort((a,b)=>(a.__dynamicBox.order||0)-(b.__dynamicBox.order||0));
-      const prevByColumn=new Map();
-      for(const person of people){const box=person.__dynamicBox.bbox,cx=(box[0]+box[2])/2,key=Math.round(cx);boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel});const prev=prevByColumn.get(key)||anchor;if(prev){connectors.push({profileId:pid,from:[(prev[0]+prev[2])/2,prev[3]],to:[cx,box[1]]});}prevByColumn.set(key,box);}
+      const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=profileAnchorBox(p),people=eff.filter(s=>s.status!=='inactive'&&s.__dynamicBox?.profileId===pid).sort((a,b)=>(a.__dynamicBox.order||0)-(b.__dynamicBox.order||0));
+      if(legacy.length){
+        const x0=Math.min(...legacy.map(x=>x.bbox[0]))-5,x1=Math.max(...legacy.map(x=>x.bbox[2]))+5,y1=Math.max(...legacy.map(x=>x.bbox[3]))+5,y0=(nodeBoxForSlotRaw((p.targetSlots||[])[0])?.[3]??Math.min(...legacy.map(x=>x.bbox[1])))-2;
+        clears.push({profileId:pid,bbox:[x0,y0,x1,y1]});
+      }
+      for(const person of people){if(person.__dynamicBox?.sourceBox){const r=person.__dynamicBox.sourceBox;clears.push({profileId:pid,bbox:[r[0]-3,r[1]-3,r[2]+3,r[3]+3]});}}
+      let prev=anchor;
+      for(const person of people){
+        const box=person.__dynamicBox.bbox,cx=(box[0]+box[2])/2;boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel});
+        if(prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],ty=box[1];connectors.push({profileId:pid,from:[fx,fy],to:[cx,ty]});if(Math.abs(fx-cx)<2)connectorClears.push({bbox:[fx-half,Math.min(fy,ty),fx+half,Math.max(fy,ty)]});}
+        prev=box;
+      }
     }
-    return {boxes,clears,connectors};
+    return {boxes,clears,connectors,connectorClears};
   }
+
   api.getDynamicLayout=dynamicLayout;
 
   function placementInfo(item,state){
@@ -435,34 +481,56 @@
   api.getPlacementInfo=placementInfo;
 
   function supervisorBoxOverlays(state){
-    const eff=effectiveStaff(state).filter(s=>s&&s.status!=='inactive'),out=[];
+    const eff=effectiveStaff(state).filter(s=>s&&s.status!=='inactive'),vals=currentFieldValues(state),out=[];
     for(const p of placement?.profiles||[]){
-      const cfg=p.supervisorBox;if(!cfg?.nodeId)continue;
-      const node=nodesById.get(cfg.nodeId);if(!node?.bbox)continue;
-      const formal=eff.filter(s=>profileMatches(p,s)&&isFormalProfileMatch(p,s)).sort(sortPeople);
-      const person=formal[0]||null,planned=Math.max(0,Number(cfg.planned??1)||0),current=formal.length;
-      const lines=[...(cfg.fixedLines||[p.supervisorRole||p.targetRole]).filter(Boolean),`計${planned}人(${current})`];
-      if(person){lines.push(person.name||'');if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
-      out.push({profileId:p.id,nodeId:cfg.nodeId,bbox:node.bbox.slice(),lines,person,planned,current});
+      if(!isSupervisorProfile(p)||(p.targetSlots||[]).length!==1)continue;
+      const sid=p.targetSlots[0],sm=getSlotMeta(sid),cfg=p.supervisorBox||null,nodeId=cfg?.nodeId||sm?.parentNodeId,node=nodesById.get(nodeId);if(!node?.bbox)continue;
+      const formal=eff.filter(s=>profileMatches(p,s)&&isFormalProfileMatch(p,s)).sort(sortPeople),person=formal[0]||null;
+      let planned=1;if(p.staffingFieldId){planned=Number(planMap(state)[p.staffingFieldId]??1)||0;}else if(cfg&&cfg.planned!=null){planned=Math.max(0,Number(cfg.planned)||0);}const current=formal.length;
+      let lines=[];
+      if(cfg?.fixedLines?.length){lines=[...cfg.fixedLines,`計${planned}人(${current})`];}
+      else{lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);if(!lines.length)lines=[p.supervisorRole||p.targetRole,`計${planned}人(${current})`];}
+      const binding=findBindingBySlot(sid);
+      if(person&&!binding){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
+      out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox:standardSupervisorBox(node.bbox,p.supervisorRole),lines,person,planned,current,role:p.supervisorRole});
     }
     return out;
   }
+
   api.getSupervisorBoxOverlays=supervisorBoxOverlays;
 
-  function drawSupervisorBoxCanvas(ctx,item,scale){
-    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,pad=Math.max(1.2*scale,2);
-    ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale+pad,y0*scale+pad,Math.max(0,w-2*pad),Math.max(0,h-2*pad));
-    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
-    const lines=(item.lines||[]).filter(x=>x!==''),lineH=h/(Math.max(1,lines.length)+1);let baseFont=Math.min(18*scale,lineH*.78);
-    for(let i=0;i<lines.length;i++){
-      let f=baseFont;ctx.font=fontString(f);const maxW=w-10*scale;
-      while(ctx.measureText(lines[i]).width>maxW&&f>8.5*scale){f-=.5*scale;ctx.font=fontString(f);}
-      ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));
+  function unionBbox(a,b,pad=3){if(!a)return b?.slice();if(!b)return a?.slice();return [Math.min(a[0],b[0])-pad,Math.min(a[1],b[1])-pad,Math.max(a[2],b[2])+pad,Math.max(a[3],b[3])+pad];}
+  function currentFieldValues(state){return {...(snapshot||{}),...buildValues(state)};}
+  function fixedJobBoxOverlays(state){
+    if(!placement?.policy?.layoutNormalization)return [];
+    const vals=currentFieldValues(state),eff=effectiveStaff(state).filter(s=>s&&s.status!=='inactive'),out=[];
+    for(const p of placement?.profiles||[]){
+      if(isSupervisorProfile(p)||!p.staffingFieldId||(p.targetSlots||[]).length!==1)continue;
+      const sid=p.targetSlots[0],sm=getSlotMeta(sid),node=sm?nodesById.get(sm.parentNodeId):null;if(!node?.bbox)continue;
+      const raw=node.bbox.slice(),bbox=standardJobBox(raw),lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);
+      const person=eff.find(s=>s.pdfSlotId===sid)||null,binding=findBindingBySlot(sid);
+      if(person&&!binding){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
+      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBbox:unionBbox(raw,bbox,4),lines,person});
     }
+    return out;
+  }
+  api.getFixedJobBoxOverlays=fixedJobBoxOverlays;
+
+  function drawUniformBoxCanvas(ctx,item,scale,border='solid'){
+    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,st=layoutStyle(),minFont=(Number(st.minFontPt)||9)*scale;
+    ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,w,h);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.15*scale);ctx.setLineDash(border==='dashed'?[5*scale,3*scale]:[]);ctx.strokeRect(x0*scale,y0*scale,w,h);ctx.setLineDash([]);ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
+    const rawLines=(item.lines||[]).filter(x=>String(x||'').trim()!=='');const lines=[];
+    for(const txt of rawLines){const chunks=wrapTextChars(txt,10);for(const c of chunks)lines.push(c);}
+    const maxLines=Math.max(1,lines.length),lineH=h/(maxLines+1);let fontPx=Math.min(18*scale,lineH*.74);
+    for(let i=0;i<lines.length;i++){let f=fontPx;ctx.font=fontString(f);const maxW=w-10*scale;while(ctx.measureText(lines[i]).width>maxW&&f>minFont){f-=.5*scale;ctx.font=fontString(f);}ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));}
     ctx.restore();
   }
 
+  function drawSupervisorBoxCanvas(ctx,item,scale){drawUniformBoxCanvas(ctx,item,scale,'solid');}
+
+
   function borderOverrides(state){
+    if(placement?.policy?.layoutNormalization)return [];
     const out=[];for(const s of activeStaff(state)){
       if(s.__desiredBorder!=='solid'||!s.pdfSlotId)continue;
       const sm=getSlotMeta(s.pdfSlotId),node=sm?nodesById.get(sm.parentNodeId):null;
@@ -474,7 +542,7 @@
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
     for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);}
-    const dyn=dynamicLayout(state);for(const b of dyn.boxes){if(!b.bbox||b.bbox[1]<0||b.bbox[3]>(Number(placement?.policy?.dynamicBottomLimitPt)||1655))out.push(`「${b.person.name}」自動新增的人員框超出可編排範圍，請調整組織版型。`);}
+    const dyn=dynamicLayout(state),msg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';for(const b of dyn.boxes){if(!b.bbox||b.bbox[1]<0||b.bbox[3]>(Number(placement?.policy?.dynamicBottomLimitPt)||1655))out.push(`「${b.person.name}」${msg}`);}
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;
@@ -524,26 +592,43 @@
 
   function wrapTextChars(text,maxChars=9){const chars=[...String(text||'')],out=[];for(let i=0;i<chars.length;i+=maxChars)out.push(chars.slice(i,i+maxChars).join(''));return out.slice(0,2);}
   function drawDynamicBoxCanvas(ctx,item,scale){
-    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,person=item.person;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,w,h);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.15*scale);ctx.setLineDash(item.border==='dashed'?[5*scale,3*scale]:[]);ctx.strokeRect(x0*scale,y0*scale,w,h);ctx.setLineDash([]);ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
-    const lines=[person.title||'',person.name||'',...wrapTextChars(person.education||'',9),person.joinMonth||''].filter(Boolean);const maxLines=Math.max(1,lines.length),lineH=h/(maxLines+1);let fontPx=Math.min(18*scale,lineH*.72);
-    for(let i=0;i<lines.length;i++){let f=fontPx;ctx.font=fontString(f);const maxW=w-8*scale;while(ctx.measureText(lines[i]).width>maxW&&f>9*scale){f-=.6*scale;ctx.font=fontString(f);}ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));}ctx.restore();
+    const person=item.person||{},lines=[person.title||'',person.name||'',person.education||'',person.joinMonth||''].filter(Boolean);drawUniformBoxCanvas(ctx,{...item,lines},scale,item.border||'solid');
   }
-  function drawConnectorCanvas(ctx,c,scale){ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.1*scale);ctx.setLineDash([]);ctx.beginPath();const mx=c.from[0]*scale,my=(c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2))*scale;ctx.moveTo(c.from[0]*scale,c.from[1]*scale);ctx.lineTo(c.from[0]*scale,my);ctx.lineTo(c.to[0]*scale,my);ctx.lineTo(c.to[0]*scale,c.to[1]*scale);ctx.stroke();ctx.restore();}
+  function drawConnectorCanvas(ctx,c,scale){
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.1*scale);ctx.setLineDash([]);ctx.beginPath();const fx=c.from[0]*scale,fy=c.from[1]*scale,tx=c.to[0]*scale,ty=c.to[1]*scale;ctx.moveTo(fx,fy);
+    if(Math.abs(c.from[0]-c.to[0])<2){ctx.lineTo(tx,ty);}else{const my=(c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2))*scale;ctx.lineTo(fx,my);ctx.lineTo(tx,my);ctx.lineTo(tx,ty);}ctx.stroke();ctx.restore();
+  }
+  function clearCanvasBbox(ctx,b,scale){if(!b)return;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(b[0]*scale,b[1]*scale,(b[2]-b[0])*scale,(b[3]-b[1])*scale);ctx.restore();}
+  function drawBoxBridgeCanvas(ctx,item,scale){
+    if(!item?.rawBbox||!item?.bbox)return;const r=item.rawBbox,b=item.bbox,cx=(r[0]+r[2])/2;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.05*scale);ctx.setLineDash([]);ctx.beginPath();
+    if(Math.abs(r[1]-b[1])>.5){ctx.moveTo(cx*scale,r[1]*scale);ctx.lineTo(cx*scale,b[1]*scale);}if(Math.abs(r[3]-b[3])>.5){ctx.moveTo(cx*scale,b[3]*scale);ctx.lineTo(cx*scale,r[3]*scale);}ctx.stroke();ctx.restore();
+  }
 
   async function renderCanvas(state,opts={}){
     await init();
     const dpi=Number(opts.dpi||CONFIG.previewDpi),widthPt=fieldMap.page.width_pt,heightPt=fieldMap.page.height_pt;
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
-    if(!opts.masterOnly){const scale=width/widthPt,dyn=dynamicLayout(state);for(const c of dyn.clears){const [x0,y0,x1,y1]=c.bbox;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);for(const item of supervisorBoxOverlays(state))drawSupervisorBoxCanvas(ctx,item,scale);for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}}
+    if(!opts.masterOnly){
+      const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state);
+      for(const c of dyn.clears)clearCanvasBbox(ctx,c.bbox,scale);for(const c of dyn.connectorClears||[])clearCanvasBbox(ctx,c.bbox,scale);
+      for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
+      for(const item of jobs)clearCanvasBbox(ctx,item.clearBbox,scale);for(const item of sup)clearCanvasBbox(ctx,unionBbox(item.rawBbox,item.bbox,1),scale);
+      for(const item of jobs){drawBoxBridgeCanvas(ctx,item,scale);drawUniformBoxCanvas(ctx,item,scale,'solid');}
+      for(const item of sup){drawBoxBridgeCanvas(ctx,item,scale);drawSupervisorBoxCanvas(ctx,item,scale);}
+      for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);
+      for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}
+    }
     return canvas;
   }
+
+
   api.renderCanvas=renderCanvas;
 
   async function renderPreview(state,targetCanvas,opts={}){
     const c=await renderCanvas(state,{dpi:opts.dpi||CONFIG.previewDpi,masterOnly:!!opts.masterOnly});targetCanvas.width=c.width;targetCanvas.height=c.height;
     targetCanvas.getContext('2d',{alpha:false}).drawImage(c,0,0);
-    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),supervisorBoxes:supervisorBoxOverlays(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
+    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),fixedJobBoxes:fixedJobBoxOverlays(state),supervisorBoxes:supervisorBoxOverlays(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
   }
   api.renderPreview=renderPreview;
 
@@ -577,29 +662,39 @@
     const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
     const shifted={...item,bbox:[0,0,w,h]};drawSupervisorBoxCanvas(ctx,shifted,scale);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
   }
+  function makeUniformBoxPatch(item,scale=4,border='solid'){
+    const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
+    const shifted={...item,bbox:[0,0,w,h]};drawUniformBoxCanvas(ctx,shifted,scale,border);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
+  }
   async function exportMasterOverlayPdf(state,filename,changes,synthetic){
     if(!window.PDFLib?.PDFDocument)throw new Error('pdf-lib 元件尚未載入。');
     const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');
-    const bytes=await r.arrayBuffer(),{PDFDocument,rgb}=window.PDFLib,pdf=await PDFDocument.load(bytes),page=pdf.getPages()[0],pageH=fieldMap.page.height_pt,dyn=dynamicLayout(state);
-    // 固定組織/業務/轄區不動；只有 dirty profile 的舊人員區塊清除後依資料重排。
-    for(const c of dyn.clears){const b=c.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
-    // 只清除原文字 bbox，靜態框線與表格仍保留 Master PDF 向量內容。
-    for(const item of changes){const b=item.field.bbox;page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});}
+    const bytes=await r.arrayBuffer(),{PDFDocument,rgb}=window.PDFLib,pdf=await PDFDocument.load(bytes),page=pdf.getPages()[0],pageH=fieldMap.page.height_pt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state);
+    const clearRect=b=>page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});
+    for(const c of dyn.clears)clearRect(c.bbox);for(const c of dyn.connectorClears||[])clearRect(c.bbox);
+    for(const item of changes)clearRect(item.field.bbox);
+    for(const item of jobs)clearRect(item.clearBbox);for(const item of sup)clearRect(unionBbox(item.rawBbox,item.bbox,1));
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
-    for(const item of supervisorBoxOverlays(state)){const patch=makeSupervisorBoxPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
-    for(const c of dyn.connectors){const midY=c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2);const points=[[c.from[0],c.from[1]],[c.from[0],midY],[c.to[0],midY],[c.to[0],c.to[1]]];for(let i=1;i<points.length;i++)page.drawLine({start:{x:points[i-1][0],y:pageH-points[i-1][1]},end:{x:points[i][0],y:pageH-points[i][1]},thickness:1,color:rgb(0,0,0)});}
-    for(const item of dyn.boxes){const patch=makeDynamicBoxPatch(item,4);const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    const drawBridge=item=>{if(!item?.rawBbox||!item?.bbox)return;const rr=item.rawBbox,bb=item.bbox,cx=(rr[0]+rr[2])/2;if(Math.abs(rr[1]-bb[1])>.5)page.drawLine({start:{x:cx,y:pageH-rr[1]},end:{x:cx,y:pageH-bb[1]},thickness:1,color:rgb(0,0,0)});if(Math.abs(rr[3]-bb[3])>.5)page.drawLine({start:{x:cx,y:pageH-bb[3]},end:{x:cx,y:pageH-rr[3]},thickness:1,color:rgb(0,0,0)});};
+    for(const item of jobs){drawBridge(item);const patch=makeUniformBoxPatch(item,4,'solid'),img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const item of sup){drawBridge(item);const patch=makeSupervisorBoxPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const c of dyn.connectors){
+      if(Math.abs(c.from[0]-c.to[0])<2){page.drawLine({start:{x:c.from[0],y:pageH-c.from[1]},end:{x:c.to[0],y:pageH-c.to[1]},thickness:1,color:rgb(0,0,0)});continue;}
+      const midY=c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2),points=[[c.from[0],c.from[1]],[c.from[0],midY],[c.to[0],midY],[c.to[0],c.to[1]]];for(let i=1;i<points.length;i++)page.drawLine({start:{x:points[i-1][0],y:pageH-points[i-1][1]},end:{x:points[i][0],y:pageH-points[i][1]},thickness:1,color:rgb(0,0,0)});
+    }
+    for(const item of dyn.boxes){const patch=makeDynamicBoxPatch(item,4),img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
-    const out=await pdf.save({useObjectStreams:false});const blob=new Blob([out],{type:'application/pdf'});
+    const out=await pdf.save({useObjectStreams:false}),blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-    return {mode:'dynamic-master-overlay',changed:changes.length+synthetic.length+supervisorBoxOverlays(state).length+dyn.boxes.length};
+    return {mode:'normalized-layout-master-overlay',changed:changes.length+synthetic.length+jobs.length+sup.length+dyn.boxes.length};
   }
+
 
   async function exportPdf(state,filename){
     await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的組織區塊編排問題：\n- '+unsupported.join('\n- '));
-    const changes=changedFields(state),synthetic=syntheticItems(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
-    if(changes.length===0&&synthetic.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
+    const changes=changedFields(state),synthetic=syntheticItems(state),jobBoxes=fixedJobBoxOverlays(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
+    if(changes.length===0&&synthetic.length===0&&jobBoxes.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};
     }
@@ -608,7 +703,7 @@
     if(!window.jspdf?.jsPDF)throw new Error('PDF 輸出元件尚未載入。');
     const canvas=await renderCanvas(state,{dpi:CONFIG.exportDpi}),mmW=fieldMap.page.width_pt/72*25.4,mmH=fieldMap.page.height_pt/72*25.4,{jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[mmW,mmH],compress:true});pdf.addImage(canvas,'PNG',0,0,mmW,mmH,undefined,'FAST');pdf.save(filename);
-    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+supervisorBoxes.length+dyn.boxes.length};
+    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+jobBoxes.length+supervisorBoxes.length+dyn.boxes.length};
   }
   api.exportPdf=exportPdf;
 })();

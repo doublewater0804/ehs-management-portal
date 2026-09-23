@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v6-uniform-row-height",
   "policy": {
-    "description": "固定上層組織骨架；動態人員採 Local Grid。彰化/龍德共用上半區 Row 對齊；固定下一節點遇前方人員增加時採相對 Y 下移；最後一次全頁 Preflight。",
+    "description": "v18：固定上層骨架＋Local Grid；龍德分支線由單一 Connector Engine 接管；定期契約人員 Bottom Anchor；底部統計固定 Row Grid；全頁 Preflight。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -83,14 +83,17 @@
       "columnCollisionPadPt": 0,
       "actualCollisionPadPt": 2,
       "localGridMinStartGapPt": 14,
-      "connectorCollisionPadPt": 1.5
+      "connectorCollisionPadPt": 1.5,
+      "bottomStatisticsSafetyTopPt": 1683.2,
+      "bottomAnchorGapPt": 33.2
     },
     "overflowMode": "warn-only-single-page",
     "overflowMessage": "本區人員已超出目前單頁可編排容量（碰觸底部統計表），請調整編制版面。",
-    "coordinateMode": "fixed-x-upper-y-relative-successor-y-local-grid-person-rows",
-    "layoutRule": "上層固定組織/業務/轄區及主編制框採固定 X/Y；彰化與龍德共用同一 Local Grid Row；動態人員固定欄中心 X、按 Row Y 排列；下方固定 successor 的 X 固定、Y 依前一分支實際佔用高度＋18pt 相對下移。",
-    "capacityRule": "先依 Local Grid 排完全部人員並計算固定 successor 相對 Y，再一次檢查固定框、動態框、底部安全線與連線穿框；不得因舊絕對 Y 造成誤判。",
-    "connectorRule": "有實際下一框才畫中心連線；固定 successor 若因人員增加下移，由同一 Connector Engine 接到新位置；無子人員不留懸空線。"
+    "coordinateMode": "fixed-x-upper-y-local-grid-bottom-anchor-statistics-grid",
+    "layoutRule": "固定組織/業務/轄區與主編制框維持骨架；動態人員固定欄中心 X、按 Local Grid Row Y；底部最後固定節點採 Bottom Anchor；分支線與人員線由 Connector Engine 唯一產生。",
+    "capacityRule": "先依 Local Grid 排版；若有明確 dynamicZone，優先壓縮 Row 間距至最小值；最後固定節點受 Bottom Anchor 約束。全部排完後一次檢查底部統計安全線、框重疊與連線穿框。",
+    "connectorRule": "程式接管的連線區先清除 Master 舊線，再由框幾何中心重畫；一個父框只允許一條中央主幹；有下一框才畫；多子框使用單一水平母線分支。",
+    "statisticsGridRule": "底部統計依職務層級使用固定 Row Y，所有小計/合計欄對齊；某層級無值則留白。"
   },
   "profiles": [
     {

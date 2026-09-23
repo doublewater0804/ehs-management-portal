@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v17',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v17',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v17',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v18',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v18',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v18',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -249,6 +249,9 @@
       let changed=false;const requests=[];
       for(const p of profiles){
         const succ=fixedSuccessorProfile(p);if(!succ)continue;
+        // v18：Bottom Anchor 節點（例如定期契約人員）不得再被上方人員一路往下推；
+        // 上方動態列必須在自己的 dynamicZone 內消化，真的放不下才由 Preflight 報容量不足。
+        if(gridEntry(succ)?.bottomAnchor?.enabled)continue;
         const pd=Number(shifts.get(p.id)||0),sd=Number(shifts.get(succ.id)||0),pa=shiftBoxY(profileAnchorBox(p),pd),sb=profileAnchorBox(succ);if(!pa||!sb)continue;
         let occupied=pa[3];
         for(const person of eff){if(person?.status==='inactive'||person?.__dynamicBox?.profileId!==p.id||!person.__dynamicBox.bbox)continue;occupied=Math.max(occupied,person.__dynamicBox.bbox[3]+pd);}
@@ -267,13 +270,25 @@
     const result=[];if(count<=0)return result;
     const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return result;
     const ge=gridEntry(p)||{},grid=localGridForProfile(p);
-    const h=Number(ge.personHeightPt)||Number(grid?.personHeightPt)||Number(st.personHeightPt)||110,w=Number(ge.personWidthPt)||Number(grid?.personWidthPt)||Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
+    const h=Number(ge.personHeightPt)||Number(grid?.personHeightPt)||Number(st.personHeightPt)||110,w=Number(ge.personWidthPt)||Number(grid?.personWidthPt)||Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14,minGap=Number(st.personMinGapPt)||8;
     const cx=Number(ge.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
     const afterBottom=Number(opts?.afterBox?.[3]);
     const startAfter=(Number.isFinite(afterBottom)?afterBottom:anchor[3])+minStartGap;
     const configuredRows=(Array.isArray(ge.dynamicRowTops)&&ge.dynamicRowTops.length?ge.dynamicRowTops:(grid?.rowTops||[]));
     let rows=configuredRows.map(Number).filter(Number.isFinite).filter(y=>y+0.01>=startAfter);
-    const step=Number(ge.dynamicRowStep)||Number(grid?.rowStep)||Math.max(h+18,128);
+    const step=Number(ge.dynamicRowStep)||Number(grid?.rowStep)||Math.max(h+18,128),zoneBottom=Number(ge?.dynamicZone?.bottomY);
+
+    // v18：先使用既有 Local Grid；若最後一列會侵入下方 Bottom Anchor 安全區，
+    // 就在不改框高的前提下，把 Row gap 壓縮到最小值。仍放不下時保留最小 gap，交由 Preflight 報告。
+    if(Number.isFinite(zoneBottom)&&count>0){
+      const candidate=rows.slice(0,count),candidateFits=candidate.length===count&&candidate[count-1]+h<=zoneBottom+.01;
+      if(!candidateFits){
+        const preferredGap=Math.max(minGap,step-h),available=Math.max(0,zoneBottom-startAfter-count*h);
+        const gap=count<=1?0:Math.max(minGap,Math.min(preferredGap,available/(count-1)));
+        rows=Array.from({length:count},(_,i)=>startAfter+i*(h+gap));
+      }
+    }
+
     let y=rows.length?rows[rows.length-1]:Math.max(startAfter,anchor[3]+18);
     while(rows.length<count){y=(rows.length?rows[rows.length-1]:y)+step;rows.push(y);}
     for(let i=0;i<count;i++){const top=rows[i];result.push([baseX,top,baseX+w,top+h]);}
@@ -473,6 +488,20 @@
   }
   api.changedFields=changedFields;
 
+  function bottomSummaryGridItems(state){
+    const map=semantic?.bottomSummaryFields||{},ids=Object.keys(map);if(!ids.length)return [];
+    const vals=buildValues(state),hasChange=ids.some(fid=>String(vals[fid]??'')!==String(snapshot?.[fid]??''));
+    if(!hasChange)return [];
+    const configured=layoutGrid?.statisticsGrid?.rowCenters||{};
+    return ids.map(fid=>{
+      const field=fieldsById.get(fid),meta=map[fid];if(!field||!meta)return null;
+      const raw=field.bbox.slice(),h=raw[3]-raw[1],cy=Number(configured[meta.category]);
+      const centerY=Number.isFinite(cy)?cy:(raw[1]+raw[3])/2,bbox=[raw[0],centerY-h/2,raw[2],centerY+h/2];
+      return {fieldId:fid,field,meta,rawBbox:raw,bbox,text:String(vals[fid]??''),old:String(snapshot?.[fid]??'')};
+    }).filter(Boolean);
+  }
+  api.getBottomSummaryGridItems=bottomSummaryGridItems;
+
   function syntheticItems(state){
     const out=[];
     for(const s of activeStaff(state)){
@@ -528,6 +557,21 @@
       // 固定主框永遠不進動態 Grid；若有固定下一主框，無論中間有沒有人，都由本引擎畫唯一一條實際連線。
       if(succBox&&prev){const fx=rawCenter(prev),fy=prev[3],tx=rawCenter(succBox),ty=succBox[1];connectors.push({profileId:pid,from:[fx,fy],to:[tx,ty],kind:'fixed-successor',targetProfileId:succ.id});}
       // 沒有實際下一框時不畫任何尾線；clearTailBelowAnchor 只負責清除 Master 懸空線。
+    }
+
+    // v18：多子框分支由單一 Connector Engine 接管。
+    // 先把父框底部到子框頂部之間 Master 舊線完整清掉，再只畫一條中央主幹＋一條水平母線＋子支線。
+    for(const bg of (layoutGrid?.branchGroups||[])){
+      const parent=(placement?.profiles||[]).find(p=>p.id===bg.parentProfileId);if(!parent)continue;
+      const parentDyn=boxes.filter(b=>b.profileId===parent.id).sort((a,b)=>a.bbox[1]-b.bbox[1]);
+      const parentBox=(bg.parentSource==='last-dynamic-or-anchor'&&parentDyn.length)?parentDyn[parentDyn.length-1].bbox:effectiveProfileAnchorBox(parent,shifts);
+      const childBoxes=(bg.childProfileIds||[]).map(id=>{const p=(placement?.profiles||[]).find(x=>x.id===id);const b=p?effectiveProfileAnchorBox(p,shifts):null;return p&&b?{profile:p,bbox:b}:null;}).filter(Boolean);
+      if(!parentBox||childBoxes.length<2)continue;
+      const pcx=rawCenter(parentBox),pBottom=parentBox[3],childTop=Math.min(...childBoxes.map(x=>x.bbox[1])),childXs=childBoxes.map(x=>rawCenter(x.bbox));
+      if(childTop<=pBottom+2)continue;
+      const branchY=pBottom+(childTop-pBottom)/2,minX=Math.min(pcx,...childXs),maxX=Math.max(pcx,...childXs);
+      if(bg.clearMasterBranch!==false)connectorClears.push({bbox:[minX-10,pBottom+.6,maxX+10,childTop-.6]});
+      connectors.push({kind:'branch',profileId:parent.id,from:[pcx,pBottom],branchY,children:childBoxes.map(x=>({profileId:x.profile.id,to:[rawCenter(x.bbox),x.bbox[1]]}))});
     }
     return {boxes,clears,connectors,connectorClears};
   }
@@ -636,7 +680,7 @@
     // Preflight 2：動態框彼此不得重疊。
     for(let i=0;i<dyn.boxes.length;i++)for(let j=i+1;j<dyn.boxes.length;j++){const a=dyn.boxes[i],b=dyn.boxes[j];if(a.profileId!==b.profileId&&rectOverlap(a.bbox,b.bbox,collisionPad))out.push(`「${a.person.name}」與「${b.person.name}」的人員框會互相重疊，請調整該區版面。`);}
     // Preflight 3：中心連線不可穿越不屬於該分支的固定框（端點目標除外）。
-    for(const c of dyn.connectors||[]){if(badProfiles.has(c.profileId))continue;const owner=(placement?.profiles||[]).find(p=>p.id===c.profileId),exempt=new Set(gridEntry(owner)?.collisionExemptProfileIds||[]);const hit=fixed.find(x=>x.profile.id!==c.profileId&&x.profile.id!==c.targetProfileId&&!exempt.has(x.profile.id)&&segmentIntersectsRect(c,x.bbox,connectorPad));if(hit)out.push(`「${profileRegionLabel((placement?.profiles||[]).find(p=>p.id===c.profileId))||c.profileId}」的連線會穿越固定區塊「${hit.label}」，請調整該區版面。`);}
+    for(const c of dyn.connectors||[]){if(badProfiles.has(c.profileId)||c.kind==='branch')continue;const owner=(placement?.profiles||[]).find(p=>p.id===c.profileId),exempt=new Set(gridEntry(owner)?.collisionExemptProfileIds||[]);const hit=fixed.find(x=>x.profile.id!==c.profileId&&x.profile.id!==c.targetProfileId&&!exempt.has(x.profile.id)&&segmentIntersectsRect(c,x.bbox,connectorPad));if(hit)out.push(`「${profileRegionLabel((placement?.profiles||[]).find(p=>p.id===c.profileId))||c.profileId}」的連線會穿越固定區塊「${hit.label}」，請調整該區版面。`);}
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;
@@ -685,11 +729,22 @@
   }
 
   function wrapTextChars(text,maxChars=9){const chars=[...String(text||'')],out=[];for(let i=0;i<chars.length;i+=maxChars)out.push(chars.slice(i,i+maxChars).join(''));return out.length?out:[''];}
+  function drawStatisticsCellCanvas(ctx,item,scale){
+    const [x0,y0,x1,y1]=item.bbox,text=String(item.text||''),f=item.field||{},w=(x1-x0)*scale,h=(y1-y0)*scale;if(!text)return;
+    ctx.save();ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';let fontPx=(Number(f.font_size)||18)*scale;ctx.font=fontString(fontPx);
+    const maxW=Math.max(8,w-3*scale),measured=ctx.measureText(text).width;if(measured>maxW){fontPx*=Math.max(.72,maxW/measured);ctx.font=fontString(fontPx);}ctx.fillText(text,(x0+x1)/2*scale,(y0+y1)/2*scale);ctx.restore();
+  }
   function drawDynamicBoxCanvas(ctx,item,scale){
     const person=item.person||{},lines=[person.title||'',person.name||'',person.education||'',person.joinMonth||''].filter(Boolean);drawUniformBoxCanvas(ctx,{...item,lines},scale,item.border||'solid');
   }
   function drawConnectorCanvas(ctx,c,scale){
-    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.1*scale);ctx.setLineDash([]);ctx.beginPath();const fx=c.from[0]*scale,fy=c.from[1]*scale,tx=c.to[0]*scale,ty=c.to[1]*scale;ctx.moveTo(fx,fy);
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.1*scale);ctx.setLineDash([]);ctx.beginPath();
+    if(c.kind==='branch'&&Array.isArray(c.children)&&c.children.length){
+      const fx=c.from[0]*scale,fy=c.from[1]*scale,my=Number(c.branchY)*scale,xs=c.children.map(ch=>ch.to[0]*scale);
+      ctx.moveTo(fx,fy);ctx.lineTo(fx,my);ctx.moveTo(Math.min(fx,...xs),my);ctx.lineTo(Math.max(fx,...xs),my);
+      for(const ch of c.children){const tx=ch.to[0]*scale,ty=ch.to[1]*scale;ctx.moveTo(tx,my);ctx.lineTo(tx,ty);}ctx.stroke();ctx.restore();return;
+    }
+    const fx=c.from[0]*scale,fy=c.from[1]*scale,tx=c.to[0]*scale,ty=c.to[1]*scale;ctx.moveTo(fx,fy);
     if(Math.abs(c.from[0]-c.to[0])<2){ctx.lineTo(tx,ty);}else{const my=(c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2))*scale;ctx.lineTo(fx,my);ctx.lineTo(tx,my);ctx.lineTo(tx,ty);}ctx.stroke();ctx.restore();
   }
   function clearCanvasBbox(ctx,b,scale){if(!b)return;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(b[0]*scale,b[1]*scale,(b[2]-b[0])*scale,(b[3]-b[1])*scale);ctx.restore();}
@@ -705,9 +760,10 @@
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
     if(!opts.masterOnly){
-      const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state);
+      const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state),stats=bottomSummaryGridItems(state),statIds=new Set(stats.map(x=>x.fieldId)),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId));
       for(const c of dyn.clears)clearCanvasBbox(ctx,c.bbox,scale);for(const c of dyn.connectorClears||[])clearCanvasBbox(ctx,c.bbox,scale);
-      for(const item of changedFields(state))patchText(ctx,item,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
+      for(const st of stats){clearCanvasBbox(ctx,st.rawBbox,scale);if(Math.abs(st.rawBbox[1]-st.bbox[1])>.2)clearCanvasBbox(ctx,st.bbox,scale);}
+      for(const item of changes)patchText(ctx,item,scale);for(const st of stats)drawStatisticsCellCanvas(ctx,st,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
       for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearCanvasBbox(ctx,b,scale);for(const item of sup)clearCanvasBbox(ctx,unionBbox(item.rawBbox,item.bbox,1),scale);
       for(const item of jobs){drawBoxBridgeCanvas(ctx,item,scale);drawUniformBoxCanvas(ctx,item,scale,'solid');}
       for(const item of sup){drawBoxBridgeCanvas(ctx,item,scale);drawSupervisorBoxCanvas(ctx,item,scale);}
@@ -723,7 +779,7 @@
   async function renderPreview(state,targetCanvas,opts={}){
     const c=await renderCanvas(state,{dpi:opts.dpi||CONFIG.previewDpi,masterOnly:!!opts.masterOnly});targetCanvas.width=c.width;targetCanvas.height=c.height;
     targetCanvas.getContext('2d',{alpha:false}).drawImage(c,0,0);
-    return {canvas:targetCanvas,changed:changedFields(state),synthetic:syntheticItems(state),fixedJobBoxes:fixedJobBoxOverlays(state),supervisorBoxes:supervisorBoxOverlays(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
+    return {canvas:targetCanvas,changed:changedFields(state),statisticsGrid:bottomSummaryGridItems(state),synthetic:syntheticItems(state),fixedJobBoxes:fixedJobBoxOverlays(state),supervisorBoxes:supervisorBoxOverlays(state),dynamic:dynamicLayout(state),borders:borderOverrides(state),unsupported:unsupportedChanges(state),computed:computeSemantic(state)};
   }
   api.renderPreview=renderPreview;
 
@@ -749,6 +805,12 @@
     const maxW=Math.max(8,(widthPt-4)*scale),measured=ctx.measureText(text).width;if(measured>maxW){fontPx*=Math.max(.62,maxW/measured);ctx.font=fontString(fontPx);}ctx.fillText(text,canvas.width/2,canvas.height/2);
     return {canvas,xPt:x0,yTopPt:y0,widthPt,heightPt};
   }
+  function makeStatisticsPatch(item,scale=4){
+    const [x0,y0,x1,y1]=item.bbox,widthPt=x1-x0,heightPt=y1-y0,text=String(item.text||''),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(widthPt*scale));canvas.height=Math.max(1,Math.ceil(heightPt*scale));
+    const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#000';ctx.textBaseline='middle';ctx.textAlign='center';let fontPx=(Number(item.field?.font_size)||18)*scale;ctx.font=fontString(fontPx);
+    const maxW=Math.max(8,canvas.width-3*scale),measured=ctx.measureText(text).width;if(measured>maxW){fontPx*=Math.max(.72,maxW/measured);ctx.font=fontString(fontPx);}ctx.fillText(text,canvas.width/2,canvas.height/2);
+    return {canvas,xPt:x0,yTopPt:y0,widthPt,heightPt};
+  }
   function makeDynamicBoxPatch(item,scale=4){
     const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
     const shifted={...item,bbox:[0,0,w,h]};drawDynamicBoxCanvas(ctx,shifted,scale);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
@@ -761,20 +823,29 @@
     const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
     const shifted={...item,bbox:[0,0,w,h]};drawUniformBoxCanvas(ctx,shifted,scale,border);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
   }
-  async function exportMasterOverlayPdf(state,filename,changes,synthetic){
+  async function exportMasterOverlayPdf(state,filename,changes,synthetic,statistics){
     if(!window.PDFLib?.PDFDocument)throw new Error('pdf-lib 元件尚未載入。');
     const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');
     const bytes=await r.arrayBuffer(),{PDFDocument,rgb}=window.PDFLib,pdf=await PDFDocument.load(bytes),page=pdf.getPages()[0],pageH=fieldMap.page.height_pt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state);
     const clearRect=b=>page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});
     for(const c of dyn.clears)clearRect(c.bbox);for(const c of dyn.connectorClears||[])clearRect(c.bbox);
     for(const item of changes)clearRect(item.field.bbox);
+    for(const st of (statistics||[])){clearRect(st.rawBbox);if(Math.abs(st.rawBbox[1]-st.bbox[1])>.2)clearRect(st.bbox);}
     for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearRect(b);for(const item of sup)clearRect(unionBbox(item.rawBbox,item.bbox,1));
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
+    for(const st of (statistics||[])){const patch=makeStatisticsPatch(st,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     const drawBridge=item=>{if(!item?.rawBbox||!item?.bbox)return;const rr=item.rawBbox,bb=item.bbox,cx=(rr[0]+rr[2])/2;if(item.bridgeTop!==false&&Math.abs(rr[1]-bb[1])>.5)page.drawLine({start:{x:cx,y:pageH-rr[1]},end:{x:cx,y:pageH-bb[1]},thickness:1,color:rgb(0,0,0)});if(item.bridgeBottom&&Math.abs(rr[3]-bb[3])>.5)page.drawLine({start:{x:cx,y:pageH-bb[3]},end:{x:cx,y:pageH-rr[3]},thickness:1,color:rgb(0,0,0)});};
     for(const item of jobs){drawBridge(item);const patch=makeUniformBoxPatch(item,4,'solid'),img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of sup){drawBridge(item);const patch=makeSupervisorBoxPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const c of dyn.connectors){
+      if(c.kind==='branch'&&Array.isArray(c.children)&&c.children.length){
+        const xs=c.children.map(ch=>ch.to[0]),minX=Math.min(c.from[0],...xs),maxX=Math.max(c.from[0],...xs),my=Number(c.branchY);
+        page.drawLine({start:{x:c.from[0],y:pageH-c.from[1]},end:{x:c.from[0],y:pageH-my},thickness:1,color:rgb(0,0,0)});
+        page.drawLine({start:{x:minX,y:pageH-my},end:{x:maxX,y:pageH-my},thickness:1,color:rgb(0,0,0)});
+        for(const ch of c.children)page.drawLine({start:{x:ch.to[0],y:pageH-my},end:{x:ch.to[0],y:pageH-ch.to[1]},thickness:1,color:rgb(0,0,0)});
+        continue;
+      }
       if(Math.abs(c.from[0]-c.to[0])<2){page.drawLine({start:{x:c.from[0],y:pageH-c.from[1]},end:{x:c.to[0],y:pageH-c.to[1]},thickness:1,color:rgb(0,0,0)});continue;}
       const midY=c.from[1]+Math.max(8,(c.to[1]-c.from[1])/2),points=[[c.from[0],c.from[1]],[c.from[0],midY],[c.to[0],midY],[c.to[0],c.to[1]]];for(let i=1;i<points.length;i++)page.drawLine({start:{x:points[i-1][0],y:pageH-points[i-1][1]},end:{x:points[i][0],y:pageH-points[i][1]},thickness:1,color:rgb(0,0,0)});
     }
@@ -782,23 +853,23 @@
     for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
     const out=await pdf.save({useObjectStreams:false}),blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-    return {mode:'normalized-layout-master-overlay',changed:changes.length+synthetic.length+jobs.length+sup.length+dyn.boxes.length};
+    return {mode:'normalized-layout-master-overlay',changed:changes.length+(statistics||[]).length+synthetic.length+jobs.length+sup.length+dyn.boxes.length};
   }
 
 
   async function exportPdf(state,filename){
     await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的組織區塊編排問題：\n- '+unsupported.join('\n- '));
-    const changes=changedFields(state),synthetic=syntheticItems(state),jobBoxes=fixedJobBoxOverlays(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
-    if(changes.length===0&&synthetic.length===0&&jobBoxes.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
+    const statistics=bottomSummaryGridItems(state),statIds=new Set(statistics.map(x=>x.fieldId)),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId)),synthetic=syntheticItems(state),jobBoxes=fixedJobBoxOverlays(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
+    if(changes.length===0&&statistics.length===0&&synthetic.length===0&&jobBoxes.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};
     }
-    if(window.PDFLib?.PDFDocument)return exportMasterOverlayPdf(state,filename,changes,synthetic);
+    if(window.PDFLib?.PDFDocument)return exportMasterOverlayPdf(state,filename,changes,synthetic,statistics);
     // CDN 暫時無法取得 pdf-lib 時才使用整頁 200 DPI 備援，避免輸出功能完全失效。
     if(!window.jspdf?.jsPDF)throw new Error('PDF 輸出元件尚未載入。');
     const canvas=await renderCanvas(state,{dpi:CONFIG.exportDpi}),mmW=fieldMap.page.width_pt/72*25.4,mmH=fieldMap.page.height_pt/72*25.4,{jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[mmW,mmH],compress:true});pdf.addImage(canvas,'PNG',0,0,mmW,mmH,undefined,'FAST');pdf.save(filename);
-    return {mode:'dynamic-raster-fallback',changed:changes.length+synthetic.length+jobBoxes.length+supervisorBoxes.length+dyn.boxes.length};
+    return {mode:'dynamic-raster-fallback',changed:changes.length+statistics.length+synthetic.length+jobBoxes.length+supervisorBoxes.length+dyn.boxes.length};
   }
   api.exportPdf=exportPdf;
 })();

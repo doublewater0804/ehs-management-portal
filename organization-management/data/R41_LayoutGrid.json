@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v17",
-  "description": "v17：固定上層骨架＋共用 Local Grid。彰化/龍德上半區共用 Row A/Row B；固定下一節點可依前一分支實際人員列向下相對位移；同層同類框等高，連線由中心產生。",
+  "schema": "R41-layout-grid-v18",
+  "description": "v18：固定骨架＋Local Grid；龍德儲備主管分支連線由 Connector Engine 單一重畫；定期契約人員採 Bottom Anchor 並縮小；底部統計另由固定 Row Grid 對齊。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -209,7 +209,12 @@
       "fixedSuccessorProfileId": "mailiao-contract",
       "personnelLineOwner": "engine",
       "personWidthPt": 138.0,
-      "successorGapPt": 17.0
+      "successorGapPt": 17.0,
+      "dynamicZone": {
+        "bottomY": 1514.0,
+        "description": "動態人員最後一列底部不得進入定期契約人員安全間距。"
+      },
+      "personHeightPt": 126.0
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -607,17 +612,25 @@
       "profileId": "mailiao-contract",
       "kind": "raw",
       "anchorBbox": [
-        974.05,
-        1420.55,
-        1107.28,
-        1578.1
+        978.665,
+        1532.0,
+        1102.665,
+        1650.0
       ],
       "centerX": 1040.665,
-      "topY": 1420.55,
-      "bottomY": 1578.1,
-      "source": "v17-relative-fixed-successor",
+      "topY": 1532.0,
+      "bottomY": 1650.0,
+      "source": "v18-bottom-anchor-compact-contract",
       "localGridId": "middle",
-      "relativeFixedNode": true
+      "relativeFixedNode": true,
+      "bottomAnchor": {
+        "enabled": true,
+        "bottomY": 1650.0,
+        "statisticsTopY": 1683.2,
+        "safetyGapPt": 33.2
+      },
+      "compactWidthPt": 124.0,
+      "compactHeightPt": 118.0
     }
   },
   "localGrids": {
@@ -701,5 +714,33 @@
       "personWidthPt": 138.0,
       "description": "彰化＋龍德共用：Row A=478.75 主框；Row B 起為動態/儲備人員列。"
     }
+  },
+  "branchGroups": [
+    {
+      "id": "longde-reserve-to-job-branches",
+      "parentProfileId": "longde-manager",
+      "parentSource": "last-dynamic-or-anchor",
+      "childProfileIds": [
+        "longde-environment",
+        "longde-safety"
+      ],
+      "clearMasterBranch": true,
+      "lineOwner": "engine",
+      "description": "蕭子昭儲備主管下方只保留一條中央主幹＋單一水平母線，再分支至環保高工師、安衛高工師。"
+    }
+  ],
+  "statisticsGrid": {
+    "enabled": true,
+    "rowCenters": {
+      "一級主管": 1697.51,
+      "二級主管": 1726.493,
+      "基層主管": 1753.65,
+      "基層人員": 1782.07,
+      "事務人員": 1813.85,
+      "定期契約人員": 1843.035,
+      "培訓人員": 1871.399,
+      "合計": 1901.508
+    },
+    "description": "底部統計所有小計/合計欄依職務層級共用同一 Row Y；缺值留白，不上移補位。"
   }
 }

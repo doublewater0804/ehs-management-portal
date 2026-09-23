@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v16",
-  "description": "固定組織骨架 X/Y；v16 將中段 Local Grid（使用者藍框區）同層方框高度統一為 126 pt，動態人員框與同層固定編制主框等高；各 Row 保留 18 pt 垂直間距。",
+  "schema": "R41-layout-grid-v17",
+  "description": "v17：固定上層骨架＋共用 Local Grid。彰化/龍德上半區共用 Row A/Row B；固定下一節點可依前一分支實際人員列向下相對位移；同層同類框等高，連線由中心產生。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -15,9 +15,22 @@
       "topY": 478.75,
       "bottomY": 604.75,
       "source": "v10-normalized-anchor",
-      "localGridId": "changhua",
+      "localGridId": "left-upper",
       "fixedSuccessorProfileId": "changhua-health",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "dynamicRowTops": [
+        627.354,
+        771.354,
+        915.354,
+        1059.354,
+        1203.354,
+        1347.354,
+        1491.354
+      ],
+      "dynamicRowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0,
+      "successorGapPt": 18.0
     },
     "changhua-health": {
       "profileId": "changhua-health",
@@ -66,7 +79,9 @@
       "localGridId": "middle",
       "fixedSuccessorProfileId": "longde-health",
       "personnelLineOwner": "engine",
-      "personWidthPt": 138.0
+      "personWidthPt": 138.0,
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "middle-lower-main"
     },
     "longde-health": {
       "profileId": "longde-health",
@@ -107,7 +122,9 @@
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-env-engineer",
       "personnelLineOwner": "engine",
-      "personWidthPt": 138.0
+      "personWidthPt": 138.0,
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "middle-lower-main"
     },
     "xingang-env-engineer": {
       "profileId": "xingang-env-engineer",
@@ -148,7 +165,9 @@
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-health",
       "personnelLineOwner": "engine",
-      "personWidthPt": 138.0
+      "personWidthPt": 138.0,
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "middle-lower-main"
     },
     "xingang-health": {
       "profileId": "xingang-health",
@@ -189,7 +208,8 @@
       "localGridId": "middle",
       "fixedSuccessorProfileId": "mailiao-contract",
       "personnelLineOwner": "engine",
-      "personWidthPt": 138.0
+      "personWidthPt": 138.0,
+      "successorGapPt": 17.0
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -352,7 +372,9 @@
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-fire-high",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "office-lower-main"
     },
     "office-fire-high": {
       "profileId": "office-fire-high",
@@ -384,7 +406,9 @@
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-performance-clerical",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "office-lower-main"
     },
     "office-performance-clerical": {
       "profileId": "office-performance-clerical",
@@ -469,18 +493,33 @@
       "kind": "supervisor",
       "anchorBbox": [
         402.335,
-        478.755,
+        478.75,
         542.335,
-        588.755
+        604.75
       ],
       "centerX": 472.335,
-      "topY": 478.755,
-      "bottomY": 588.755,
-      "source": "v10-normalized-anchor",
-      "localGridId": "manager",
+      "topY": 478.75,
+      "bottomY": 604.75,
+      "source": "v17-left-upper-shared-grid",
+      "localGridId": "left-upper",
       "collisionExemptProfileIds": [
         "longde-lead-support"
-      ]
+      ],
+      "reserveRowTop": 627.354,
+      "reserveHeightPt": 126.0,
+      "reserveWidthPt": 138.0,
+      "reserveCenterX": 472.335,
+      "dynamicRowTops": [
+        771.354,
+        915.354,
+        1059.354,
+        1203.354,
+        1347.354,
+        1491.354
+      ],
+      "dynamicRowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "xingang-manager": {
       "profileId": "xingang-manager",
@@ -545,7 +584,9 @@
       "source": "v15-office-main-row-alignment",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-taipei-safety",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "successorGapPt": 18.0,
+      "successorSyncGroup": "office-lower-main"
     },
     "longde-lead-support": {
       "profileId": "longde-lead-support",
@@ -574,8 +615,9 @@
       "centerX": 1040.665,
       "topY": 1420.55,
       "bottomY": 1578.1,
-      "source": "master-raw-anchor",
-      "localGridId": "middle"
+      "source": "v17-relative-fixed-successor",
+      "localGridId": "middle",
+      "relativeFixedNode": true
     }
   },
   "localGrids": {
@@ -590,7 +632,9 @@
         1389.0,
         1516.0
       ],
-      "rowStep": 127.0
+      "rowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "middle": {
       "rowTops": [
@@ -607,14 +651,15 @@
     "office": {
       "rowTops": [
         769.794,
-        916.0,
-        1036.0,
-        1156.0,
-        1276.0,
-        1396.0,
-        1516.0
+        913.794,
+        1057.794,
+        1201.794,
+        1345.794,
+        1489.794
       ],
-      "rowStep": 120.0
+      "rowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "manager": {
       "rowTops": [
@@ -627,7 +672,9 @@
         1353.0,
         1480.0
       ],
-      "rowStep": 127.0
+      "rowStep": 127.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "executive": {
       "rowTops": [
@@ -638,6 +685,21 @@
         858.0
       ],
       "rowStep": 127.0
+    },
+    "left-upper": {
+      "rowTops": [
+        627.354,
+        771.354,
+        915.354,
+        1059.354,
+        1203.354,
+        1347.354,
+        1491.354
+      ],
+      "rowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0,
+      "description": "彰化＋龍德共用：Row A=478.75 主框；Row B 起為動態/儲備人員列。"
     }
   }
 }

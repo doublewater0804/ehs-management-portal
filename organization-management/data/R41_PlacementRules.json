@@ -1,5 +1,5 @@
 {
-  "schema": "R41-placement-v5-anchored-grid",
+  "schema": "R41-placement-v6-uniform-row-height",
   "policy": {
     "description": "固定組織骨架 X/Y 鎖定；各主要區塊使用 Local Grid 對齊動態人員；只有實際存在的下一框才畫連線，輸出前一次完成全頁 Preflight。",
     "levelOrder": [
@@ -88,7 +88,7 @@
     "overflowMode": "warn-only-single-page",
     "overflowMessage": "本區人員已超出目前單頁可編排容量（碰觸底部統計表），請調整編制版面。",
     "coordinateMode": "fixed-anchor-xy-local-grid-person-rows",
-    "layoutRule": "固定組織/業務/轄區及編制主框採固定 X/Y；第一位正式符合者留在主框；第2位起與不符合者固定在該欄中心 X，依職務層級、到職年月排序後放入所屬 Local Grid 的共同 Row Y。",
+    "layoutRule": "固定組織/業務/轄區及編制主框採固定 X/Y；第一位正式符合者留在主框；第2位起與不符合者固定在該欄中心 X，依 Local Grid Row Y 排列。同一 Local Grid 內同層框統一高度；中段藍框區動態人員框與固定編制主框皆為 126 pt 高。",
     "capacityRule": "先完成全頁排版，再一次檢查動態框與固定框、動態框彼此、底部安全線及連線穿框；一次回報全部問題，不邊排邊停止。",
     "connectorRule": "僅在實際存在下一個人員框時產生動態連線；沒有子人員則不留懸空垂直線。連線一律由框中心進出。"
   },

@@ -237,9 +237,9 @@
   function dynamicBoxesForProfile(p,count,opts={}){
     const result=[];if(count<=0)return result;
     const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return result;
-    const ge=gridEntry(p)||{};
-    const h=Number(ge.personHeightPt)||Number(st.personHeightPt)||110,w=Number(ge.personWidthPt)||Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
-    const grid=localGridForProfile(p),cx=Number(ge.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
+    const ge=gridEntry(p)||{},grid=localGridForProfile(p);
+    const h=Number(ge.personHeightPt)||Number(grid?.personHeightPt)||Number(st.personHeightPt)||110,w=Number(ge.personWidthPt)||Number(grid?.personWidthPt)||Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
+    const cx=Number(ge.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
     const afterBottom=Number(opts?.afterBox?.[3]);
     const startAfter=(Number.isFinite(afterBottom)?afterBottom:anchor[3])+minStartGap;
     const configuredRows=(Array.isArray(ge.dynamicRowTops)&&ge.dynamicRowTops.length?ge.dynamicRowTops:(grid?.rowTops||[]));

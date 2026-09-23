@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v15",
-  "description": "固定組織骨架 X/Y；固定編制主框不進動態 Grid。v15 針對龍德/新港下層人員列採 profile row override，讓同層人員框上移且對齊；處務室 PSM 人員框與相鄰固定主框同尺寸，台北主管主框與同列統一。",
+  "schema": "R41-layout-grid-v16",
+  "description": "固定組織骨架 X/Y；v16 將中段 Local Grid（使用者藍框區）同層方框高度統一為 126 pt，動態人員框與同層固定編制主框等高；各 Row 保留 18 pt 垂直間距。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -47,7 +47,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "longde-safety": {
       "profileId": "longde-safety",
@@ -64,7 +65,8 @@
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "longde-health",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "personWidthPt": 138.0
     },
     "longde-health": {
       "profileId": "longde-health",
@@ -78,15 +80,16 @@
       "centerX": 539.745,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v15-lower-personnel-row-alignment",
+      "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
         1190.0,
-        1318.0,
-        1446.0,
-        1574.0
+        1334.0,
+        1478.0
       ],
-      "dynamicRowStep": 128.0
+      "dynamicRowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "xingang-env-high": {
       "profileId": "xingang-env-high",
@@ -103,7 +106,8 @@
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-env-engineer",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "personWidthPt": 138.0
     },
     "xingang-env-engineer": {
       "profileId": "xingang-env-engineer",
@@ -117,15 +121,16 @@
       "centerX": 697.19,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v15-lower-personnel-row-alignment",
+      "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
         1190.0,
-        1318.0,
-        1446.0,
-        1574.0
+        1334.0,
+        1478.0
       ],
-      "dynamicRowStep": 128.0
+      "dynamicRowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "xingang-safety": {
       "profileId": "xingang-safety",
@@ -142,7 +147,8 @@
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-health",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "personWidthPt": 138.0
     },
     "xingang-health": {
       "profileId": "xingang-health",
@@ -156,15 +162,16 @@
       "centerX": 858.57,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v15-lower-personnel-row-alignment",
+      "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
         1190.0,
-        1318.0,
-        1446.0,
-        1574.0
+        1334.0,
+        1478.0
       ],
-      "dynamicRowStep": 128.0
+      "dynamicRowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "mailiao-environment": {
       "profileId": "mailiao-environment",
@@ -181,7 +188,8 @@
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "mailiao-contract",
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "personWidthPt": 138.0
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -196,7 +204,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "mailiao-plastic": {
       "profileId": "mailiao-plastic",
@@ -211,7 +220,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "mailiao-direct-chem3": {
       "profileId": "mailiao-direct-chem3",
@@ -226,7 +236,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "mailiao-chem2": {
       "profileId": "mailiao-chem2",
@@ -241,7 +252,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "mailiao-chem1": {
       "profileId": "mailiao-chem1",
@@ -256,7 +268,8 @@
       "topY": 769.794,
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
-      "localGridId": "middle"
+      "localGridId": "middle",
+      "personWidthPt": 138.0
     },
     "office-environment": {
       "profileId": "office-environment",
@@ -582,13 +595,14 @@
     "middle": {
       "rowTops": [
         922.0,
-        1042.0,
-        1162.0,
-        1282.0,
-        1402.0,
-        1522.0
+        1066.0,
+        1210.0,
+        1354.0,
+        1498.0
       ],
-      "rowStep": 120.0
+      "rowStep": 144.0,
+      "personHeightPt": 126.0,
+      "personWidthPt": 138.0
     },
     "office": {
       "rowTops": [

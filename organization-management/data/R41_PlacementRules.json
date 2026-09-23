@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v5-anchored-grid",
   "policy": {
-    "description": "固定組織骨架鎖定 X/Y 錨點；主管、編制主框使用固定座標；動態人員固定 X，只沿 Y 軸向下排列。",
+    "description": "固定組織骨架鎖定 X/Y；動態人員固定 X、沿 Y 向下排列；PDF 容量以實際框線碰撞與底部安全線判斷。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -80,12 +80,14 @@
       "connectorClearHalfWidthPt": 4,
       "minFontPt": 10,
       "fixedObstacleGapPt": 14,
-      "columnCollisionPadPt": 0
+      "columnCollisionPadPt": 0,
+      "actualCollisionPadPt": 2
     },
     "overflowMode": "warn-only-single-page",
-    "overflowMessage": "本區人員已超出目前單頁可編排容量（碰觸下一固定區塊或底部統計表），請調整編制版面。",
+    "overflowMessage": "本區人員已超出目前單頁可編排容量（碰觸底部統計表），請調整編制版面。",
     "coordinateMode": "fixed-anchor-xy-dynamic-person-y",
-    "layoutRule": "固定組織/業務/轄區及編制主框採固定 X/Y；第一位正式符合者留在主編制框；第2位起與不符合者固定在同一欄中心 X，依職務層級、到職年月排序後沿 Y 軸向下排列。"
+    "layoutRule": "固定組織/業務/轄區及編制主框採固定 X/Y；第一位正式符合者留在主編制框；第2位起與不符合者固定在同一欄中心 X，依職務層級、到職年月排序後沿 Y 軸向下排列。",
+    "capacityRule": "不再以鄰近固定框的 Y 座標預先截斷；先排版，再以實際矩形交疊檢查固定框／動態框，僅真正碰撞才阻止輸出。"
   },
   "profiles": [
     {

@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v11',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v11',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v11',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v12',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v12',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v12',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -214,15 +214,12 @@
   }
   function horizontalOverlap(a,b,pad=0){return !!a&&!!b&&Math.min(a[2]+pad,b[2]+pad)>Math.max(a[0]-pad,b[0]-pad);}
   function profileDynamicBottomLimit(p){
-    const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return Number(placement?.policy?.dynamicBottomLimitPt)||1655;
-    const w=Number(st.personWidthPt)||138,cx=(anchor[0]+anchor[2])/2,col=[cx-w/2,anchor[3],cx+w/2,anchor[3]+1];
-    let limit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
-    const obstacleGap=Number(st.fixedObstacleGapPt)||14;
-    for(const q of placement?.profiles||[]){
-      if(q.id===p.id)continue;const qb=profileAnchorBox(q);if(!qb||qb[1]<=anchor[3]+1)continue;
-      if(horizontalOverlap(col,qb,Number(st.columnCollisionPadPt)||3))limit=Math.min(limit,qb[1]-obstacleGap);
-    }
-    return limit;
+    // v12: 動態人員的垂直容量先以真正的單頁安全底線為準。
+    // 不再因「下方存在另一個固定框」就預先截斷可用高度；
+    // 真正是否碰撞改由 unsupportedChanges() 以實際矩形交疊判斷。
+    const g=gridEntry(p),explicit=Number(g?.dynamicZone?.bottomY);
+    if(Number.isFinite(explicit)&&explicit>0)return explicit;
+    return Number(placement?.policy?.dynamicBottomLimitPt)||1655;
   }
   api.getProfileDynamicBottomLimit=profileDynamicBottomLimit;
   function nodeBoxForSlot(slotId){return nodeBoxForSlotRaw(slotId);}
@@ -544,10 +541,35 @@
   }
   api.borderOverrides=borderOverrides;
 
+  function rectOverlap(a,b,pad=0){
+    if(!a||!b)return false;
+    return Math.min(a[2]-pad,b[2]-pad)>Math.max(a[0]+pad,b[0]+pad)
+      && Math.min(a[3]-pad,b[3]-pad)>Math.max(a[1]+pad,b[1]+pad);
+  }
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
-    for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);}
-    const dyn=dynamicLayout(state),msg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';for(const b of dyn.boxes){const limit=Number(b.limitY||placement?.policy?.dynamicBottomLimitPt||1655);if(!b.bbox||b.bbox[1]<0||b.bbox[3]>limit)out.push(`「${b.person.name}」${msg}`);}
+    for(const s of activeStaff(state)){
+      const p=getProfileForStaff(s);
+      if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);
+    }
+    const dyn=dynamicLayout(state),pageLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
+    const fixed=[];
+    for(const q of placement?.profiles||[]){
+      const qb=profileAnchorBox(q);if(qb)fixed.push({profile:q,bbox:qb,label:profileRegionLabel(q)||q.targetRole||q.supervisorRole||q.id});
+    }
+    const collisionPad=Number(layoutStyle().actualCollisionPadPt)||2;
+    const overflowMsg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';
+    for(const b of dyn.boxes){
+      if(!b.bbox||b.bbox[1]<0||b.bbox[3]>pageLimit){out.push(`「${b.person.name}」${overflowMsg}`);continue;}
+      // 只在「實際矩形重疊」時判定撞到固定框；左右相鄰欄位不再誤判。
+      const hit=fixed.find(x=>x.profile.id!==b.profileId&&rectOverlap(b.bbox,x.bbox,collisionPad));
+      if(hit)out.push(`「${b.person.name}」的人員框會與固定區塊「${hit.label}」重疊，請調整該區版面。`);
+    }
+    // 動態人員彼此也不可重疊（不同 profile 但剛好共用同一欄時）。
+    for(let i=0;i<dyn.boxes.length;i++)for(let j=i+1;j<dyn.boxes.length;j++){
+      const a=dyn.boxes[i],b=dyn.boxes[j];
+      if(a.profileId!==b.profileId&&rectOverlap(a.bbox,b.bbox,collisionPad))out.push(`「${a.person.name}」與「${b.person.name}」的人員框會互相重疊，請調整該區版面。`);
+    }
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;

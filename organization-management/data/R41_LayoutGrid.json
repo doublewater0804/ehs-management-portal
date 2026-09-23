@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v11",
-  "description": "固定組織骨架使用固定 X/Y 錨點；動態人員固定 X、只沿 Y 軸往下排列。",
+  "schema": "R41-layout-grid-v12",
+  "description": "固定組織骨架使用固定 X/Y 錨點；動態人員固定 X、沿 Y 軸排列；容量以實際矩形碰撞判斷，避免相鄰欄位誤判。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",

@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v13",
-  "description": "固定組織骨架 X/Y 鎖定；每個主要區塊採 Local Grid。動態人員固定欄中心 X，依共同 Row Y 對齊；只有實際存在的下一框才產生連線。",
+  "schema": "R41-layout-grid-v14",
+  "description": "固定組織骨架 X/Y；固定編制主框不進動態 Grid。動態人員固定欄中心 X、依 Local Grid Row Y 排列；主編制框以下人員連線由單一 Connector Engine 接管，先清除 Master 舊人員線再依實際框重畫。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -16,21 +16,22 @@
       "bottomY": 604.75,
       "source": "v10-normalized-anchor",
       "localGridId": "changhua",
-      "fixedSuccessorProfileId": "changhua-health"
+      "fixedSuccessorProfileId": "changhua-health",
+      "personnelLineOwner": "engine"
     },
     "changhua-health": {
       "profileId": "changhua-health",
       "kind": "job",
       "anchorBbox": [
-        125.915,
+        127.845,
         769.794,
-        263.915,
+        265.845,
         895.794
       ],
-      "centerX": 194.915,
+      "centerX": 196.845,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "changhua"
     },
     "longde-environment": {
@@ -62,21 +63,22 @@
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
-      "fixedSuccessorProfileId": "longde-health"
+      "fixedSuccessorProfileId": "longde-health",
+      "personnelLineOwner": "engine"
     },
     "longde-health": {
       "profileId": "longde-health",
       "kind": "job",
       "anchorBbox": [
-        474.52,
+        470.745,
         1046.59,
-        612.52,
+        608.745,
         1172.59
       ],
-      "centerX": 543.52,
+      "centerX": 539.745,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "middle"
     },
     "xingang-env-high": {
@@ -93,21 +95,22 @@
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
-      "fixedSuccessorProfileId": "xingang-env-engineer"
+      "fixedSuccessorProfileId": "xingang-env-engineer",
+      "personnelLineOwner": "engine"
     },
     "xingang-env-engineer": {
       "profileId": "xingang-env-engineer",
       "kind": "job",
       "anchorBbox": [
-        630.745,
-        931.781,
-        768.745,
-        1057.781
+        628.19,
+        1046.59,
+        766.19,
+        1172.59
       ],
-      "centerX": 699.745,
-      "topY": 931.781,
-      "bottomY": 1057.781,
-      "source": "v10-normalized-anchor",
+      "centerX": 697.19,
+      "topY": 1046.59,
+      "bottomY": 1172.59,
+      "source": "v14-fixed-main-grid",
       "localGridId": "middle"
     },
     "xingang-safety": {
@@ -124,21 +127,22 @@
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
-      "fixedSuccessorProfileId": "xingang-health"
+      "fixedSuccessorProfileId": "xingang-health",
+      "personnelLineOwner": "engine"
     },
     "xingang-health": {
       "profileId": "xingang-health",
       "kind": "job",
       "anchorBbox": [
-        792.0,
+        789.57,
         1046.59,
-        930.0,
+        927.57,
         1172.59
       ],
-      "centerX": 861.0,
+      "centerX": 858.57,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "middle"
     },
     "mailiao-environment": {
@@ -155,7 +159,8 @@
       "bottomY": 895.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
-      "fixedSuccessorProfileId": "mailiao-contract"
+      "fixedSuccessorProfileId": "mailiao-contract",
+      "personnelLineOwner": "engine"
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -245,7 +250,10 @@
       "topY": 582.116,
       "bottomY": 708.116,
       "source": "v10-normalized-anchor",
-      "localGridId": "office"
+      "localGridId": "office",
+      "clearTailBelowAnchor": true,
+      "clearTailToY": 758.0,
+      "personnelLineOwner": "engine"
     },
     "office-health": {
       "profileId": "office-health",
@@ -260,7 +268,10 @@
       "topY": 582.116,
       "bottomY": 708.116,
       "source": "v10-normalized-anchor",
-      "localGridId": "office"
+      "localGridId": "office",
+      "clearTailBelowAnchor": true,
+      "clearTailToY": 758.0,
+      "personnelLineOwner": "engine"
     },
     "office-psm": {
       "profileId": "office-psm",
@@ -291,21 +302,22 @@
       "bottomY": 708.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
-      "fixedSuccessorProfileId": "office-fire-high"
+      "fixedSuccessorProfileId": "office-fire-high",
+      "personnelLineOwner": "engine"
     },
     "office-fire-high": {
       "profileId": "office-fire-high",
       "kind": "job",
       "anchorBbox": [
-        2391.325,
+        2392.615,
         769.794,
-        2529.325,
+        2530.615,
         895.794
       ],
-      "centerX": 2460.325,
+      "centerX": 2461.615,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
     "office-performance-safety": {
@@ -322,36 +334,37 @@
       "bottomY": 708.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
-      "fixedSuccessorProfileId": "office-performance-clerical"
+      "fixedSuccessorProfileId": "office-performance-clerical",
+      "personnelLineOwner": "engine"
     },
     "office-performance-clerical": {
       "profileId": "office-performance-clerical",
       "kind": "job",
       "anchorBbox": [
-        2533.395,
+        2535.335,
         769.794,
-        2671.395,
+        2673.335,
         895.794
       ],
-      "centerX": 2602.395,
+      "centerX": 2604.335,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
     "office-taipei-safety": {
       "profileId": "office-taipei-safety",
       "kind": "job",
       "anchorBbox": [
-        2676.745,
+        2682.73,
         769.794,
-        2814.745,
+        2820.73,
         895.794
       ],
-      "centerX": 2745.745,
+      "centerX": 2751.73,
       "topY": 769.794,
       "bottomY": 895.794,
-      "source": "v10-normalized-anchor",
+      "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
     "exec-president": {
@@ -482,7 +495,8 @@
       "bottomY": 692.14,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
-      "fixedSuccessorProfileId": "office-taipei-safety"
+      "fixedSuccessorProfileId": "office-taipei-safety",
+      "personnelLineOwner": "engine"
     },
     "longde-lead-support": {
       "profileId": "longde-lead-support",

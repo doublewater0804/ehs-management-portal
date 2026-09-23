@@ -1,0 +1,468 @@
+{
+  "schema": "R41-layout-grid-v11",
+  "description": "固定組織骨架使用固定 X/Y 錨點；動態人員固定 X、只沿 Y 軸往下排列。",
+  "profiles": {
+    "changhua-safety": {
+      "profileId": "changhua-safety",
+      "kind": "job",
+      "anchorBbox": [
+        127.845,
+        478.75,
+        265.845,
+        604.75
+      ],
+      "centerX": 196.845,
+      "topY": 478.75,
+      "bottomY": 604.75,
+      "source": "v10-normalized-anchor"
+    },
+    "changhua-health": {
+      "profileId": "changhua-health",
+      "kind": "job",
+      "anchorBbox": [
+        125.915,
+        769.794,
+        263.915,
+        895.794
+      ],
+      "centerX": 194.915,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "longde-environment": {
+      "profileId": "longde-environment",
+      "kind": "job",
+      "anchorBbox": [
+        319.575,
+        769.794,
+        457.575,
+        895.794
+      ],
+      "centerX": 388.575,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "longde-safety": {
+      "profileId": "longde-safety",
+      "kind": "job",
+      "anchorBbox": [
+        470.745,
+        769.794,
+        608.745,
+        895.794
+      ],
+      "centerX": 539.745,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "longde-health": {
+      "profileId": "longde-health",
+      "kind": "job",
+      "anchorBbox": [
+        474.52,
+        1046.59,
+        612.52,
+        1172.59
+      ],
+      "centerX": 543.52,
+      "topY": 1046.59,
+      "bottomY": 1172.59,
+      "source": "v10-normalized-anchor"
+    },
+    "xingang-env-high": {
+      "profileId": "xingang-env-high",
+      "kind": "job",
+      "anchorBbox": [
+        628.19,
+        769.794,
+        766.19,
+        895.794
+      ],
+      "centerX": 697.19,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "xingang-env-engineer": {
+      "profileId": "xingang-env-engineer",
+      "kind": "job",
+      "anchorBbox": [
+        630.745,
+        931.781,
+        768.745,
+        1057.781
+      ],
+      "centerX": 699.745,
+      "topY": 931.781,
+      "bottomY": 1057.781,
+      "source": "v10-normalized-anchor"
+    },
+    "xingang-safety": {
+      "profileId": "xingang-safety",
+      "kind": "job",
+      "anchorBbox": [
+        789.57,
+        769.794,
+        927.57,
+        895.794
+      ],
+      "centerX": 858.57,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "xingang-health": {
+      "profileId": "xingang-health",
+      "kind": "job",
+      "anchorBbox": [
+        792.0,
+        1046.59,
+        930.0,
+        1172.59
+      ],
+      "centerX": 861.0,
+      "topY": 1046.59,
+      "bottomY": 1172.59,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-environment": {
+      "profileId": "mailiao-environment",
+      "kind": "job",
+      "anchorBbox": [
+        971.77,
+        769.794,
+        1109.77,
+        895.794
+      ],
+      "centerX": 1040.77,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-health": {
+      "profileId": "mailiao-health",
+      "kind": "job",
+      "anchorBbox": [
+        1132.68,
+        769.794,
+        1270.68,
+        895.794
+      ],
+      "centerX": 1201.68,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-plastic": {
+      "profileId": "mailiao-plastic",
+      "kind": "job",
+      "anchorBbox": [
+        1287.965,
+        769.794,
+        1425.965,
+        895.794
+      ],
+      "centerX": 1356.965,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-direct-chem3": {
+      "profileId": "mailiao-direct-chem3",
+      "kind": "job",
+      "anchorBbox": [
+        1474.46,
+        769.794,
+        1612.46,
+        895.794
+      ],
+      "centerX": 1543.46,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-chem2": {
+      "profileId": "mailiao-chem2",
+      "kind": "job",
+      "anchorBbox": [
+        1662.405,
+        769.794,
+        1800.405,
+        895.794
+      ],
+      "centerX": 1731.405,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-chem1": {
+      "profileId": "mailiao-chem1",
+      "kind": "job",
+      "anchorBbox": [
+        1818.585,
+        769.794,
+        1956.585,
+        895.794
+      ],
+      "centerX": 1887.585,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "office-environment": {
+      "profileId": "office-environment",
+      "kind": "job",
+      "anchorBbox": [
+        1960.215,
+        582.116,
+        2098.215,
+        708.116
+      ],
+      "centerX": 2029.215,
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v10-normalized-anchor"
+    },
+    "office-health": {
+      "profileId": "office-health",
+      "kind": "job",
+      "anchorBbox": [
+        2104.0,
+        582.116,
+        2242.0,
+        708.116
+      ],
+      "centerX": 2173.0,
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v10-normalized-anchor"
+    },
+    "office-psm": {
+      "profileId": "office-psm",
+      "kind": "job",
+      "anchorBbox": [
+        2248.37,
+        582.116,
+        2386.37,
+        708.116
+      ],
+      "centerX": 2317.37,
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v10-normalized-anchor"
+    },
+    "office-fire-engineer": {
+      "profileId": "office-fire-engineer",
+      "kind": "job",
+      "anchorBbox": [
+        2392.615,
+        582.116,
+        2530.615,
+        708.116
+      ],
+      "centerX": 2461.615,
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v10-normalized-anchor"
+    },
+    "office-fire-high": {
+      "profileId": "office-fire-high",
+      "kind": "job",
+      "anchorBbox": [
+        2391.325,
+        769.794,
+        2529.325,
+        895.794
+      ],
+      "centerX": 2460.325,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "office-performance-safety": {
+      "profileId": "office-performance-safety",
+      "kind": "job",
+      "anchorBbox": [
+        2535.335,
+        582.116,
+        2673.335,
+        708.116
+      ],
+      "centerX": 2604.335,
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v10-normalized-anchor"
+    },
+    "office-performance-clerical": {
+      "profileId": "office-performance-clerical",
+      "kind": "job",
+      "anchorBbox": [
+        2533.395,
+        769.794,
+        2671.395,
+        895.794
+      ],
+      "centerX": 2602.395,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "office-taipei-safety": {
+      "profileId": "office-taipei-safety",
+      "kind": "job",
+      "anchorBbox": [
+        2676.745,
+        769.794,
+        2814.745,
+        895.794
+      ],
+      "centerX": 2745.745,
+      "topY": 769.794,
+      "bottomY": 895.794,
+      "source": "v10-normalized-anchor"
+    },
+    "exec-president": {
+      "profileId": "exec-president",
+      "kind": "supervisor",
+      "anchorBbox": [
+        1466.93,
+        107.197,
+        1679.53,
+        206.41
+      ],
+      "centerX": 1573.23,
+      "topY": 107.197,
+      "bottomY": 206.41,
+      "source": "v10-normalized-anchor"
+    },
+    "exec-safety-vp": {
+      "profileId": "exec-safety-vp",
+      "kind": "supervisor",
+      "anchorBbox": [
+        1076.76,
+        212.59,
+        1258.18,
+        324.34
+      ],
+      "centerX": 1167.47,
+      "topY": 212.59,
+      "bottomY": 324.34,
+      "source": "v10-normalized-anchor"
+    },
+    "exec-env-vp": {
+      "profileId": "exec-env-vp",
+      "kind": "supervisor",
+      "anchorBbox": [
+        2301.11,
+        213.16,
+        2468.35,
+        324.91
+      ],
+      "centerX": 2384.73,
+      "topY": 213.16,
+      "bottomY": 324.91,
+      "source": "v10-normalized-anchor"
+    },
+    "longde-manager": {
+      "profileId": "longde-manager",
+      "kind": "supervisor",
+      "anchorBbox": [
+        402.335,
+        478.755,
+        542.335,
+        588.755
+      ],
+      "centerX": 472.335,
+      "topY": 478.755,
+      "bottomY": 588.755,
+      "source": "v10-normalized-anchor"
+    },
+    "xingang-manager": {
+      "profileId": "xingang-manager",
+      "kind": "supervisor",
+      "anchorBbox": [
+        711.51,
+        476.89,
+        851.51,
+        586.89
+      ],
+      "centerX": 781.51,
+      "topY": 476.89,
+      "bottomY": 586.89,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-env-manager": {
+      "profileId": "mailiao-env-manager",
+      "kind": "supervisor",
+      "anchorBbox": [
+        973.8,
+        472.0,
+        1113.8,
+        582.0
+      ],
+      "centerX": 1043.8,
+      "topY": 472,
+      "bottomY": 582,
+      "source": "v10-normalized-anchor"
+    },
+    "mailiao-safety-manager": {
+      "profileId": "mailiao-safety-manager",
+      "kind": "supervisor",
+      "anchorBbox": [
+        1507.09,
+        465.81,
+        1647.09,
+        575.81
+      ],
+      "centerX": 1577.09,
+      "topY": 465.81,
+      "bottomY": 575.81,
+      "source": "v10-normalized-anchor"
+    },
+    "office-taipei-manager": {
+      "profileId": "office-taipei-manager",
+      "kind": "supervisor",
+      "anchorBbox": [
+        2681.73,
+        582.14,
+        2821.73,
+        692.14
+      ],
+      "centerX": 2751.73,
+      "topY": 582.14,
+      "bottomY": 692.14,
+      "source": "v10-normalized-anchor"
+    },
+    "longde-lead-support": {
+      "profileId": "longde-lead-support",
+      "kind": "raw",
+      "anchorBbox": [
+        403.59,
+        591.42,
+        541.07,
+        704.1
+      ],
+      "centerX": 472.33,
+      "topY": 591.42,
+      "bottomY": 704.1,
+      "source": "master-raw-anchor"
+    },
+    "mailiao-contract": {
+      "profileId": "mailiao-contract",
+      "kind": "raw",
+      "anchorBbox": [
+        974.05,
+        1420.55,
+        1107.28,
+        1578.1
+      ],
+      "centerX": 1040.665,
+      "topY": 1420.55,
+      "bottomY": 1578.1,
+      "source": "master-raw-anchor"
+    }
+  }
+}

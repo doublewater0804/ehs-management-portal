@@ -5,8 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v10',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v10',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v11',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v11',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v11',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -17,7 +18,7 @@
   const api = { ready:false, error:'', CONFIG };
   window.EHSMasterPdf = api;
 
-  let fieldMap=null, snapshot=null, bindings=null, semantic=null, placement=null, masterImage=null;
+  let fieldMap=null, snapshot=null, bindings=null, semantic=null, placement=null, layoutGrid=null, masterImage=null;
   let fieldsById=new Map(), parentByFieldId=new Map(), nodesById=new Map(), initPromise=null;
 
   function jsonFetch(url){
@@ -29,9 +30,9 @@
   function init(){
     if(initPromise)return initPromise;
     initPromise=Promise.all([
-      jsonFetch(CONFIG.fieldMapUrl),jsonFetch(CONFIG.snapshotUrl),jsonFetch(CONFIG.bindingsUrl),jsonFetch(CONFIG.semanticUrl),jsonFetch(CONFIG.placementUrl),loadImage(CONFIG.masterImageUrl)
-    ]).then(([fm,ss,bd,se,pl,img])=>{
-      fieldMap=fm;snapshot=ss.fields||ss;bindings=bd.bindings||bd;semantic=se;placement=pl;masterImage=img;
+      jsonFetch(CONFIG.fieldMapUrl),jsonFetch(CONFIG.snapshotUrl),jsonFetch(CONFIG.bindingsUrl),jsonFetch(CONFIG.semanticUrl),jsonFetch(CONFIG.placementUrl),jsonFetch(CONFIG.layoutGridUrl),loadImage(CONFIG.masterImageUrl)
+    ]).then(([fm,ss,bd,se,pl,lg,img])=>{
+      fieldMap=fm;snapshot=ss.fields||ss;bindings=bd.bindings||bd;semantic=se;placement=pl;layoutGrid=lg;masterImage=img;
       fieldsById=new Map();parentByFieldId=new Map();nodesById=new Map((fieldMap.nodes||[]).map(n=>[n.node_id,n]));
       for(const node of fieldMap.nodes||[]){for(const f of node.lines||[]){fieldsById.set(f.field_id,f);parentByFieldId.set(f.field_id,node.bbox||null);}}
       for(const f of fieldMap.special_fields||[]){fieldsById.set(f.field_id,f);parentByFieldId.set(f.field_id,null);}
@@ -195,50 +196,51 @@
   function resizeBoxAroundCenter(b,w,h,topOverride=null){
     if(!b)return null;const cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2,y0=topOverride==null?cy-h/2:topOverride;return [cx-w/2,y0,cx+w/2,y0+h];
   }
-  function clusterValues(values,tol){
-    const arr=[...values].filter(Number.isFinite).sort((a,b)=>a-b),groups=[];
-    for(const v of arr){const g=groups[groups.length-1];if(!g||v-g[g.length-1]>tol)groups.push([v]);else g.push(v);}
-    return groups.map(g=>g.reduce((a,b)=>a+b,0)/g.length);
-  }
-  let layoutRowsCache=null;
-  function layoutRows(){
-    if(layoutRowsCache)return layoutRowsCache;const st=layoutStyle(),tol=Number(st.rowClusterTolerancePt)||18,target=[],person=[];
-    for(const p of placement?.profiles||[]){
-      if((p.targetSlots||[]).length===1){const b=nodeBoxForSlotRaw(p.targetSlots[0]);if(b&&!isSupervisorProfile(p)&&p.staffingFieldId)target.push(b[1]);}
-      for(const sid of p.otherSlots||[]){const b=nodeBoxForSlotRaw(sid);if(b)person.push(b[1]);}
-    }
-    layoutRowsCache={target:clusterValues(target,tol),person:clusterValues(person,tol)};return layoutRowsCache;
-  }
-  function snapToRow(y,kind){const rows=layoutRows()[kind]||[];if(!rows.length)return y;let best=rows[0],d=Math.abs(y-best);for(const r of rows){const nd=Math.abs(y-r);if(nd<d){best=r;d=nd;}}return best;}
   function nodeBoxForSlotRaw(slotId){const sm=getSlotMeta(slotId),node=sm?nodesById.get(sm.parentNodeId):null;return node?.bbox?node.bbox.slice():null;}
-  function standardPersonBox(raw){const st=layoutStyle(),w=Number(st.personWidthPt)||138,h=Number(st.personHeightPt)||110;return resizeBoxAroundCenter(raw,w,h,snapToRow(raw[1],'person'));}
-  function standardJobBox(raw){const st=layoutStyle(),w=Number(st.jobWidthPt)||138,h=Number(st.jobHeightPt)||126;return resizeBoxAroundCenter(raw,w,h,snapToRow(raw[1],'target'));}
-  function standardSupervisorBox(raw,role){if(!raw)return null;if(!['組長','副組長'].includes(normalizeKey(role)))return raw.slice();const st=layoutStyle(),w=Number(st.supervisorWidthPt)||138,h=Number(st.supervisorHeightPt)||100;return resizeBoxAroundCenter(raw,w,h,raw[1]);}
-
-  function profileAnchorBox(p){const raw=nodeBoxForSlotRaw((p?.targetSlots||[])[0]);if(!raw)return null;if(isSupervisorProfile(p))return standardSupervisorBox(raw,p.supervisorRole);if(p?.staffingFieldId&&(p.targetSlots||[]).length===1)return standardJobBox(raw);return raw.slice();}
-
+  function gridEntry(profileOrId){const id=typeof profileOrId==='string'?profileOrId:profileOrId?.id;return id?layoutGrid?.profiles?.[id]||null:null;}
+  function gridAnchorBox(p){const g=gridEntry(p);if(g?.anchorBbox?.length===4)return g.anchorBbox.slice();const raw=nodeBoxForSlotRaw((p?.targetSlots||[])[0]);return raw?raw.slice():null;}
+  function standardPersonBox(raw){const st=layoutStyle(),w=Number(st.personWidthPt)||138,h=Number(st.personHeightPt)||110;return resizeBoxAroundCenter(raw,w,h);}
+  function standardJobBox(raw){const st=layoutStyle(),w=Number(st.jobWidthPt)||138,h=Number(st.jobHeightPt)||126;return resizeBoxAroundCenter(raw,w,h);}
+  function standardSupervisorBox(raw,role){
+    if(!raw)return null;if(!['組長','副組長'].includes(normalizeKey(role)))return raw.slice();
+    const st=layoutStyle(),w=Number(st.supervisorWidthPt)||140,h=Number(st.supervisorHeightPt)||110;return resizeBoxAroundCenter(raw,w,h);
+  }
+  function profileAnchorBox(p){
+    const g=gridEntry(p);if(g?.anchorBbox?.length===4)return g.anchorBbox.slice();
+    const raw=nodeBoxForSlotRaw((p?.targetSlots||[])[0]);if(!raw)return null;
+    if(isSupervisorProfile(p))return standardSupervisorBox(raw,p.supervisorRole);
+    if(p?.staffingFieldId&&(p.targetSlots||[]).length===1)return standardJobBox(raw);
+    return raw.slice();
+  }
+  function horizontalOverlap(a,b,pad=0){return !!a&&!!b&&Math.min(a[2]+pad,b[2]+pad)>Math.max(a[0]-pad,b[0]-pad);}
+  function profileDynamicBottomLimit(p){
+    const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return Number(placement?.policy?.dynamicBottomLimitPt)||1655;
+    const w=Number(st.personWidthPt)||138,cx=(anchor[0]+anchor[2])/2,col=[cx-w/2,anchor[3],cx+w/2,anchor[3]+1];
+    let limit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
+    const obstacleGap=Number(st.fixedObstacleGapPt)||14;
+    for(const q of placement?.profiles||[]){
+      if(q.id===p.id)continue;const qb=profileAnchorBox(q);if(!qb||qb[1]<=anchor[3]+1)continue;
+      if(horizontalOverlap(col,qb,Number(st.columnCollisionPadPt)||3))limit=Math.min(limit,qb[1]-obstacleGap);
+    }
+    return limit;
+  }
+  api.getProfileDynamicBottomLimit=profileDynamicBottomLimit;
   function nodeBoxForSlot(slotId){return nodeBoxForSlotRaw(slotId);}
   function uniqueBoxesForSlots(slotIds){
     const seen=new Set(),out=[];
     for(const sid of slotIds||[]){const sm=getSlotMeta(sid);if(!sm?.parentNodeId||seen.has(sm.parentNodeId))continue;const node=nodesById.get(sm.parentNodeId);if(node?.bbox){seen.add(sm.parentNodeId);out.push({nodeId:sm.parentNodeId,bbox:node.bbox.slice(),border:node.border||'dashed'});}}
     return out.sort((a,b)=>a.bbox[1]-b.bbox[1]||a.bbox[0]-b.bbox[0]);
   }
-  function reserveBaselineBox(person){
-    if(supervisorRoleOf(person)!=='儲備主管')return null;const b=bindings?.[person?.name];if(!b?.slotId)return null;const raw=nodeBoxForSlotRaw(b.slotId);if(!raw)return null;const st=layoutStyle(),bbox=resizeBoxAroundCenter(raw,Number(st.personWidthPt)||138,Number(st.personHeightPt)||110);return {raw,bbox};
-  }
   function dynamicBoxesForProfile(p,count){
-    if(count<=0)return [];
-    const st=layoutStyle(),legacy=uniqueBoxesForSlots(p.otherSlots||[]),rawAnchor=nodeBoxForSlotRaw((p.targetSlots||[])[0]),anchor=profileAnchorBox(p);
-    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,defaultGap=Number(st.personGapPt)||22,minGap=Number(st.personMinGapPt)||10;
-    const firstRaw=legacy[0]?.bbox||rawAnchor||[0,0,w,h],firstStd=legacy[0]?standardPersonBox(firstRaw):null;
-    const baseX=(firstStd?.[0]??((firstRaw[0]+firstRaw[2])/2-w/2));
-    const candidateY=firstStd?.[1]??((anchor?.[3]||rawAnchor?.[3]||0)+defaultGap),baseY=Math.max(candidateY,(anchor?.[3]||0)+defaultGap);
-    const bottomLimit=Number(placement?.policy?.dynamicBottomLimitPt)||1655;
+    const result=[];if(count<=0)return result;
+    const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return result;
+    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,defaultGap=Number(st.personGapPt)||18,minGap=Number(st.personMinGapPt)||8;
+    const cx=(anchor[0]+anchor[2])/2,baseX=cx-w/2,baseY=anchor[3]+defaultGap,limitY=profileDynamicBottomLimit(p);
     let gap=defaultGap;
-    if(count>1){const maxGap=(bottomLimit-baseY-count*h)/(count-1);if(Number.isFinite(maxGap))gap=Math.max(minGap,Math.min(defaultGap,maxGap));}
-    const step=h+gap,boxes=[];
-    for(let i=0;i<count;i++)boxes.push([baseX,baseY+i*step,baseX+w,baseY+i*step+h]);
-    return boxes;
+    if(count>1){const maxGap=(limitY-baseY-count*h)/(count-1);if(Number.isFinite(maxGap))gap=Math.max(minGap,Math.min(defaultGap,maxGap));}
+    const step=h+gap;
+    for(let i=0;i<count;i++)result.push([baseX,baseY+i*step,baseX+w,baseY+i*step+h]);
+    return result;
   }
 
   function effectiveStaff(state){
@@ -258,12 +260,11 @@
       let ti=0;
       for(const person of matching.slice(0,targetSlots.length)){const slot=targetSlots[ti++];person.pdfSlotId=slot;person.__desiredBorder='solid';person.__placementProfileId=p.id;}
       const secondary=[...matching.slice(targetSlots.length).map(x=>({person:x,border:'solid'})),...other.map(x=>({person:x,border:'dashed'}))].sort((a,b)=>sortPeople(a.person,b.person));
-      const normalBoxes=dynamicBoxesForProfile(p,secondary.length);let normalIndex=0;
+      const reserveFixed=(p.reserveSlotId&&secondary.length&&supervisorRoleOf(secondary[0].person)==='儲備主管')?standardPersonBox(nodeBoxForSlotRaw(p.reserveSlotId)):null;
+      const dynamicCount=secondary.length-(reserveFixed?1:0),normalBoxes=dynamicBoxesForProfile(p,dynamicCount);let di=0;
       secondary.forEach((x,i)=>{
-        let bbox=null,sourceBox=null,preserveConnector=false;
-        const reserve=reserveBaselineBox(x.person);
-        if(reserve){bbox=reserve.bbox;sourceBox=reserve.raw;preserveConnector=true;}else{bbox=normalBoxes[normalIndex++];}
-        x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox,border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i,sourceBox,preserveConnector};
+        const fixedReserve=!!reserveFixed&&i===0,bbox=fixedReserve?reserveFixed:(normalBoxes[di++]||null);
+        x.person.__placementProfileId=p.id;x.person.__desiredBorder=x.border;x.person.__dynamicBox={bbox,border:x.border,profileId:p.id,group:profileGroup(p),regionLabel:[x.person.unit,x.person.business,x.person.jurisdiction].filter(Boolean).join(' → '),order:i,limitY:fixedReserve?bbox?.[3]:profileDynamicBottomLimit(p),fixedReserve,sourceSlotId:fixedReserve?p.reserveSlotId:''};
       });
     }
     return source;
@@ -448,19 +449,24 @@
 
   function dynamicLayout(state){
     const eff=effectiveStaff(state),dirty=dirtyProfileIds(state),profileById=new Map((placement.profiles||[]).map(p=>[p.id,p])),boxes=[],clears=[],connectors=[],connectorClears=[];
-    const half=Number(layoutStyle().connectorClearHalfWidthPt)||3.5;
+    const half=Number(layoutStyle().connectorClearHalfWidthPt)||4;
     for(const pid of dirty){
       const p=profileById.get(pid);if(!p)continue;
       const legacy=uniqueBoxesForSlots(p.otherSlots||[]),anchor=profileAnchorBox(p),people=eff.filter(s=>s.status!=='inactive'&&s.__dynamicBox?.profileId===pid).sort((a,b)=>(a.__dynamicBox.order||0)-(b.__dynamicBox.order||0));
-      if(legacy.length){
-        const x0=Math.min(...legacy.map(x=>x.bbox[0]))-5,x1=Math.max(...legacy.map(x=>x.bbox[2]))+5,y1=Math.max(...legacy.map(x=>x.bbox[3]))+5,y0=(nodeBoxForSlotRaw((p.targetSlots||[])[0])?.[3]??Math.min(...legacy.map(x=>x.bbox[1])))-2;
-        clears.push({profileId:pid,bbox:[x0,y0,x1,y1]});
-      }
-      for(const person of people){if(person.__dynamicBox?.sourceBox){const r=person.__dynamicBox.sourceBox;clears.push({profileId:pid,bbox:[r[0]-3,r[1]-3,r[2]+3,r[3]+3]});}}
+      const reserveLegacy=p.reserveSlotId?uniqueBoxesForSlots([p.reserveSlotId]):[];
+      // 舊人員框逐一清除，避免大面積抹除相鄰固定組織線。
+      for(const item of [...legacy,...reserveLegacy]){const r=item.bbox;clears.push({profileId:pid,bbox:[r[0]-4,r[1]-4,r[2]+4,r[3]+4]});}
+      // 清除原本同欄的垂直連線，再以單一中心線重畫。
+      const rawAnchor=nodeBoxForSlotRaw((p.targetSlots||[])[0]);
+      const legacySorted=[...legacy,...reserveLegacy].sort((a,b)=>a.bbox[1]-b.bbox[1]);
+      let prevY=rawAnchor?.[3]??anchor?.[3]??0;
+      const cx=anchor?(anchor[0]+anchor[2])/2:0;
+      for(const item of legacySorted){const top=item.bbox[1],bottom=item.bbox[3];connectorClears.push({bbox:[cx-half,Math.min(prevY,top)-2,cx+half,Math.max(prevY,top)+2]});prevY=bottom;}
       let prev=anchor;
       for(const person of people){
-        const box=person.__dynamicBox.bbox,cx=(box[0]+box[2])/2;boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel});
-        if(prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],ty=box[1];connectors.push({profileId:pid,from:[fx,fy],to:[cx,ty]});if(Math.abs(fx-cx)<2)connectorClears.push({bbox:[fx-half,Math.min(fy,ty),fx+half,Math.max(fy,ty)]});}
+        const box=person.__dynamicBox?.bbox;if(!box)continue;const pcx=(box[0]+box[2])/2;
+        boxes.push({person,bbox:box,border:person.__dynamicBox.border,profileId:pid,regionLabel:person.__dynamicBox.regionLabel,limitY:person.__dynamicBox.limitY});
+        if(prev){const fx=(prev[0]+prev[2])/2,fy=prev[3],ty=box[1];connectors.push({profileId:pid,from:[fx,fy],to:[pcx,ty]});connectorClears.push({bbox:[fx-half,Math.min(fy,ty)-2,fx+half,Math.max(fy,ty)+2]});}
         prev=box;
       }
     }
@@ -488,11 +494,10 @@
       const formal=eff.filter(s=>profileMatches(p,s)&&isFormalProfileMatch(p,s)).sort(sortPeople),person=formal[0]||null;
       let planned=1;if(p.staffingFieldId){planned=Number(planMap(state)[p.staffingFieldId]??1)||0;}else if(cfg&&cfg.planned!=null){planned=Math.max(0,Number(cfg.planned)||0);}const current=formal.length;
       let lines=[];
-      if(cfg?.fixedLines?.length){lines=[...cfg.fixedLines,`計${planned}人(${current})`];}
+      if(cfg?.fixedLines?.length){lines=[...cfg.fixedLines,`計${planned}人(${current})`];if(person){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}}
       else{lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);if(!lines.length)lines=[p.supervisorRole||p.targetRole,`計${planned}人(${current})`];}
-      const binding=findBindingBySlot(sid);
-      if(person&&!binding){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
-      out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox:standardSupervisorBox(node.bbox,p.supervisorRole),lines,person,planned,current,role:p.supervisorRole});
+      const g=gridEntry(p),bbox=g?.anchorBbox?.length===4?g.anchorBbox.slice():standardSupervisorBox(node.bbox,p.supervisorRole);
+      out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox,lines,person,planned,current,role:p.supervisorRole});
     }
     return out;
   }
@@ -505,9 +510,9 @@
     if(!placement?.policy?.layoutNormalization)return [];
     const vals=currentFieldValues(state),eff=effectiveStaff(state).filter(s=>s&&s.status!=='inactive'),out=[];
     for(const p of placement?.profiles||[]){
-      if(isSupervisorProfile(p)||!p.staffingFieldId||(p.targetSlots||[]).length!==1)continue;
+      if(isSupervisorProfile(p)||p.suppressFixedOverlay||!p.staffingFieldId||(p.targetSlots||[]).length!==1)continue;
       const sid=p.targetSlots[0],sm=getSlotMeta(sid),node=sm?nodesById.get(sm.parentNodeId):null;if(!node?.bbox)continue;
-      const raw=node.bbox.slice(),bbox=standardJobBox(raw),lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);
+      const raw=node.bbox.slice(),g=gridEntry(p),bbox=g?.anchorBbox?.length===4?g.anchorBbox.slice():standardJobBox(raw),lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);
       const person=eff.find(s=>s.pdfSlotId===sid)||null,binding=findBindingBySlot(sid);
       if(person&&!binding){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}
       out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBbox:unionBbox(raw,bbox,4),lines,person});
@@ -542,7 +547,7 @@
   function unsupportedChanges(state){
     const out=[];hydrateStaff(state?.staff||[]);
     for(const s of activeStaff(state)){const p=getProfileForStaff(s);if(!p)out.push(`「${s.name}」尚未對應固定組織區塊（${[s.unit,s.business,s.jurisdiction,s.targetRole,s.supervisorRole&&s.supervisorRole!=='無'?`主管角色:${s.supervisorRole}`:''].filter(Boolean).join('／')}）`);}
-    const dyn=dynamicLayout(state),msg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';for(const b of dyn.boxes){if(!b.bbox||b.bbox[1]<0||b.bbox[3]>(Number(placement?.policy?.dynamicBottomLimitPt)||1655))out.push(`「${b.person.name}」${msg}`);}
+    const dyn=dynamicLayout(state),msg=placement?.policy?.overflowMessage||'本區人數已超出單頁可編排容量，請調整組織版型。';for(const b of dyn.boxes){const limit=Number(b.limitY||placement?.policy?.dynamicBottomLimitPt||1655);if(!b.bbox||b.bbox[1]<0||b.bbox[3]>limit)out.push(`「${b.person.name}」${msg}`);}
     return [...new Set(out)];
   }
   api.unsupportedChanges=unsupportedChanges;
@@ -590,7 +595,7 @@
     ctx.fillText(text,((x0+x1)/2)*scale,((y0+y1)/2)*scale);ctx.restore();
   }
 
-  function wrapTextChars(text,maxChars=9){const chars=[...String(text||'')],out=[];for(let i=0;i<chars.length;i+=maxChars)out.push(chars.slice(i,i+maxChars).join(''));return out.slice(0,2);}
+  function wrapTextChars(text,maxChars=9){const chars=[...String(text||'')],out=[];for(let i=0;i<chars.length;i+=maxChars)out.push(chars.slice(i,i+maxChars).join(''));return out.length?out:[''];}
   function drawDynamicBoxCanvas(ctx,item,scale){
     const person=item.person||{},lines=[person.title||'',person.name||'',person.education||'',person.joinMonth||''].filter(Boolean);drawUniformBoxCanvas(ctx,{...item,lines},scale,item.border||'solid');
   }

@@ -1,7 +1,7 @@
 {
-  "schema": "R41-placement-v4-supervisor-role",
+  "schema": "R41-placement-v5-anchored-grid",
   "policy": {
-    "description": "固定組織/業務/轄區不動；主管以「隸屬單位＋主管角色」優先歸屬，正式主管為實線、儲備主管為虛線；一般人員依隸屬單位、業務、轄區、編制目標職務自動編排。",
+    "description": "固定組織骨架鎖定 X/Y 錨點；主管、編制主框使用固定座標；動態人員固定 X，只沿 Y 軸向下排列。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -75,13 +75,17 @@
       "supervisorWidthPt": 140,
       "supervisorHeightPt": 110,
       "rowClusterTolerancePt": 18,
-      "personGapPt": 22,
-      "personMinGapPt": 10,
-      "connectorClearHalfWidthPt": 3.5,
-      "minFontPt": 9
+      "personGapPt": 18,
+      "personMinGapPt": 8,
+      "connectorClearHalfWidthPt": 4,
+      "minFontPt": 10,
+      "fixedObstacleGapPt": 14,
+      "columnCollisionPadPt": 0
     },
     "overflowMode": "warn-only-single-page",
-    "overflowMessage": "本區人數已超出單頁可編排容量，請調整組織版型。"
+    "overflowMessage": "本區人員已超出目前單頁可編排容量（碰觸下一固定區塊或底部統計表），請調整編制版面。",
+    "coordinateMode": "fixed-anchor-xy-dynamic-person-y",
+    "layoutRule": "固定組織/業務/轄區及編制主框採固定 X/Y；第一位正式符合者留在主編制框；第2位起與不符合者固定在同一欄中心 X，依職務層級、到職年月排序後沿 Y 軸向下排列。"
   },
   "profiles": [
     {
@@ -190,7 +194,8 @@
       ],
       "otherSlots": [],
       "staffingFieldId": "node_014_組長_line_02",
-      "supervisorRole": "組長"
+      "supervisorRole": "組長",
+      "reserveSlotId": "node_026_安衛高工師::p01"
     },
     {
       "id": "longde-lead-support",
@@ -201,7 +206,8 @@
       "targetSlots": [
         "node_026_安衛高工師::p01"
       ],
-      "otherSlots": []
+      "otherSlots": [],
+      "suppressFixedOverlay": true
     },
     {
       "id": "longde-environment",

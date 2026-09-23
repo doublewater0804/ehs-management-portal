@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v14",
-  "description": "固定組織骨架 X/Y；固定編制主框不進動態 Grid。動態人員固定欄中心 X、依 Local Grid Row Y 排列；主編制框以下人員連線由單一 Connector Engine 接管，先清除 Master 舊人員線再依實際框重畫。",
+  "schema": "R41-layout-grid-v15",
+  "description": "固定組織骨架 X/Y；固定編制主框不進動態 Grid。v15 針對龍德/新港下層人員列採 profile row override，讓同層人員框上移且對齊；處務室 PSM 人員框與相鄰固定主框同尺寸，台北主管主框與同列統一。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -78,8 +78,15 @@
       "centerX": 539.745,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v14-fixed-main-grid",
-      "localGridId": "middle"
+      "source": "v15-lower-personnel-row-alignment",
+      "localGridId": "middle",
+      "dynamicRowTops": [
+        1190.0,
+        1318.0,
+        1446.0,
+        1574.0
+      ],
+      "dynamicRowStep": 128.0
     },
     "xingang-env-high": {
       "profileId": "xingang-env-high",
@@ -110,8 +117,15 @@
       "centerX": 697.19,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v14-fixed-main-grid",
-      "localGridId": "middle"
+      "source": "v15-lower-personnel-row-alignment",
+      "localGridId": "middle",
+      "dynamicRowTops": [
+        1190.0,
+        1318.0,
+        1446.0,
+        1574.0
+      ],
+      "dynamicRowStep": 128.0
     },
     "xingang-safety": {
       "profileId": "xingang-safety",
@@ -142,8 +156,15 @@
       "centerX": 858.57,
       "topY": 1046.59,
       "bottomY": 1172.59,
-      "source": "v14-fixed-main-grid",
-      "localGridId": "middle"
+      "source": "v15-lower-personnel-row-alignment",
+      "localGridId": "middle",
+      "dynamicRowTops": [
+        1190.0,
+        1318.0,
+        1446.0,
+        1574.0
+      ],
+      "dynamicRowStep": 128.0
     },
     "mailiao-environment": {
       "profileId": "mailiao-environment",
@@ -285,8 +306,23 @@
       "centerX": 2317.37,
       "topY": 582.116,
       "bottomY": 708.116,
-      "source": "v10-normalized-anchor",
-      "localGridId": "office"
+      "source": "v15-office-row-alignment",
+      "localGridId": "office",
+      "dynamicRowTops": [
+        769.794,
+        916.0,
+        1044.0,
+        1172.0,
+        1300.0,
+        1428.0,
+        1556.0
+      ],
+      "dynamicRowStep": 128.0,
+      "personWidthPt": 138.0,
+      "personHeightPt": 126.0,
+      "clearTailBelowAnchor": true,
+      "clearTailToY": 769.794,
+      "personnelLineOwner": "engine"
     },
     "office-fire-engineer": {
       "profileId": "office-fire-engineer",
@@ -485,15 +521,15 @@
       "profileId": "office-taipei-manager",
       "kind": "supervisor",
       "anchorBbox": [
-        2681.73,
-        582.14,
-        2821.73,
-        692.14
+        2682.73,
+        582.116,
+        2820.73,
+        708.116
       ],
       "centerX": 2751.73,
-      "topY": 582.14,
-      "bottomY": 692.14,
-      "source": "v10-normalized-anchor",
+      "topY": 582.116,
+      "bottomY": 708.116,
+      "source": "v15-office-main-row-alignment",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-taipei-safety",
       "personnelLineOwner": "engine"

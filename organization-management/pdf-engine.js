@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v14',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v14',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v14',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v15',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v15',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v15',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -237,12 +237,14 @@
   function dynamicBoxesForProfile(p,count,opts={}){
     const result=[];if(count<=0)return result;
     const st=layoutStyle(),anchor=profileAnchorBox(p);if(!anchor)return result;
-    const h=Number(st.personHeightPt)||110,w=Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
-    const grid=localGridForProfile(p),cx=Number(gridEntry(p)?.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
+    const ge=gridEntry(p)||{};
+    const h=Number(ge.personHeightPt)||Number(st.personHeightPt)||110,w=Number(ge.personWidthPt)||Number(st.personWidthPt)||138,minStartGap=Number(st.localGridMinStartGapPt)||14;
+    const grid=localGridForProfile(p),cx=Number(ge.centerX)||((anchor[0]+anchor[2])/2),baseX=cx-w/2;
     const afterBottom=Number(opts?.afterBox?.[3]);
     const startAfter=(Number.isFinite(afterBottom)?afterBottom:anchor[3])+minStartGap;
-    let rows=(grid?.rowTops||[]).map(Number).filter(Number.isFinite).filter(y=>y+0.01>=startAfter);
-    const step=Number(grid?.rowStep)||Math.max(h+18,128);
+    const configuredRows=(Array.isArray(ge.dynamicRowTops)&&ge.dynamicRowTops.length?ge.dynamicRowTops:(grid?.rowTops||[]));
+    let rows=configuredRows.map(Number).filter(Number.isFinite).filter(y=>y+0.01>=startAfter);
+    const step=Number(ge.dynamicRowStep)||Number(grid?.rowStep)||Math.max(h+18,128);
     let y=rows.length?rows[rows.length-1]:Math.max(startAfter,anchor[3]+18);
     while(rows.length<count){y=(rows.length?rows[rows.length-1]:y)+step;rows.push(y);}
     for(let i=0;i<count;i++){const top=rows[i];result.push([baseX,top,baseX+w,top+h]);}

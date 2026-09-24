@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260923-v19',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260923-v19',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260923-v19',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260924-v20',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260924-v20',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260924-v20',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -569,8 +569,10 @@
       if(!parentBox||childBoxes.length<2)continue;
       const pcx=rawCenter(parentBox),pBottom=parentBox[3],childTop=Math.min(...childBoxes.map(x=>x.bbox[1])),childXs=childBoxes.map(x=>rawCenter(x.bbox));
       if(childTop<=pBottom+2)continue;
-      const branchY=pBottom+(childTop-pBottom)/2,minX=Math.min(pcx,...childXs),maxX=Math.max(pcx,...childXs);
-      if(bg.clearMasterBranch!==false)connectorClears.push({bbox:[minX-10,pBottom+.6,maxX+10,childTop-.6]});
+      const branchY=pBottom+(childTop-pBottom)/2;
+      // v20：清除整個舊分支走廊，不只中心線範圍。避免父框下方殘留 L 型／短折線。
+      const minX=Math.min(parentBox[0],...childBoxes.map(x=>x.bbox[0])),maxX=Math.max(parentBox[2],...childBoxes.map(x=>x.bbox[2]));
+      if(bg.clearMasterBranch!==false)connectorClears.push({bbox:[minX-8,pBottom+.6,maxX+8,childTop-.6]});
       connectors.push({kind:'branch',profileId:parent.id,from:[pcx,pBottom],branchY,children:childBoxes.map(x=>({profileId:x.profile.id,to:[rawCenter(x.bbox),x.bbox[1]]}))});
     }
     return {boxes,clears,connectors,connectorClears};
@@ -623,19 +625,45 @@
       const bridgeTop=!incomingManaged,bridgeBottom=!!g.preserveBottomBridge;
       const clearBboxes=[];clearBboxes.push([raw[0]-.8,raw[1]-.8,raw[2]+.8,raw[3]+.8]);
       if(Math.abs(raw[0]-bbox[0])>.2||Math.abs(raw[1]-bbox[1])>.2||Math.abs(raw[2]-bbox[2])>.2||Math.abs(raw[3]-bbox[3])>.2)clearBboxes.push([bbox[0]-.8,bbox[1]-.8,bbox[2]+.8,bbox[3]+.8]);
-      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBboxes,lines,person,bridgeTop,bridgeBottom});
+      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBboxes,lines,person,bridgeTop,bridgeBottom,compactText:Number(g.compactHeightPt)>0});
     }
     return out;
   }
   api.getFixedJobBoxOverlays=fixedJobBoxOverlays;
+
+  // v20: moved / resized fixed nodes (notably 定期契約人員) own their text completely.
+  // Their raw-position field patches must not be redrawn after the original node has been cleared.
+  function fixedOverlayFieldIds(jobBoxes=[],supervisorBoxes=[]){
+    const ids=new Set();
+    for(const item of [...(jobBoxes||[]),...(supervisorBoxes||[])]){
+      const node=nodesById.get(item?.nodeId);
+      for(const f of (node?.lines||[]))if(f?.field_id)ids.add(f.field_id);
+    }
+    return ids;
+  }
+
+  function statisticsMasterLines(){
+    return layoutGrid?.statisticsGrid?.redrawMasterLines===false?[]:(layoutGrid?.statisticsGrid?.masterLines||[]);
+  }
+  function drawStatisticsGridCanvas(ctx,scale){
+    const lines=statisticsMasterLines();if(!lines.length)return;
+    ctx.save();ctx.strokeStyle='#000';ctx.setLineDash([]);
+    for(const l of lines){
+      ctx.lineWidth=Math.max(1,(Number(l.width)||.72)*scale);ctx.beginPath();ctx.moveTo(Number(l.x1)*scale,Number(l.y1)*scale);ctx.lineTo(Number(l.x2)*scale,Number(l.y2)*scale);ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   function drawUniformBoxCanvas(ctx,item,scale,border='solid'){
     const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,st=layoutStyle(),minFont=(Number(st.minFontPt)||9)*scale;
     ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,w,h);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.15*scale);ctx.setLineDash(border==='dashed'?[5*scale,3*scale]:[]);ctx.strokeRect(x0*scale,y0*scale,w,h);ctx.setLineDash([]);ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
     const rawLines=(item.lines||[]).filter(x=>String(x||'').trim()!=='');const lines=[];
     for(const txt of rawLines){const chunks=wrapTextChars(txt,10);for(const c of chunks)lines.push(c);}
-    const maxLines=Math.max(1,lines.length),lineH=h/(maxLines+1);let fontPx=Math.min(18*scale,lineH*.74);
-    for(let i=0;i<lines.length;i++){let f=fontPx;ctx.font=fontString(f);const maxW=w-10*scale;while(ctx.measureText(lines[i]).width>maxW&&f>minFont){f-=.5*scale;ctx.font=fontString(f);}ctx.fillText(lines[i],x0*scale+w/2,y0*scale+lineH*(i+1));}
+    const maxLines=Math.max(1,lines.length),compact=!!item.compactText;
+    const lineH=compact?(h/Math.max(1,maxLines+.15)):(h/(maxLines+1));
+    const topOffset=compact?Math.max(7*scale,(h-(lineH*(maxLines-1)))/2):lineH;
+    let fontPx=Math.min(18*scale,lineH*(compact ? .86 : .74));
+    for(let i=0;i<lines.length;i++){let f=fontPx;ctx.font=fontString(f);const maxW=w-10*scale;while(ctx.measureText(lines[i]).width>maxW&&f>minFont){f-=.5*scale;ctx.font=fontString(f);}const y=compact?(y0*scale+topOffset+lineH*i):(y0*scale+lineH*(i+1));ctx.fillText(lines[i],x0*scale+w/2,y);}
     ctx.restore();
   }
 
@@ -760,7 +788,7 @@
     const width=Math.round(widthPt*dpi/72),height=Math.round(heightPt*dpi/72),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(masterImage,0,0,width,height);
     if(!opts.masterOnly){
-      const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state),stats=bottomSummaryGridItems(state),statIds=new Set(stats.map(x=>x.fieldId)),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId));
+      const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state),stats=bottomSummaryGridItems(state),statIds=new Set(stats.map(x=>x.fieldId)),fixedIds=fixedOverlayFieldIds(jobs,sup),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId)&&!fixedIds.has(x.fieldId));
       for(const c of dyn.clears)clearCanvasBbox(ctx,c.bbox,scale);for(const c of dyn.connectorClears||[])clearCanvasBbox(ctx,c.bbox,scale);
       for(const st of stats){clearCanvasBbox(ctx,st.rawBbox,scale);if(Math.abs(st.rawBbox[1]-st.bbox[1])>.2)clearCanvasBbox(ctx,st.bbox,scale);}
       for(const item of changes)patchText(ctx,item,scale);for(const st of stats)drawStatisticsCellCanvas(ctx,st,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
@@ -769,6 +797,8 @@
       for(const item of sup){drawBoxBridgeCanvas(ctx,item,scale);drawSupervisorBoxCanvas(ctx,item,scale);}
       for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);
       for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}
+      // v20：所有統計數值與其他 overlay 完成後，最後重畫 Master 統計表格線。
+      if(stats.length)drawStatisticsGridCanvas(ctx,scale);
     }
     return canvas;
   }
@@ -851,6 +881,8 @@
     }
     for(const item of dyn.boxes){const patch=makeDynamicBoxPatch(item,4),img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;page.drawRectangle({x:x0,y:pageH-y1,width:x1-x0,height:y1-y0,borderColor:rgb(0,0,0),borderWidth:1.2});}
+    // v20：統計文字白底清除可能蓋到原格線；最後依 Master 向量線完整重畫。
+    if((statistics||[]).length){for(const l of statisticsMasterLines())page.drawLine({start:{x:Number(l.x1),y:pageH-Number(l.y1)},end:{x:Number(l.x2),y:pageH-Number(l.y2)},thickness:Number(l.width)||.72,color:rgb(0,0,0)});}
     const out=await pdf.save({useObjectStreams:false}),blob=new Blob([out],{type:'application/pdf'});
     if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
     return {mode:'normalized-layout-master-overlay',changed:changes.length+(statistics||[]).length+synthetic.length+jobs.length+sup.length+dyn.boxes.length};
@@ -859,7 +891,7 @@
 
   async function exportPdf(state,filename){
     await init();const unsupported=unsupportedChanges(state);if(unsupported.length)throw new Error('目前資料包含尚未能安全輸出的組織區塊編排問題：\n- '+unsupported.join('\n- '));
-    const statistics=bottomSummaryGridItems(state),statIds=new Set(statistics.map(x=>x.fieldId)),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId)),synthetic=syntheticItems(state),jobBoxes=fixedJobBoxOverlays(state),supervisorBoxes=supervisorBoxOverlays(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
+    const statistics=bottomSummaryGridItems(state),statIds=new Set(statistics.map(x=>x.fieldId)),jobBoxes=fixedJobBoxOverlays(state),supervisorBoxes=supervisorBoxOverlays(state),fixedIds=fixedOverlayFieldIds(jobBoxes,supervisorBoxes),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId)&&!fixedIds.has(x.fieldId)),synthetic=syntheticItems(state),dyn=dynamicLayout(state),borders=borderOverrides(state);
     if(changes.length===0&&statistics.length===0&&synthetic.length===0&&jobBoxes.length===0&&supervisorBoxes.length===0&&dyn.boxes.length===0&&dyn.clears.length===0&&borders.length===0){
       const r=await fetch(CONFIG.masterPdfUrl,{cache:'no-store'});if(!r.ok)throw new Error('Master PDF 載入失敗');const blob=await r.blob();
       if(window.saveAs)saveAs(blob,filename);else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}return {mode:'exact-master',changed:0};

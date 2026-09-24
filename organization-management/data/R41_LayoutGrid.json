@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v19",
-  "description": "v19：固定骨架＋Local Grid；中央同層固定框維持統一盒高／底線；龍德儲備主管分支連線由 Connector Engine 單一重畫；麥寮定期契約人員 Bottom Anchor 再上提並縮小，與底部統計保留更穩定安全距離。",
+  "schema": "R41-layout-grid-v20",
+  "description": "v20：修正紅框殘線／定期契約舊文字重影／底部統計格線被清除；一般四行人員框高度統一縮至 110 pt，定期契約維持 122×106 pt。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -28,7 +28,7 @@
         1491.354
       ],
       "dynamicRowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0,
       "successorGapPt": 18.0
     },
@@ -103,7 +103,7 @@
         1478.0
       ],
       "dynamicRowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "xingang-env-high": {
@@ -146,7 +146,7 @@
         1478.0
       ],
       "dynamicRowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "xingang-safety": {
@@ -189,7 +189,7 @@
         1478.0
       ],
       "dynamicRowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "mailiao-environment": {
@@ -212,9 +212,9 @@
       "successorGapPt": 17.0,
       "dynamicZone": {
         "bottomY": 1480.0,
-        "description": "動態人員最後一列底部不得進入定期契約人員安全間距；v19 再上提，預留較穩定連線與框距。"
+        "description": "v20：動態人員底部不得侵入定期契約框安全區。"
       },
-      "personHeightPt": 126.0
+      "personHeightPt": 110.0
     },
     "mailiao-health": {
       "profileId": "mailiao-health",
@@ -357,7 +357,7 @@
       ],
       "dynamicRowStep": 128.0,
       "personWidthPt": 138.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "clearTailBelowAnchor": true,
       "clearTailToY": 769.794,
       "personnelLineOwner": "engine"
@@ -511,7 +511,7 @@
         "longde-lead-support"
       ],
       "reserveRowTop": 627.354,
-      "reserveHeightPt": 126.0,
+      "reserveHeightPt": 110.0,
       "reserveWidthPt": 138.0,
       "reserveCenterX": 472.335,
       "dynamicRowTops": [
@@ -523,7 +523,7 @@
         1491.354
       ],
       "dynamicRowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "xingang-manager": {
@@ -620,7 +620,7 @@
       "centerX": 1040.665,
       "topY": 1512.0,
       "bottomY": 1618.0,
-      "source": "v19-bottom-anchor-compact-contract",
+      "source": "v20-bottom-anchor-contract-clean-repaint",
       "localGridId": "middle",
       "relativeFixedNode": true,
       "bottomAnchor": {
@@ -646,7 +646,7 @@
         1516.0
       ],
       "rowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "middle": {
@@ -658,7 +658,7 @@
         1498.0
       ],
       "rowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "office": {
@@ -671,7 +671,7 @@
         1489.794
       ],
       "rowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "manager": {
@@ -686,7 +686,7 @@
         1480.0
       ],
       "rowStep": 127.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0
     },
     "executive": {
@@ -710,7 +710,7 @@
         1491.354
       ],
       "rowStep": 144.0,
-      "personHeightPt": 126.0,
+      "personHeightPt": 110.0,
       "personWidthPt": 138.0,
       "description": "彰化＋龍德共用：Row A=478.75 主框；Row B 起為動態/儲備人員列。"
     }
@@ -741,6 +741,177 @@
       "培訓人員": 1871.399,
       "合計": 1901.508
     },
-    "description": "底部統計所有小計/合計欄依職務層級共用同一 Row Y；缺值留白，不上移補位。"
+    "description": "v20：統計文字更新後重新描繪 Master 原始表格線，避免白底清字造成格線缺口。",
+    "redrawMasterLines": true,
+    "masterLines": [
+      {
+        "x1": 2790.91,
+        "y1": 1649.19,
+        "x2": 2791.42,
+        "y2": 1915.256,
+        "width": 1.2
+      },
+      {
+        "x1": 22.445,
+        "y1": 1765.6,
+        "x2": 2959.94,
+        "y2": 1765.6,
+        "width": 0.72
+      },
+      {
+        "x1": 2667.14,
+        "y1": 1648.38,
+        "x2": 2667.14,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 22.777,
+        "y1": 1677.13,
+        "x2": 2959.87,
+        "y2": 1678.95,
+        "width": 0.72
+      },
+      {
+        "x1": 22.21,
+        "y1": 1828.06,
+        "x2": 2959.99,
+        "y2": 1828.06,
+        "width": 0.72
+      },
+      {
+        "x1": 22.104,
+        "y1": 1856.407,
+        "x2": 2960.01,
+        "y2": 1856.407,
+        "width": 0.72
+      },
+      {
+        "x1": 21.88,
+        "y1": 1916.065,
+        "x2": 2960.06,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 2729.0,
+        "y1": 1648.38,
+        "x2": 2729.0,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 935.43,
+        "y1": 1648.63,
+        "x2": 935.43,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 1013.39,
+        "y1": 1649.19,
+        "x2": 1013.39,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 687.93,
+        "y1": 1648.91,
+        "x2": 687.93,
+        "y2": 1915.933,
+        "width": 0.72
+      },
+      {
+        "x1": 615.84,
+        "y1": 1648.91,
+        "x2": 615.84,
+        "y2": 1915.933,
+        "width": 0.72
+      },
+      {
+        "x1": 2959.9,
+        "y1": 1711.84,
+        "x2": 22.647,
+        "y2": 1711.84,
+        "width": 0.72
+      },
+      {
+        "x1": 363.99,
+        "y1": 1648.34,
+        "x2": 363.99,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 289.41,
+        "y1": 1648.88,
+        "x2": 291.44,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 160.75,
+        "y1": 1648.34,
+        "x2": 161.14,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 95.471,
+        "y1": 1648.34,
+        "x2": 95.471,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 22.882,
+        "y1": 1649.19,
+        "x2": 21.88,
+        "y2": 1916.065,
+        "width": 0.72
+      },
+      {
+        "x1": 2959.92,
+        "y1": 1738.77,
+        "x2": 22.546,
+        "y2": 1738.77,
+        "width": 0.72
+      },
+      {
+        "x1": 2959.85,
+        "y1": 1649.19,
+        "x2": 22.882,
+        "y2": 1649.19,
+        "width": 0.72
+      },
+      {
+        "x1": 1051.9,
+        "y1": 1738.77,
+        "x2": 793.28,
+        "y2": 1738.77,
+        "width": 0.72
+      },
+      {
+        "x1": 2959.85,
+        "y1": 1649.19,
+        "x2": 2959.85,
+        "y2": 1915.651,
+        "width": 1.2
+      },
+      {
+        "x1": 22.331,
+        "y1": 1795.83,
+        "x2": 2959.96,
+        "y2": 1795.83,
+        "width": 0.72
+      },
+      {
+        "x1": 2960.04,
+        "y1": 1887.588,
+        "x2": 21.986,
+        "y2": 1887.588,
+        "width": 0.72
+      }
+    ]
   }
 }

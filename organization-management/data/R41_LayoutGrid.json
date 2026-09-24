@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v18",
-  "description": "v18：固定骨架＋Local Grid；龍德儲備主管分支連線由 Connector Engine 單一重畫；定期契約人員採 Bottom Anchor 並縮小；底部統計另由固定 Row Grid 對齊。",
+  "schema": "R41-layout-grid-v19",
+  "description": "v19：固定骨架＋Local Grid；中央同層固定框維持統一盒高／底線；龍德儲備主管分支連線由 Connector Engine 單一重畫；麥寮定期契約人員 Bottom Anchor 再上提並縮小，與底部統計保留更穩定安全距離。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -211,8 +211,8 @@
       "personWidthPt": 138.0,
       "successorGapPt": 17.0,
       "dynamicZone": {
-        "bottomY": 1514.0,
-        "description": "動態人員最後一列底部不得進入定期契約人員安全間距。"
+        "bottomY": 1480.0,
+        "description": "動態人員最後一列底部不得進入定期契約人員安全間距；v19 再上提，預留較穩定連線與框距。"
       },
       "personHeightPt": 126.0
     },
@@ -612,25 +612,25 @@
       "profileId": "mailiao-contract",
       "kind": "raw",
       "anchorBbox": [
-        978.665,
-        1532.0,
-        1102.665,
-        1650.0
+        979.665,
+        1512.0,
+        1101.665,
+        1618.0
       ],
       "centerX": 1040.665,
-      "topY": 1532.0,
-      "bottomY": 1650.0,
-      "source": "v18-bottom-anchor-compact-contract",
+      "topY": 1512.0,
+      "bottomY": 1618.0,
+      "source": "v19-bottom-anchor-compact-contract",
       "localGridId": "middle",
       "relativeFixedNode": true,
       "bottomAnchor": {
         "enabled": true,
-        "bottomY": 1650.0,
+        "bottomY": 1618.0,
         "statisticsTopY": 1683.2,
-        "safetyGapPt": 33.2
+        "safetyGapPt": 65.2
       },
-      "compactWidthPt": 124.0,
-      "compactHeightPt": 118.0
+      "compactWidthPt": 122.0,
+      "compactHeightPt": 106.0
     }
   },
   "localGrids": {

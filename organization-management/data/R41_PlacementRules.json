@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v6-uniform-row-height",
   "policy": {
-    "description": "v18：固定上層骨架＋Local Grid；龍德分支線由單一 Connector Engine 接管；定期契約人員 Bottom Anchor；底部統計固定 Row Grid；全頁 Preflight。",
+    "description": "v19：固定上層骨架＋Local Grid；中央固定職務框採統一盒高；龍德分支線由單一 Connector Engine 接管；麥寮定期契約人員 Bottom Anchor 上提並縮小；底部統計固定 Row Grid；全頁 Preflight。",
     "levelOrder": [
       "經理級",
       "一級主管",

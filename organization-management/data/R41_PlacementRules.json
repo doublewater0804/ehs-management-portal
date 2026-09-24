@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v6-uniform-row-height",
   "policy": {
-    "description": "v20：一般四行人員框統一 110 pt；紅框分支線採完整走廊清除後單一 Connector 重畫；定期契約節點由完整 Fixed Overlay 接管；統計格線最後重描。",
+    "description": "v21：統一一般固定職務框高度為 110 pt；底部統計改以職務名稱/主管角色優先分類，並追加統計欄列 X/Y Grid 對齊。",
     "levelOrder": [
       "經理級",
       "一級主管",
@@ -69,7 +69,7 @@
     "normalizeLayoutAlways": true,
     "layoutBoxStyle": {
       "jobWidthPt": 138,
-      "jobHeightPt": 126,
+      "jobHeightPt": 110,
       "personWidthPt": 138,
       "personHeightPt": 110,
       "supervisorWidthPt": 140,

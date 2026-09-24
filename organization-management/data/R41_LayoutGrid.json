@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v20",
-  "description": "v20：修正紅框殘線／定期契約舊文字重影／底部統計格線被清除；一般四行人員框高度統一縮至 110 pt，定期契約維持 122×106 pt。",
+  "schema": "R41-layout-grid-v21",
+  "description": "v21：固定骨架＋Local Grid；一般固定職務框統一 110 pt 高；底部統計採職務分類優先並以 Row/Column Grid 對齊。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -9,11 +9,11 @@
         127.845,
         478.75,
         265.845,
-        604.75
+        588.75
       ],
       "centerX": 196.845,
       "topY": 478.75,
-      "bottomY": 604.75,
+      "bottomY": 588.75,
       "source": "v10-normalized-anchor",
       "localGridId": "left-upper",
       "fixedSuccessorProfileId": "changhua-health",
@@ -39,11 +39,11 @@
         127.845,
         769.794,
         265.845,
-        895.794
+        879.794
       ],
       "centerX": 196.845,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v14-fixed-main-grid",
       "localGridId": "changhua"
     },
@@ -54,11 +54,11 @@
         319.575,
         769.794,
         457.575,
-        895.794
+        879.794
       ],
       "centerX": 388.575,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -70,11 +70,11 @@
         470.745,
         769.794,
         608.745,
-        895.794
+        879.794
       ],
       "centerX": 539.745,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "longde-health",
@@ -90,11 +90,11 @@
         470.745,
         1046.59,
         608.745,
-        1172.59
+        1156.59
       ],
       "centerX": 539.745,
       "topY": 1046.59,
-      "bottomY": 1172.59,
+      "bottomY": 1156.59,
       "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
@@ -113,11 +113,11 @@
         628.19,
         769.794,
         766.19,
-        895.794
+        879.794
       ],
       "centerX": 697.19,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-env-engineer",
@@ -133,11 +133,11 @@
         628.19,
         1046.59,
         766.19,
-        1172.59
+        1156.59
       ],
       "centerX": 697.19,
       "topY": 1046.59,
-      "bottomY": 1172.59,
+      "bottomY": 1156.59,
       "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
@@ -156,11 +156,11 @@
         789.57,
         769.794,
         927.57,
-        895.794
+        879.794
       ],
       "centerX": 858.57,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "xingang-health",
@@ -176,11 +176,11 @@
         789.57,
         1046.59,
         927.57,
-        1172.59
+        1156.59
       ],
       "centerX": 858.57,
       "topY": 1046.59,
-      "bottomY": 1172.59,
+      "bottomY": 1156.59,
       "source": "v16-uniform-height-blue-zone",
       "localGridId": "middle",
       "dynamicRowTops": [
@@ -199,11 +199,11 @@
         971.77,
         769.794,
         1109.77,
-        895.794
+        879.794
       ],
       "centerX": 1040.77,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "fixedSuccessorProfileId": "mailiao-contract",
@@ -223,11 +223,11 @@
         1132.68,
         769.794,
         1270.68,
-        895.794
+        879.794
       ],
       "centerX": 1201.68,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -239,11 +239,11 @@
         1287.965,
         769.794,
         1425.965,
-        895.794
+        879.794
       ],
       "centerX": 1356.965,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -255,11 +255,11 @@
         1474.46,
         769.794,
         1612.46,
-        895.794
+        879.794
       ],
       "centerX": 1543.46,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -271,11 +271,11 @@
         1662.405,
         769.794,
         1800.405,
-        895.794
+        879.794
       ],
       "centerX": 1731.405,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -287,11 +287,11 @@
         1818.585,
         769.794,
         1956.585,
-        895.794
+        879.794
       ],
       "centerX": 1887.585,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v10-normalized-anchor",
       "localGridId": "middle",
       "personWidthPt": 138.0
@@ -303,11 +303,11 @@
         1960.215,
         582.116,
         2098.215,
-        708.116
+        692.116
       ],
       "centerX": 2029.215,
       "topY": 582.116,
-      "bottomY": 708.116,
+      "bottomY": 692.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "clearTailBelowAnchor": true,
@@ -321,11 +321,11 @@
         2104.0,
         582.116,
         2242.0,
-        708.116
+        692.116
       ],
       "centerX": 2173.0,
       "topY": 582.116,
-      "bottomY": 708.116,
+      "bottomY": 692.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "clearTailBelowAnchor": true,
@@ -339,11 +339,11 @@
         2248.37,
         582.116,
         2386.37,
-        708.116
+        692.116
       ],
       "centerX": 2317.37,
       "topY": 582.116,
-      "bottomY": 708.116,
+      "bottomY": 692.116,
       "source": "v15-office-row-alignment",
       "localGridId": "office",
       "dynamicRowTops": [
@@ -369,11 +369,11 @@
         2392.615,
         582.116,
         2530.615,
-        708.116
+        692.116
       ],
       "centerX": 2461.615,
       "topY": 582.116,
-      "bottomY": 708.116,
+      "bottomY": 692.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-fire-high",
@@ -388,11 +388,11 @@
         2392.615,
         769.794,
         2530.615,
-        895.794
+        879.794
       ],
       "centerX": 2461.615,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
@@ -403,11 +403,11 @@
         2535.335,
         582.116,
         2673.335,
-        708.116
+        692.116
       ],
       "centerX": 2604.335,
       "topY": 582.116,
-      "bottomY": 708.116,
+      "bottomY": 692.116,
       "source": "v10-normalized-anchor",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-performance-clerical",
@@ -422,11 +422,11 @@
         2535.335,
         769.794,
         2673.335,
-        895.794
+        879.794
       ],
       "centerX": 2604.335,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
@@ -437,11 +437,11 @@
         2682.73,
         769.794,
         2820.73,
-        895.794
+        879.794
       ],
       "centerX": 2751.73,
       "topY": 769.794,
-      "bottomY": 895.794,
+      "bottomY": 879.794,
       "source": "v14-fixed-main-grid",
       "localGridId": "office"
     },
@@ -741,7 +741,7 @@
       "培訓人員": 1871.399,
       "合計": 1901.508
     },
-    "description": "v20：統計文字更新後重新描繪 Master 原始表格線，避免白底清字造成格線缺口。",
+    "description": "v21：統計數字依固定 Row Grid + auto-cluster Column Grid 置中；寫字後重畫 Master 原始表格線，避免格線缺口並統一對齊。",
     "redrawMasterLines": true,
     "masterLines": [
       {
@@ -912,6 +912,7 @@
         "y2": 1887.588,
         "width": 0.72
       }
-    ]
+    ],
+    "columnClusterTolerancePt": 20
   }
 }

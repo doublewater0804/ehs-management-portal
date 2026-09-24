@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260924-v20',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260924-v20',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260924-v20',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260924-v21',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260924-v21',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260924-v21',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -42,24 +42,26 @@
   }
   api.init=init;
 
-  function inferSummaryClass(title,fallbackLevel=''){
-    const t=String(title||'').trim();
-    if(t==='定期契約人員')return '定期契約人員';
-    if(t==='培訓人員')return '培訓人員';
-    if(t==='事務人員'||t==='健康助理員')return '事務人員';
+  function inferSummaryClass(title,fallbackLevel='',supervisorRole=''){
+    const t=String(title||'').trim(),role=String(supervisorRole||'').trim(),fallback=String(fallbackLevel||'').trim();
+    if(t==='定期契約人員'||fallback==='定期契約人員')return '定期契約人員';
+    if(t==='培訓人員'||fallback==='培訓人員')return '培訓人員';
+    if(t==='事務人員'||fallback==='事務人員')return '事務人員';
     if(t==='助理工程師')return '基層人員';
-    if(t==='健康管理師')return '一級主管';
+    if(t==='健康助理員')return '基層人員';
+    if(t==='健康管理師')return '基層主管';
     if(t==='處長'||t.includes('副處長')||t==='組長'||t==='副組長'||t.endsWith('組長'))return '一級主管';
+    if(t.includes('資工師'))return '一級主管';
     if(t.includes('高工師'))return '二級主管';
-    if(t.includes('工程師')||t.includes('資工師'))return '基層主管';
+    if(t.includes('工程師'))return '基層主管';
     if(t.includes('管理員'))return '基層人員';
+    if(role==='處長'||role.includes('副處長')||role==='組長'||role==='副組長')return '一級主管';
     const allowed=['經理級','一級主管','二級主管','基層主管','基層人員','事務人員','定期契約人員','培訓人員'];
-    return allowed.includes(fallbackLevel)?fallbackLevel:'基層人員';
+    return allowed.includes(fallback)?fallback:'基層人員';
   }
   api.inferSummaryClass=inferSummaryClass;
   function summaryClassForStaff(s){
-    const allowed=['經理級','一級主管','二級主管','基層主管','基層人員','事務人員','定期契約人員','培訓人員'];
-    return allowed.includes(s?.level)?s.level:inferSummaryClass(s?.title,s?.level);
+    return inferSummaryClass(s?.title,s?.level,s?.supervisorRole);
   }
   api.summaryClassForStaff=summaryClassForStaff;
 
@@ -488,6 +490,25 @@
   }
   api.changedFields=changedFields;
 
+  function statisticsColumnClusters(){
+    const map=semantic?.bottomSummaryFields||{},ids=Object.keys(map);if(!ids.length)return [];
+    const tol=Number(layoutGrid?.statisticsGrid?.columnClusterTolerancePt)||20;
+    const centers=ids.map(fid=>{const field=fieldsById.get(fid);return field?{fid,center:(field.bbox[0]+field.bbox[2])/2}:null;}).filter(Boolean).sort((a,b)=>a.center-b.center);
+    const clusters=[];
+    for(const item of centers){
+      const last=clusters[clusters.length-1];
+      if(!last||Math.abs(item.center-last.max)>tol){clusters.push({items:[item],min:item.center,max:item.center});continue;}
+      last.items.push(item);last.max=item.center;
+    }
+    return clusters.map(c=>({center:c.items.reduce((a,x)=>a+x.center,0)/c.items.length,ids:new Set(c.items.map(x=>x.fid))}));
+  }
+  function statisticsAlignedCenterX(fid,raw){
+    const configured=layoutGrid?.statisticsGrid?.fieldCenters?.[fid];
+    if(Number.isFinite(Number(configured)))return Number(configured);
+    const rawCenter=(raw[0]+raw[2])/2,clusters=statisticsColumnClusters();
+    for(const c of clusters)if(c.ids.has(fid))return c.center;
+    return rawCenter;
+  }
   function bottomSummaryGridItems(state){
     const map=semantic?.bottomSummaryFields||{},ids=Object.keys(map);if(!ids.length)return [];
     const vals=buildValues(state),hasChange=ids.some(fid=>String(vals[fid]??'')!==String(snapshot?.[fid]??''));
@@ -495,8 +516,8 @@
     const configured=layoutGrid?.statisticsGrid?.rowCenters||{};
     return ids.map(fid=>{
       const field=fieldsById.get(fid),meta=map[fid];if(!field||!meta)return null;
-      const raw=field.bbox.slice(),h=raw[3]-raw[1],cy=Number(configured[meta.category]);
-      const centerY=Number.isFinite(cy)?cy:(raw[1]+raw[3])/2,bbox=[raw[0],centerY-h/2,raw[2],centerY+h/2];
+      const raw=field.bbox.slice(),h=raw[3]-raw[1],w=raw[2]-raw[0],cy=Number(configured[meta.category]),cx=statisticsAlignedCenterX(fid,raw);
+      const centerY=Number.isFinite(cy)?cy:(raw[1]+raw[3])/2,bbox=[cx-w/2,centerY-h/2,cx+w/2,centerY+h/2];
       return {fieldId:fid,field,meta,rawBbox:raw,bbox,text:String(vals[fid]??''),old:String(snapshot?.[fid]??'')};
     }).filter(Boolean);
   }
@@ -790,7 +811,7 @@
     if(!opts.masterOnly){
       const scale=width/widthPt,dyn=dynamicLayout(state),jobs=fixedJobBoxOverlays(state),sup=supervisorBoxOverlays(state),stats=bottomSummaryGridItems(state),statIds=new Set(stats.map(x=>x.fieldId)),fixedIds=fixedOverlayFieldIds(jobs,sup),changes=changedFields(state).filter(x=>!statIds.has(x.fieldId)&&!fixedIds.has(x.fieldId));
       for(const c of dyn.clears)clearCanvasBbox(ctx,c.bbox,scale);for(const c of dyn.connectorClears||[])clearCanvasBbox(ctx,c.bbox,scale);
-      for(const st of stats){clearCanvasBbox(ctx,st.rawBbox,scale);if(Math.abs(st.rawBbox[1]-st.bbox[1])>.2)clearCanvasBbox(ctx,st.bbox,scale);}
+      for(const st of stats){clearCanvasBbox(ctx,st.rawBbox,scale);if(st.bbox.some((v,i)=>Math.abs(v-st.rawBbox[i])>.2))clearCanvasBbox(ctx,st.bbox,scale);}
       for(const item of changes)patchText(ctx,item,scale);for(const st of stats)drawStatisticsCellCanvas(ctx,st,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
       for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearCanvasBbox(ctx,b,scale);for(const item of sup)clearCanvasBbox(ctx,unionBbox(item.rawBbox,item.bbox,1),scale);
       for(const item of jobs){drawBoxBridgeCanvas(ctx,item,scale);drawUniformBoxCanvas(ctx,item,scale,'solid');}
@@ -860,7 +881,7 @@
     const clearRect=b=>page.drawRectangle({x:b[0],y:pageH-b[3],width:b[2]-b[0],height:b[3]-b[1],color:rgb(1,1,1),borderWidth:0});
     for(const c of dyn.clears)clearRect(c.bbox);for(const c of dyn.connectorClears||[])clearRect(c.bbox);
     for(const item of changes)clearRect(item.field.bbox);
-    for(const st of (statistics||[])){clearRect(st.rawBbox);if(Math.abs(st.rawBbox[1]-st.bbox[1])>.2)clearRect(st.bbox);}
+    for(const st of (statistics||[])){clearRect(st.rawBbox);if(st.bbox.some((v,i)=>Math.abs(v-st.rawBbox[i])>.2))clearRect(st.bbox);}
     for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearRect(b);for(const item of sup)clearRect(unionBbox(item.rawBbox,item.bbox,1));
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const st of (statistics||[])){const patch=makeStatisticsPatch(st,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}

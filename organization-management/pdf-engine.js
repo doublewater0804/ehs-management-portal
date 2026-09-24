@@ -5,9 +5,9 @@
     fieldMapUrl: 'data/R41_FieldMap.json?v=20260921-final',
     snapshotUrl: 'data/R41_DataSnapshot.json?v=20260921-final',
     bindingsUrl: 'data/R41_StaffBindings.json?v=20260921-final',
-    semanticUrl: 'data/R41_SemanticBindings.json?v=20260924-v21',
-    placementUrl: 'data/R41_PlacementRules.json?v=20260924-v21',
-    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260924-v21',
+    semanticUrl: 'data/R41_SemanticBindings.json?v=20260924-v22',
+    placementUrl: 'data/R41_PlacementRules.json?v=20260924-v22',
+    layoutGridUrl: 'data/R41_LayoutGrid.json?v=20260924-v22',
     masterImageUrl: 'assets/R41_Master_200dpi.png?v=20260921-final',
     masterPdfUrl: 'assets/R41_Master_Template.pdf?v=20260921-final',
     previewDpi: 100,
@@ -623,7 +623,11 @@
       if(cfg?.fixedLines?.length){lines=[...cfg.fixedLines,`計${planned}人(${current})`];if(person){if(person.name)lines.push(person.name);if(person.education)lines.push(person.education);if(person.joinMonth)lines.push(person.joinMonth);}}
       else{lines=(node.lines||[]).slice().sort((a,b)=>(a.bbox?.[1]||0)-(b.bbox?.[1]||0)).map(f=>String(vals[f.field_id]??'')).filter(Boolean);if(!lines.length)lines=[p.supervisorRole||p.targetRole,`計${planned}人(${current})`];}
       const g=gridEntry(p),bbox=effectiveProfileAnchorBox(p,shifts)||standardSupervisorBox(node.bbox,p.supervisorRole);
-      const incomingManaged=(placement?.profiles||[]).some(q=>gridEntry(q)?.fixedSuccessorProfileId===p.id);const bridgeTop=!incomingManaged,bridgeBottom=!!gridEntry(p)?.preserveBottomBridge;out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox,lines,person,planned,current,role:p.supervisorRole,bridgeTop,bridgeBottom});
+      const incomingManaged=(placement?.profiles||[]).some(q=>gridEntry(q)?.fixedSuccessorProfileId===p.id);const bridgeTop=!incomingManaged,bridgeBottom=!!gridEntry(p)?.preserveBottomBridge;
+      const clearBboxes=[[node.bbox[0]-.8,node.bbox[1]-.8,node.bbox[2]+.8,node.bbox[3]+.8]];
+      if(g?.integratedOfficeHeaderNodeId){const hn=nodesById.get(g.integratedOfficeHeaderNodeId);if(hn?.bbox)clearBboxes.push([hn.bbox[0]-.8,hn.bbox[1]-.8,hn.bbox[2]+.8,hn.bbox[3]+.8]);}
+      if(bbox.some((v,i)=>Math.abs(v-node.bbox[i])>.2))clearBboxes.push([bbox[0]-.8,bbox[1]-.8,bbox[2]+.8,bbox[3]+.8]);
+      out.push({profileId:p.id,nodeId,rawBbox:node.bbox.slice(),bbox,clearBboxes,lines,person,planned,current,role:p.supervisorRole,bridgeTop,bridgeBottom,integratedOffice:!!g?.integratedOfficeBox,integratedHeaderHeightPt:Number(g?.integratedHeaderHeightPt)||32,integratedLineStepPt:Number(g?.integratedLineStepPt)||25.5});
     }
     return out;
   }
@@ -645,8 +649,9 @@
       const incomingManaged=(placement?.profiles||[]).some(q=>gridEntry(q)?.fixedSuccessorProfileId===p.id);
       const bridgeTop=!incomingManaged,bridgeBottom=!!g.preserveBottomBridge;
       const clearBboxes=[];clearBboxes.push([raw[0]-.8,raw[1]-.8,raw[2]+.8,raw[3]+.8]);
+      if(g?.integratedOfficeHeaderNodeId){const hn=nodesById.get(g.integratedOfficeHeaderNodeId);if(hn?.bbox)clearBboxes.push([hn.bbox[0]-.8,hn.bbox[1]-.8,hn.bbox[2]+.8,hn.bbox[3]+.8]);}
       if(Math.abs(raw[0]-bbox[0])>.2||Math.abs(raw[1]-bbox[1])>.2||Math.abs(raw[2]-bbox[2])>.2||Math.abs(raw[3]-bbox[3])>.2)clearBboxes.push([bbox[0]-.8,bbox[1]-.8,bbox[2]+.8,bbox[3]+.8]);
-      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBboxes,lines,person,bridgeTop,bridgeBottom,compactText:Number(g.compactHeightPt)>0});
+      out.push({profileId:p.id,nodeId:node.node_id,slotId:sid,rawBbox:raw,bbox,clearBboxes,lines,person,bridgeTop,bridgeBottom,compactText:Number(g.compactHeightPt)>0,integratedOffice:!!g?.integratedOfficeBox,integratedHeaderHeightPt:Number(g?.integratedHeaderHeightPt)||32,integratedLineStepPt:Number(g?.integratedLineStepPt)||25.5});
     }
     return out;
   }
@@ -688,7 +693,17 @@
     ctx.restore();
   }
 
-  function drawSupervisorBoxCanvas(ctx,item,scale){drawUniformBoxCanvas(ctx,item,scale,'solid');}
+  function drawOfficeIntegratedBoxCanvas(ctx,item,scale,border='solid'){
+    const [x0,y0,x1,y1]=item.bbox,w=(x1-x0)*scale,h=(y1-y0)*scale,st=layoutStyle(),minFont=(Number(st.minFontPt)||9)*scale;
+    const headerH=(Number(item.integratedHeaderHeightPt)||32)*scale,step=(Number(item.integratedLineStepPt)||25.5)*scale;
+    ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x0*scale,y0*scale,w,h);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.15*scale);ctx.setLineDash(border==='dashed'?[5*scale,3*scale]:[]);ctx.strokeRect(x0*scale,y0*scale,w,h);ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(x0*scale,y0*scale+headerH);ctx.lineTo(x1*scale,y0*scale+headerH);ctx.stroke();
+    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';const lines=(item.lines||[]).filter(x=>String(x||'').trim()!=='');
+    const draw=(text,y,fontBase=18)=>{let f=fontBase*scale;ctx.font=fontString(f);const maxW=w-10*scale;while(ctx.measureText(String(text)).width>maxW&&f>minFont){f-=.5*scale;ctx.font=fontString(f);}ctx.fillText(String(text),x0*scale+w/2,y);};
+    if(lines.length){draw(lines[0],y0*scale+headerH/2,18);for(let i=1;i<lines.length;i++)draw(lines[i],y0*scale+headerH+(i-.45)*step,18);}
+    ctx.restore();
+  }
+  function drawSupervisorBoxCanvas(ctx,item,scale){if(item?.integratedOffice)return drawOfficeIntegratedBoxCanvas(ctx,item,scale,'solid');drawUniformBoxCanvas(ctx,item,scale,'solid');}
 
 
   function borderOverrides(state){
@@ -813,8 +828,8 @@
       for(const c of dyn.clears)clearCanvasBbox(ctx,c.bbox,scale);for(const c of dyn.connectorClears||[])clearCanvasBbox(ctx,c.bbox,scale);
       for(const st of stats){clearCanvasBbox(ctx,st.rawBbox,scale);if(st.bbox.some((v,i)=>Math.abs(v-st.rawBbox[i])>.2))clearCanvasBbox(ctx,st.bbox,scale);}
       for(const item of changes)patchText(ctx,item,scale);for(const st of stats)drawStatisticsCellCanvas(ctx,st,scale);for(const item of syntheticItems(state))drawSynthetic(ctx,item,scale);
-      for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearCanvasBbox(ctx,b,scale);for(const item of sup)clearCanvasBbox(ctx,unionBbox(item.rawBbox,item.bbox,1),scale);
-      for(const item of jobs){drawBoxBridgeCanvas(ctx,item,scale);drawUniformBoxCanvas(ctx,item,scale,'solid');}
+      for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearCanvasBbox(ctx,b,scale);for(const item of sup){for(const b of (item.clearBboxes||[unionBbox(item.rawBbox,item.bbox,1)]).filter(Boolean))clearCanvasBbox(ctx,b,scale);}
+      for(const item of jobs){drawBoxBridgeCanvas(ctx,item,scale);if(item.integratedOffice)drawOfficeIntegratedBoxCanvas(ctx,item,scale,'solid');else drawUniformBoxCanvas(ctx,item,scale,'solid');}
       for(const item of sup){drawBoxBridgeCanvas(ctx,item,scale);drawSupervisorBoxCanvas(ctx,item,scale);}
       for(const c of dyn.connectors)drawConnectorCanvas(ctx,c,scale);for(const b of dyn.boxes)drawDynamicBoxCanvas(ctx,b,scale);
       for(const b of borderOverrides(state)){const [x0,y0,x1,y1]=b.bbox;ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,1.2*scale);ctx.setLineDash([]);ctx.strokeRect(x0*scale,y0*scale,(x1-x0)*scale,(y1-y0)*scale);ctx.restore();}
@@ -872,7 +887,7 @@
   }
   function makeUniformBoxPatch(item,scale=4,border='solid'){
     const [x0,y0,x1,y1]=item.bbox,w=x1-x0,h=y1-y0,canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(w*scale));canvas.height=Math.max(1,Math.ceil(h*scale));const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,canvas.width,canvas.height);
-    const shifted={...item,bbox:[0,0,w,h]};drawUniformBoxCanvas(ctx,shifted,scale,border);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
+    const shifted={...item,bbox:[0,0,w,h]};if(item.integratedOffice)drawOfficeIntegratedBoxCanvas(ctx,shifted,scale,border);else drawUniformBoxCanvas(ctx,shifted,scale,border);return {canvas,xPt:x0,yTopPt:y0,widthPt:w,heightPt:h};
   }
   async function exportMasterOverlayPdf(state,filename,changes,synthetic,statistics){
     if(!window.PDFLib?.PDFDocument)throw new Error('pdf-lib 元件尚未載入。');
@@ -882,7 +897,7 @@
     for(const c of dyn.clears)clearRect(c.bbox);for(const c of dyn.connectorClears||[])clearRect(c.bbox);
     for(const item of changes)clearRect(item.field.bbox);
     for(const st of (statistics||[])){clearRect(st.rawBbox);if(st.bbox.some((v,i)=>Math.abs(v-st.rawBbox[i])>.2))clearRect(st.bbox);}
-    for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearRect(b);for(const item of sup)clearRect(unionBbox(item.rawBbox,item.bbox,1));
+    for(const item of jobs)for(const b of (item.clearBboxes||[item.clearBbox]).filter(Boolean))clearRect(b);for(const item of sup)for(const b of (item.clearBboxes||[unionBbox(item.rawBbox,item.bbox,1)]).filter(Boolean))clearRect(b);
     for(const item of changes){const patch=makeChangedTextPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const st of (statistics||[])){const patch=makeStatisticsPatch(st,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}
     for(const item of synthetic){const patch=makeSyntheticPatch(item,4);if(!patch)continue;const img=await pdf.embedPng(patch.canvas.toDataURL('image/png'));page.drawImage(img,{x:patch.xPt,y:pageH-patch.yTopPt-patch.heightPt,width:patch.widthPt,height:patch.heightPt});}

@@ -1,7 +1,7 @@
 {
   "schema": "R41-placement-v6-uniform-row-height",
   "policy": {
-    "description": "v21：統一一般固定職務框高度為 110 pt；底部統計改以職務名稱/主管角色優先分類，並追加統計欄列 X/Y Grid 對齊。",
+    "description": "v22：處務室六格依參考截圖整合；其他架構不變。中央下層固定框/人員框共用 Row Grid 對齊；統計分類延續 v21。",
     "levelOrder": [
       "經理級",
       "一級主管",

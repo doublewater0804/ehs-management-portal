@@ -1,6 +1,6 @@
 {
-  "schema": "R41-layout-grid-v21",
-  "description": "v21：固定骨架＋Local Grid；一般固定職務框統一 110 pt 高；底部統計採職務分類優先並以 Row/Column Grid 對齊。",
+  "schema": "R41-layout-grid-v22",
+  "description": "v22：處務室六格依使用者截圖改為單層整合框；其他區域架構不變。中央下層方框採共用 Row Grid 對齊。底部統計延續 v21 分類與 Row/Column Grid。",
   "profiles": {
     "changhua-safety": {
       "profileId": "changhua-safety",
@@ -88,19 +88,19 @@
       "kind": "job",
       "anchorBbox": [
         470.745,
-        1046.59,
+        1066.0,
         608.745,
-        1156.59
+        1176.0
       ],
       "centerX": 539.745,
-      "topY": 1046.59,
-      "bottomY": 1156.59,
-      "source": "v16-uniform-height-blue-zone",
+      "topY": 1066.0,
+      "bottomY": 1176.0,
+      "source": "v22-shared-middle-row-grid",
       "localGridId": "middle",
       "dynamicRowTops": [
-        1190.0,
-        1334.0,
-        1478.0
+        1210.0,
+        1354.0,
+        1498.0
       ],
       "dynamicRowStep": 144.0,
       "personHeightPt": 110.0,
@@ -131,19 +131,19 @@
       "kind": "job",
       "anchorBbox": [
         628.19,
-        1046.59,
+        1066.0,
         766.19,
-        1156.59
+        1176.0
       ],
       "centerX": 697.19,
-      "topY": 1046.59,
-      "bottomY": 1156.59,
-      "source": "v16-uniform-height-blue-zone",
+      "topY": 1066.0,
+      "bottomY": 1176.0,
+      "source": "v22-shared-middle-row-grid",
       "localGridId": "middle",
       "dynamicRowTops": [
-        1190.0,
-        1334.0,
-        1478.0
+        1210.0,
+        1354.0,
+        1498.0
       ],
       "dynamicRowStep": 144.0,
       "personHeightPt": 110.0,
@@ -174,19 +174,19 @@
       "kind": "job",
       "anchorBbox": [
         789.57,
-        1046.59,
+        1066.0,
         927.57,
-        1156.59
+        1176.0
       ],
       "centerX": 858.57,
-      "topY": 1046.59,
-      "bottomY": 1156.59,
-      "source": "v16-uniform-height-blue-zone",
+      "topY": 1066.0,
+      "bottomY": 1176.0,
+      "source": "v22-shared-middle-row-grid",
       "localGridId": "middle",
       "dynamicRowTops": [
-        1190.0,
-        1334.0,
-        1478.0
+        1210.0,
+        1354.0,
+        1498.0
       ],
       "dynamicRowStep": 144.0,
       "personHeightPt": 110.0,
@@ -301,50 +301,58 @@
       "kind": "job",
       "anchorBbox": [
         1960.215,
-        582.116,
+        478.594,
         2098.215,
-        692.116
+        636.994
       ],
       "centerX": 2029.215,
-      "topY": 582.116,
-      "bottomY": 692.116,
-      "source": "v10-normalized-anchor",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "clearTailBelowAnchor": true,
       "clearTailToY": 758.0,
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_015_環保管理",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "office-health": {
       "profileId": "office-health",
       "kind": "job",
       "anchorBbox": [
         2104.0,
-        582.116,
+        478.594,
         2242.0,
-        692.116
+        636.994
       ],
       "centerX": 2173.0,
-      "topY": 582.116,
-      "bottomY": 692.116,
-      "source": "v10-normalized-anchor",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "clearTailBelowAnchor": true,
       "clearTailToY": 758.0,
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_017_健康管理",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "office-psm": {
       "profileId": "office-psm",
       "kind": "job",
       "anchorBbox": [
         2248.37,
-        582.116,
+        478.594,
         2386.37,
-        692.116
+        636.994
       ],
       "centerX": 2317.37,
-      "topY": 582.116,
-      "bottomY": 692.116,
-      "source": "v15-office-row-alignment",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "dynamicRowTops": [
         769.794,
@@ -360,26 +368,34 @@
       "personHeightPt": 110.0,
       "clearTailBelowAnchor": true,
       "clearTailToY": 769.794,
-      "personnelLineOwner": "engine"
+      "personnelLineOwner": "engine",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_018_PSM",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "office-fire-engineer": {
       "profileId": "office-fire-engineer",
       "kind": "job",
       "anchorBbox": [
         2392.615,
-        582.116,
+        478.594,
         2530.615,
-        692.116
+        636.994
       ],
       "centerX": 2461.615,
-      "topY": 582.116,
-      "bottomY": 692.116,
-      "source": "v10-normalized-anchor",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-fire-high",
       "personnelLineOwner": "engine",
       "successorGapPt": 18.0,
-      "successorSyncGroup": "office-lower-main"
+      "successorSyncGroup": "office-lower-main",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_019_消防",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "office-fire-high": {
       "profileId": "office-fire-high",
@@ -401,19 +417,23 @@
       "kind": "job",
       "anchorBbox": [
         2535.335,
-        582.116,
+        478.594,
         2673.335,
-        692.116
+        636.994
       ],
       "centerX": 2604.335,
-      "topY": 582.116,
-      "bottomY": 692.116,
-      "source": "v10-normalized-anchor",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-performance-clerical",
       "personnelLineOwner": "engine",
       "successorGapPt": 18.0,
-      "successorSyncGroup": "office-lower-main"
+      "successorSyncGroup": "office-lower-main",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_016_績效管理",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "office-performance-clerical": {
       "profileId": "office-performance-clerical",
@@ -579,19 +599,23 @@
       "kind": "supervisor",
       "anchorBbox": [
         2682.73,
-        582.116,
+        478.594,
         2820.73,
-        708.116
+        636.994
       ],
       "centerX": 2751.73,
-      "topY": 582.116,
-      "bottomY": 708.116,
-      "source": "v15-office-main-row-alignment",
+      "topY": 478.594,
+      "bottomY": 636.994,
+      "source": "v22-office-integrated-user-reference",
       "localGridId": "office",
       "fixedSuccessorProfileId": "office-taipei-safety",
       "personnelLineOwner": "engine",
       "successorGapPt": 18.0,
-      "successorSyncGroup": "office-lower-main"
+      "successorSyncGroup": "office-lower-main",
+      "integratedOfficeBox": true,
+      "integratedOfficeHeaderNodeId": "node_012_安衛處(台北)",
+      "integratedHeaderHeightPt": 32.0,
+      "integratedLineStepPt": 25.5
     },
     "longde-lead-support": {
       "profileId": "longde-lead-support",

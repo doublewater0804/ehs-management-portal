@@ -149,4 +149,4 @@ backupBtn.onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:
 [...document.querySelectorAll('#overviewPage .filters input,#overviewPage .filters select')].forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',()=>{currentPage=1;renderAll()}));['tYear','tSite','tUnit','tItem','tAppeal'].forEach(id=>document.getElementById(id).onchange=()=>{currentPage=1;renderDetail()});tKeyword.oninput=()=>{currentPage=1;renderDetail()};['mYear','mSite','mUnit','mItem','mAppeal'].forEach(id=>document.getElementById(id).onchange=()=>renderManageTable());mKeyword.oninput=()=>renderManageTable();pageSize.onchange=()=>{currentPage=1;renderDetail()};prevBtn.onclick=()=>{currentPage--;renderDetail()};nextBtn.onclick=()=>{currentPage++;renderDetail()};
 window.addEventListener('DOMContentLoaded',()=>{currentPage=1;pageSize.value='10';renderAll();setupFirebase()});
 </script>
-</body></html>
+<script src="../ehs-home-button.js?v=20261005-1"></script></body></html>

@@ -128,5 +128,15 @@
     "order": 130,
     "visible": true,
     "favorite": false
+  },
+  {
+    "id": "weekly-focus",
+    "title": "每周安全永續組工作重點",
+    "description": "雙 Sheet Excel 線上編輯、差異比對、雲端保護、最新版本下載。",
+    "href": "weekly-focus/index.html",
+    "category": "general",
+    "order": 55,
+    "visible": true,
+    "favorite": false
   }
 ]

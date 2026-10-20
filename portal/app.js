@@ -1,4 +1,4 @@
-import {registeredRows} from './builtins.js?v=20260916-v3';
+import {registeredRows} from './builtins.js?v=20261020-weekly';
 import {categories,validateRows,sorted} from './model.js?v=20260916-v3';
 import {CLOUD_ENABLED,ADMIN_EMAIL} from './config.js';
 const $=id=>document.getElementById(id);

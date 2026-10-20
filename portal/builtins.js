@@ -22,6 +22,16 @@ const registrations = [
     favorite: false
   },
   {
+    id: 'weekly-focus',
+    title: '每周安全永續組工作重點',
+    description: '雙 Sheet 原樣式工作表、手動增修刪、更新差異比對、私人雲端同步及最新版 Excel 匯出。',
+    href: 'weekly-focus/index.html',
+    category: 'general',
+    order: 55,
+    visible: true,
+    favorite: false
+  },
+  {
     id: 'organization-management',
     title: '安全衛生處組織編制管理',
     description: '安全衛生處組織圖、人員資料、版次異動、Excel 匯入匯出及固定版型 PDF 輸出。',

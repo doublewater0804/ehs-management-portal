@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>每周安全永續組工作重點｜EHS 管理入口</title>
+ <link rel="stylesheet" href="./style.css?v=1">
+</head>
+<body>
+ <header class="header"><div class="header-inner">
+  <div><div class="eyebrow">EHS 管理入口平台 / 綜合管理</div><h1>每周安全永續組工作重點</h1><p>保留原始 Excel 表格配置，直接維護兩張工作表</p></div>
+  <div class="header-links"><a href="../index.html#general">← 返回入口網站</a><button id="logout" hidden type="button">登出</button></div>
+ </div></header>
+ <main class="main">
+  <section id="auth-panel" class="panel centered">
+   <h2>登入驗證</h2><p>僅開放 EHS 入口平台管理者 Google 帳號使用。未登入不載入任何 Excel 資料。</p>
+   <button class="primary" id="login" type="button">使用 Google 帳號登入</button><p id="auth-status" aria-live="polite"></p>
+  </section>
+  <div id="app" hidden>
+   <section class="meta">
+    <div class="stat"><span>Excel 報表日期</span><strong id="report-date">—</strong></div>
+    <div class="stat"><span>最後發布時間</span><strong id="updated-at">—</strong></div>
+    <div class="stat"><span>正式版本</span><strong id="version">—</strong></div>
+    <div class="stat"><span>工作表數</span><strong id="sheet-count">—</strong></div>
+   </section>
+   <section class="panel">
+    <div class="toolbar">
+     <div class="toolbar-left"><button id="select-upload" class="primary" type="button">上傳新版 Excel</button><input id="upload" type="file" accept=".xls,.xlsx,.xlsm" hidden>
+      <button id="download" type="button">下載最新版 .xlsx</button><button id="save" type="button" disabled>儲存並發布修改</button></div>
+     <div class="toolbar-right"><span id="dirty" class="dirty" hidden>尚有未儲存修改</span><button id="discard" type="button" disabled>放棄修改</button></div>
+    </div>
+    <div class="subbar"><label>報表日期 <input id="date" type="date" aria-label="Excel 報表日期"></label><label>搜尋本工作表 <input id="search" type="search" placeholder="搜尋文字／數字"></label><span id="filename"></span></div>
+    <p id="notice" role="status" class="notice"></p>
+    <div id="tabs" class="tabs" role="tablist" aria-label="Excel 工作表"></div>
+    <div class="table-tools"><div><button id="edit" type="button">編輯儲存格</button><button id="add-row" type="button">在選取列上方新增</button><button id="delete-row" type="button" class="danger">刪除選取列</button></div><span id="selection">請點選一個儲存格</span></div>
+    <div id="sheet" class="sheet-scroll" role="region" aria-label="Excel 表格" tabindex="0"><div class="empty">登入後讀取最新檔案。</div></div>
+    <div class="footnote">可按兩下儲存格直接修改；公式儲存格為唯讀。涉及合併儲存格的結構變更將限制操作。格式與公式在匯出前仍應檢查。</div>
+    <div id="warnings" class="warning" hidden></div>
+   </section>
+  </div>
+ </main>
+ <dialog id="cell-dialog" class="dialog"><form method="dialog" id="cell-form"><h3 id="cell-title">修改儲存格</h3><label>內容<textarea id="cell-value" rows="4"></textarea></label><div class="actions"><button value="cancel">取消</button><button class="primary" value="save">確定修改</button></div></form></dialog>
+ <dialog id="diff-dialog" class="dialog large"><div><h2>確認 Excel 更新差異</h2><p id="diff-description"></p><div class="diff-actions"><button id="keep-all" type="button">全部保留線上內容</button><button id="use-all" type="button">全部採用新版</button></div><div id="diff-list" class="diff-list"></div><div class="actions"><button id="cancel-import" type="button">取消匯入</button><button id="confirm-import" class="primary" type="button">確認匯入（尚未發布）</button></div></div></dialog>
+ <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+ <script type="module" src="./app.js?v=1"></script>
+</body></html>

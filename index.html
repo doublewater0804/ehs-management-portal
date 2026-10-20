@@ -1,46 +1,11 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="strict-origin-when-cross-origin">
-<title>每周安全永續組工作重點｜EHS 管理入口</title>
-<link rel="stylesheet" href="./style.css?v=20261020-r2">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EHS 管理入口平台</title><link rel="stylesheet" href="portal/styles.css?v=20260916-v3"></head>
 <body>
-<div class="layout">
-<aside class="sidebar" aria-label="功能導覽">
- <a class="side-brand" href="../index.html#general"><span class="leaf" aria-hidden="true">❧</span><span><strong>安全永續組</strong><small>工作計畫 / 報告管理系統</small></span></a>
- <nav class="side-nav">
-  <a class="active" href="#report"><span class="nav-ic">▦</span><span>每周工作重點</span></a>
-  <button id="nav-sheets" type="button" disabled><span class="nav-ic">▤</span><span>切換工作表</span></button>
-  <button id="nav-upload" type="button" disabled><span class="nav-ic">⇧</span><span>上傳新版報表</span></button>
-  <a href="../index.html#general"><span class="nav-ic">⌂</span><span>返回 EHS 入口</span></a>
- </nav>
- <div class="side-bottom">EHS 管理入口平台<br><span>綜合管理 · 管理者專用</span></div>
-</aside>
-<div class="body-area">
- <div class="topbar" id="report"><div class="page-ident"><h1>每周安全永續組工作重點</h1><span>依原始工作報表呈現，不使用 Excel 儲存格介面</span></div>
- <div class="top-actions"><span class="file-info" id="filename" title="目前檔案">尚無報表</span><button id="select-upload" class="primary" type="button" disabled>↥ 上傳檔案</button><input id="upload" type="file" accept=".xls,.xlsx,.xlsm" hidden><button id="download" type="button" disabled>⇩ 下載最新版</button><span class="updated">更新日期：<strong id="updated-at">尚未發布</strong></span><button id="logout" type="button" hidden>登出</button></div></div>
- <main class="content">
-  <section id="auth-panel" class="auth-card"><div class="lock">♧</div><h2>管理者身分驗證</h2><p>此報表僅供 EHS 入口網站管理者使用。登入成功前不會讀取公司報表資料。</p><button id="login" type="button" class="primary">使用 Google 帳號登入</button><p id="auth-status" role="status"></p></section>
-  <div id="app" hidden>
-   <div class="report-topline">
-     <div class="tabs" id="tabs" role="tablist" aria-label="工作表切換"></div>
-     <div class="report-tools"><button id="toggle-edit" type="button" aria-pressed="false">✎ 進入編輯模式</button><button id="save" type="button" class="primary" hidden disabled>儲存並發布</button><button id="discard" type="button" hidden disabled>放棄修改</button></div>
-   </div>
-   <div id="edit-toolbar" class="edit-toolbar" hidden><div class="edit-explain"><strong>編輯模式</strong><span>點選報告中的文字或統計數字可修改；選取工作項目可新增或刪除。</span></div>
-     <div class="edit-controls"><button id="add-row" type="button" disabled>＋ 新增工作項目</button><button id="delete-row" type="button" class="danger" disabled>刪除選取項目</button><label class="date-label">報表日期 <input id="date" type="date"></label></div>
-   </div>
-   <div class="status-row"><span>報表日期：<strong id="report-date">—</strong></span><span>正式版本：<strong id="version">未發布</strong></span><span id="dirty" class="unsaved" hidden>● 有尚未儲存的修改</span><span id="sheet-count" class="count"></span></div>
-   <p id="notice" class="notice" role="status" aria-live="polite"></p>
-   <div class="report-sheet" id="sheet" aria-label="工作重點完整報告"><div class="empty">登入後可查看正式報表。</div></div>
-   <div id="warnings" class="warning" hidden></div>
-   <footer class="report-foot">※ 網頁僅用於報告瀏覽與維護；下載時保留兩張工作表。特殊公式與原始 .xls 版面仍須於 Excel 驗證。</footer>
-  </div>
- </main>
-</div></div>
-<dialog id="cell-dialog" class="modal"><form method="dialog" id="cell-form"><h3 id="cell-title">修改資料</h3><p id="cell-hint"></p><textarea id="cell-value" rows="5" aria-label="編輯資料內容"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button value="save" class="primary">確認修改</button></div></form></dialog>
-<dialog id="diff-dialog" class="modal wide"><h3>Excel 新版內容比對</h3><p id="diff-description"></p><div class="diff-all"><button id="keep-all" type="button">全部保留線上內容</button><button id="use-all" type="button">全部採用新版</button></div><div id="diff-list" class="diff-list"></div><div class="dialog-actions"><button id="cancel-import" type="button">取消匯入</button><button id="confirm-import" type="button" class="primary">確認匯入（尚未發布）</button></div></dialog>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script type="module" src="./app.js?v=20261020-r2"></script>
-</body></html>
+<header><div class="header-inner"><a class="brand" href="#"><span class="shield" aria-hidden="true"><svg width="38" height="44" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v8c0 5 5 9 9 12 4-3 9-7 9-12V6Z"/><path d="m7 13 3 3 7-7"/></svg></span><span><strong>EHS 管理入口平台</strong><small>安衛環工作整合入口</small></span></a><div class="header-actions"><label class="search"><span>搜尋</span><input id="search" disabled type="search" placeholder="搜尋系統" aria-label="搜尋系統"></label><button id="manage" class="quiet" hidden>管理者</button></div></div></header>
+<main><div class="page-title"><h1 id="page-title">工作首頁</h1><span id="total" class="badge"></span></div><p id="notice" role="status" hidden></p>
+<div id="home" hidden><section class="panel" id="favorites-panel"><div class="section-heading"><h2>常用系統</h2><span>快速進入日常工作</span></div><div id="favorites" class="grid"></div></section><section class="panel"><div class="section-heading"><h2>功能分類</h2><span>請選擇類別，查看相關系統</span></div><div id="categories" class="grid"></div></section></div>
+<section id="listing" class="panel" hidden><nav id="category-nav" aria-label="功能分類"></nav><div class="section-heading"><h2 id="list-title"></h2><span id="list-count"></span></div><div id="systems" class="grid"></div></section>
+<section id="admin-panel" class="panel" hidden><div class="section-heading"><h2>帳號與入口管理</h2><button id="close-admin" class="quiet">返回首頁</button></div><p id="auth-status" role="status"></p><button id="login">使用 Google 帳號登入</button><button id="logout" class="quiet" hidden>登出管理後台</button><div id="editor" hidden><div class="toolbar"><p>新增或編輯後，按「儲存至雲端」套用到入口網站。</p><button id="add">＋ 新增系統</button></div><div id="admin-list"></div>
+<form id="system-form" hidden><h3 id="form-title">新增系統</h3><input name="id" type="hidden"><label>系統名稱<input name="title" required maxlength="80"></label><label>所屬分類<select name="category" required></select></label><label>系統網址<input name="href" required maxlength="2048" placeholder="https://… 或 training/index.html"></label><label>用途說明<textarea name="description" maxlength="300" rows="3"></textarea></label><label>顯示順序<input name="order" type="number" min="0" max="99999" step="1" required value="100"></label><div class="checks"><label><input name="visible" type="checkbox" checked>顯示在入口</label><label><input name="favorite" type="checkbox">設為常用系統</label></div><div class="toolbar"><button type="submit">儲存至雲端</button><button id="cancel-edit" type="button" class="quiet">取消</button></div></form></div></section>
+<noscript>請啟用 JavaScript 以查看系統入口。</noscript></main><footer>各系統維持原有登入方式，並以新分頁開啟。</footer><script type="module" src="portal/app.js?v=20261020-weekly"></script></body></html>

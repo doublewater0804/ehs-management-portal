@@ -194,18 +194,18 @@ $('save').onclick=async()=>{
  try{
   const bytes=exportXlsx(book),result=await cloud.publish(bytes,{expectedVersion:cloudMeta?.version||0,reportDate,originalFilename:inputFileName||'每周工作重點.xlsx',sheetNames:book.SheetNames});
   savedBook=clone(book);cloudMeta={...cloudMeta,version:(cloudMeta?.version||0)+1,reportDate,updatedAt:new Date(),originalFilename:inputFileName};dirty=false;editMode=false;chosen=null;
-  notify(`發布完成。${result.cleanupError?'舊版檔案刪除未完成，請檢查 Firebase Storage。':''}`,'success');drawReport();
+  notify(`發布完成。${result.cleanupError?'舊版資料清理未完成，請檢查 Firestore 權限。':''}`,'success');drawReport();
  }catch(e){notify(`發布失敗：${e.message}`,'error');}finally{publishing=false;showState();}
 };
 async function loadOfficial(meta,generation){
  if(!meta){if(dirty)return;savedBook=null;book=null;cloudMeta=null;reportDate='';inputFileName='';editMode=false;drawTabs();drawReport();notify('目前沒有已發布報表，請先上傳 Excel。');return;}
- if(meta.storagePath===cloudMeta?.storagePath)return;
+ if(meta.releaseId&&meta.releaseId===cloudMeta?.releaseId)return;
  if(dirty){notify('雲端已有新版，但目前畫面仍有未發布修改，請先處理。','error');return;}
  loading=true;showState();notify('正在取得最新正式報表…');
  try{const raw=await cloud.loadBytes(meta);if(generation!==authRun)return;
   const fresh=parseWorkbook(raw,'published.xlsx');savedBook=clone(fresh);book=fresh;cloudMeta=meta;reportDate=meta.reportDate||detectReportDate(fresh);inputFileName=meta.originalFilename||'';
   dirty=false;chosen=null;editMode=false;activeSheet=firstSheetIndex();drawTabs();drawReport();notify('已載入正式報表。','success');
- }catch(e){notify(`讀取失敗：${e.message}。請核對 Firebase Storage 權限。`,'error');}finally{loading=false;showState();}
+ }catch(e){notify(`讀取失敗：${e.message}。請核對 Firestore 權限及資料完整性。`,'error');}finally{loading=false;showState();}
 }
 $('login').onclick=()=>cloud.login().catch(e=>$('auth-status').textContent=`登入失敗：${e.message}`);
 $('logout').onclick=()=>cloud.logout().catch(e=>notify(`登出失敗：${e.message}`,'error'));

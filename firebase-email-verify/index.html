@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Firebase 電子郵件驗證｜專用測試</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;color:#193754;background:#f2f5fa}*{box-sizing:border-box}body{margin:0}header{background:#185184;color:#fff;padding:20px max(24px,calc((100vw - 780px)/2));font-size:20px;font-weight:700}main{max-width:780px;padding:26px 16px;margin:auto}.panel{background:#fff;border:1px solid #d6e2ee;border-radius:12px;padding:24px}h1{font-size:22px;margin:0 0 12px}p{line-height:1.7;color:#4e6580}.tag{display:inline-block;border-radius:20px;padding:5px 12px;font-size:13px;background:#e4effa;color:#174d7b}label{display:block;margin:14px 0 7px;font-weight:600}input{width:100%;max-width:460px;font:inherit;padding:11px;border:1px solid #bdd0e0;border-radius:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}button{border:0;border-radius:7px;background:#1264a9;color:white;padding:11px 16px;font-weight:650;cursor:pointer}button.secondary{background:#e7f0fa;color:#194d7c}button:disabled{opacity:.55;cursor:not-allowed}.status{background:#edf4fc;padding:14px;border-radius:7px;line-height:1.6;white-space:pre-wrap}.status.warn{background:#fff3e0;color:#805010}.details{border-top:1px solid #dce6ef;margin-top:16px;padding-top:15px}dl{display:grid;grid-template-columns:190px 1fr;gap:12px}dt{color:#577086}dd{margin:0;font-weight:650;overflow-wrap:anywhere}footer{font-size:12px;line-height:1.7;margin:18px 0;color:#526c84}@media(max-width:520px){dl{grid-template-columns:1fr;gap:4px}dd{margin-bottom:12px}}
+</style>
+</head>
+<body>
+<header>Firebase｜電子郵件驗證</header>
+<main><section class="panel">
+<h1>Firebase Email/Password 電子郵件驗證</h1>
+<span class="tag">僅電子郵件驗證｜不存取 EHS 資料</span>
+<p>此頁只使用 Firebase Authentication，<strong>不建立帳號、不修改密碼、不呼叫 Firestore 或 Storage</strong>。使用剛才設定的 Firebase 專用密碼登入後，可自行按鈕寄送驗證信；請勿使用 Google 密碼。</p>
+<form id="loginForm" autocomplete="off">
+<label for="email">測試帳號</label><input id="email" type="email" value="chieh4702@gmail.com" disabled>
+<label for="password">Firebase 專用密碼（不儲存）</label><input id="password" type="password" autocomplete="off" required>
+<div class="actions"><button id="login" type="submit">使用 Email/Password 登入</button><button id="logout" type="button" class="secondary" disabled>登出</button></div>
+</form>
+<div class="actions"><button id="sendVerify" type="button" disabled>寄送 Firebase 驗證信</button><button id="refreshVerified" type="button" class="secondary" disabled>驗證後重新檢查</button></div>
+<p>請先確認完整 UID。寄信只會送到指定信箱；收信後請點選 Firebase 郵件的驗證連結，再回此頁按「驗證後重新檢查」。</p>
+<div id="status" class="status" role="status" aria-live="polite">尚未登入</div>
+<section id="details" class="details" hidden>
+<dl><dt>電子郵件</dt><dd id="currentEmail"></dd><dt>電子郵件已驗證</dt><dd id="verified"></dd><dt>UID（遮蔽）</dt><dd id="uid"></dd><dt>已連結供應商</dt><dd id="providers"></dd><dt>完整 UID 比對</dt><dd id="match">尚未核對</dd></dl>
+<label for="expected">貼上先前在 Firebase Console 核對的完整 UID（僅本機比對）</label>
+<input id="expected" type="text" autocomplete="off" spellcheck="false" placeholder="僅在自己的電腦輸入；不要傳到聊天">
+<div class="actions"><button id="compare" type="button">比對 UID</button><button id="clear" type="button" class="secondary">清除 UID 欄位</button></div>
+</section>
+</section>
+<footer>這是公開的 GitHub Pages 靜態頁，只使用 Firebase Authentication 官方 SDK。密碼不會寫入 GitHub、Firestore 或本頁儲存空間；寄信請求將送往 Firebase Authentication。此頁使用記憶體登入狀態，重新整理可能需要重新登入。驗證後請移除此測試頁。</footer>
+</main>
+<script type="module">
+import {firebaseConfig} from '../portal/config.js';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, inMemoryPersistence, sendEmailVerification, reload} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+const app=initializeApp(firebaseConfig,'ehs-email-verify-check');
+const auth=getAuth(app);
+const expectedEmail='chieh4702@gmail.com';
+const el=id=>document.getElementById(id);
+let currentUid='';
+let ready=false;
+let uidMatched=false;
+let sending=false;
+const status=(msg,warn=false)=>{el('status').textContent=msg;el('status').className='status'+(warn?' warn':'');};
+function render(user){
+ currentUid=user?.uid||'';
+ el('password').value=''; el('expected').value=''; el('match').textContent='尚未核對';uidMatched=false;
+ el('details').hidden=!user; el('logout').disabled=!user; el('login').disabled=!!user;el('sendVerify').disabled=true;el('refreshVerified').disabled=!user;
+ if(!user){ready=false;status('尚未登入');return;}
+ const providers=(user.providerData||[]).map(x=>x.providerId);
+ el('currentEmail').textContent=user.email||'（未提供）';
+ el('verified').textContent=user.emailVerified?'是':'否';
+ el('uid').textContent=currentUid.length>12?currentUid.slice(0,6)+'…'+currentUid.slice(-4):'（已遮蔽）';
+ el('providers').textContent=providers.join('、')||'未提供';
+ ready=(user.email||'').toLowerCase()===expectedEmail;
+ status(ready?'密碼登入成功。請先比對完整 UID，再寄送驗證信。':'登入的帳號不符，請登出；不要繼續。',!ready);
+}
+async function initialize(){try{await setPersistence(auth,inMemoryPersistence);onAuthStateChanged(auth,render,e=>status('登入狀態錯誤：'+(e.code||'unknown'),true));}catch(e){status('初始化失敗：'+(e.code||e.message),true);}}
+initialize();
+el('loginForm').addEventListener('submit',async event=>{
+ event.preventDefault();if(auth.currentUser)return;
+ const pass=el('password').value; el('login').disabled=true;status('正在透過 Firebase Authentication 驗證…');
+ try{await signInWithEmailAndPassword(auth,expectedEmail,pass);}catch(e){status('登入失敗：'+(e.code||'unknown')+'。請勿連續重試；先核對帳號與密碼。',true);el('login').disabled=false;}finally{el('password').value='';}
+});
+el('logout').addEventListener('click',async()=>{try{await signOut(auth);}catch(e){status('登出失敗：'+(e.code||'unknown'),true);}});
+el('compare').addEventListener('click',()=>{const equal=ready&&!!currentUid&&el('expected').value.trim()===currentUid;uidMatched=equal;el('sendVerify').disabled=!equal || auth.currentUser?.emailVerified || sending;el('match').textContent=equal?'完全一致':'不一致／未通過';status(equal?'UID 核對通過。若尚未驗證電子郵件，現在可以自行寄送驗證信。':'UID 不一致，停止後續設定。',!equal);});
+el('clear').addEventListener('click',()=>{el('expected').value='';el('match').textContent='尚未核對';uidMatched=false;el('sendVerify').disabled=true;});
+el('sendVerify').addEventListener('click',async()=>{
+ const user=auth.currentUser;
+ if(!user || !ready || !uidMatched || user.uid!==currentUid || user.emailVerified || sending)return;
+ sending=true;el('sendVerify').disabled=true;status('正在向 Firebase 要求寄送驗證信…');
+ try { await sendEmailVerification(user);status('已向 Firebase 提交驗證信寄送請求。請到指定信箱收信（也檢查垃圾郵件），點擊信件驗證連結後返回本頁重新檢查。'); }
+ catch(e){status('寄送失敗：'+(e.code||'unknown')+'。請勿連續重送。',true);}
+ finally{sending=false;}
+});
+el('refreshVerified').addEventListener('click',async()=>{
+ const user=auth.currentUser;if(!user || !ready)return;
+ el('refreshVerified').disabled=true;status('正在向 Firebase 重新讀取電子郵件驗證狀態…');
+ try {await reload(user);await user.getIdToken(true);
+   if(user.uid!==currentUid || (user.email||'').toLowerCase()!==expectedEmail){status('帳號或 UID 發生變化，停止測試。',true);return;}
+   el('verified').textContent=user.emailVerified?'是':'否';
+   el('sendVerify').disabled=true;
+   status(user.emailVerified?'PASS：Firebase 電子郵件已驗證（true），UID 未變更。請登出，後續再進行 NAS 憑證設定。':'仍顯示未驗證。請確認已點擊驗證信內的連結，再重新檢查。',!user.emailVerified);
+ }catch(e){status('檢查失敗：'+(e.code||'unknown'),true);}finally{el('refreshVerified').disabled=false;}
+});
+</script></body></html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firebase 帳號連結前檢查｜EHS</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;color:#1c3553;background:#f1f5fa}*{box-sizing:border-box}body{margin:0}header{background:#154f85;color:white;padding:22px max(22px,calc((100vw - 760px)/2));font-weight:700;font-size:20px}main{max-width:760px;margin:28px auto;padding:0 18px}.panel{background:white;border:1px solid #d4e1ef;border-radius:12px;padding:22px;box-shadow:0 2px 10px #1942630d}h1{font-size:20px;margin:0 0 12px}.help{color:#526a85;line-height:1.7}.tag{font-size:13px;color:#285e7a;background:#e4f0fc;padding:5px 10px;border-radius:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}button{background:#1264ad;border:0;border-radius:7px;padding:11px 16px;color:white;cursor:pointer;font-weight:650}button.secondary{color:#1264ad;background:#eaf1f9}button:disabled{opacity:.5;cursor:not-allowed}.info{border-top:1px solid #e2e8ef;margin-top:15px;padding-top:10px}dl{display:grid;grid-template-columns:150px 1fr;gap:13px 12px;overflow-wrap:anywhere}dt{color:#53667b}dd{margin:0;font-weight:600}.status{padding:12px;border-radius:6px;background:#edf4fa;margin-top:15px;white-space:pre-wrap;line-height:1.6}.warn{background:#fff5e5;color:#784e0b}footer{font-size:12px;color:#576e82;margin:24px 0}code{font-size:.94em}@media(max-width:520px){dl{grid-template-columns:1fr;gap:3px}dd{margin-bottom:12px}}
+</style>
+</head>
+<body><header>Firebase 帳號連結前檢查</header><main><div class="panel"><h1>Email/Password 連結前安全檢查</h1><span class="tag">預備階段｜連結功能未啟用</span><p class="help">此版本只核對登入身分、原本 UID、驗證狀態與已連結供應商。不讀寫 Firestore，也不包含建立或連結密碼的程式。請用指定 Google 帳號登入，確認後再討論下一階段。</p><div class="actions"><button id="login">使用 Google 登入</button><button id="logout" class="secondary" disabled>登出</button></div><div id="status" class="status" role="status">尚未登入</div><section class="info" id="details" hidden><dl><dt>電子郵件</dt><dd id="email"></dd><dt>電子郵件已驗證</dt><dd id="verified"></dd><dt>Firebase UID（遮蔽）</dt><dd id="uid"></dd><dt>已連結登入供應商</dt><dd id="providers"></dd><dt>密碼登入狀態</dt><dd id="password"></dd></dl><p class="help" id="gate"></p><button id="copy" class="secondary">複製完整 UID（僅本機）</button><p class="help">注意：<strong>未顯示 password 供應商，不代表可在此安全地設定密碼</strong>。本頁不執行任何帳號連結操作。</p></section></div><footer>此版本沒有 linkWithCredential、EmailAuthProvider 或任何密碼輸入與帳號變更操作。測試完成後請按「登出」。請勿將完整 UID、登入憑證或瀏覽器開發者工具中的 Token 傳給他人。此頁在 GitHub Pages 上公開可存取，驗證仍由 Firebase 管理。</footer></main>
+<script type="module">
+import {firebaseConfig} from '../portal/config.js';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+const app=initializeApp(firebaseConfig,'ehs-auth-readonly-test');
+const auth=getAuth(app);const google=new GoogleAuthProvider();google.setCustomParameters({prompt:'select_account'});
+const el=id=>document.getElementById(id);let uid=''; const expectedEmail='chieh4702@gmail.com';
+function status(message,warn=false){el('status').textContent=message;el('status').className='status'+(warn?' warn':'');}
+function render(user){uid=user?.uid||'';el('login').disabled=!!user;el('logout').disabled=!user;el('details').hidden=!user;if(!user){status('尚未登入');return;}
+const ps=(user.providerData||[]).map(p=>p.providerId);el('email').textContent=user.email||'未提供';el('verified').textContent=user.emailVerified?'是':'否';el('uid').textContent=uid.length>12?uid.slice(0,6)+'…'+uid.slice(-4):'（已遮蔽）';el('providers').textContent=ps.join('、')||'未提供';el('password').textContent=ps.includes('password')?'使用者資料列有 password 供應商':'使用者資料列未列出 password 供應商';const correct=(user.email||'').toLowerCase()===expectedEmail && user.emailVerified && ps.includes('google.com');el('gate').textContent=correct?'預備檢查：指定 Google 帳號及電子郵件驗證符合。請自行核對 UID；本頁不會連結密碼。':'預備檢查未通過：必須使用指定且已驗證的 Google 帳號。請登出重試。';status(correct?'身分初步核對通過；仍需自行確認完整 UID。':'非指定帳號或電子郵件未驗證，不可進行後續連結。',!correct);}
+onAuthStateChanged(auth,render,e=>status('驗證狀態讀取失敗：'+e.code,true));
+el('login').onclick=async()=>{el('login').disabled=true;status('正在開啟 Google 登入…');try{await signInWithPopup(auth,google);}catch(e){status('登入未完成：'+(e.code||e.message)+ '\n請確認是否封鎖彈出視窗及 Firebase 授權網域。',true);el('login').disabled=false;}};
+el('logout').onclick=async()=>{try{await signOut(auth);}catch(e){status('登出失敗：'+e.code,true);}};
+el('copy').onclick=async()=>{if(!uid)return;try{await navigator.clipboard.writeText(uid);status('UID 已複製到本機剪貼簿。請自行與 Firebase 控制台核對，不要傳送給我。');}catch(e){status('複製未成功，請自行在 Firebase 控制台核對。',true);}};
+</script></body></html>

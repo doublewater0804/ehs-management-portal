@@ -1,11 +1,20 @@
-Firebase 同 UID 帳號連結前檢查（只讀版）
+Firebase 帳號連結：第二階段鎖定預備版
 
-1. GitHub 儲存庫 doublewater0804/ehs-management-portal 的 main 分支新增 firebase-auth-link/ 資料夾。
-2. 只上傳 firebase-auth-link/index.html，絕不可覆蓋根目錄 index.html。
-3. 確認 portal/config.js 保持原狀。
-4. 開啟 https://doublewater0804.github.io/ehs-management-portal/firebase-auth-link/
-5. 使用指定 Google 帳號登入，核對已驗證狀態、google.com 提供者，以及原有完整 UID。
-6. 目前不提供連結密碼功能，任何連結操作需另行明確同意並部署下一版。
-7. 驗證完畢後登出；不再需要時刪除此測試資料夾。
+請只更新 GitHub 儲存庫 main 分支中的 firebase-auth-link/index.html。
+不要將 index.html 放在根目錄，也不要把整包外層資料夾上傳形成巢狀路徑。
+不更新 portal/、weekly-focus/ 或 Firebase 規則。
 
-此測試頁公開可開啟，但不會公開完整 UID 或登入憑證。不要張貼完整 UID 或密碼截圖。
+連結：https://doublewater0804.github.io/ehs-management-portal/firebase-auth-link/
+
+執行順序：
+1. 把 firebase-auth-link/index.html 覆蓋同路徑的舊預備頁面。
+2. 等待 GitHub Pages 部署完成。
+3. 以指定 Google 帳號登入，查看 Google provider / Email verified。
+4. 只在本人電腦將 Firebase Console 中的完整 UID 貼入 UID 核對欄位。
+5. 確認 UID 一致，檢查連結按鈕仍是停用狀態。
+6. 截圖請遮蔽 UID 及電子郵件（如有需要）。
+
+安全設計：ENABLE_ACCOUNT_LINKING = false；連結按鈕 disabled 且沒有事件處理器。
+雖含未來可能使用的 linkWithCredential 程式路徑，此版本不會執行。
+正式連結須再次取得明確同意，後續版本亦需驗收與審查。
+測試結束後應移除公開測試頁。

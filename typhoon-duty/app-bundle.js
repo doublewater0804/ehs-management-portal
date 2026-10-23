@@ -1,23 +1,8 @@
-/* R0.2 2026-10-23 - Checklist 欄位提示與正式 LINE 敘述通報。 */
+/* R0.3 2026-10-23 - 正式 Firebase 雲端、沿用 EHS Portal Google 登入。 */
 (function(){
 "use strict";
 
-/* SOURCE: config.js */
-
-// 複製本檔為 config.js，再依部署說明設定。
-// demo: 僅瀏覽器本機示範資料，不接正式雲端；firebase: 實際連結既有 EHS Firebase 專案。
-window.EHS_TYPHOON_CONFIG = {
-  mode: 'demo',
-  firebaseConfig: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    appId: ''
-  },
-  ownerUid: '', // 只有這個 Firebase Authentication UID 可修改；Firestore Rules 也需使用同一 UID。
-  portalHome: 'https://doublewater0804.github.io/ehs-management-portal/'
-};
-
+/* SOURCE: config.js loads separately; never overwrite window.EHS_TYPHOON_CONFIG in bundle. */
 
 /* SOURCE: rules-data.js */
 
@@ -53,43 +38,61 @@ const CHECKS = [
 
 /* SOURCE: firebase.js */
 
-// Firestore 使用專屬命名空間；對應 docs/Firestore_Rules_新增片段.rules。
+// R0.3 正式雲端：沿用 EHS 入口 portal/config.js 的 Firebase 設定與 Google/Email登入。
+// 路徑與 R0.2 相同，不會自動搬移瀏覽器 DEMO 資料，也不會覆蓋其他 EHS collections。
 const DEFAULT_PATHS={staff:'ehs_typhoon_duty_r0/staff/members', events:'ehs_typhoon_duty_r0/events/records', reports:'ehs_typhoon_duty_r0/reports/entries', incidents:'ehs_typhoon_duty_r0/incidents/entries', rules:'ehs_typhoon_duty_r0/rules/sections', notes:'ehs_typhoon_duty_r0/notes/items', revisions:'ehs_typhoon_duty_r0/revisions/entries', settings:'ehs_typhoon_duty_r0/settings/entries'};
-const config=window.EHS_TYPHOON_CONFIG||{mode:'demo'};
-let auth=null,db=null,firestore=null,authLib=null, user=null;
-const mode=config.mode||'demo';
+const config=window.EHS_TYPHOON_CONFIG;
+if(!config || config.mode!=='firebase')throw new Error('正式版 config.js 尚未載入或設定錯誤，請確認上傳了 R0.3 的 config.js 並清除快取。');
+let auth=null,db=null,firestore=null,authLib=null,user=null,ownerEmail='';
+const mode='firebase';
 const paths=DEFAULT_PATHS;
-const ownerUid=config.ownerUid||'';
 const portalHome=config.portalHome||'../';
-const demoPrefix='ehs_typhoon_r0_demo__';
-const isOwner=()=>mode==='demo'||Boolean(user && ownerUid && user.uid===ownerUid);
+const isOwner=()=>Boolean(user?.emailVerified && ownerEmail && user.email?.toLowerCase()===ownerEmail);
 const currentUser=()=>user;
 async function init(onAuth){
- if(mode==='demo') {user={uid:'DEMO_OWNER',email:'demo@local.test'};onAuth(user);return;}
- if(mode!=='firebase') throw new Error('config.js 的 mode 僅可為 demo 或 firebase');
- const c=config.firebaseConfig||{};
- if(!c.apiKey||!c.projectId||!c.appId||!ownerUid)throw new Error('正式模式未完整填入 Firebase config 或 ownerUid。');
- const fb=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
- authLib=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js');
- firestore=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
- const application=fb.getApps().length?fb.getApp():fb.initializeApp(c);
- db=firestore.getFirestore(application);auth=authLib.getAuth(application);
- authLib.onAuthStateChanged(auth, u=>{user=u;onAuth(u);});
+  // 同一 GitHub Pages 網域下直接讀取既有 EHS Portal 的 Web SDK 設定，避免重複維護另一套 Firebase Config。
+  let portal;
+  try {portal=await import(config.portalConfigModule||'../portal/config.js');}
+  catch(error){throw new Error('無法讀取 EHS 入口 portal/config.js：'+error.message);}
+  if(!portal.firebaseConfig?.apiKey || !portal.firebaseConfig?.projectId || !portal.firebaseConfig?.appId || !portal.ADMIN_EMAIL)
+    throw new Error('既有 EHS Portal 的 Firebase 設定或管理員 Email 不完整。');
+  ownerEmail=String(portal.ADMIN_EMAIL).trim().toLowerCase();
+  const sdk='https://www.gstatic.com/firebasejs/10.12.5/';
+  const [fb,authModule,dbModule]=await Promise.all([
+    import(sdk+'firebase-app.js'),import(sdk+'firebase-auth.js'),import(sdk+'firebase-firestore.js')
+  ]);
+  authLib=authModule;firestore=dbModule;
+  // 入口網站使用名為 ehs-portal 的 Firebase App；使用同名可跨同源分頁延續登入狀態。
+  const name='ehs-portal';
+  const app=fb.getApps().find(a=>a.name===name)||fb.initializeApp(portal.firebaseConfig,name);
+  auth=authLib.getAuth(app);db=firestore.getFirestore(app);
+  authLib.onAuthStateChanged(auth, u=>{
+    user=u;
+    Promise.resolve(onAuth(u)).catch(e=>mainError(e));
+  }, e=>mainError(new Error('Firebase 登入狀態檢查失敗：'+e.message)));
 }
-async function signIn(email,password){if(!authLib)throw new Error('Firebase 尚未初始化'); await authLib.signInWithEmailAndPassword(auth,email,password);}
-async function signOut(){if(authLib) await authLib.signOut(auth);}
-function ensureAccess(write=false){if(mode==='firebase'&&!user)throw new Error('尚未登入');if(write&&!isOwner())throw new Error('只有系統管理員有寫入權限');}
-async function listDocs(kind){ensureAccess();if(mode==='demo')return JSON.parse(localStorage.getItem(demoPrefix+kind)||'[]');
- const snapshot=await firestore.getDocs(firestore.collection(db,paths[kind]));
- return snapshot.docs.map(x=>({id:x.id,...x.data()}));}
-async function saveDoc(kind,item){ensureAccess(true);const value={...item};if(!value.id)throw new Error('缺少資料 id');
- if(mode==='demo'){const all=await listDocs(kind);const ix=all.findIndex(x=>x.id===value.id);if(ix<0)all.push(value);else all[ix]=value;localStorage.setItem(demoPrefix+kind,JSON.stringify(all));return;}
- await firestore.setDoc(firestore.doc(db,paths[kind],value.id),value);
+async function signIn(email,password){if(!authLib)throw new Error('Firebase 尚未初始化');await authLib.signInWithEmailAndPassword(auth,email,password);}
+async function signInGoogle(){if(!authLib)throw new Error('Firebase 尚未初始化');await authLib.signInWithPopup(auth,new authLib.GoogleAuthProvider());}
+async function signOut(){if(authLib)await authLib.signOut(auth);}
+function ensureAccess(write=false){
+  if(!user)throw new Error('請先登入 EHS Firebase 帳號');
+  if(write&&!isOwner())throw new Error('只有已驗證的 EHS 入口管理者帳號可新增、修改或刪除資料');
 }
-async function deleteDoc(kind,id){ensureAccess(true);if(mode==='demo'){const all=await listDocs(kind);localStorage.setItem(demoPrefix+kind,JSON.stringify(all.filter(x=>x.id!==id)));return;}
- await firestore.deleteDoc(firestore.doc(db,paths[kind],id));}
+async function listDocs(kind){
+  ensureAccess();if(!paths[kind])throw new Error('未知的資料類型：'+kind);
+  const snapshot=await firestore.getDocs(firestore.collection(db,paths[kind]));
+  return snapshot.docs.map(x=>({id:x.id,...x.data()}));
+}
+async function saveDoc(kind,item){
+  ensureAccess(true);if(!paths[kind])throw new Error('未知的資料類型：'+kind);
+  const value={...item};if(!value.id)throw new Error('缺少資料 id');
+  await firestore.setDoc(firestore.doc(db,paths[kind],value.id),value);
+}
+async function deleteDoc(kind,id){
+  ensureAccess(true);if(!paths[kind])throw new Error('未知的資料類型：'+kind);
+  await firestore.deleteDoc(firestore.doc(db,paths[kind],id));
+}
 const makeId=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
 
 /* SOURCE: excel.js */
 
@@ -125,7 +128,7 @@ function toast(message,kind='info'){const d=$('#toast');d.textContent=message;d.
 function ownerBlock(){return !isOwner()?`<div class="banner warning">你目前為唯讀權限。依本系統設定，只有指定管理員可新增、修改及刪除資料。</div>`:'';}
 function disabled(){return isOwner()?'':'disabled';}
 function warnDemo(){return mode==='demo'?`<div class="banner warning"><b>本機示範模式</b>：資料只存在這個瀏覽器的 localStorage，不會同步到 Firebase，也不能視為正式值勤紀錄。正式部署必須依部署說明設定 config.js 與 Firestore Rules。</div>`:'';}
-function userLabel(){let c=currentUser();$('#accountLabel').textContent=c?.email||'未登入';$('#connectionLabel').textContent=mode==='demo'?'DEMO 示範':c?'Firebase 已登入':'Firebase 未登入';$('#homeBtn').href=portalHome;}
+function userLabel(){let c=currentUser();$('#accountLabel').textContent=c?.email||'未登入';$('#connectionLabel').textContent=c?(isOwner()?'Firebase 正式｜管理者':'Firebase 正式｜唯讀'):'Firebase 正式｜未登入';$('#homeBtn').href=portalHome;}
 async function refresh(){if(reloadBusy)return;reloadBusy=true;try{const keys=['events','staff','reports','incidents','rules','notes','revisions','settings'];const data=await Promise.all(keys.map(k=>listDocs(k)));keys.forEach((k,i)=>state[k]=data[i]);state.events.sort((a,b)=>(b.date||'').localeCompare(a.date||''));if(!state.events.some(e=>e.id===state.eventId)){state.eventId=state.events[0]?.id||'';state.reportDate=state.events[0]?.date||today();}if(!state.reportDate)state.reportDate=eventNow()?.date||today();render();}catch(e){mainError(e);}finally{reloadBusy=false;}}
 function mainError(e){window.__EHS_TYPHOON_RENDERED=true;console.error(e);$('#main').innerHTML=`<div class="panel"><h2>讀取失敗</h2><p class="danger">${H(e.message)}</p><div class="banner warning">請檢查 Firebase 設定、授權網域、登入狀態及 Firestore Rules；不要直接覆蓋現有正式規則。</div><button class="btn" data-action="refresh">重新讀取</button></div>`;}
 function eventNow(){return state.events.find(e=>e.id===state.eventId)||null;}
@@ -143,7 +146,7 @@ function $$nav(){document.querySelectorAll('#nav button').forEach(b=>b.classList
 function panel(n,title,body,cls=''){return `<section class="panel ${cls}"><h2 class="section-title"><span class="number">${n}</span>${title}</h2>${body}</section>`;}
 function empty(t){return `<div class="empty">${t}</div>`;}
 const opts=(items,selected)=>items.map(([v,t])=>`<option value="${H(v)}" ${String(v)===String(selected)?'selected':''}>${H(t)}</option>`).join('');
-function renderDuty(){const e=eventNow();if(!e)return panel('1','值勤作業',`<div class="banner">目前沒有颱風事件，請先建立事件，再設定各廠區值勤人員及各時段Checklist。</div><button class="btn" data-action="open-event">＋建立第一筆颱風事件</button>`);
+function renderDuty(){const e=eventNow();if(!e)return panel('1','值勤作業',`<div class="banner">目前沒有颱風事件，請先建立事件，再設定各廠區值勤人員及各時段Checklist。</div><button class="btn" data-action="open-event" ${disabled()}>＋建立第一筆颱風事件</button>`);
  const d=draft(),s=slotNow(),saved=reportStored(),allStaff=staffNow();const summary=`${e.name}｜${e.factory}｜${e.date}`;const issues=validateDraftDetails(d);
  const header=panel('1','颱風事件基本資料',`<div class="toolbar"><div class="field" style="min-width:230px"><label>選擇颱風事件（含廠區）</label><select data-global="event">${opts(state.events.map(e=>[e.id,`${e.name}／${e.factory}／${e.date}`]),e.id)}</select></div><div class="field"><label>目前廠區</label><input readonly value="${H(e.factory)}"></div><div class="field"><label>本次回報日期</label><input type="date" data-global="reportDate" value="${H(state.reportDate)}"></div><button class="btn secondary" data-action="open-event">＋事件</button><button class="btn secondary" data-tab="people">值勤人員管理</button></div><div class="hint">事件：${H(summary)}。各廠區值勤人員名單與資料獨立；這裡不設置「整日值勤人員」，一律在下方各時段個別選擇。</div>`);
  const slots=panel('2','通報時段與值勤人員設定',`<div class="slot-grid">${SLOTS.map(p=>{const f=state.reports.find(r=>r.eventId===e.id&&r.slotId===p.id&&r.reportDate===state.reportDate),thisDraft=p.id===s.id?d:state.drafts[e.id+'__'+state.reportDate+'__'+p.id]||f||{peopleIds:[]};const selected=thisDraft.peopleIds||[];return `<div class="slot ${p.type} ${p.id===s.id?'selected':''}"><button class="choose-slot" data-slot="${p.id}" aria-pressed="${p.id===s.id}"><span class="slot-time">${p.time}</span><span class="slot-label">${p.label}</span></button><div class="duty-picker"><label class="hint">值勤人員（可多選）</label><details><summary>${selected.length?H(selected.map(id=>allStaff.find(x=>x.id===id)?.name||'(原人員已停用)').join('、')):'請選擇人員'}</summary><div class="picker-choices">${allStaff.length?allStaff.map(person=>`<label><input type="checkbox" data-staff-slot="${p.id}" data-person="${person.id}" ${selected.includes(person.id)?'checked':''} ${disabled()}>${H(person.name)}${person.job?'（'+H(person.job)+'）':''}</label>`).join(''):'<span class="none">本廠區尚未建立人員名單</span>'}</div></details></div>${p.attendance?'<div class="attention">需確認各單位出勤人數</div>':''}${p.patrol?`<div class="attention">應納入${p.patrol==='morning'?'上午':'下午'}巡查</div>`:''}${f?`<div class="saved">${f.status==='final'?'✓ 已完成通報':'○ 已存草稿'}</div>`:''}</div>`}).join('')}</div><div class="banner">選定時段後，在下方編輯該時段的Checklist及出勤人員；每個時段可選一人或多人，且不會自動沿用上一班。<b>00:00請用實際回報日期</b>。</div>`);
@@ -258,7 +261,7 @@ function renderEvents(){return panel('1','颱風事件管理',`${ownerBlock()}<d
 function renderPeople(){const filter=state.staffFilter||'全部';const people=state.staff.filter(p=>filter==='全部'||p.factory===filter);return panel('1','值勤人員基本資料管理',`${ownerBlock()}<div class="toolbar"><div class="field" style="max-width:250px"><label>篩選廠區</label><select data-global="staffFilter">${opts([['全部','全部廠區'],...FACTORIES.map(x=>[x,x])],filter)}</select></div><button class="btn" data-action="open-person" ${disabled()}>＋新增值勤人員</button></div><div class="hint">可新增、修改、停用人員；各時段下拉選單僅顯示所選廠區的啟用人員。既有通報內容另存文字快照，日後修改人員不會改寫已完成通報。</div>${people.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>姓名</th><th>廠區</th><th>單位</th><th>職稱／職務</th><th>電話</th><th>狀態</th><th>操作</th></tr></thead><tbody>${people.map(x=>`<tr><td>${H(x.name)}</td><td>${H(x.factory)}</td><td>${H(x.unit)}</td><td>${H(x.job)}</td><td>${H(x.phone)}</td><td><span class="tag ${x.active!==false?'ok':'warn'}">${x.active!==false?'啟用':'停用'}</span></td><td><button class="btn secondary small" data-edit-person="${x.id}" ${disabled()}>編輯</button> <button class="btn red small" data-delete-person="${x.id}" ${disabled()}>刪除</button></td></tr>`).join('')}</tbody></table></div>`:empty('此廠區目前沒有值勤人員資料')}`);}
 function renderRules(){const section=SECTIONS.find(s=>s.id===state.sectionId)||SECTIONS[0],revision=state.rules.find(r=>r.id===section.id),notes=state.notes.filter(n=>n.sectionId===section.id).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')),revisions=state.revisions.filter(r=>r.sectionId===section.id).sort((a,b)=>(b.at||'').localeCompare(a.at||''));const href='assets/安全衛生處颱風出勤作業原則報告_原件.pdf';return panel('1','颱風值勤規定公告欄',`<div class="banner">本公告收錄原始PDF的所有章節、通報範例與主管手寫批示閱覽指引。<b>核定原文與增修訂公告分離保存。</b>手寫批示部分字跡不明者，請對照原始掃描，不能將推測轉錄視為核定內容。 <a href="${href}" target="_blank" rel="noopener">檢視原始核定PDF（3頁） ↗</a></div><div class="rule-layout"><div class="rules-list">${SECTIONS.map(s=>`<button data-rule-section="${s.id}" class="${s.id===section.id?'active':''}">${H(s.title)}<br><span class="hint">${H(s.page)}</span></button>`).join('')}</div><div><h3 class="subheading">${H(section.title)} <span class="tag">${H(section.page)}</span></h3><div class="hint">下方為原報告排版整理文字（掃描辨識有疑義時以原件為準）。</div><div class="rule-source">${H(section.text)}</div><h3 class="subheading">增修訂公告（獨立於核定原文）</h3>${revision?`<div class="banner">第 ${H(revision.version||1)} 版｜更新：${H(revision.updatedAt||'')}<br><span class="inline-data">${H(revision.text||'')}</span></div>`:'<p class="hint">此章目前尚無增修訂公告。</p>'}${isOwner()?`<div class="field"><label>編輯本章補充／修訂公告（不影響原PDF）</label><textarea id="ruleEdit" rows="5" placeholder="請輸入新增或修訂內容">${H(revision?.text||'')}</textarea></div><div class="footerbar"><button class="btn" data-action="save-rule">儲存修訂並保留版本歷程</button></div>`:ownerBlock()}<h3 class="subheading">備註管理</h3>${notes.map(n=>`<div class="comment"><div class="meta">${H(n.createdAt)}｜${H(n.author||'管理員')}</div><div class="inline-data">${H(n.text)}</div>${isOwner()?`<div class="actions"><button class="btn small secondary" data-edit-note="${n.id}">修改</button><button class="btn small red" data-delete-note="${n.id}">刪除</button></div>`:''}</div>`).join('')||'<p class="hint">尚無備註。</p>'}${isOwner()?`<div class="field form-row"><label>新增備註（可獨立增修訂）</label><textarea id="newNote" rows="3" placeholder="例如：值勤執行補充事項"></textarea></div><button class="btn secondary" data-action="add-note">＋新增備註</button>`:''}<h3 class="subheading">增修訂歷程（${revisions.length}筆）</h3>${revisions.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>日期</th><th>版本／動作</th><th>內容快照</th></tr></thead><tbody>${revisions.map(r=>`<tr><td>${H(r.at)}</td><td>${H(r.action)} ${H(r.version||'')}</td><td class="inline-data">${H(r.text).slice(0,300)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="hint">尚無修訂紀錄。</p>'}</div></div>`);}
 function renderHistory(){const history=state.reports.filter(r=>!state.historyFactory||r.factory===state.historyFactory||state.events.find(e=>e.id===r.eventId)?.factory===state.historyFactory).sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));return panel('1','歷史通報與Excel紀錄',`<div class="toolbar"><div class="field" style="max-width:230px"><label>篩選廠區</label><select data-global="historyFactory">${opts([['','全部廠區'],...FACTORIES.map(x=>[x,x])],state.historyFactory||'')}</select></div><button class="btn green" data-action="excel">匯出完整 Excel（.xlsx）</button></div>${history.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>颱風／廠區</th><th>時段</th><th>回報日期</th><th>狀態</th><th>保存時間</th><th>操作</th></tr></thead><tbody>${history.map(r=>{const e=state.events.find(x=>x.id===r.eventId);return `<tr><td>${H(e?.name||'已刪事件')}／${H(e?.factory||'')}</td><td>${H(SLOTS.find(s=>s.id===r.slotId)?.time||r.slotId)}</td><td>${H(r.reportDate)}</td><td><span class="tag ${r.status==='final'?'ok':'warn'}">${r.status==='final'?'正式通報':'草稿'}</span></td><td>${H(r.savedAt)}</td><td><button class="btn secondary small" data-view-report="${r.id}">檢視文字</button> <button class="btn small secondary" data-load-report="${r.id}">回到Checklist</button></td></tr>`;}).join('')}</tbody></table></div>`:empty('尚無儲存過的通報紀錄')}`);}
-function renderSettings(){const s=state.settings.find(x=>x.id==='general')||{},units=s.units||{};return panel('1','系統設定',`<div class="banner warning">正式模式採用既有 EHS Firebase 登入，寫入權限只能屬於設定的管理員 UID，並須由 Firestore Rules 實際強制執行。登入頁面本身不能取代安全規則。</div><div class="field" style="max-width:460px"><label>通報稱謂（可由管理員修改）</label><input id="recipientSetting" value="${H(s.recipient||'資總、副總及資深經理')}" ${disabled()}></div><h3 class="subheading">各廠區預設出勤單位（選填）</h3><div class="hint">僅供新增時段Checklist時建立空白人數列，不代表當次實到。每行一個單位名稱，手動變更已存通報不會受影響。</div><div class="staff-grid">${FACTORIES.map(f=>`<div class="field"><label>${f}</label><textarea data-setting-units="${H(f)}" rows="4" placeholder="每行一個單位名稱" ${disabled()}>${H((units[f]||[]).join('\n'))}</textarea></div>`).join('')}</div><div class="footerbar"><button class="btn" data-action="save-settings" ${disabled()}>儲存系統設定</button></div><hr><p><b>運作模式：</b>${mode==='demo'?'本機示範（非正式資料）':'正式 Firebase Firestore'}</p><p><b>目前登入：</b>${H(currentUser()?.email||'未登入')}</p><p><b>設定管理員 UID：</b>${H(ownerUid||'示範模式')}</p>${mode==='firebase'?`<button class="btn secondary" data-action="logout">登出 Firebase</button>`:''}<p class="hint">更新程式不會自動刪除 Firestore 資料。請先閱讀部署說明再進行正式上線。</p>`);}
+function renderSettings(){const s=state.settings.find(x=>x.id==='general')||{},units=s.units||{};return panel('1','系統設定',`<div class="banner warning">正式模式採用既有 EHS Firebase 登入，寫入權限僅限已驗證的 EHS 入口管理員帳號，並須由 Firestore Rules 實際強制執行。登入頁面本身不能取代安全規則。</div><div class="field" style="max-width:460px"><label>通報稱謂（可由管理員修改）</label><input id="recipientSetting" value="${H(s.recipient||'資總、副總及資深經理')}" ${disabled()}></div><h3 class="subheading">各廠區預設出勤單位（選填）</h3><div class="hint">僅供新增時段Checklist時建立空白人數列，不代表當次實到。每行一個單位名稱，手動變更已存通報不會受影響。</div><div class="staff-grid">${FACTORIES.map(f=>`<div class="field"><label>${f}</label><textarea data-setting-units="${H(f)}" rows="4" placeholder="每行一個單位名稱" ${disabled()}>${H((units[f]||[]).join('\n'))}</textarea></div>`).join('')}</div><div class="footerbar"><button class="btn" data-action="save-settings" ${disabled()}>儲存系統設定</button></div><hr><p><b>運作模式：</b>${mode==='demo'?'本機示範（非正式資料）':'正式 Firebase Firestore'}</p><p><b>目前登入：</b>${H(currentUser()?.email||'未登入')}</p><p><b>管理者帳號：</b>${H(ownerEmail||'尚未取得')}</p>${mode==='firebase'?`<button class="btn secondary" data-action="logout">登出 Firebase</button>`:''}<p class="hint">更新程式不會自動刪除 Firestore 資料。請先閱讀部署說明再進行正式上線。</p>`);}
 function dialog(content){const e=document.createElement('div');e.className='modal-shade';e.id='dialog';e.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${content}</div>`;document.body.appendChild(e);e.addEventListener('click',event=>{if(event.target===e)e.remove();});}
 const closeDialog=()=>$('#dialog')?.remove();
 function modalEvent(id){const e=state.events.find(x=>x.id===id)||{id:'',name:'',factory:'麥寮',date:today()};dialog(`<h2>${id?'修改':'新增'}颱風事件</h2><form id="eventForm"><input type="hidden" name="id" value="${H(e.id)}"><div class="field form-row"><label>颱風名稱</label><input name="name" required value="${H(e.name)}" placeholder="例如：山陀兒颱風"></div><div class="field form-row"><label>廠區</label><select name="factory">${opts(FACTORIES.map(x=>[x,x]),e.factory)}</select></div><div class="field form-row"><label>事件日期</label><input name="date" type="date" required value="${H(e.date)}"></div><div class="actions"><button type="submit" class="btn">${id?'儲存修改':'建立事件'}</button><button type="button" class="btn secondary" data-action="close-dialog">取消</button></div></form>`);}
@@ -282,7 +285,8 @@ function saveFormToDraft(el){if(!state.eventId||!isOwner())return;const d=draft(
 }
 async function exportExcel(){try{const all=state.events.map(e=>[e.id,e.name,e.factory,e.date]),r=state.reports,inc=state.incidents;const filtered=state.historyFactory?state.events.filter(e=>e.factory===state.historyFactory):state.events;const eventIds=new Set(filtered.map(e=>e.id));const tables=[{name:'颱風事件',rows:[['事件ID','颱風名稱','廠區','事件日期'],...filtered.map(e=>[e.id,e.name,e.factory,e.date])]},{name:'各時段回報',rows:[['事件','廠區','回報日期','時段','狀態','值勤人員','儲存時間','完整通報內容'],...r.filter(x=>eventIds.has(x.eventId)).map(x=>[x.name,x.factory,x.reportDate,SLOTS.find(s=>s.id===x.slotId)?.time||x.slotId,x.status==='final'?'正式':'草稿',(x.personnelSnapshot||[]).map(p=>p.name).join('、'),x.savedAt,x.reportText])]},{name:'Checklist',rows:[['颱風事件ID','回報日期','時段','檢查項目','結果','備註'],...r.filter(x=>eventIds.has(x.eventId)).flatMap(x=>CHECKS.flatMap(c=>c.rows.map(([id,label])=>[x.eventId,x.reportDate,x.slotId,label,stText[x.checks?.[id]||'pending'],x.notes?.[id]||''])))]},{name:'出勤人數',rows:[['事件ID','日期','時段','單位','應到','實到','備註'],...r.filter(x=>eventIds.has(x.eventId)).flatMap(x=>(x.unitAttendance||[]).map(u=>[x.eventId,x.reportDate,x.slotId,u.unit,u.expected,u.actual,u.note]))]},{name:'異常事件',rows:[['事件ID','時間','異常項目','說明','處置','群組已通報','主管已聯絡','外部照片已附','已結案'],...inc.filter(x=>eventIds.has(x.eventId)).map(x=>[x.eventId,x.at,x.title,x.details,x.action,x.groupNotified?'是':'否',x.supervisorContacted?'是':'否',x.photoAttached?'是':'否',x.closed?'是':'否'])]},{name:'值勤人員名單',rows:[['姓名','廠區','單位','職務','電話','啟用'],...state.staff.filter(p=>!state.historyFactory||p.factory===state.historyFactory).map(p=>[p.name,p.factory,p.unit,p.job,p.phone,p.active!==false?'是':'否'])]}];downloadBlob(workbook(tables),`安衛處颱風值勤紀錄_${today()}.xlsx`);toast('已產生 Excel 活頁簿');}catch(e){toast('Excel 匯出失敗：'+e.message,'error');}}
 // 以事件委派方式綁定控制項，切換畫面後仍維持操作。
-document.addEventListener('click',async ev=>{
+document.addEventListener('click',async ev=>{const login=ev.target.closest('[data-action="google-login"]');if(login){login.disabled=true;try{await signInGoogle();toast('Google 登入成功');}catch(e){toast('Google 登入未完成：'+e.message,'error');}finally{login.disabled=false;}return;}
+
  const b=ev.target.closest('[data-tab],[data-action],[data-slot],[data-check-tab],[data-rule-section],[data-edit-person],[data-delete-person],[data-edit-event],[data-delete-event],[data-open-event],[data-edit-incident],[data-delete-incident],[data-view-report],[data-load-report],[data-delete-unit],[data-edit-note],[data-delete-note],[data-copy-text],[data-focus-issue]');if(!b)return;
  if(b.dataset.focusIssue){const item=validateDraftDetails(draft()).find(x=>x.id===b.dataset.focusIssue);focusIssue(item);return;}
  if(b.dataset.tab){setTab(b.dataset.tab);return;}
@@ -337,7 +341,7 @@ document.addEventListener('submit',async ev=>{const f=ev.target;const formId=f.g
  if(formId==='editNoteForm'){if(!clean(v.text))throw Error('備註不可空白');const old=state.notes.find(x=>x.id===v.id);await saveDoc('notes',{...old,text:clean(v.text),updatedAt:now()});await saveDoc('revisions',{id:makeId(),sectionId:old.sectionId,at:now(),action:'修改備註',text:clean(v.text),previousText:old.text,version:''});}
  closeDialog();toast('資料已儲存');await refresh();});});
 $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
-function showLogin(){userLabel();$('#main').innerHTML=`<div class="panel" style="max-width:550px;margin:5vh auto"><h2>登入 EHS Firebase 帳號</h2><p>如已在 EHS Portal 使用同一 Firebase 專案登入，系統可能自動承接登入狀態；若未登入，可使用現有 Email／Password 帳號登入。</p><form id="loginForm"><div class="field form-row"><label>Email</label><input name="email" type="email" required autocomplete="username"></div><div class="field form-row"><label>密碼</label><input name="password" type="password" required autocomplete="current-password"></div><button class="btn" type="submit">登入</button></form><div class="banner warning">請勿在 config.js、GitHub 或任何程式碼內填寫帳號密碼。既有 EHS Portal 若使用 Google 登入，請先登入入口站並確認同源登入狀態；本系統的 Email 登入僅使用同專案已存在的帳號。</div></div>`;}
+function showLogin(){window.__EHS_TYPHOON_RENDERED=true;userLabel();$('#main').innerHTML=`<div class="panel" style="max-width:550px;margin:5vh auto"><h2>登入 EHS Firebase 帳號</h2><p>正式版使用與 EHS 入口網站相同的 Firebase 專案及登入狀態。請優先使用現有 Google 帳號登入。</p><button class="btn" type="button" data-action="google-login">使用 Google 帳號登入</button><details style="margin-top:16px"><summary>使用既有 Email／Password 帳號</summary><form id="loginForm"><div class="field form-row"><label>Email</label><input name="email" type="email" required autocomplete="username"></div><div class="field form-row"><label>密碼</label><input name="password" type="password" required autocomplete="current-password"></div><button class="btn" type="submit">登入</button></form></details><div class="banner warning" style="margin-top:16px">本版已連接正式 Firebase。管理者須使用 EHS 入口已驗證帳號；其他已登入使用者僅能閱讀。不得將帳號密碼放進 GitHub 程式碼。</div></div>`;}
 async function boot(){try{await init(async user=>{if(mode==='firebase'&&!user){showLogin();return;}await refresh();});}catch(e){mainError(e);}}
 boot();
 

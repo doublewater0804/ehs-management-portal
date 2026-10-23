@@ -1,15 +1,15 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#124c86"><meta name="description" content="安全衛生處颱風值勤管理系統"><title>安衛處颱風值勤管理系統 R0.2</title><link rel="stylesheet" href="styles.css?v=R0.2"></head>
-<body><header class="topbar"><button id="menuToggle" class="icon-btn mobile-menu" aria-label="開啟選單">☰</button><div class="brand"><span class="hurricane">◉</span><span>安衛處颱風值勤管理系統 <small>R0.2</small></span></div><div class="toplinks"><span id="connectionLabel" class="connection">準備中</span><a id="homeBtn" class="homebtn" href="https://doublewater0804.github.io/ehs-management-portal/">⌂ 回 EHS 首頁</a><span id="accountLabel"></span></div></header>
-<div class="app-shell"><aside class="sidebar" id="sidebar"><nav id="nav"><button data-tab="duty" class="active">☑　值勤作業</button><button data-tab="events">◫　颱風事件管理</button><button data-tab="people">♙　值勤人員管理</button><button data-tab="rules">▤　颱風值勤規定</button><button data-tab="history">◷　歷史紀錄</button><button data-tab="settings">⚙　系統設定</button></nav><div class="side-footer">原核定PDF完整保留<br>含主管手寫批示<br><span>版本 R0.2 · 2026-10</span></div></aside><main id="main" tabindex="-1"><section class="loading"><h2>系統初始化中…</h2></section></main></div><div id="toast" role="status" aria-live="polite"></div><script>
+<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#124c86"><meta name="description" content="安全衛生處颱風值勤管理系統"><title>安衛處颱風值勤管理系統 R0.3</title><link rel="stylesheet" href="styles.css?v=R0.3"></head>
+<body><header class="topbar"><button id="menuToggle" class="icon-btn mobile-menu" aria-label="開啟選單">☰</button><div class="brand"><span class="hurricane">◉</span><span>安衛處颱風值勤管理系統 <small>R0.3</small></span></div><div class="toplinks"><span id="connectionLabel" class="connection">準備中</span><a id="homeBtn" class="homebtn" href="https://doublewater0804.github.io/ehs-management-portal/">⌂ 回 EHS 首頁</a><span id="accountLabel"></span></div></header>
+<div class="app-shell"><aside class="sidebar" id="sidebar"><nav id="nav"><button data-tab="duty" class="active">☑　值勤作業</button><button data-tab="events">◫　颱風事件管理</button><button data-tab="people">♙　值勤人員管理</button><button data-tab="rules">▤　颱風值勤規定</button><button data-tab="history">◷　歷史紀錄</button><button data-tab="settings">⚙　系統設定</button></nav><div class="side-footer">原核定PDF完整保留<br>含主管手寫批示<br><span>版本 R0.3 · 2026-10</span></div></aside><main id="main" tabindex="-1"><section class="loading"><h2>系統初始化中…</h2></section></main></div><div id="toast" role="status" aria-live="polite"></div><script>
 // 即使程式檔案未載入，也要在畫面顯示具體錯誤，不能永久停在初始化中。
 (function(){
   function fail(msg){
     if(window.__EHS_TYPHOON_RENDERED)return;
     var m=document.getElementById('main');if(!m)return;
     var box=document.createElement('section');box.className='panel';
-    var title=document.createElement('h2');title.textContent='系統無法初始化（R0.2）';
+    var title=document.createElement('h2');title.textContent='系統無法初始化（R0.3）';
     var info=document.createElement('p');info.textContent=msg;
-    var tip=document.createElement('p');tip.textContent='請確認 typhoon-duty/ 的 config.js 與 app-bundle.js 已上傳；按 Ctrl+Shift+R 強制重新整理。如果仍失敗，請將此錯誤訊息回報。';
+    var tip=document.createElement('p');tip.textContent='請確認 typhoon-duty/ 的 config.js 與 app-bundle.js 已上傳；正式版另需入口站 portal/config.js 可正常讀取；按 Ctrl+Shift+R 強制重新整理。如果仍失敗，請將此錯誤訊息回報。';
     box.append(title,info,tip);m.replaceChildren(box);
     var label=document.getElementById('connectionLabel');if(label)label.textContent='載入失敗';
   }
@@ -20,4 +20,4 @@
   window.addEventListener('unhandledrejection',function(e){if(!window.__EHS_TYPHOON_RENDERED)fail('啟動失敗：'+(e.reason?.message||String(e.reason||'未知')));});
   window.addEventListener('load',function(){setTimeout(function(){if(!window.__EHS_TYPHOON_RENDERED)fail('網頁載入後仍未完成初始化；請檢查程式檔案與網路。');},5000);});
 })();
-</script><script src="config.js?v=R0.2"></script><script src="app-bundle.js?v=R0.2" defer></script></body></html>
+</script><script src="config.js?v=R0.3"></script><script src="app-bundle.js?v=R0.3" defer></script></body></html>

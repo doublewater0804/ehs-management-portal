@@ -7,6 +7,17 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
 
   const normalizeText = (value) => String(value ?? '').replace(/[\s　]+/g, '').trim();
 
+  // Firestore may return object map fields in a different order from the browser.
+  // Canonicalize keys recursively before comparing snapshots, while preserving array order.
+  const stableSerialize = (value) => JSON.stringify(value, (key, item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+    return Object.keys(item).sort().reduce((out, field) => {
+      out[field] = item[field];
+      return out;
+    }, {});
+  });
+
+
   const findMatchingExclusionKeys = (exclusions, factory, dateISO) => {
     const normalizedFactory = normalizeText(factory);
     const normalizedDate = normalizeText(dateISO);
@@ -55,7 +66,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
           const isTarget = event => String(event?.factory || '').trim() === String(factory || '').trim()
             && String(event?.date || '').trim() === String(dateISO || '').trim();
           const selected = state.events.filter(isTarget);
-          if (JSON.stringify(selected) !== JSON.stringify(originalEvents)) {
+          if (stableSerialize(selected) !== stableSerialize(originalEvents)) {
             throw new Error('雲端資料已變更，請重新開啟修改視窗後再操作');
           }
           let targetIndex = 0;

@@ -74,6 +74,16 @@
     return String(type || '').toUpperCase() === 'TA' ? '定檢' : '非定檢';
   }
 
+  function stableSerialize(value) {
+    return JSON.stringify(value, (key, item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+      return Object.keys(item).sort().reduce((out, field) => {
+        out[field] = item[field];
+        return out;
+      }, {});
+    });
+  }
+
   function getState() {
     return typeof window.__getFlareCloudState === 'function' ? window.__getFlareCloudState() : null;
   }
@@ -129,7 +139,7 @@
     const currentEvents = live.events.filter(event =>
       String(event?.factory || '').trim() === String(factory || '').trim() &&
       String(event?.date || '').trim() === String(dateISO || '').trim());
-    if (JSON.stringify(currentEvents) !== JSON.stringify(originalEvents)) {
+    if (stableSerialize(currentEvents) !== stableSerialize(originalEvents)) {
       alert('此日期的原始紀錄已被更新，請關閉視窗重新開啟後再修改。');
       return;
     }

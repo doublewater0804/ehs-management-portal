@@ -3408,5 +3408,9 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             downloadCSV(csv, `燃燒塔排放納入統計_${year}.csv`);
         }
     </script>
+<!-- FLARE 原始排放紀錄修改 / Firebase 同步模組（使用版本參數避免 GitHub Pages 舊快取） -->
+<script type="module" src="./sync-guard.js?v=20261027-1"></script>
+<script type="module" src="./cloud-sync-fix.js?v=20261027-1"></script>
+<script src="./amount-edit.js?v=20261027-1"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>
 </html>

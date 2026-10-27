@@ -44,6 +44,45 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
         });
       };
 
+      // 原始排放資料的原子修改：只改目標日期，並拒絕已由其他端更新的舊版本。
+      window.__flareCloudEditEvents = async ({ factory, dateISO, originalEvents, amounts, deletedIndexes }) => {
+        const deleted = new Set(deletedIndexes);
+        const serverState = await runTransaction(db, async (transaction) => {
+          const snap = await transaction.get(flareDoc);
+          if (!snap.exists()) throw new Error('雲端找不到燃燒塔資料');
+          const state = snap.data()?.state || {};
+          if (!Array.isArray(state.events)) throw new Error('雲端排放紀錄格式異常');
+          const isTarget = event => String(event?.factory || '').trim() === String(factory || '').trim()
+            && String(event?.date || '').trim() === String(dateISO || '').trim();
+          const selected = state.events.filter(isTarget);
+          if (JSON.stringify(selected) !== JSON.stringify(originalEvents)) {
+            throw new Error('雲端資料已變更，請重新開啟修改視窗後再操作');
+          }
+          let targetIndex = 0;
+          const modifiedAt = new Date().toISOString();
+          state.events = state.events.flatMap(event => {
+            if (!isTarget(event)) return [event];
+            const index = targetIndex++;
+            if (deleted.has(index) || Number(amounts[index]) === 0) return [];
+            const nextAmount = Number(amounts[index]);
+            if (nextAmount === Number(event.amount || 0)) return [event];
+            const previous = Number(event.amount || 0);
+            const history = Array.isArray(event.amountEditHistory) ? [...event.amountEditHistory] : [];
+            history.push({ from: previous, to: nextAmount, at: modifiedAt });
+            return [{ ...event, amount: nextAmount, amountModifiedAt: modifiedAt,
+              amountModifiedFrom: previous, amountEditHistory: history.slice(-20) }];
+          });
+          state.updatedAtLocal = modifiedAt;
+          transaction.update(flareDoc, { state, updatedAt: serverTimestamp() });
+          return state;
+        });
+        // 實際雲端交易提交後才重繪。避免失敗時本機顯示已刪除。
+        if (typeof window.__applyFlareCloudState === 'function') {
+          window.__applyFlareCloudState(serverState);
+        }
+        return serverState;
+      };
+
       window.__flareCloudUploadLocal = async (state) => {
         await setDoc(flareDoc, {
           state,

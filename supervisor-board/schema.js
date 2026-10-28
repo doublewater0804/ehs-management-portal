@@ -4,7 +4,7 @@ export const COL = Object.freeze({
   records: 'ehs_supervisor_board_r0_records',
   history: 'ehs_supervisor_board_r0_history'
 });
-export const FIELDS = ['date','supervisorId','content','source','note','status','archived'];
+export const FIELDS = ['date','supervisorId','title','content','source','sourceSelections','sourceOther','note','status','archived'];
 export function str(value, max=12000){return String(value??'').trim().slice(0,max+1);}
 export function validDate(value){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value)))return false;
@@ -20,8 +20,17 @@ export function normalizeSupervisor(obj){
 }
 export function supervisorSnapshot(s){return {name:s.name,title:s.title||'',department:s.department||''};}
 export function normalizeRecord(obj,supervisors,{existing=null}={}){
-  const r={id:str(obj.id,120),date:str(obj.date,20),supervisorId:str(obj.supervisorId,120),content:str(obj.content,12000),source:str(obj.source,6000),note:str(obj.note,12000),status:str(obj.status,100),archived:obj.archived===true};
+  // 舊紀錄可不含標題及來源選項；本次不搬移或回寫它們。
+  const title=str(obj.title??existing?.title??'',160);
+  const selections=obj.sourceSelections===undefined?(existing?.sourceSelections||[]):obj.sourceSelections;
+  if(!Array.isArray(selections)||selections.length>40)throw Error('依據來源選項格式無效');
+  const sourceSelections=selections.map(v=>({id:str(v?.id,120),name:str(v?.name,100)}));
+  if(sourceSelections.some(v=>!v.id||!v.name||v.id.length>120||v.name.length>100))throw Error('依據來源選項內容無效');
+  if(new Set(sourceSelections.map(x=>x.id)).size!==sourceSelections.length)throw Error('不可重複選擇相同來源');
+  const r={id:str(obj.id,120),date:str(obj.date,20),supervisorId:str(obj.supervisorId,120),title,content:str(obj.content,12000),source:str(obj.source,6000),sourceSelections,sourceOther:str(obj.sourceOther??existing?.sourceOther??'',1200),note:str(obj.note,12000),status:str(obj.status,100),archived:obj.archived===true};
   if(!validDate(r.date))throw Error('指示日期無效，請使用YYYY-MM-DD');
+  if(!existing&&!r.title)throw Error('新增指示必須填寫標題');
+  if(r.title.length>160)throw Error('指示標題不可超過160字');
   if(!r.content||r.content.length>12000)throw Error('指示內容必填，且不可超過12000字');
   if(r.source.length>6000||r.note.length>12000||r.status.length>100)throw Error('依據來源、備註或狀態文字過長');
   const supervisor=supervisors.find(s=>s.id===r.supervisorId);
@@ -35,7 +44,7 @@ export function normalizeRecord(obj,supervisors,{existing=null}={}){
   return r;
 }
 export function recordChanged(a,b){
-  return FIELDS.some(k=>a?.[k]!==b?.[k]) || JSON.stringify(a?.supervisorSnapshot||{})!==JSON.stringify(b?.supervisorSnapshot||{});
+  return FIELDS.some(k=>k==='sourceSelections'?JSON.stringify(a?.[k]||[])!==JSON.stringify(b?.[k]||[]):(a?.[k]??'')!==(b?.[k]??'')) || JSON.stringify(a?.supervisorSnapshot||{})!==JSON.stringify(b?.supervisorSnapshot||{});
 }
 export function supervisorChanged(a,b){return ['name','title','department','active','order'].some(k=>a?.[k]!==b?.[k]);}
 export function ownId(){return globalThis.crypto?.randomUUID?.()??('id_'+Date.now()+'_'+Math.random().toString(36).slice(2));}
@@ -69,3 +78,32 @@ export function normalizeStatusList(list){
   });
 }
 export const sortStatusOptions=items=>items.slice().sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name,'zh-TW'));
+
+// R0.4 來源字典：選項 ID 穩定；每筆指示另存來源名稱快照，保護更名後的歷史。
+export const DEFAULT_SOURCES=Object.freeze([
+  {id:'source-meeting',name:'主管會議',description:'',active:true,order:10},
+  {id:'source-phone',name:'電話',description:'',active:true,order:20},
+  {id:'source-line',name:'LINE',description:'',active:true,order:30},
+  {id:'source-email',name:'Email',description:'',active:true,order:40},
+  {id:'source-document',name:'公文',description:'',active:true,order:50},
+  {id:'source-other',name:'其他',description:'',active:true,order:60,allowCustom:true}
+]);
+export const initialSources=()=>DEFAULT_SOURCES.map(item=>({...item}));
+export function normalizeSource(obj){
+  const item={id:str(obj.id,120),name:str(obj.name,100),description:str(obj.description,200),active:obj.active!==false,order:Number(obj.order??100),allowCustom:obj.allowCustom===true||obj.id==='source-other'};
+  if(!item.id||item.id.length>120||!item.name||item.name.length>100)throw Error('來源 ID 或名稱無效');
+  if(item.description.length>200||!Number.isInteger(item.order)||item.order<0||item.order>99999)throw Error('來源說明或排序不合法');
+  return item;
+}
+export function normalizeSourceList(list){
+  if(!Array.isArray(list)||list.length>100)throw Error('依據來源最多100種');
+  const ids=new Set(),names=new Set();return list.map(raw=>{const s=normalizeSource(raw);
+    if(ids.has(s.id)||names.has(s.name))throw Error('依據來源ID或名稱重複：'+s.name);
+    ids.add(s.id);names.add(s.name);return s;
+  });
+}
+export const sortSourceOptions=items=>items.slice().sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name,'zh-TW'));
+export function sourceUsed(item,records){
+  return records.some(r=>(r.sourceSelections||[]).some(s=>s.id===item.id||s.name===item.name)
+    || (!(r.sourceSelections||[]).length && String(r.source||'').includes(item.name)));
+}

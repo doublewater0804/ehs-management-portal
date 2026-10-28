@@ -1,9 +1,11 @@
-import {COL,ownId,normalizeSupervisor,normalizeRecord,recordChanged,supervisorChanged,normalizeStatusList,initialStatuses} from './schema.js';
+import {COL,ownId,normalizeSupervisor,normalizeRecord,recordChanged,supervisorChanged,normalizeStatusList,initialStatuses,normalizeSourceList,initialSources} from './schema.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
 const DEMO=new URLSearchParams(location.search).get('demo')==='1';
 const KEY='ehs_supervisor_board_r01_demo__';
 const STATUS_SETTINGS_COLLECTION='ehs_supervisor_board_r0_settings';
 const STATUS_SETTINGS_DOC='statuses';
+const SOURCE_SETTINGS_COLLECTION='ehs_supervisor_board_r0_sources';
+const SOURCE_SETTINGS_DOC='options';
 let auth=null, db=null, fb=null, lib=null, current=null, listener=null, authObserver=null;
 export const isDemo=()=>DEMO;
 export const getUser=()=>current;
@@ -25,12 +27,12 @@ export async function login(){if(DEMO)return;await lib.signInWithPopup(auth,new 
 export async function logout(){if(DEMO){location.href=location.pathname;return;}await lib.signOut(auth);}
 export async function loadAll(){
   guard();
-  if(DEMO){const saved=localStorage.getItem(KEY+'statusSettings');return {supervisors:localRead('supervisors'),records:localRead('records'),history:localRead('history'),statusSettings:saved?JSON.parse(saved):{items:initialStatuses(),version:0}};}
+  if(DEMO){const saved=localStorage.getItem(KEY+'statusSettings');return {supervisors:localRead('supervisors'),records:localRead('records'),history:localRead('history'),statusSettings:saved?JSON.parse(saved):{items:initialStatuses(),version:0},sourceSettings:localStorage.getItem(KEY+'sourceSettings')?JSON.parse(localStorage.getItem(KEY+'sourceSettings')):{items:initialSources(),version:0}};}
   const out=await Promise.all([COL.supervisors,COL.records,COL.history].map(async p=>{
     const s=await fb.getDocs(fb.collection(db,p));return s.docs.map(d=>({...d.data(),id:d.id}));
   }));
-  const statusSnap=await fb.getDoc(fb.doc(db,STATUS_SETTINGS_COLLECTION,STATUS_SETTINGS_DOC));
-  return {supervisors:out[0],records:out[1],history:out[2],statusSettings:statusSnap.exists()?statusSnap.data():{items:initialStatuses(),version:0}};
+  const [statusSnap,sourceSnap]=await Promise.all([fb.getDoc(fb.doc(db,STATUS_SETTINGS_COLLECTION,STATUS_SETTINGS_DOC)),fb.getDoc(fb.doc(db,SOURCE_SETTINGS_COLLECTION,SOURCE_SETTINGS_DOC))]);
+  return {supervisors:out[0],records:out[1],history:out[2],statusSettings:statusSnap.exists()?statusSnap.data():{items:initialStatuses(),version:0},sourceSettings:sourceSnap.exists()?sourceSnap.data():{items:initialSources(),version:0}};
 }
 export async function saveSupervisor(input,expectedVersion=0){
   guard();const s=normalizeSupervisor(input);s.id=s.id||ownId();
@@ -142,4 +144,19 @@ export async function deleteRecord(id,expectedVersion){
     tx.delete(ref);
   });
   return {deletedHistory:historyRefs.length};
+}
+
+// R0.4 單一來源基本資料設定文件；既有狀態、主管、紀錄路徑皆不變。
+export async function saveSourceSettings(items,expectedVersion=0){
+  guard();const normalized=normalizeSourceList(items);const stamp=new Date().toISOString();
+  if(DEMO){const key=KEY+'sourceSettings';const old=localStorage.getItem(key)?JSON.parse(localStorage.getItem(key)):{items:initialSources(),version:0};
+    if((old.version||0)!==expectedVersion)throw Error('來源設定已變更，請重新整理。');
+    const next={items:normalized,version:expectedVersion+1,updatedAt:stamp,updatedBy:current.email};
+    localStorage.setItem(key,JSON.stringify(next));return next;
+  }
+  const ref=fb.doc(db,SOURCE_SETTINGS_COLLECTION,SOURCE_SETTINGS_DOC);
+  return fb.runTransaction(db,async tx=>{const snap=await tx.get(ref),old=snap.exists()?snap.data():{items:initialSources(),version:0};
+    if((old.version||0)!==expectedVersion)throw Error('來源設定已在其他視窗更新，請重新整理。');
+    const next={items:normalized,version:expectedVersion+1,updatedAt:stamp,updatedBy:current.email};tx.set(ref,next);return next;
+  });
 }

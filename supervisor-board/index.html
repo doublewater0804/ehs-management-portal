@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#087d90">
   <title>主管交辦布告欄｜EHS 管理入口平台</title>
-  <link rel="stylesheet" href="styles.css?v=R0.3">
+  <link rel="stylesheet" href="styles.css?v=R0.4">
 </head>
 <body>
   <header class="topbar">
@@ -15,24 +15,26 @@
     <div id="notice" role="status" aria-live="polite"></div>
     <section id="login-panel" class="panel auth-panel" hidden><h2>管理員登入</h2><p>本布告欄沿用 EHS 管理入口網站 Google 帳號登入及單一管理員權限。</p><button id="login-btn">使用 Google 帳號登入</button> <button type="button" id="logout-denied" class="outline" hidden>登出目前帳號</button><p id="login-error" class="error"></p></section>
     <div id="workspace" hidden>
-      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.3</small></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
+      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.4</small></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
       <div id="demo-warning" class="demo-banner" hidden>本機示範模式：資料僅保存於此瀏覽器，與正式 Firestore 完全隔離。示範資料不能當成正式紀錄。</div>
       <div class="stats" id="stats"></div>
+      <div class="function-toolbar"><button type="button" id="add-record">＋ 新增指示</button>
       <div class="tabs" role="tablist" aria-label="管理功能">
         <button type="button" data-tab="records" class="selected" role="tab" aria-selected="true">主管指示查詢</button>
         <button type="button" data-tab="supervisors" role="tab" aria-selected="false">主管基本資料</button>
         <button type="button" data-tab="statuses" role="tab" aria-selected="false">狀態基本資料</button>
+        <button type="button" data-tab="sources" role="tab" aria-selected="false">依據來源基本資料</button>
         <button type="button" data-tab="import" role="tab" aria-selected="false">Excel 匯入匯出</button>
-      </div>
+      </div></div>
       <section id="records-view" class="panel">
-        <div class="section-heading"><h2>指示事項</h2><button id="add-record">＋ 新增指示</button></div>
+        <div class="section-heading"><h2>指示事項</h2></div>
         <div class="filters">
           <label>交辦主管<select id="filter-supervisor"><option value="">全部主管</option></select></label>
           <label>年度<select id="filter-year"><option value="">全部年度</option></select></label>
           <label>開始日期<input type="date" id="filter-from"></label>
           <label>結束日期<input type="date" id="filter-to"></label>
           <label>狀態<select id="filter-status"><option value="">全部狀態</option></select></label>
-          <label class="wide">關鍵字<input id="filter-keyword" type="search" placeholder="搜尋指示內容、依據來源、備註、主管"></label>
+          <label class="wide">關鍵字<input id="filter-keyword" type="search" placeholder="搜尋指示標題、內容、來源、備註、主管"></label>
           <label class="checkbox-line"><input type="checkbox" id="filter-archived">包含已封存</label>
         </div>
         <div class="list-actions"><span id="result-count"></span><div><label class="sort-control">日期排序<select id="sort-date"><option value="new">最新 → 最舊（預設）</option><option value="old">最舊 → 最新</option></select></label><button type="button" id="export-pdf" class="outline">輸出 PDF（列印另存）</button><button type="button" id="print-records" class="outline">列印目前結果</button></div></div>
@@ -48,9 +50,14 @@
         <p class="hint">可新增、修改、停用或調整順序；尚未被任何指示使用的狀態才可刪除。已使用狀態請改為停用。修改名稱不會覆蓋舊指示的原始狀態文字。</p>
         <div id="statuses-list"></div>
       </section>
+      <section id="sources-view" class="panel" hidden>
+        <div class="section-heading"><h2>依據來源基本資料</h2><button type="button" id="add-source">＋ 新增來源</button></div>
+        <p class="hint">未使用的來源可刪除；已用於指示的來源只能停用。修改來源名稱不會變更過去的原始來源記錄。</p>
+        <div id="sources-list"></div>
+      </section>
       <section id="import-view" class="panel" hidden>
         <h2>Excel 管理</h2>
-        <p>匯出檔包括「主管基本資料」、「狀態基本資料」、「主管指示紀錄」及唯讀「修改歷程」工作表。修改後回匯時請保留 ID 與版本欄位。舊版 Excel 無狀態工作表仍可匯入。</p>
+        <p>匯出檔包括「主管基本資料」、「狀態基本資料」、「依據來源基本資料」、「主管指示紀錄」及唯讀「修改歷程」工作表。修改後回匯時請保留 ID 與版本欄位。舊版 Excel 無狀態工作表仍可匯入。</p>
         <button type="button" id="export-xlsx">匯出完整 Excel</button>
         <div class="upload"><label for="import-file">選擇 Excel（.xlsx）</label><input type="file" id="import-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
         <div id="import-preview" role="status"></div>
@@ -64,6 +71,7 @@
     <div id="edit-fields"></div>
     <div class="dialog-actions"><button type="button" class="outline" id="cancel-edit">取消</button><button type="submit" id="save-edit">儲存</button></div>
   </form></dialog>
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"><h2 id="detail-title">主管指示詳情</h2><div id="detail-content"></div><div class="dialog-actions"><button id="detail-close" type="button" class="outline">關閉</button><button id="detail-edit" type="button">修改</button><button id="detail-history" type="button" class="outline">查看歷程</button></div></dialog>
   <dialog id="history-dialog" class="history-dialog"><h2 id="history-title">修改歷程</h2><div id="history-content"></div><div class="dialog-actions"><button type="button" id="close-history">關閉</button></div></dialog>
   <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title">
     <h2 id="delete-title">確認永久刪除主管指示</h2>
@@ -78,6 +86,6 @@
     <div class="dialog-actions"><button type="button" id="cancel-delete" class="outline">取消</button><button type="button" id="confirm-delete" class="delete-confirm">確認永久刪除</button></div>
   </dialog>
   <script defer src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" crossorigin="anonymous" id="exceljs-cdn"></script>
-  <script type="module" src="app.js?v=R0.3"></script>
+  <script type="module" src="app.js?v=R0.4"></script>
 </body>
 </html>

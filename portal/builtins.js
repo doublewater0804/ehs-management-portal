@@ -1,54 +1,40 @@
-// Deployment-added modules appear even when an older cloud catalog exists.
-// Existing entries (including hidden or reclassified entries) always win.
+// R0.3: register new modules in the portal's native data pipeline.
+// Existing cloud entries (including hidden or reclassified entries) take precedence.
 const registrations = [
   {
     id: 'storage-facilities',
     title: '防止貯存系統污染地下水體-貯存設施統計表',
     description: '管理地上儲槽、地下儲槽與貯存容器基本資料，共用監測設定、井數統計及 Excel 匯出。',
-    href: 'storage-facilities/index.html',
-    category: 'environment',
-    order: 130,
-    visible: true,
-    favorite: false
+    href: 'storage-facilities/index.html', category: 'environment', order: 130, visible: true, favorite: false
   },
   {
-    id: 'incident-investigation',
-    title: '事故調查輪值人員管理',
+    id: 'incident-investigation', title: '事故調查輪值人員管理',
     description: '台灣、大陸及越南輪值設定、人員名冊、調查紀錄與 A4 橫式列印。',
-    href: 'incident-investigation/index.html',
-    category: 'incident',
-    order: 140,
-    visible: true,
-    favorite: false
+    href: 'incident-investigation/index.html', category: 'incident', order: 140, visible: true, favorite: false
   },
   {
-    id: 'weekly-focus',
-    title: '每周安全永續組工作重點',
+    id: 'weekly-focus', title: '每周安全永續組工作重點',
     description: '雙 Sheet 原樣式工作表、手動增修刪、更新差異比對、私人雲端同步及最新版 Excel 匯出。',
-    href: 'weekly-focus/index.html',
-    category: 'general',
-    order: 55,
-    visible: true,
-    favorite: false
+    href: 'weekly-focus/index.html', category: 'general', order: 55, visible: true, favorite: false
   },
   {
-    id: 'organization-management',
-    title: '安全衛生處組織編制管理',
+    id: 'organization-management', title: '安全衛生處組織編制管理',
     description: '安全衛生處組織圖、人員資料、版次異動、Excel 匯入匯出及固定版型 PDF 輸出。',
-    href: 'organization-management/index.html',
-    category: 'admin',
-    order: 150,
-    visible: true,
-    favorite: false
+    href: 'organization-management/index.html', category: 'admin', order: 150, visible: true, favorite: false
+  },
+  {
+    id: 'supervisor-board', title: '主管交辦布告欄',
+    description: '記錄主管指示與要求，支援歷史查詢及修改歷程追溯。',
+    href: 'supervisor-board/index.html', category: 'general', order: 99999, visible: true, favorite: false
   }
 ];
 
 export function registeredRows(rows) {
   let next=[...rows];
-  for(const registration of registrations){
+  for (const registration of registrations) {
     const target=new URL(registration.href,'https://doublewater0804.github.io/ehs-management-portal/').pathname;
     const exists=next.some(r=>r.id===registration.id || new URL(r.href,'https://doublewater0804.github.io/ehs-management-portal/').pathname===target);
-    if(!exists)next.push({...registration});
+    if (!exists)next.push({...registration});
   }
   return next;
 }

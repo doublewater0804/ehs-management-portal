@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#087d90">
   <title>主管交辦布告欄｜EHS 管理入口平台</title>
-  <link rel="stylesheet" href="styles.css?v=R0.2">
+  <link rel="stylesheet" href="styles.css?v=R0.3">
 </head>
 <body>
   <header class="topbar">
@@ -15,7 +15,7 @@
     <div id="notice" role="status" aria-live="polite"></div>
     <section id="login-panel" class="panel auth-panel" hidden><h2>管理員登入</h2><p>本布告欄沿用 EHS 管理入口網站 Google 帳號登入及單一管理員權限。</p><button id="login-btn">使用 Google 帳號登入</button> <button type="button" id="logout-denied" class="outline" hidden>登出目前帳號</button><p id="login-error" class="error"></p></section>
     <div id="workspace" hidden>
-      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.2</small></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
+      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.3</small></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
       <div id="demo-warning" class="demo-banner" hidden>本機示範模式：資料僅保存於此瀏覽器，與正式 Firestore 完全隔離。示範資料不能當成正式紀錄。</div>
       <div class="stats" id="stats"></div>
       <div class="tabs" role="tablist" aria-label="管理功能">
@@ -65,7 +65,19 @@
     <div class="dialog-actions"><button type="button" class="outline" id="cancel-edit">取消</button><button type="submit" id="save-edit">儲存</button></div>
   </form></dialog>
   <dialog id="history-dialog" class="history-dialog"><h2 id="history-title">修改歷程</h2><div id="history-content"></div><div class="dialog-actions"><button type="button" id="close-history">關閉</button></div></dialog>
+  <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title">
+    <h2 id="delete-title">確認永久刪除主管指示</h2>
+    <p>你即將刪除以下指示及全部修改歷程。</p>
+    <div class="delete-record-summary">
+      <p><b>交辦主管：</b><span id="delete-supervisor"></span></p>
+      <p><b>指示日期：</b><span id="delete-date"></span></p>
+      <p><b>指示內容：</b></p><pre id="delete-content"></pre>
+    </div>
+    <p class="delete-warning">此操作無法在本系統中復原。其他主管與指示紀錄不受影響。</p>
+    <p id="delete-error" role="alert" class="error"></p>
+    <div class="dialog-actions"><button type="button" id="cancel-delete" class="outline">取消</button><button type="button" id="confirm-delete" class="delete-confirm">確認永久刪除</button></div>
+  </dialog>
   <script defer src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" crossorigin="anonymous" id="exceljs-cdn"></script>
-  <script type="module" src="app.js?v=R0.2"></script>
+  <script type="module" src="app.js?v=R0.3"></script>
 </body>
 </html>

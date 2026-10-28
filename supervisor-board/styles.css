@@ -41,3 +41,14 @@
 @media(max-width:600px){.sort-control{width:100%;justify-content:space-between}.sort-control select{flex:1}}
 
 .version-tag{font-size:12px;font-weight:500;color:#6e8493;background:#ebf3f5;border-radius:12px;padding:3px 9px;vertical-align:middle}
+
+/* R0.3 永久刪除操作與確認對話框 */
+.records-table th:nth-child(7){width:180px}
+.records-table .table-actions{min-width:165px}
+.delete-dialog{width:min(94vw,640px)}
+.delete-record-summary{background:#f4f7fa;border:1px solid #dce8ee;border-radius:10px;padding:12px 16px}
+.delete-record-summary p{margin:5px 0}
+.delete-record-summary pre{font:inherit;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0}
+.delete-warning{font-weight:700;color:#a22222}
+button.delete-confirm{background:#ae2b2b;border-color:#ae2b2b;color:#fff}
+button.delete-confirm:hover{background:#892020}

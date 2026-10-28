@@ -1,10 +1,10 @@
-import {startAuth,login,logout,loadAll,saveSupervisor,saveRecord,saveStatusSettings,isAdmin,isDemo,getUser} from './data.js';
+import {startAuth,login,logout,loadAll,saveSupervisor,saveRecord,deleteRecord,saveStatusSettings,isAdmin,isDemo,getUser} from './data.js';
 import {normalizeSupervisor,normalizeRecord,normalizeStatus,normalizeStatusList,sortStatusOptions,initialStatuses,ownId} from './schema.js';
 import {downloadExcel,previewImport} from './excel.js';
 const $=id=>document.getElementById(id);
 const H=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Date().toLocaleDateString('sv-SE');
-const state={tab:'records',supervisors:[],records:[],history:[],statusSettings:{items:initialStatuses(),version:0},busy:false,pending:null,editing:null,editingKind:'record'};
+const state={tab:'records',supervisors:[],records:[],history:[],statusSettings:{items:initialStatuses(),version:0},busy:false,pending:null,editing:null,editingKind:'record',deleting:null};
 function alertMsg(message,error=false){$('notice').textContent=message;$('notice').className=error?'error-message':'success-message';$('notice').hidden=!message;}
 function fail(e){console.error(e);alertMsg(e?.message||String(e),true);}
 function buttonBusy(busy){state.busy=busy;document.querySelectorAll('button').forEach(b=>{if(b.dataset.tab)return;if(!b.classList.contains('outline')||b.id==='refresh-btn')b.disabled=busy;});}
@@ -104,7 +104,7 @@ function renderRecords(){
         <td class="record-cell">${H(r.note||'—')}</td>
         <td>${statusLabel(r.status)}</td>
         <td class="updated-cell">${H((r.updatedAt||'').slice(0,10)||'—')}<small>第 ${H(r.version||1)} 版</small></td>
-        <td class="table-actions"><button type="button" class="outline tiny" data-action="edit-record" data-id="${H(r.id)}">修改</button><button type="button" class="outline tiny" data-action="history" data-id="${H(r.id)}">歷程</button><button type="button" class="outline tiny" data-action="archive" data-id="${H(r.id)}">${r.archived?'恢復':'封存'}</button></td>
+        <td class="table-actions"><button type="button" class="outline tiny" data-action="edit-record" data-id="${H(r.id)}">修改</button><button type="button" class="outline tiny" data-action="history" data-id="${H(r.id)}">歷程</button><button type="button" class="outline tiny" data-action="archive" data-id="${H(r.id)}">${r.archived?'恢復':'封存'}</button><button type="button" class="outline tiny danger" data-action="delete-record" data-id="${H(r.id)}">刪除</button></td>
       </tr>`).join('')}</tbody></table></div></section>`;
   }).join(''):'<p class="empty">目前沒有符合條件的主管指示紀錄。</p>';
 }
@@ -207,6 +207,37 @@ async function archiveRecord(id){
   if(!confirm(`確定${r.archived?'恢復':'封存'}這筆主管指示？所有版本歷程仍會保存。`))return;
   try{await saveRecord({...r,archived:!r.archived},state.supervisors,r.version,r.archived?'restore':'archive');await refresh();alertMsg('紀錄狀態已更新並保留修改歷程。');}catch(e){fail(e);}
 }
+// R0.3 永久刪除：刪除前顯示明確確認視窗。僅刪除使用者指定的一筆及其全部修改歷程。
+function requestDeleteRecord(id){
+  if(!isLoggedIn() || state.busy)return;
+  const record=state.records.find(r=>r.id===id);if(!record)return;
+  state.deleting={id:record.id,version:record.version||0};
+  $('delete-supervisor').textContent=supervisorName(record.supervisorId,record);
+  $('delete-date').textContent=record.date;
+  $('delete-content').textContent=record.content;
+  $('delete-error').textContent='';
+  $('confirm-delete').disabled=false;
+  $('delete-dialog').showModal();
+}
+async function confirmDeleteRecord(){
+  const pending=state.deleting;
+  if(!pending||state.busy||!isLoggedIn())return;
+  try{
+    buttonBusy(true);
+    $('delete-error').textContent='';
+    $('confirm-delete').disabled=true;
+    $('cancel-delete').disabled=true;
+    await deleteRecord(pending.id,pending.version);
+    state.deleting=null;
+    $('delete-dialog').close();
+    // 真正刪除成功後才更新畫面；重新讀取出錯時仍明確說明刪除已成功。
+    try{const latest=await loadAll();Object.assign(state,latest);render();alertMsg('指定主管指示及全部修改歷程已永久刪除。');}
+    catch(e){alertMsg(`刪除已成功，但重新讀取畫面失敗：${e.message}`,true);}
+  }catch(e){
+    $('delete-error').textContent=e?.message||String(e);
+    fail(e);
+  }finally{buttonBusy(false);$('confirm-delete').disabled=false;$('cancel-delete').disabled=false;}
+}
 const diffNames={date:'指示日期',supervisorId:'主管ID',content:'指示內容',source:'依據來源',note:'備註',status:'狀態',archived:'封存'};
 function historyDetails(id){
   const r=state.records.find(x=>x.id===id);if(!r)return;
@@ -262,6 +293,10 @@ $('login-btn').onclick=()=>login().catch(fail);$('logout-denied').onclick=()=>lo
 $('refresh-btn').onclick=refresh;$('add-record').onclick=()=>openEdit('record');$('add-supervisor').onclick=()=>openEdit('supervisor');$('add-status').onclick=()=>openEdit('status');
 $('cancel-edit').onclick=()=>$('edit-dialog').close();$('edit-form').addEventListener('submit',submitEdit);
 $('close-history').onclick=()=>$('history-dialog').close();
+$('cancel-delete').onclick=()=>$('delete-dialog').close();
+$('confirm-delete').onclick=confirmDeleteRecord;
+$('delete-dialog').addEventListener('close',()=>{state.deleting=null;});
+$('delete-dialog').addEventListener('cancel',e=>{if(state.busy)e.preventDefault();});
 for(const button of document.querySelectorAll('[data-tab]'))button.onclick=()=>showTab(button.dataset.tab);
 for(const name of ['filter-supervisor','filter-year','filter-from','filter-to','filter-status','filter-keyword','filter-archived','sort-date'])
   $(name).addEventListener(name.startsWith('filter-')&&(name==='filter-keyword'||name==='filter-status')?'input':'change',renderRecords);
@@ -270,6 +305,7 @@ $('records-list').addEventListener('click',e=>{
   if(btn.dataset.action==='edit-record')openEdit('record',btn.dataset.id);
   if(btn.dataset.action==='history')historyDetails(btn.dataset.id);
   if(btn.dataset.action==='archive')archiveRecord(btn.dataset.id);
+  if(btn.dataset.action==='delete-record')requestDeleteRecord(btn.dataset.id);
 });
 $('statuses-list').addEventListener('click',e=>{
   const btn=e.target.closest('[data-action]');if(!btn)return;

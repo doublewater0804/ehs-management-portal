@@ -97,3 +97,49 @@ export async function saveStatusSettings(items,expectedVersion=0){
     tx.set(ref,next);return next;
   });
 }
+
+
+// R0.3：指定紀錄與其修改歷程必須全部原子刪除；失敗時不刪除任何項目。
+// 使用既有管理員存取政策，不需改動 Firestore Rules。
+export async function deleteRecord(id,expectedVersion){
+  guard();
+  if(typeof id!=='string'||!id||id.length>120||id.includes('/'))throw Error('指示識別碼無效，拒絕刪除。');
+  if(!Number.isInteger(expectedVersion)||expectedVersion<0)throw Error('刪除版本無效。');
+  if(DEMO){
+    const records=localRead('records');
+    const record=records.find(r=>r.id===id);
+    if(!record)throw Error('找不到該筆指示，可能已經被刪除。請重新整理。');
+    if((record.version||0)!==expectedVersion)throw Error('此指示已被其他視窗修改，請重新整理後再確認刪除。');
+    const histories=localRead('history');
+    const remainingHistories=histories.filter(h=>h.recordId!==id && !String(h.id||'').startsWith(id+'__v'));
+    // localStorage 僅作示範，寫入異常時還原原始兩個鍵。
+    const oldRecords=localStorage.getItem(KEY+'records');
+    const oldHistory=localStorage.getItem(KEY+'history');
+    try{
+      localWrite('history',remainingHistories);
+      localWrite('records',records.filter(r=>r.id!==id));
+    }catch(e){
+      if(oldRecords===null)localStorage.removeItem(KEY+'records');else localStorage.setItem(KEY+'records',oldRecords);
+      if(oldHistory===null)localStorage.removeItem(KEY+'history');else localStorage.setItem(KEY+'history',oldHistory);
+      throw e;
+    }
+    return {deletedHistory:histories.length-remainingHistories.length};
+  }
+  const ref=fb.doc(db,COL.records,id);
+  // 現有修改歷程以 recordId 及 id__vXXXXXX 識別：先讀取全部歷史避免漏刪。
+  const historySnapshot=await fb.getDocs(fb.collection(db,COL.history));
+  const historyRefs=historySnapshot.docs.filter(d=>d.data().recordId===id||d.id.startsWith(id+'__v')).map(d=>d.ref);
+  // Firestore 交易最多 500 個寫入（主紀錄 1 + 歷程 <= 499）。超限時拒絕執行，絕不部分刪除。
+  if(historyRefs.length>499)throw Error('此筆指示的修改歷程超過499筆；為避免只刪除部分資料，已中止操作，請先採專案專用備份與分批刪除方案。');
+  await fb.runTransaction(db,async tx=>{
+    const snap=await tx.get(ref);
+    if(!snap.exists())throw Error('此筆指示不存在，可能已由其他視窗刪除。請重新整理。');
+    const saved=snap.data();
+    if((saved.version||0)!==expectedVersion)throw Error('此指示已被其他視窗修改，請重新整理後再確認刪除。');
+    // 驗證實際版本數：每次寫入均伴隨一筆修改歷程，避免刪除查詢與後續更新的競態。
+    // R0.1/R0.2 某些舊紀錄可能缺歷程，缺歷程不阻擋刪除；以版本衝突保護並發更新。
+    for(const historyRef of historyRefs)tx.delete(historyRef);
+    tx.delete(ref);
+  });
+  return {deletedHistory:historyRefs.length};
+}

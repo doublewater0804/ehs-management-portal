@@ -27,7 +27,7 @@ function showTab(tab){state.tab=tab;['records','supervisors','statuses','sources
   const b=document.querySelector(`[data-tab="${x}"]`);b.classList.toggle('selected',x===tab);b.setAttribute('aria-selected',String(x===tab));
 });if(tab==='records')renderRecords();if(tab==='supervisors')renderSupervisors();if(tab==='statuses')renderStatuses();if(tab==='sources')renderSources();}
 function render(){
-  $('stats').innerHTML=`<div class="stat"><strong>${state.records.filter(r=>!r.archived).length}</strong><span>指示總筆數（未封存）</span></div><div class="stat"><strong>${state.supervisors.length}</strong><span>主管總數</span></div><div class="stat"><strong>${state.supervisors.filter(s=>s.active!==false).length}</strong><span>啟用主管</span></div>`;
+  $('record-total').textContent=`${state.records.filter(r=>!r.archived).length} 筆`;
   renderFilters();showTab(state.tab);
 }
 function supervisorName(id,rec){

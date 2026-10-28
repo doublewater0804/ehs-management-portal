@@ -87,3 +87,20 @@ button.delete-confirm:hover{background:#892020}
 .function-toolbar .tabs{margin-bottom:0;overflow:visible;flex:0 0 auto}
 .function-toolbar #add-record{white-space:nowrap;font-weight:650;flex-shrink:0}
 @media(max-width:600px){.function-toolbar{padding-bottom:5px}}
+
+
+/* R0.5：首頁精簡化（未封存筆數靠標題；移除三張統計卡片；輸出功能移至導覽列） */
+.record-total{display:inline-flex;align-items:center;vertical-align:middle;padding:3px 10px;border-radius:8px;background:#e8f3f5;color:#116979;font-size:14px;font-weight:650;white-space:nowrap}
+.function-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;overflow:visible;margin-bottom:16px}
+.function-toolbar .tabs{display:flex;flex:1 1 auto;flex-wrap:wrap;gap:8px;margin-bottom:0;overflow:visible}
+.function-toolbar .tabs button,.function-toolbar #add-record{white-space:nowrap}
+.toolbar-export{display:flex;gap:8px;align-items:center;flex:0 1 auto;flex-wrap:wrap}
+.toolbar-export button{white-space:nowrap}
+@media(max-width:600px){
+  .headline h1{line-height:1.5}
+  .record-total{font-size:13px}
+  .function-toolbar{gap:7px;overflow:visible;padding-bottom:0}
+  .function-toolbar .tabs{flex:1 1 100%;gap:7px}
+  .toolbar-export{flex:1 1 100%;gap:7px}
+  .toolbar-export button{flex:1 1 auto;white-space:normal}
+}

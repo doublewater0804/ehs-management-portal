@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#087d90">
   <title>主管交辦布告欄｜EHS 管理入口平台</title>
-  <link rel="stylesheet" href="styles.css?v=R0.4">
+  <link rel="stylesheet" href="styles.css?v=R0.5">
 </head>
 <body>
   <header class="topbar">
@@ -15,9 +15,8 @@
     <div id="notice" role="status" aria-live="polite"></div>
     <section id="login-panel" class="panel auth-panel" hidden><h2>管理員登入</h2><p>本布告欄沿用 EHS 管理入口網站 Google 帳號登入及單一管理員權限。</p><button id="login-btn">使用 Google 帳號登入</button> <button type="button" id="logout-denied" class="outline" hidden>登出目前帳號</button><p id="login-error" class="error"></p></section>
     <div id="workspace" hidden>
-      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.4</small></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
+      <div class="headline"><h1>主管交辦布告欄 <small class="version-tag">R0.5</small> <span id="record-total" class="record-total" aria-label="未封存指示總筆數" aria-live="polite">0 筆</span></h1><div class="headline-actions"><button type="button" id="refresh-btn" class="outline">重新整理</button><button type="button" id="logout-btn" class="outline">登出</button></div></div>
       <div id="demo-warning" class="demo-banner" hidden>本機示範模式：資料僅保存於此瀏覽器，與正式 Firestore 完全隔離。示範資料不能當成正式紀錄。</div>
-      <div class="stats" id="stats"></div>
       <div class="function-toolbar"><button type="button" id="add-record">＋ 新增指示</button>
       <div class="tabs" role="tablist" aria-label="管理功能">
         <button type="button" data-tab="records" class="selected" role="tab" aria-selected="true">主管指示查詢</button>
@@ -25,6 +24,10 @@
         <button type="button" data-tab="statuses" role="tab" aria-selected="false">狀態基本資料</button>
         <button type="button" data-tab="sources" role="tab" aria-selected="false">依據來源基本資料</button>
         <button type="button" data-tab="import" role="tab" aria-selected="false">Excel 匯入匯出</button>
+      </div>
+      <div class="toolbar-export" role="group" aria-label="指示查詢結果輸出">
+        <button type="button" id="export-pdf" class="outline">輸出 PDF（列印另存）</button>
+        <button type="button" id="print-records" class="outline">列印目前結果</button>
       </div></div>
       <section id="records-view" class="panel">
         <div class="section-heading"><h2>指示事項</h2></div>
@@ -37,7 +40,7 @@
           <label class="wide">關鍵字<input id="filter-keyword" type="search" placeholder="搜尋指示標題、內容、來源、備註、主管"></label>
           <label class="checkbox-line"><input type="checkbox" id="filter-archived">包含已封存</label>
         </div>
-        <div class="list-actions"><span id="result-count"></span><div><label class="sort-control">日期排序<select id="sort-date"><option value="new">最新 → 最舊（預設）</option><option value="old">最舊 → 最新</option></select></label><button type="button" id="export-pdf" class="outline">輸出 PDF（列印另存）</button><button type="button" id="print-records" class="outline">列印目前結果</button></div></div>
+        <div class="list-actions"><span id="result-count"></span><div><label class="sort-control">日期排序<select id="sort-date"><option value="new">最新 → 最舊（預設）</option><option value="old">最舊 → 最新</option></select></label></div></div>
         <div id="records-list"></div>
       </section>
       <section id="supervisors-view" class="panel" hidden>
@@ -86,6 +89,6 @@
     <div class="dialog-actions"><button type="button" id="cancel-delete" class="outline">取消</button><button type="button" id="confirm-delete" class="delete-confirm">確認永久刪除</button></div>
   </dialog>
   <script defer src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" crossorigin="anonymous" id="exceljs-cdn"></script>
-  <script type="module" src="app.js?v=R0.4"></script>
+  <script type="module" src="app.js?v=R0.5"></script>
 </body>
 </html>

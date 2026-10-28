@@ -1,7 +1,9 @@
-import {COL,ownId,normalizeSupervisor,normalizeRecord,recordChanged,supervisorChanged} from './schema.js';
+import {COL,ownId,normalizeSupervisor,normalizeRecord,recordChanged,supervisorChanged,normalizeStatusList,initialStatuses} from './schema.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
 const DEMO=new URLSearchParams(location.search).get('demo')==='1';
 const KEY='ehs_supervisor_board_r01_demo__';
+const STATUS_SETTINGS_COLLECTION='ehs_supervisor_board_r0_settings';
+const STATUS_SETTINGS_DOC='statuses';
 let auth=null, db=null, fb=null, lib=null, current=null, listener=null, authObserver=null;
 export const isDemo=()=>DEMO;
 export const getUser=()=>current;
@@ -23,11 +25,12 @@ export async function login(){if(DEMO)return;await lib.signInWithPopup(auth,new 
 export async function logout(){if(DEMO){location.href=location.pathname;return;}await lib.signOut(auth);}
 export async function loadAll(){
   guard();
-  if(DEMO)return {supervisors:localRead('supervisors'),records:localRead('records'),history:localRead('history')};
+  if(DEMO){const saved=localStorage.getItem(KEY+'statusSettings');return {supervisors:localRead('supervisors'),records:localRead('records'),history:localRead('history'),statusSettings:saved?JSON.parse(saved):{items:initialStatuses(),version:0}};}
   const out=await Promise.all([COL.supervisors,COL.records,COL.history].map(async p=>{
     const s=await fb.getDocs(fb.collection(db,p));return s.docs.map(d=>({...d.data(),id:d.id}));
   }));
-  return {supervisors:out[0],records:out[1],history:out[2]};
+  const statusSnap=await fb.getDoc(fb.doc(db,STATUS_SETTINGS_COLLECTION,STATUS_SETTINGS_DOC));
+  return {supervisors:out[0],records:out[1],history:out[2],statusSettings:statusSnap.exists()?statusSnap.data():{items:initialStatuses(),version:0}};
 }
 export async function saveSupervisor(input,expectedVersion=0){
   guard();const s=normalizeSupervisor(input);s.id=s.id||ownId();
@@ -72,5 +75,25 @@ export async function saveRecord(input,supervisors,expectedVersion=0,action='man
     tx.set(ref,next);
     tx.set(historyRef,{recordId:id,version:next.version,action,actor:current.email,changedAt:stamp,committedAt:fb.serverTimestamp(),before:old?clone(old):null,after:clone(next)});
     return next;
+  });
+}
+
+
+// R0.2：單一設定文件 + 版本檢查，初始五種狀態為虛擬預設；第一次編輯時才寫入。
+export async function saveStatusSettings(items,expectedVersion=0){
+  guard();const normalized=normalizeStatusList(items);const stamp=new Date().toISOString();
+  if(DEMO){
+    const key=KEY+'statusSettings';
+    const old=localStorage.getItem(key)?JSON.parse(localStorage.getItem(key)):{items:initialStatuses(),version:0};
+    if((old.version||0)!==expectedVersion)throw Error('狀態設定已變更，請重新整理。');
+    const next={items:normalized,version:expectedVersion+1,updatedAt:stamp,updatedBy:current.email};
+    localStorage.setItem(key,JSON.stringify(next));return next;
+  }
+  const ref=fb.doc(db,STATUS_SETTINGS_COLLECTION,STATUS_SETTINGS_DOC);
+  return fb.runTransaction(db,async tx=>{
+    const snap=await tx.get(ref),old=snap.exists()?snap.data():{items:initialStatuses(),version:0};
+    if((old.version||0)!==expectedVersion)throw Error('狀態設定已在其他視窗變更，請重新整理。');
+    const next={items:normalized,version:expectedVersion+1,updatedAt:stamp,updatedBy:current.email};
+    tx.set(ref,next);return next;
   });
 }

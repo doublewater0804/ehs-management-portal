@@ -643,23 +643,24 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 </tbody>
 </table>
 </div>
-<!-- 備註欄位 -->
-<div class="mt-4 p-4 bg-white border border-black rounded shadow-sm min-h-[120px]">
-<div class="flex flex-wrap items-center justify-between gap-2 border-b mb-2 pb-2">
-<h3 class="font-bold text-sm">備註：</h3>
-<span class="inline-flex items-center rounded bg-slate-100 text-slate-500 px-2 py-1 text-[11px] font-bold no-print" id="manual-remarks-save-status">已載入</span>
-</div>
-<div class="screen-remark-editor no-print">
-<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed focus:ring-2 focus:ring-blue-500" id="manual-remarks" placeholder="請手動輸入本年度非定檢原因、異常說明或補充事項..." rows="5"></textarea>
-<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-<p class="text-[11px] text-gray-400">備註需按「儲存備註」後才會寫入瀏覽器與雲端；Excel 匯入不會寫入任何備註內容。</p>
-<div class="flex gap-2">
-<button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition" id="save-manual-remarks-btn" type="button">儲存備註</button>
-<button class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-200 transition" id="restore-manual-remarks-btn" type="button">還原已儲存內容</button>
-</div>
-</div>
-</div>
-<div class="print-remark-content text-[11px] text-gray-700 leading-relaxed" id="manual-remarks-print"></div>
+<style media="print">#remarks-interference-details:not([open]) > .print-remark-content, #remarks-event-details:not([open]) > .print-remark-content {display:block!important;} #remarks-interference-details:not([open]), #remarks-event-details:not([open]) {display:block!important;} .print-remark-content {white-space:pre-wrap;} </style>
+<!-- R0.6 分類備註 -->
+<div class="mt-4 p-4 bg-white border border-black rounded shadow-sm">
+<h3 class="font-bold text-sm border-b pb-2 mb-2">備註管理</h3>
+<details open class="border rounded mb-3 p-3" id="remarks-event-details">
+<summary class="font-bold text-sm cursor-pointer">① FLARE 使用事件及原因 <span class="ml-2 text-[11px] text-green-700 no-print" id="manual-remarks-save-status">已載入</span></summary>
+<div class="screen-remark-editor no-print mt-2">
+<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed" style="height:180px;min-height:90px;resize:vertical;overflow-y:auto" id="manual-remarks" placeholder="使用日期、設備異常、停機原因及處理情形"></textarea>
+<div class="flex flex-wrap justify-between gap-2 mt-2"><p class="text-[11px] text-gray-400">按下儲存後同步雲端；一般 Excel 匯入不會更動備註。</p><div class="flex gap-2"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold" id="save-manual-remarks-btn" type="button">儲存事件原因</button><button class="bg-gray-100 px-3 py-1.5 rounded text-xs" id="restore-manual-remarks-btn" type="button">還原已儲存內容</button></div></div>
+</div><div class="print-remark-content text-[11px] leading-relaxed mt-2" id="manual-remarks-print"></div>
+</details>
+<details class="border rounded p-3" id="remarks-interference-details">
+<summary class="font-bold text-sm cursor-pointer">② 干擾流量 <span class="ml-2 text-[11px] text-green-700 no-print" id="interference-remarks-save-status">已載入</span></summary>
+<div class="screen-remark-editor no-print mt-2">
+<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed" style="height:180px;min-height:90px;resize:vertical;overflow-y:auto" id="interference-remarks" placeholder="各廠干擾流量、削減量及統計數據"></textarea>
+<div class="flex flex-wrap justify-between gap-2 mt-2"><p class="text-[11px] text-gray-400">與事件原因分開儲存。</p><div class="flex gap-2"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold" id="save-interference-remarks-btn" type="button">儲存干擾流量</button><button class="bg-gray-100 px-3 py-1.5 rounded text-xs" id="restore-interference-remarks-btn" type="button">還原已儲存內容</button></div></div>
+</div><div class="print-remark-content text-[11px] leading-relaxed mt-2" id="interference-remarks-print"></div>
+</details>
 </div>
 <!-- 頁尾說明 (僅列印可見) -->
 <div class="mt-4 text-[10px] text-gray-400 hidden print:block text-right">
@@ -886,8 +887,18 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             const out = {};
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('flare_manual_remarks_')) {
-                    out[key.replace('flare_manual_remarks_', '')] = localStorage.getItem(key) || '';
+                    const year = key.replace('flare_manual_remarks_', '');
+                    ensureRemarksMigrated(year);
+                    out[year] = localStorage.getItem(key) || '';
                 }
+            });
+            return out;
+        }
+
+        function collectInterferenceRemarksState() {
+            const out = {};
+            Object.keys(localStorage).filter(k => k.startsWith('flare_interference_remarks_')).forEach(k => {
+                out[k.replace('flare_interference_remarks_', '')] = localStorage.getItem(k) || '';
             });
             return out;
         }
@@ -906,6 +917,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 excludedDays,
                 customFactoryAliasRules,
                 manualRemarks: collectManualRemarksState(),
+                interferenceRemarks: collectInterferenceRemarksState(),
                 schemaVersion: 1,
                 updatedAtLocal: new Date().toISOString()
             };
@@ -926,6 +938,11 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 excludedDays = state.excludedDays || {};
                 customFactoryAliasRules = Array.isArray(state.customFactoryAliasRules) ? state.customFactoryAliasRules : [];
                 applyManualRemarksState(state.manualRemarks || {});
+                Object.entries(state.interferenceRemarks || {}).forEach(([year, value]) => {
+                    localStorage.setItem(getInterferenceRemarksKey(year), String(value || ''));
+                });
+                // Old cloud snapshots hold both sections in manualRemarks.
+                Object.keys(state.manualRemarks || {}).forEach(year => ensureRemarksMigrated(year));
                 persistFlareStateToLocal();
                 renderFactoryAliasManager();
                 resetPendingFactoryAliases();
@@ -1307,6 +1324,32 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             return `flare_manual_remarks_${year}`;
         }
 
+        // R0.6: legacy notes are backed up and split once, without changing text contents.
+        function getInterferenceRemarksKey(year) { return `flare_interference_remarks_${year}`; }
+        function splitLegacyRemarks(year) {
+            const key = getManualRemarksKey(year);
+            if (localStorage.getItem(getInterferenceRemarksKey(year)) !== null) return false;
+            const original = localStorage.getItem(key);
+            if (!original) return false;
+            const lines = original.split(/\r?\n/);
+            const index = lines.findIndex(line => /干擾(?:流量)?(?:量)?(?:削除|削減)/.test(line));
+            if (index < 0) return false;
+            // Keep preceding separator with event text only if it is not a divider.
+            let start = index;
+            while (start > 0 && /^[\s\-─—_＝=]{6,}$/.test(lines[start - 1])) start--;
+            const eventText = lines.slice(0, start).join('\n').trimEnd();
+            const interferenceText = lines.slice(index + 1).join('\n').trim();
+            if (!interferenceText) return false;
+            localStorage.setItem(`flare_remarks_r06_backup_${year}`, original);
+            localStorage.setItem(key, eventText);
+            localStorage.setItem(getInterferenceRemarksKey(year), interferenceText);
+            return true;
+        }
+        function ensureRemarksMigrated(year) {
+            return splitLegacyRemarks(year);
+        }
+        let interferenceRemarksDirty = false;
+
         function bindExclusionModalEvents() {
             const openBtn = document.getElementById('open-exclusion-modal-btn');
             const closeBtn = document.getElementById('close-exclusion-modal-btn');
@@ -1339,112 +1382,103 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             document.body.classList.remove('overflow-hidden');
         }
 
-        function bindManualRemarksEvents() {
-            const remarks = document.getElementById('manual-remarks');
-            const saveBtn = document.getElementById('save-manual-remarks-btn');
-            const restoreBtn = document.getElementById('restore-manual-remarks-btn');
-            if (!remarks) return;
-
-            remarks.addEventListener('input', () => {
-                manualRemarksDirty = true;
-                updateManualRemarksPrint(remarks.value);
-                updateManualRemarksSaveStatus('尚未儲存', 'warn');
-            });
-
-            if (saveBtn) saveBtn.addEventListener('click', saveManualRemarksForCurrentYear);
-            if (restoreBtn) restoreBtn.addEventListener('click', restoreManualRemarksForCurrentYear);
-
-            window.addEventListener('beforeunload', (event) => {
-                if (!manualRemarksDirty) return;
-                event.preventDefault();
-                event.returnValue = '';
-            });
+        function remarkConfig(kind) {
+            return kind === 'interference'
+                ? { input: 'interference-remarks', status: 'interference-remarks-save-status', print: 'interference-remarks-print', key: getInterferenceRemarksKey }
+                : { input: 'manual-remarks', status: 'manual-remarks-save-status', print: 'manual-remarks-print', key: getManualRemarksKey };
         }
-
-        function updateManualRemarksSaveStatus(text, type = 'saved') {
-            const el = document.getElementById('manual-remarks-save-status');
+        function setRemarkStatus(kind, value, warn = false) {
+            const el = document.getElementById(remarkConfig(kind).status);
             if (!el) return;
-            const cls = {
-                saved: 'inline-flex items-center rounded bg-emerald-100 text-emerald-700 px-2 py-1 text-[11px] font-bold no-print',
-                warn: 'inline-flex items-center rounded bg-amber-100 text-amber-700 px-2 py-1 text-[11px] font-bold no-print',
-                idle: 'inline-flex items-center rounded bg-slate-100 text-slate-500 px-2 py-1 text-[11px] font-bold no-print'
-            };
-            el.className = cls[type] || cls.idle;
-            el.textContent = text;
+            el.textContent = value;
+            el.className = `ml-2 text-[11px] no-print ${warn ? 'text-amber-700' : 'text-green-700'}`;
         }
-
+        function setRemarkPrint(kind, value) {
+            const el = document.getElementById(remarkConfig(kind).print);
+            if (el) el.textContent = value && value.trim() ? value : '－';
+        }
+        function bindManualRemarksEvents() {
+            for (const kind of ['event', 'interference']) {
+                const config = remarkConfig(kind), input = document.getElementById(config.input);
+                input?.addEventListener('input', () => {
+                    if (kind === 'event') manualRemarksDirty = true;
+                    else interferenceRemarksDirty = true;
+                    setRemarkPrint(kind, input.value);
+                    setRemarkStatus(kind, '尚未儲存', true);
+                });
+                document.getElementById(kind === 'event' ? 'save-manual-remarks-btn' : 'save-interference-remarks-btn')?.addEventListener('click', () => saveRemark(kind));
+                document.getElementById(kind === 'event' ? 'restore-manual-remarks-btn' : 'restore-interference-remarks-btn')?.addEventListener('click', () => restoreRemark(kind));
+            }
+            window.addEventListener('beforeunload', e => {
+                if (!hasUnsavedManualRemarks()) return;
+                e.preventDefault(); e.returnValue = '';
+            });
+        }
         function loadManualRemarksForYear(year) {
-            const remarks = document.getElementById('manual-remarks');
-            const value = localStorage.getItem(getManualRemarksKey(year)) || '';
-            if (remarks && remarks.value !== value) remarks.value = value;
+            ensureRemarksMigrated(year);
+            for (const kind of ['event', 'interference']) {
+                const config = remarkConfig(kind), input = document.getElementById(config.input);
+                const value = localStorage.getItem(config.key(year)) || '';
+                if (input) input.value = value;
+                setRemarkPrint(kind, value);
+                setRemarkStatus(kind, '已儲存');
+            }
             manualRemarksLoadedYear = String(year);
             manualRemarksDirty = false;
-            updateManualRemarksPrint(value);
-            updateManualRemarksSaveStatus('已儲存', 'saved');
+            interferenceRemarksDirty = false;
         }
-
         function loadManualRemarksForRender(year) {
-            const remarks = document.getElementById('manual-remarks');
-            const targetYear = String(year);
-            if (manualRemarksDirty && manualRemarksLoadedYear === targetYear) {
-                updateManualRemarksPrint(remarks?.value || '');
-                updateManualRemarksSaveStatus('尚未儲存', 'warn');
+            const sameYear = manualRemarksLoadedYear === String(year);
+            if (sameYear && hasUnsavedManualRemarks()) {
+                for (const kind of ['event', 'interference']) {
+                    const config = remarkConfig(kind), input = document.getElementById(config.input);
+                    setRemarkPrint(kind, input?.value || '');
+                }
                 return;
             }
             loadManualRemarksForYear(year);
         }
-
-        function saveManualRemarksForCurrentYear() {
-            const remarks = document.getElementById('manual-remarks');
-            const year = String(document.getElementById('view-year')?.value || '');
-            if (!remarks || !year) return;
-            localStorage.setItem(getManualRemarksKey(year), remarks.value);
-            manualRemarksLoadedYear = year;
-            manualRemarksDirty = false;
-            updateManualRemarksPrint(remarks.value);
-            updateManualRemarksSaveStatus('已儲存', 'saved');
-            queueFlareCloudSave();
-        }
-
-        function restoreManualRemarksForCurrentYear() {
+        function saveRemark(kind) {
             const year = String(document.getElementById('view-year')?.value || '');
             if (!year) return;
-            if (manualRemarksDirty && !confirm('備註尚未儲存，確定要還原成上次儲存的內容嗎？')) return;
-            loadManualRemarksForYear(year);
+            ensureRemarksMigrated(year);
+            const config = remarkConfig(kind), input = document.getElementById(config.input);
+            if (!input) return;
+            localStorage.setItem(config.key(year), input.value);
+            if (kind === 'event') manualRemarksDirty = false;
+            else interferenceRemarksDirty = false;
+            setRemarkPrint(kind, input.value);
+            setRemarkStatus(kind, '已儲存');
+            queueFlareCloudSave();
         }
-
-        function hasUnsavedManualRemarks() {
-            return Boolean(manualRemarksDirty);
+        function restoreRemark(kind) {
+            const year = String(document.getElementById('view-year')?.value || '');
+            const isDirty = kind === 'event' ? manualRemarksDirty : interferenceRemarksDirty;
+            if (isDirty && !confirm('此區塊尚未儲存，確定還原嗎？')) return;
+            ensureRemarksMigrated(year);
+            const config = remarkConfig(kind), value = localStorage.getItem(config.key(year)) || '';
+            const input = document.getElementById(config.input);
+            if (input) input.value = value;
+            if (kind === 'event') manualRemarksDirty = false;
+            else interferenceRemarksDirty = false;
+            setRemarkPrint(kind, value); setRemarkStatus(kind, '已儲存');
         }
-
+        function hasUnsavedManualRemarks() { return manualRemarksDirty || interferenceRemarksDirty; }
         function confirmDiscardUnsavedManualRemarks(actionText = '離開') {
-            if (!hasUnsavedManualRemarks()) return true;
-            return confirm(`備註尚未儲存，${actionText}會放棄目前未儲存的備註內容。
-
-要繼續嗎？`);
+            return !hasUnsavedManualRemarks() || confirm(`備註尚未儲存，${actionText}會放棄未儲存的內容。\n\n要繼續嗎？`);
         }
-
         function handleYearChange() {
             const selector = document.getElementById('view-year');
             if (!selector) return;
-            const previousYear = manualRemarksLoadedYear || String(new Date().getFullYear());
             if (!confirmDiscardUnsavedManualRemarks('切換年度')) {
-                selector.value = previousYear;
-                return;
+                selector.value = manualRemarksLoadedYear || String(new Date().getFullYear()); return;
             }
-            manualRemarksDirty = false;
+            manualRemarksDirty = false; interferenceRemarksDirty = false;
             renderAll();
         }
-
-        function updateManualRemarksPrint(value) {
-            const printTarget = document.getElementById('manual-remarks-print');
-            if (!printTarget) return;
-            printTarget.textContent = value && value.trim() ? value : '－';
-        }
-
         function clearManualRemarksStorage() {
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('flare_manual_remarks_')) localStorage.removeItem(key);
+                if (key.startsWith('flare_manual_remarks_') || key.startsWith('flare_interference_remarks_')) localStorage.removeItem(key);
             });
         }
 
@@ -2957,10 +2991,13 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 ]);
             });
 
+            ensureRemarksMigrated(year);
             const remarks = localStorage.getItem(getManualRemarksKey(year)) || '';
             rows.push([
                 '是', '年度備註', `NOTE-${year}`, year, '', '', '', '', '', '', '', '', '', '', '', remarks
             ]);
+
+            rows.push(['是', '干擾流量備註', `INTERFERENCE-${year}`, year, '', '', '', '', '', '', '', '', '', '', '', localStorage.getItem(getInterferenceRemarksKey(year)) || '']);
 
             const csv = '\uFEFF' + rows.map(makeCSVLine).join('\n');
             downloadCSV(csv, `燃燒塔離線維護資料_${year}.csv`);
@@ -3053,7 +3090,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 scheduleRecords: {},
                 exclusions: {},
                 aliases: [],
-                remarks: null,
+                remarks: null, interferenceRemarks: null,
                 counts: { events: 0, schedules: 0, exclusions: 0, aliases: 0, remarks: 0, skipped: 0, errors: 0 }
             };
         }
@@ -3241,6 +3278,9 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                     aliasKeys.add(aliasKey);
                     pendingMaintenanceImport.aliases.push({ rawName, factory, source: 'maintenance-csv', updatedAt: new Date().toISOString() });
                     pendingMaintenanceImport.counts.aliases++;
+                } else if (dataType === '干擾流量備註') {
+                    pendingMaintenanceImport.interferenceRemarks = getMaintenanceField(row, headerMap, ['備註']);
+                    pendingMaintenanceImport.counts.remarks++;
                 } else if (dataType === '年度備註') {
                     pendingMaintenanceImport.remarks = getMaintenanceField(row, headerMap, ['備註']);
                     pendingMaintenanceImport.counts.remarks = 1;
@@ -3353,7 +3393,10 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 Object.assign(excludedDays, payload.exclusions);
 
                 if (payload.remarks !== null) localStorage.setItem(getManualRemarksKey(selectedYear), payload.remarks);
-                else localStorage.removeItem(getManualRemarksKey(selectedYear));
+                if (payload.interferenceRemarks !== null) localStorage.setItem(getInterferenceRemarksKey(selectedYear), payload.interferenceRemarks);
+                else if (payload.remarks !== null) localStorage.removeItem(getInterferenceRemarksKey(selectedYear));
+                else if (payload.remarks === null) localStorage.removeItem(getManualRemarksKey(selectedYear));
+                ensureRemarksMigrated(selectedYear);
 
                 if (payload.aliases.length) applyMaintenanceAliases(payload.aliases, true);
             } else {
@@ -3367,6 +3410,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 
                 Object.assign(excludedDays, payload.exclusions);
                 if (payload.remarks !== null) localStorage.setItem(getManualRemarksKey(selectedYear), payload.remarks);
+                if (payload.interferenceRemarks !== null) localStorage.setItem(getInterferenceRemarksKey(selectedYear), payload.interferenceRemarks);
+                ensureRemarksMigrated(selectedYear);
                 if (payload.aliases.length) applyMaintenanceAliases(payload.aliases, false);
             }
 

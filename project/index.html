@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-  <title>年度安衛環專案管制總表 - 雲端即時版</title>
+  <title>年度安衛環專案管制總表 R1.0｜年度與待辦管理</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -115,8 +115,9 @@
     input:focus, select:focus, textarea:focus { border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.10); outline:none; }
     .scrollbar-hide::-webkit-scrollbar { display:none; }
     .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
-    .project-row-height,.gantt-row { height:144px; border-bottom:1px solid #e5e7eb; }
-    .gantt-row { position:relative; }
+    .project-table th { position:sticky; top:0; z-index:10; background:#f1f5f9; white-space:nowrap; }
+    .project-table td { vertical-align:top; }
+    .project-table th,.project-table td { border-bottom:1px solid #e2e8f0; }
     .row-even { background:#f8fafc; }
     .row-odd { background:#fff; }
     .row-hover:hover { background:#eff6ff !important; }
@@ -181,16 +182,44 @@
         { id:'SUPERVISOR', label:'主管指示', active:true, order:8, color:'#dc2626' },
         { id:'OTHER', label:'其他', active:true, order:9, color:'#475569' }
       ],
-      people: []
+      people: [],
+      years: []
     });
     const STATUS_TYPES = {
-      ON_TRACK: { label:'正常', color:'text-green-600', bgColor:'bg-green-500', icon:CheckCircle },
-      DELAYED: { label:'落後', color:'text-red-600', bgColor:'bg-red-500', icon:AlertCircle },
-      COMPLETED: { label:'結案', color:'text-gray-500', bgColor:'bg-gray-400', icon:Clock }
+      NOT_STARTED:{label:'未開始', color:'text-slate-600', bgColor:'bg-slate-400'},
+      IN_PROGRESS:{label:'辦理中', color:'text-blue-700', bgColor:'bg-blue-500'},
+      PENDING:{label:'待確認', color:'text-amber-700', bgColor:'bg-amber-500'},
+      PAUSED:{label:'暫停', color:'text-purple-700', bgColor:'bg-purple-500'},
+      COMPLETED:{label:'已結案', color:'text-gray-600', bgColor:'bg-gray-400'}
     };
+    const LEGACY_STATUS = {ON_TRACK:'正常', DELAYED:'落後', COMPLETED:'結案'};
+    const exactYear = (v) => { const str=String(v||''); if(!/^\d{4}-\d{2}-\d{2}$/.test(str))return null; const d=new Date(`${str}T00:00:00`); return !Number.isNaN(d.getTime()) && `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`===str ? d.getFullYear():null; };
+    const getProjectYear = p => exactYear(p.startDate);
+    const isCompleted = p => p.executionStatus ? p.executionStatus === 'COMPLETED' : p.status === 'COMPLETED';
+    const statusLabel = p => p.executionStatus && STATUS_TYPES[p.executionStatus] ? STATUS_TYPES[p.executionStatus].label : `舊：${LEGACY_STATUS[p.status] || p.status || '未設定'}（待確認）`;
+    const todoList = p => Array.isArray(p.todos) ? p.todos : [];
+    const todoAlert = (date, done=false) => {
+      if (done || !exactYear(date)) return '';
+      const delta = Math.round((new Date(`${date}T00:00:00`) - new Date(`${today()}T00:00:00`))/86400000);
+      return delta < 0 ? 'OVERDUE' : delta <= 30 ? 'SOON' : '';
+    };
+    const isVisibleInYear = (p, year) => {
+      const origin = getProjectYear(p);
+      if (year === 'UNASSIGNED') return origin === null;
+      if (origin === null || origin > Number(year)) return false;
+      if (origin === Number(year)) return true;
+      if (!isCompleted(p)) return true;
+      const closeYear = exactYear(p.closedAt);
+      return closeYear !== null && closeYear >= Number(year);
+    };
+    const normalizeTodos = v => (Array.isArray(v) ? v : []).map((t,i)=>({
+      ...t, id:String(t?.id || `todo_legacy_${i}`), content:String(t?.content||''), owner:String(t?.owner||''),
+      dueDate:String(t?.dueDate||''), notes:String(t?.notes||''), done:t?.done===true,
+      completedAt:t?.completedAt || null
+    }));
     const SUPERVISION_DEPTS = ['安衛處(龍德)','安衛處(彰化)','安衛處(麥寮)','安衛處(新港)','環保組','消防組'];
 
-    const today = () => new Date().toISOString().split('T')[0];
+    const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
     const uid = (prefix='id') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
     const deepClone = (v) => JSON.parse(JSON.stringify(v));
     const clampProgress = (v) => Math.min(100, Math.max(0, Number.parseInt(v, 10) || 0));
@@ -218,20 +247,22 @@
     const contrastText = (hex) => { const h=normalizeHexColor(hex).slice(1); const [r,g,b]=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); return (r*299+g*587+b*114)/1000 > 165 ? '#0f172a' : '#ffffff'; };
     const tagStyle = (color, solid=false) => { const c=normalizeHexColor(color); return solid ? {backgroundColor:c,color:contrastText(c),borderColor:c} : {backgroundColor:hexToRgba(c,.12),color:darkenHex(c,.22),borderColor:hexToRgba(c,.32)}; };
 
+    // Preserve historical percentages and any unknown properties; new entries never require a percentage.
     const normalizeLogs = (logs=[]) => (Array.isArray(logs) ? logs : []).map((r,i) => ({
+      ...r,
       id:String(r?.id || `legacy_${i}_${r?.date || ''}`),
       date:r?.date || today(),
       person:String(r?.person || '').trim(),
       typeId:String(r?.typeId || ''),
       type:String(r?.type || '工作日報').trim() || '工作日報',
-      content:String(r?.content || ''),
-      progress:clampProgress(r?.progress)
+      content:String(r?.content || '')
     })).sort((a,b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
 
     const App = () => {
       const [projects, setProjects] = useState([]);
       const [master, setMaster] = useState(() => deepClone(DEFAULT_MASTER));
       const [masterCloudOk, setMasterCloudOk] = useState(true);
+      const [masterLoaded, setMasterLoaded] = useState(false);
       const [isLoading, setIsLoading] = useState(true);
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [isViewMode, setIsViewMode] = useState(false);
@@ -241,22 +272,22 @@
       const [masterDraft, setMasterDraft] = useState(() => deepClone(DEFAULT_MASTER));
       const [filterType, setFilterType] = useState('ALL');
       const [filterFactory, setFilterFactory] = useState('ALL');
-      const [hoverIdx, setHoverIdx] = useState(null);
-      const [quickViewData, setQuickViewData] = useState(null);
-
+      const [filterStatus,setFilterStatus] = useState('ALL');
+      const [filterAlert,setFilterAlert] = useState('ALL');
+      const [keyword,setKeyword] = useState('');
+      const [sortKey,setSortKey] = useState('DUE_ASC');
+      const [selectedYear,setSelectedYear] = useState(String(new Date().getFullYear()));
       const [selectedType, setSelectedType] = useState('ENGINEERING');
       const [selectedFactory, setSelectedFactory] = useState('');
       const [selectedPermitCategories, setSelectedPermitCategories] = useState([]);
       const [selectedSupervisionDept, setSelectedSupervisionDept] = useState(SUPERVISION_DEPTS[0]);
-      const [expectedProgress, setExpectedProgress] = useState(0);
-      const [actualProgress, setActualProgress] = useState(0);
+      const [selectedStatus,setSelectedStatus] = useState('NOT_STARTED');
       const [executionLogs, setExecutionLogs] = useState([]);
-      const [logDraft, setLogDraft] = useState({ id:null, date:today(), person:'', typeId:'WORK_LOG', customType:'', progress:0, content:'' });
-
+      const [logDraft, setLogDraft] = useState({ id:null, date:today(), person:'', typeId:'WORK_LOG', customType:'', content:'' });
+      const [todos,setTodos] = useState([]);
+      const emptyTodo = () => ({id:null,content:'',owner:'',dueDate:'',notes:''});
+      const [todoDraft,setTodoDraft] = useState(emptyTodo);
       const fileInputRef = useRef(null);
-      const leftScrollRef = useRef(null);
-      const rightScrollRef = useRef(null);
-
       const factories = useMemo(() => normalizeItems(master.factories, DEFAULT_MASTER.factories), [master.factories]);
       const projectTypes = useMemo(() => normalizeItems(master.projectTypes, DEFAULT_MASTER.projectTypes), [master.projectTypes]);
       const permitCategories = useMemo(() => normalizeItems(master.permitCategories, DEFAULT_MASTER.permitCategories), [master.permitCategories]);
@@ -293,13 +324,16 @@
                 projectTypes:normalizeItems(data.projectTypes, DEFAULT_MASTER.projectTypes),
                 permitCategories:normalizeItems(data.permitCategories, DEFAULT_MASTER.permitCategories),
                 progressTypes:normalizeItems(data.progressTypes, DEFAULT_MASTER.progressTypes),
-                people:normalizePeople(data.people)
+                people:normalizePeople(data.people),
+                years:Array.isArray(data.years) ? data.years.filter(x=>/^\d{4}$/.test(String(x.id||''))) : []
               };
               setMaster(next);
               setMasterCloudOk(true);
+              setMasterLoaded(true);
             }, (err) => {
               console.warn('基本資料雲端同步失敗，暫用預設值', err);
               setMasterCloudOk(false);
+              setMasterLoaded(false);
             });
           } catch (e) {
             console.error(e);
@@ -315,16 +349,16 @@
         const logs = normalizeLogs(editingProject?.executionLogs || []);
         const defaultFactory = editingProject?.factory || factories.find(x => x.active)?.id || '';
         const currentDept = editingProject?.supervisionDept || SUPERVISION_DEPTS[0];
-        const actual = clampProgress(editingProject?.progress ?? (logs[0]?.progress ?? 0));
         setExecutionLogs(logs);
         setSelectedType(editingProject?.type || projectTypes.find(x => x.active)?.id || 'ENGINEERING');
         setSelectedFactory(defaultFactory);
         setSelectedPermitCategories(Array.isArray(editingProject?.permitCategories) ? editingProject.permitCategories : []);
         setSelectedSupervisionDept(SUPERVISION_DEPTS.includes(currentDept) ? currentDept : 'OTHER');
-        setExpectedProgress(clampProgress(editingProject?.expectedProgress ?? 0));
-        setActualProgress(actual);
+        setSelectedStatus(editingProject ? (editingProject.executionStatus || '') : 'NOT_STARTED');
+        setTodos(normalizeTodos(editingProject?.todos));
+        setTodoDraft(emptyTodo());
         const defaultProgressType = progressTypes.find(x => x.active)?.id || 'WORK_LOG';
-        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', progress:actual, content:'' });
+        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', content:'' });
       }, [isModalOpen, editingProject, factories, projectTypes, progressTypes]);
 
       const selectedLogPeople = useMemo(() => splitPeople(logDraft.person), [logDraft.person]);
@@ -341,65 +375,58 @@
         return [...active, ...retained];
       }, [people, selectedFactory, selectedLogPeople]);
 
-      const projectCounts = useMemo(() => {
-        const counts = {};
-        projectTypes.forEach(t => counts[t.id] = 0);
-        projects.forEach(p => counts[p.type] = (counts[p.type] || 0) + 1);
-        return counts;
-      }, [projects, projectTypes]);
-
-      const sortedFilteredProjects = useMemo(() => {
-        const factoryOrder = new Map(factories.map((x,i) => [x.id, i]));
-        const typeOrder = new Map(projectTypes.map((x,i) => [x.id, i]));
-        return projects
-          .filter(p => (filterType === 'ALL' || p.type === filterType) && (filterFactory === 'ALL' || p.factory === filterFactory))
-          .sort((a,b) => {
-            const fa = factoryOrder.has(a.factory) ? factoryOrder.get(a.factory) : 999;
-            const fb = factoryOrder.has(b.factory) ? factoryOrder.get(b.factory) : 999;
-            if (fa !== fb) return fa - fb;
-            const ta = typeOrder.has(a.type) ? typeOrder.get(a.type) : 999;
-            const tb = typeOrder.has(b.type) ? typeOrder.get(b.type) : 999;
-            if (ta !== tb) return ta - tb;
-            return String(a.startDate || '').localeCompare(String(b.startDate || ''));
-          });
-      }, [projects, filterType, filterFactory, factories, projectTypes]);
-
-      const timelineRange = useMemo(() => {
-        const now = new Date();
-        const y = now.getFullYear();
-        let minTime = new Date(`${y}-01-01T00:00:00`).getTime();
-        let maxTime = new Date(`${y}-12-31T00:00:00`).getTime();
-        projects.forEach(p => {
-          const s = new Date(p.startDate).getTime();
-          const e = new Date(p.endDate).getTime();
-          if (Number.isFinite(s) && s < minTime) minTime = s;
-          if (Number.isFinite(e) && e > maxTime) maxTime = e;
+      const availableYears = useMemo(() => {
+        const ys = new Set([new Date().getFullYear(),new Date().getFullYear()+1]);
+        projects.forEach(p=>{const y=getProjectYear(p);if(y!==null)ys.add(y);});
+        (master.years||[]).forEach(x=>{const y=Number(x.id);if(y>=1900 && y<=2200)ys.add(y);});
+        return [...ys].sort((a,b)=>b-a);
+      },[projects,master.years]);
+      const addYear = async () => {
+        const next=window.prompt('請輸入欲新增的西元年度（例如 2027）',String(Math.max(...availableYears)+1));
+        if(next===null) return;
+        if(!/^\d{4}$/.test(next) || Number(next)<1900 || Number(next)>2200) return alert('請輸入1900～2200的四位數西元年度');
+        if(availableYears.includes(Number(next))){setSelectedYear(next);return;}
+        const items=[...(master.years||[]),{id:next,label:next,active:true,order:(master.years||[]).length+1}];
+        try {await window.__fs_save_master('years',items);setMaster(prev=>({...prev,years:items}));setSelectedYear(next);}
+        catch(err){alert(`年度儲存失敗：${err?.message || err}`);}
+      };
+      const yearProjects=useMemo(()=>projects.filter(p=>isVisibleInYear(p,selectedYear)),[projects,selectedYear]);
+      const projectAlert=p=>todoAlert(p.endDate,isCompleted(p));
+      const projectCounts=useMemo(()=>{
+        const counts={};projectTypes.forEach(t=>counts[t.id]=0);
+        yearProjects.forEach(p=>{counts[p.type]=(counts[p.type]||0)+1;});return counts;
+      },[yearProjects,projectTypes]);
+      const stats=useMemo(()=>({
+        total:yearProjects.length,
+        origin:yearProjects.filter(p=>getProjectYear(p)===Number(selectedYear)).length,
+        carry:yearProjects.filter(p=>getProjectYear(p)!==null && getProjectYear(p)<Number(selectedYear)).length,
+        active:yearProjects.filter(p=>!isCompleted(p)).length,
+        closed:yearProjects.filter(p=>isCompleted(p)).length,
+        overdue:yearProjects.filter(p=>projectAlert(p)==='OVERDUE').length,
+        soon:yearProjects.filter(p=>projectAlert(p)==='SOON').length,
+        todoOverdue:yearProjects.reduce((sum,p)=>sum+todoList(p).filter(t=>todoAlert(t.dueDate,t.done)==='OVERDUE').length,0),
+        todoSoon:yearProjects.reduce((sum,p)=>sum+todoList(p).filter(t=>todoAlert(t.dueDate,t.done)==='SOON').length,0)
+      }),[yearProjects,selectedYear]);
+      const sortedFilteredProjects=useMemo(()=>{
+        const key=keyword.trim().toLocaleLowerCase();
+        const list=yearProjects.filter(p=>{
+          const latest=normalizeLogs(p.executionLogs||[])[0];
+          const matchKeyword=!key || [p.name,p.projectContent,p.mainPic,p.mainDept,latest?.content,...todoList(p).map(x=>x.content)].some(x=>String(x||'').toLocaleLowerCase().includes(key));
+          const matchStatus=filterStatus==='ALL' || (filterStatus==='LEGACY' ? !p.executionStatus : p.executionStatus===filterStatus);
+          const pAlert=projectAlert(p);
+          const anyTodo=todoList(p).some(t=>todoAlert(t.dueDate,t.done)===filterAlert);
+          const matchAlert=filterAlert==='ALL' || pAlert===filterAlert || anyTodo;
+          return matchKeyword && matchStatus && matchAlert && (filterType==='ALL'||p.type===filterType) && (filterFactory==='ALL'||p.factory===filterFactory);
         });
-        const start = new Date(minTime); start.setDate(1);
-        const end = new Date(maxTime); end.setMonth(end.getMonth() + 1); end.setDate(0);
-        return { start, end, duration:Math.max(1, end.getTime() - start.getTime()) };
-      }, [projects]);
-
-      const months = useMemo(() => {
-        const list = [];
-        const d = new Date(timelineRange.start);
-        while (d <= timelineRange.end) { list.push(new Date(d)); d.setMonth(d.getMonth() + 1); }
-        return list;
-      }, [timelineRange]);
-
-      const calculateBarPosition = (pStart, pEnd) => {
-        const start = new Date(pStart).getTime();
-        const end = new Date(pEnd).getTime();
-        if (!Number.isFinite(start) || !Number.isFinite(end)) return { left:'0%', width:'1%' };
-        const left = ((start - timelineRange.start.getTime()) / timelineRange.duration) * 100;
-        const width = ((end - start) / timelineRange.duration) * 100;
-        return { left:`${Math.max(0,left)}%`, width:`${Math.max(1,width)}%` };
-      };
-
-      const effectiveStatus = (p) => {
-        if (p.status === 'COMPLETED' || clampProgress(p.progress) >= 100) return 'COMPLETED';
-        return clampProgress(p.progress) < clampProgress(p.expectedProgress) ? 'DELAYED' : 'ON_TRACK';
-      };
+        const cmpText=(a,b)=>String(a||'').localeCompare(String(b||''),'zh-Hant');
+        return list.sort((a,b)=>{
+          if(sortKey==='NAME') return cmpText(a.name,b.name);
+          if(sortKey==='UPDATED') return (new Date(b.updatedAt||0).getTime()||0)-(new Date(a.updatedAt||0).getTime()||0);
+          if(sortKey==='START_ASC') return cmpText(a.startDate,b.startDate);
+          if(sortKey==='DUE_DESC') return cmpText(b.endDate,a.endDate);
+          return cmpText(a.endDate||'9999',b.endDate||'9999');
+        });
+      },[yearProjects,filterType,filterFactory,filterStatus,filterAlert,keyword,sortKey]);
 
       const openModal = (p=null, viewOnly=false) => {
         setEditingProject(p);
@@ -426,38 +453,27 @@
         });
       };
 
-      const resetLogDraft = (progress=actualProgress) => {
+      const resetLogDraft = () => {
         const defaultProgressType = progressTypes.find(x => x.active)?.id || 'WORK_LOG';
-        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', progress:clampProgress(progress), content:'' });
+        setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', content:'' });
       };
-
       const saveProgressLog = () => {
         const selectedProgressType = progressTypes.find(x => x.id === logDraft.typeId);
         const isOther = selectedProgressType?.id === 'OTHER';
-        const finalType = isOther ? String(logDraft.customType || '').trim() : String(selectedProgressType?.label || '').trim();
-        const content = String(logDraft.content || '').trim();
-        if (!selectedProgressType) return alert('請選擇進度類型');
-        if (!finalType) return alert('請輸入進度類型');
-        if (!content) return alert('請輸入進度內容');
-        const item = {
-          id:logDraft.id || uid('log'),
-          date:logDraft.date || today(),
-          person:String(logDraft.person || '').trim(),
-          typeId:selectedProgressType.id,
-          type:finalType,
-          content,
-          progress:clampProgress(logDraft.progress)
-        };
-        setExecutionLogs(prev => normalizeLogs(logDraft.id ? prev.map(x => x.id === logDraft.id ? item : x) : [item, ...prev]));
-        setActualProgress(item.progress);
-        resetLogDraft(item.progress);
+        const finalType = isOther ? String(logDraft.customType||'').trim() : String(selectedProgressType?.label||'').trim();
+        const content = String(logDraft.content||'').trim();
+        if(!selectedProgressType || !finalType || !content) return alert('請輸入完整的紀錄類型及內容');
+        const previous=executionLogs.find(x=>x.id===logDraft.id);
+        const item={...previous,id:logDraft.id || uid('log'),date:logDraft.date||today(),person:String(logDraft.person||'').trim(),typeId:selectedProgressType.id,type:finalType,content};
+        setExecutionLogs(prev=>normalizeLogs(logDraft.id ? prev.map(x=>x.id===logDraft.id?item:x) : [item,...prev]));
+        resetLogDraft();
       };
 
       const editProgressLog = (log) => {
         const matched = progressTypes.find(x => x.id === log.typeId) || progressTypes.find(x => x.label === log.type);
         const typeId = matched?.id || 'OTHER';
         const customType = typeId === 'OTHER' ? (matched && log.type === matched.label ? '' : log.type) : '';
-        setLogDraft({ id:log.id, date:log.date || today(), person:log.person || '', typeId, customType, progress:clampProgress(log.progress), content:log.content || '' });
+        setLogDraft({ id:log.id, date:log.date || today(), person:log.person || '', typeId, customType, content:log.content || '' });
         document.getElementById('progress-entry')?.scrollIntoView({ behavior:'smooth', block:'center' });
       };
 
@@ -465,38 +481,62 @@
         if (!confirm('確定刪除這筆進度紀錄？')) return;
         const next = normalizeLogs(executionLogs.filter(x => x.id !== id));
         setExecutionLogs(next);
-        setActualProgress(next.length ? next[0].progress : 0);
-        if (logDraft.id === id) resetLogDraft(next.length ? next[0].progress : 0);
+        if (logDraft.id === id) resetLogDraft();
       };
 
+      const saveTodo = () => {
+        const content=todoDraft.content.trim();
+        if(!content || !todoDraft.dueDate || exactYear(todoDraft.dueDate)===null) return alert('請填寫待辦事項及有效預定完成日');
+        const previous=todos.find(x=>x.id===todoDraft.id);
+        const item={...previous,id:todoDraft.id||uid('todo'),content,owner:todoDraft.owner.trim(),dueDate:todoDraft.dueDate,notes:todoDraft.notes.trim(),done:previous?.done||false,completedAt:previous?.completedAt||null,createdAt:previous?.createdAt||today()};
+        setTodos(prev=>todoDraft.id?prev.map(x=>x.id===todoDraft.id?item:x):[...prev,item]);
+        setTodoDraft(emptyTodo());
+      };
+      const markTodo=(id,done)=>setTodos(prev=>prev.map(t=>t.id===id?{...t,done,completedAt:done?today():null}:t));
+      const removeTodo=id=>{if(window.confirm('確定刪除此待辦事項？此操作在儲存專案後生效。'))setTodos(prev=>prev.filter(x=>x.id!==id));};
       const handleSave = async (e) => {
         e.preventDefault();
         if (isViewMode) return;
         const formData = new FormData(e.currentTarget);
         if (!selectedFactory) return alert('請選擇廠區');
         if (selectedType === 'PERMIT' && selectedPermitCategories.length === 0) return alert('法規／證照申請請至少勾選一個法規類別');
+        const startDate=String(formData.get('startDate')||'');
+        const endDate=String(formData.get('endDate')||'');
+        const origin=exactYear(startDate);
+        if(origin===null || exactYear(endDate)===null) return alert('請輸入有效的開始及結束日期');
+        if(endDate<startDate) return alert('預定結束日期不能早於開始日期');
+        const priorOrigin=editingProject?getProjectYear(editingProject):null;
+        if(editingProject && priorOrigin!==origin && !window.confirm(`開始日期所屬年度將由 ${priorOrigin||'未設定'} 改為 ${origin}，專案將移至對應年度。是否繼續？`))return;
         const projectData = {
           name:formData.get('name'),
-          projectContent:formData.get('projectContent') || '',
+          projectContent:formData.get('projectContent')||'',
           type:selectedType,
-          customTypeName:selectedType === 'OTHER' ? (formData.get('customTypeName') || '') : '',
+          customTypeName:selectedType==='OTHER'?(formData.get('customTypeName')||''):'',
           factory:selectedFactory,
-          permitCategories:selectedType === 'PERMIT' ? selectedPermitCategories : [],
-          mainDept:formData.get('mainDept') || '',
-          mainPic:formData.get('mainPic') || '',
-          supervisionDept:selectedSupervisionDept === 'OTHER' ? (formData.get('customSupervisionDept') || '') : selectedSupervisionDept,
-          supervisionPic:formData.get('supervisionPic') || '',
-          startDate:formData.get('startDate'),
-          endDate:formData.get('endDate'),
-          expectedProgress:clampProgress(expectedProgress),
-          progress:clampProgress(actualProgress),
-          status:formData.get('status') || 'ON_TRACK',
-          description:formData.get('description') || '',
-          executionLogs:normalizeLogs(executionLogs)
+          permitCategories:selectedType==='PERMIT'?selectedPermitCategories:[],
+          mainDept:formData.get('mainDept')||'',
+          mainPic:formData.get('mainPic')||'',
+          supervisionDept:selectedSupervisionDept==='OTHER'?(formData.get('customSupervisionDept')||''):selectedSupervisionDept,
+          supervisionPic:formData.get('supervisionPic')||'',
+          startDate,endDate,projectYear:origin,
+          description:formData.get('description')||'',
+          executionLogs:normalizeLogs(executionLogs),
+          todos:normalizeTodos(todos)
         };
+        if(selectedStatus){
+          projectData.executionStatus=selectedStatus;
+          if(!editingProject?.executionStatus)projectData.statusConfirmedAt=today();
+          if(selectedStatus==='COMPLETED'){
+            if(editingProject?.executionStatus==='COMPLETED') { /* existing closure date left intact */ }
+            else if(editingProject?.status==='COMPLETED' && !editingProject?.executionStatus) { /* legacy close time unknown; do not fabricate a timestamp */ }
+            else projectData.closedAt=today();
+          }else if(editingProject?.executionStatus==='COMPLETED')projectData.closedAt=null;
+        }
         try {
           if (editingProject) await window.__fs_update(editingProject.id, projectData);
           else await window.__fs_add(projectData);
+          // Cross-year edits should keep the selected tracking year whenever the project remains visible there.
+          if (!editingProject || !isVisibleInYear({...editingProject,...projectData}, selectedYear)) setSelectedYear(String(origin));
           setIsModalOpen(false);
           setEditingProject(null);
         } catch (err) { alert(`儲存失敗：${err?.message || err}`); }
@@ -553,7 +593,7 @@
         };
         try {
           await Promise.all(Object.entries(normalized).map(([key,items]) => window.__fs_save_master(key, items)));
-          setMaster(normalized);
+          setMaster(prev=>({...prev,...normalized}));
           setMasterCloudOk(true);
           setIsMasterOpen(false);
         } catch (err) {
@@ -563,51 +603,94 @@
         }
       };
 
-      const handleScroll = (e) => {
-        if (!leftScrollRef.current || !rightScrollRef.current) return;
-        if (e.target === leftScrollRef.current) rightScrollRef.current.scrollTop = leftScrollRef.current.scrollTop;
-        else leftScrollRef.current.scrollTop = rightScrollRef.current.scrollTop;
-      };
-
       const csvEscape = (v) => `"${String(v ?? '').replace(/"/g,'""')}"`;
       const handleExportCSV = () => {
-        const headers = ['名稱','摘要','類型','自定義類型','廠區','法規類別','主辦部門','主辦人','督導部門','督導人員','開始日期','結束日期','預計進度','實際進度','狀態','執行說明','備註'];
-        const rows = projects.map(p => [
-          p.name,p.projectContent,p.type,p.customTypeName,p.factory,(p.permitCategories || []).join('|'),p.mainDept,p.mainPic,p.supervisionDept,p.supervisionPic,p.startDate,p.endDate,p.expectedProgress || 0,p.progress || 0,p.status,JSON.stringify(normalizeLogs(p.executionLogs || [])),p.description
+        // CSV is a working-table exchange format. Use the complete JSON export for backups.
+        const headers=['名稱','摘要','類型','自定義類型','廠區','法規類別','主辦部門','主辦人','督導部門','督導人員',
+          '開始日期','結束日期','原始年度','執行狀態','舊狀態','辦理紀錄','待辦事項','備註'];
+        const rows=projects.map(p=>[
+          p.name,p.projectContent,p.type,p.customTypeName,p.factory,(p.permitCategories||[]).join('|'),p.mainDept,p.mainPic,
+          p.supervisionDept,p.supervisionPic,p.startDate,p.endDate,getProjectYear(p)||'',p.executionStatus||'',p.status||'',
+          JSON.stringify(p.executionLogs||[]),JSON.stringify(p.todos||[]),p.description||''
         ].map(csvEscape));
-        const blob = new Blob(['\uFEFF' + [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\n')], { type:'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url; link.download = `安衛環管制總表_${today()}.csv`; link.click(); URL.revokeObjectURL(url);
+        const blob=new Blob(['\uFEFF'+[headers.map(csvEscape).join(','),...rows.map(r=>r.join(','))].join('\n')],{type:'text/csv;charset=utf-8'});
+        const url=URL.createObjectURL(blob);const link=document.createElement('a');
+        link.href=url;link.download=`安衛環專案管制_${today()}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
       };
 
-      const parseCsvLine = (line) => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g,'').replace(/""/g,'"'));
+      const handleExportJSON=()=>{
+        if(!masterCloudOk || !masterLoaded || isLoading)return alert('雲端資料尚未完整同步，暫停備份；請先確認登入與網路狀態。');
+        const data={format:'EHS_PROJECT_R1_BACKUP',version:'1.0',exportedAt:new Date().toISOString(),
+          firebaseProject:'esh-v85',appId:window.__APP_ID,
+          projects:projects.map(p=>({...p,createdAt:p.createdAt instanceof Date?p.createdAt.toISOString():p.createdAt,updatedAt:p.updatedAt instanceof Date?p.updatedAt.toISOString():p.updatedAt})),
+          master:deepClone(master),count:projects.length};
+        if(data.projects.length!==data.count || !Array.isArray(data.master.factories))return alert('備份驗證失敗，請勿使用此檔');
+        const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+        const link=document.createElement('a');const url=URL.createObjectURL(blob);
+        link.href=url;link.download=`安衛環完整備份_${today()}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      };
+      const parseCsvRecords = text => {
+        const out=[];let row=[],field='',quoted=false;
+        for(let i=0;i<text.length;i++){
+          const c=text[i];
+          if(quoted){if(c==='"' && text[i+1]==='"'){field+='"';i++;}else if(c==='"')quoted=false;else field+=c;}
+          else if(c==='"')quoted=true;
+          else if(c===','){row.push(field);field='';}
+          else if(c==='\n' || c==='\r'){
+            if(c==='\r' && text[i+1]==='\n')i++;
+            row.push(field);if(row.some(v=>v.trim()))out.push(row);row=[];field='';
+          }else field+=c;
+        }
+        if(quoted)throw new Error('CSV 引號未正確結束');
+        row.push(field);if(row.some(v=>v.trim()))out.push(row);
+        return out;
+      };
       const handleImportCSV = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const lines = String(event.target.result || '').split(/\r?\n/).filter(x => x.trim());
-          if (lines.length < 2) return;
-          const headers = parseCsvLine(lines[0]).map(x => x.replace(/^\uFEFF/,''));
-          const idx = (name) => headers.indexOf(name);
+        const file=e.target.files?.[0];if(!file)return;
+        const reader=new FileReader();
+        reader.onload=async event=>{
           try {
-            for (let i=1;i<lines.length;i++) {
-              const cols = parseCsvLine(lines[i]);
-              const get = (name, fallbackIndex=-1) => idx(name) >= 0 ? cols[idx(name)] : (fallbackIndex >= 0 ? cols[fallbackIndex] : '');
-              let logs = [];
-              try { logs = JSON.parse(get('執行說明', 13) || '[]'); } catch (_) {}
-              const isNew = idx('廠區') >= 0;
-              await window.__fs_add({
-                name:get('名稱',0), projectContent:get('摘要',1), type:get('類型',2), customTypeName:get('自定義類型',3) || '',
-                factory:isNew ? get('廠區') : '', permitCategories:isNew ? String(get('法規類別') || '').split('|').filter(Boolean) : [],
-                mainDept:get('主辦部門', isNew ? 6 : 4), mainPic:get('主辦人', isNew ? 7 : 5), supervisionDept:get('督導部門', isNew ? 8 : 6), supervisionPic:get('督導人員', isNew ? 9 : 7),
-                startDate:get('開始日期', isNew ? 10 : 8), endDate:get('結束日期', isNew ? 11 : 9), expectedProgress:clampProgress(get('預計進度', isNew ? 12 : 10)), progress:clampProgress(get('實際進度', isNew ? 13 : 11)),
-                status:get('狀態', isNew ? 14 : 12) || 'ON_TRACK', executionLogs:normalizeLogs(logs), description:get('備註', isNew ? 16 : 14) || ''
-              });
+            const records=parseCsvRecords(String(event.target.result||''));
+            if(records.length<2)return alert('CSV 沒有可匯入的資料');
+            const headers=records[0].map(x=>x.replace(/^\uFEFF/,''));
+            const idx=name=>headers.indexOf(name);
+            if(idx('名稱')<0 || idx('開始日期')<0 || idx('結束日期')<0)return alert('CSV 缺少必要欄位：名稱、開始日期或結束日期');
+            if(!window.confirm('CSV 匯入會新增專案，不會覆寫舊專案；相同「名稱＋廠區＋開始日期」將跳過。確定繼續？'))return;
+            const existing=new Set(projects.map(p=>[p.name,p.factory,p.startDate].join('\u0001')));
+            let added=0,skipped=0;
+            for(const cols of records.slice(1)){
+              const get=(name,oldIndex=-1)=>idx(name)>=0?(cols[idx(name)]||''):(oldIndex>=0?(cols[oldIndex]||''):'');
+              const isNew=idx('廠區')>=0;
+              const name=get('名稱',0).trim();
+              const startDate=get('開始日期',isNew?10:8);
+              const endDate=get('結束日期',isNew?11:9);
+              const factory=isNew?get('廠區'):'';
+              const key=[name,factory,startDate].join('\u0001');
+              if(existing.has(key)){skipped++;continue;}
+              if(!name||exactYear(startDate)===null||exactYear(endDate)===null||endDate<startDate)throw new Error(`第 ${added+skipped+2} 列名稱或日期不正確`);
+              const json=(field)=>{try{const x=JSON.parse(field||'[]');return Array.isArray(x)?x:[];}catch(_){return [];}};
+              const oldFormat=idx('預計進度')>=0;
+              const p={
+                name,projectContent:get('摘要',1),type:get('類型',2),customTypeName:get('自定義類型',3),factory,
+                permitCategories:isNew?String(get('法規類別')).split('|').filter(Boolean):[],
+                mainDept:get('主辦部門',isNew?6:4),mainPic:get('主辦人',isNew?7:5),
+                supervisionDept:get('督導部門',isNew?8:6),supervisionPic:get('督導人員',isNew?9:7),
+                startDate,endDate,projectYear:exactYear(startDate),
+                executionLogs:normalizeLogs(json(get('辦理紀錄')||get('執行說明',oldFormat?(isNew?15:13):-1))),
+                todos:normalizeTodos(json(get('待辦事項'))),
+                description:get('備註',isNew?(oldFormat?16:-1):14)
+              };
+              const newStatus=get('執行狀態');
+              if(newStatus && STATUS_TYPES[newStatus]){p.executionStatus=newStatus;p.statusConfirmedAt=today();}
+              const legacy=get('舊狀態')||get('狀態',oldFormat?(isNew?14:12):-1);
+              if(legacy)p.status=legacy;
+              if(oldFormat){p.expectedProgress=clampProgress(get('預計進度'));p.progress=clampProgress(get('實際進度'));}
+              await window.__fs_add(p);
+              existing.add(key);added++;
             }
-          } catch (err) { alert(`匯入失敗：${err?.message || err}`); }
-          e.target.value = '';
+            alert(`匯入完成：新增 ${added} 筆，跳過重複 ${skipped} 筆。`);
+          }catch(err){alert(`CSV 匯入中止：${err?.message||err}`);}
+          finally{e.target.value='';}
         };
         reader.readAsText(file);
       };
@@ -622,84 +705,72 @@
           <div className="max-w-[1700px] mx-auto">
             <input type="file" ref={fileInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
 
-            <div className="mb-5 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-800">年度安衛環專案管制總表</h1>
-                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">● 雲端即時版</span>
-                  {!masterCloudOk && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold">基本資料雲端同步異常</span>}
-                </div>
-                <div className="flex flex-wrap items-center gap-4 mt-3">
-                  <p className="text-gray-500 text-sm font-medium">專案總數: <span className="font-bold text-gray-800">{projects.length}</span></p>
-                  <div className="flex flex-wrap gap-1 py-1 px-2 bg-gray-50 rounded-lg border border-gray-100">
-                    {projectTypes.map(t => <div key={t.id} className="flex items-center gap-1.5 px-2 py-0.5 border-r last:border-0 border-gray-200"><span className="w-2 h-2 rounded-full" style={{backgroundColor:t.color}}></span><span className="text-[11px] font-bold text-gray-600">{t.label}:</span><span className="text-[11px] font-mono font-bold text-blue-600">{projectCounts[t.id] || 0}</span></div>)}
+            <div className="mb-4 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex flex-col xl:flex-row justify-between gap-3 xl:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-2xl font-bold text-gray-800">年度安衛環專案管制總表</h1>
+                    <span className="text-[11px] px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">R1.0 專案執行與待辦追蹤</span>
+                    {!masterCloudOk && <span className="text-xs text-amber-700">基本資料雲端同步異常</span>}
                   </div>
+                  <p className="text-xs text-slate-500 mt-2">各年度分開管理；跨年度未結案件共用原始專案，不產生副本。</p>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={openMaster} className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 text-sm font-bold"><Settings className="w-4 h-4"/> 基本資料</button>
-                <button onClick={() => openModal(null,false)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-md font-bold"><Plus className="w-5 h-5"/> 新增專案</button>
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-bold"><Upload className="w-4 h-4 text-green-600"/> 匯入</button>
-                <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-bold"><FileSpreadsheet className="w-4 h-4"/> 匯出</button>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <label className="text-xs font-bold text-slate-600">管理年度</label>
+                  <select aria-label="管理年度" value={selectedYear} onChange={e=>setSelectedYear(e.target.value)} className="p-2 border rounded-lg bg-white font-bold text-sm">
+                    {availableYears.map(y=><option key={y} value={String(y)}>{y}年度</option>)}
+                    <option value="UNASSIGNED">年度待確認</option>
+                  </select>
+                  <button onClick={addYear} className="px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200">＋ 新增年度</button>
+                  <button onClick={openMaster} className="px-3 py-2 border rounded-lg text-sm font-bold">基本資料</button>
+                  <button onClick={()=>openModal(null,false)} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm">＋ 新增專案</button>
+                  <button onClick={()=>fileInputRef.current?.click()} className="px-3 py-2 border rounded-lg text-sm">CSV匯入</button>
+                  <button onClick={handleExportCSV} className="px-3 py-2 border rounded-lg text-sm">CSV匯出</button>
+                  <button onClick={handleExportJSON} className="px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg font-bold text-sm">完整JSON備份</button>
+                </div>
               </div>
             </div>
-
-            <div className="mb-5 flex flex-wrap gap-2 items-center">
-              <button onClick={() => setFilterType('ALL')} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === 'ALL' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border border-gray-200'}`}>全部顯示</button>
-              {projectTypes.map(t => <button key={t.id} onClick={() => setFilterType(t.id)} style={filterType === t.id ? tagStyle(t.color,true) : undefined} className={`px-4 py-2 rounded-full text-sm font-bold ${filterType === t.id ? 'shadow border' : 'bg-white text-gray-600 border border-gray-200'}`}>{t.label}</button>)}
-              <div className="ml-0 md:ml-auto flex items-center gap-2 bg-white border border-gray-200 rounded-full px-3 py-1">
-                <span className="text-xs font-bold text-gray-400">廠區</span>
-                <select value={filterFactory} onChange={e => setFilterFactory(e.target.value)} className="border-0 bg-transparent text-sm font-bold text-gray-700 py-1 pr-7 focus:ring-0">
-                  <option value="ALL">全部廠區</option>
-                  {factories.map(f => <option key={f.id} value={f.id}>{f.label}{f.active ? '' : '（停用）'}</option>)}
-                </select>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 mb-4">
+              {[['年度追蹤',stats.total],['本年度立案',stats.origin],['跨年度延續',stats.carry],['未結案',stats.active],['已結案',stats.closed],['專案逾期',stats.overdue],['待辦逾期',stats.todoOverdue],['30天內待辦',stats.todoSoon]].map(([label,count])=><div key={label} className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-xs text-slate-500 font-bold">{label}</div><div className="text-xl font-extrabold text-slate-800 mt-1">{count}</div></div>)}
             </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-270px)] min-h-[520px]">
-              <div className="w-full lg:w-[470px] border-r border-gray-200 flex flex-col overflow-hidden shrink-0">
-                <div className="bg-gray-50 p-3 border-b border-gray-200 text-xs font-bold text-gray-500 flex justify-between h-10 items-center"><span>專案概況</span><span>進度(預計/實際)</span></div>
-                <div ref={leftScrollRef} onScroll={handleScroll} className="overflow-y-auto flex-1 scrollbar-hide">
-                  {sortedFilteredProjects.length === 0 && <div className="p-10 text-center text-sm text-gray-400">目前篩選條件沒有專案。</div>}
-                  {sortedFilteredProjects.map((p,idx) => {
-                    const expected = clampProgress(p.expectedProgress); const actual = clampProgress(p.progress); const statusKey = effectiveStatus(p); const status = STATUS_TYPES[statusKey];
-                    const t = typeMap[p.type] || { label:p.type || '未分類', color:'#64748b' }; const f = factoryMap[p.factory];
-                    return <div key={p.id} onMouseEnter={() => setHoverIdx(idx)} onMouseLeave={() => setHoverIdx(null)} className={`project-row-height p-4 row-hover relative overflow-hidden ${idx % 2 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}>
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${status.bgColor}`}></div>
-                      <div className="flex justify-between items-start mb-1.5 gap-2">
-                        <div className="flex flex-wrap gap-1.5 min-w-0">
-                          <span style={tagStyle(f?.color || '#475569',true)} className="text-[10px] px-2 py-0.5 rounded font-bold border">{f?.label || '未設定廠區'}</span>
-                          <span style={tagStyle(t.color)} className="text-[10px] px-2 py-0.5 rounded font-bold border">{p.type === 'OTHER' && p.customTypeName ? p.customTypeName : t.label}</span>
-                          {p.type === 'PERMIT' && (p.permitCategories || []).map(id => {const c=permitMap[id]; return <span key={id} style={tagStyle(c?.color || '#64748b')} className="text-[10px] px-2 py-0.5 rounded font-bold border">{c?.label || id}</span>;})}
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0"><span onClick={e => {e.stopPropagation(); openModal(p,true);}} className="action-link text-gray-400">查看</span><span onClick={e => {e.stopPropagation(); openModal(p,false);}} className="action-link text-blue-500">編輯</span><span onClick={e => handleDeleteProject(p.id,e)} className="action-link text-red-500">刪除</span></div>
-                      </div>
-                      <div className="flex justify-between items-center mb-1.5"><h3 className="font-bold text-gray-800 text-sm truncate pr-2 flex-1" title={p.name}>{p.name}</h3><div className="flex items-center gap-1 text-[10px] font-bold shrink-0">{statusKey === 'DELAYED' ? <AlertCircle className="w-3 h-3 text-red-500"/> : <CheckCircle className={`w-3 h-3 ${statusKey === 'COMPLETED' ? 'text-gray-400' : 'text-green-500'}`}/>}<span className={status.color}>{status.label}</span></div></div>
-                      <div className="bg-gray-50/70 p-2 rounded-lg mb-2 grid grid-cols-2 gap-2 text-[10px] border border-gray-100"><div className="truncate"><span className="text-gray-400">主辦:</span> <span className="font-bold text-gray-600">{p.mainDept || '-'}-{p.mainPic || '-'}</span></div><div className="border-l pl-2"><span className="text-gray-400">預計:</span> <span className="font-bold text-blue-600">{expected}%</span></div></div>
-                      <div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200/50 rounded-full overflow-hidden relative border border-gray-100"><div className="absolute h-full bg-blue-400/20" style={{width:`${expected}%`}}></div><div className={`absolute h-full ${statusKey === 'DELAYED' ? 'bg-red-500' : 'bg-green-500'}`} style={{width:`${actual}%`}}></div></div><span className={`text-[10px] font-bold ${statusKey === 'DELAYED' ? 'text-red-600' : 'text-green-600'}`}>{actual}%</span></div>
-                    </div>;
-                  })}
-                </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 mb-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <input aria-label="搜尋專案" placeholder="搜尋專案、人員、最新紀錄、待辦..." value={keyword} onChange={e=>setKeyword(e.target.value)} className="border rounded-lg px-3 py-2 flex-1 min-w-[210px] text-sm" />
+                <select aria-label="廠區篩選" value={filterFactory} onChange={e=>setFilterFactory(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部廠區</option>{factories.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select>
+                <select aria-label="專案類型篩選" value={filterType} onChange={e=>setFilterType(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部類型</option>{projectTypes.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select>
+                <select aria-label="狀態篩選" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部狀態</option><option value="LEGACY">舊狀態待確認</option>{Object.entries(STATUS_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+                <select aria-label="期限篩選" value={filterAlert} onChange={e=>setFilterAlert(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部期限</option><option value="OVERDUE">逾期</option><option value="SOON">30天內到期</option></select>
+                <select aria-label="排序方式" value={sortKey} onChange={e=>setSortKey(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="DUE_ASC">期限近→遠</option><option value="DUE_DESC">期限遠→近</option><option value="UPDATED">最近更新</option><option value="START_ASC">開始日期</option><option value="NAME">專案名稱</option></select>
               </div>
-
-              <div className="flex-1 flex flex-col overflow-hidden relative">
-                <div className="flex border-b border-gray-200 bg-gray-50 h-10 sticky top-0 z-20">{months.map((m,idx) => <div key={idx} className="flex-1 flex flex-col items-center justify-center text-[10px] font-bold text-gray-400 border-r border-gray-200/50 min-w-[50px]">{m.getMonth() === 0 && <div className="text-blue-500 scale-90">{m.getFullYear()}</div>}<div>{m.getMonth()+1}月</div></div>)}</div>
-                <div ref={rightScrollRef} onScroll={handleScroll} className="overflow-y-auto overflow-x-hidden flex-1 relative scrollbar-hide">
-                  <div className="absolute inset-0 flex pointer-events-none">{months.map((_,idx) => <div key={idx} className="flex-1 border-r border-gray-100/30 min-w-[50px]"></div>)}</div>
-                  {sortedFilteredProjects.map((p,idx) => {
-                    const {left,width} = calculateBarPosition(p.startDate,p.endDate); const expected=clampProgress(p.expectedProgress); const actual=clampProgress(p.progress); const delayed=effectiveStatus(p)==='DELAYED';
-                    const groups={}; normalizeLogs(p.executionLogs || []).forEach(log => { if(log.date){const d=new Date(`${log.date}T00:00:00`); const key=`${d.getFullYear()}-${d.getMonth()}`; (groups[key] ||= []).push(log);} });
-                    return <div key={p.id} onMouseEnter={() => setHoverIdx(idx)} onMouseLeave={() => setHoverIdx(null)} className={`gantt-row row-hover ${idx % 2 ? 'row-even' : 'row-odd'} ${hoverIdx === idx ? 'bg-blue-50/50' : ''}`}>
-                      <div className="absolute inset-0 flex pointer-events-none">{months.map((m,i) => {const key=`${m.getFullYear()}-${m.getMonth()}`; const logs=groups[key]; return logs ? <div key={i} className="flex-1 flex items-end justify-center pb-2"><div onClick={() => setQuickViewData({project:p,month:`${m.getFullYear()}年${m.getMonth()+1}月`,logs})} className="quick-view-dot w-2.5 h-2.5 bg-orange-500 rounded-full shadow-sm cursor-pointer z-10 pointer-events-auto"></div></div> : <div key={i} className="flex-1"></div>;})}</div>
-                      <div className="absolute top-1/2 -translate-y-1/2 h-7 rounded shadow-sm hover:h-9 transition-all cursor-pointer overflow-hidden z-10 flex border border-gray-300" style={{left,width}} onClick={() => openModal(p,false)}><div className="absolute inset-0 bg-blue-400/30" style={{width:`${expected}%`}}></div><div className={`h-full ${delayed ? 'bg-red-500' : 'bg-green-500'} relative z-10 flex items-center px-3 text-white text-[10px] font-bold`} style={{width:`${actual}%`}}><span className="truncate">{actual}%</span></div></div>
-                    </div>;
+              <div className="flex items-center justify-between text-xs text-slate-500"><span>符合條件：<b className="text-slate-700">{sortedFilteredProjects.length}</b> 筆；其中年度延續專案依原案同步更新。</span><button onClick={()=>{setFilterFactory('ALL');setFilterType('ALL');setFilterStatus('ALL');setFilterAlert('ALL');setKeyword('');setSortKey('DUE_ASC');}} className="text-blue-600 font-bold">清除篩選</button></div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
+              <table className="project-table min-w-[1250px] w-full text-sm text-left border-collapse">
+                <thead><tr className="text-slate-600 text-xs">
+                  <th className="p-3 w-32">廠區／類型</th><th className="p-3 min-w-[230px]">專案名稱</th><th className="p-3 w-36">主辦人</th><th className="p-3 w-44">執行狀態</th><th className="p-3 w-32">預定完成日</th><th className="p-3 min-w-[240px]">最新辦理紀錄</th><th className="p-3 min-w-[260px]">下一步待辦</th><th className="p-3 w-28">操作</th>
+                </tr></thead>
+                <tbody>
+                  {sortedFilteredProjects.length===0 && <tr><td colSpan="8" className="text-center p-12 text-slate-400">本年度沒有符合篩選條件的專案。</td></tr>}
+                  {sortedFilteredProjects.map(p=>{
+                    const origin=getProjectYear(p);const f=factoryMap[p.factory];const t=typeMap[p.type];
+                    const latest=normalizeLogs(p.executionLogs||[])[0];
+                    const openTodos=todoList(p).filter(x=>!x.done).sort((a,b)=>String(a.dueDate).localeCompare(String(b.dueDate)));
+                    const nextTodo=openTodos[0];const alertKey=projectAlert(p);
+                    return <tr key={p.id} className="hover:bg-blue-50/50">
+                      <td className="p-3"><div className="text-[11px] font-bold text-slate-700">{f?.label||'未設定'}</div><div className="text-[11px] text-slate-500 mt-1">{p.type==='OTHER'&&p.customTypeName?p.customTypeName:(t?.label||p.type)}</div></td>
+                      <td className="p-3"><button onClick={()=>openModal(p,true)} className="font-bold text-blue-700 hover:underline text-left break-words">{p.name||'未命名'}</button><div className="text-[11px] text-slate-500 mt-1">{origin===Number(selectedYear)?'本年度立案':`原始年度 ${origin||'待確認'} · 跨年度延續`}</div>{p.projectContent&&<div className="text-[11px] text-slate-500 mt-1 line-clamp-2">{p.projectContent}</div>}</td>
+                      <td className="p-3"><div className="font-medium">{p.mainPic||'—'}</div><div className="text-xs text-slate-500 mt-1">{p.mainDept||''}</div></td>
+                      <td className="p-3"><div className={`font-bold text-xs ${p.executionStatus?(STATUS_TYPES[p.executionStatus]?.color||'text-slate-600'):'text-amber-700'}`}>{statusLabel(p)}</div>{!p.executionStatus&&<div className="text-[10px] text-amber-700 mt-1">請逐筆確認新版狀態</div>}</td>
+                      <td className="p-3"><div className="font-bold">{p.endDate||'—'}</div>{alertKey==='OVERDUE'&&<span className="inline-block text-[11px] text-red-700 bg-red-50 rounded px-2 py-1 mt-1">逾期未結</span>}{alertKey==='SOON'&&<span className="inline-block text-[11px] text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">30天內到期</span>}</td>
+                      <td className="p-3">{latest?<><div className="text-[11px] text-slate-500">{latest.date} · {latest.type} · {latest.person||'未填人員'}</div><div className="line-clamp-3 whitespace-pre-wrap text-xs mt-1">{latest.content}</div></>:<span className="text-slate-400 text-xs">尚無辦理紀錄</span>}</td>
+                      <td className="p-3">{nextTodo?<><div className="text-xs font-semibold whitespace-pre-wrap">{nextTodo.content}</div><div className="text-[11px] text-slate-500 mt-1">{nextTodo.owner||'未指定'} · {nextTodo.dueDate}</div>{todoAlert(nextTodo.dueDate)==='OVERDUE'&&<span className="text-[11px] text-red-700">逾期</span>}{todoAlert(nextTodo.dueDate)==='SOON'&&<span className="text-[11px] text-amber-700">即將到期</span>}{openTodos.length>1&&<div className="text-[11px] text-slate-400 mt-1">另有 {openTodos.length-1} 筆未完成</div>}</>:<span className="text-slate-400 text-xs">無未完成待辦</span>}</td>
+                      <td className="p-3"><div className="flex gap-2 flex-wrap"><button onClick={()=>openModal(p,true)} className="text-slate-600 text-xs font-bold">查看</button><button onClick={()=>openModal(p,false)} className="text-blue-600 text-xs font-bold">編輯</button><button onClick={e=>handleDeleteProject(p.id,e)} className="text-red-600 text-xs font-bold">刪除</button></div></td>
+                    </tr>;
                   })}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {quickViewData && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4"><div className="resizable-container w-[560px] h-[620px]"><div className="bg-orange-500 p-4 flex justify-between items-center text-white font-bold shrink-0"><div className="flex items-center gap-2"><Info className="w-5 h-5"/><span>{quickViewData.month} 進度明細</span></div><button onClick={() => setQuickViewData(null)} className="p-1 hover:bg-white/20 rounded text-xl">✕</button></div><div className="p-5 flex-1 overflow-y-auto space-y-3"><div className="border-b pb-3"><p className="text-xs text-gray-400 font-bold mb-1">對應專案</p><p className="font-bold">{quickViewData.project.name}</p></div>{quickViewData.logs.map(log => <div key={log.id} className="bg-gray-50 p-4 rounded-xl border"><div className="flex flex-wrap gap-2 items-center mb-2"><span className="text-[11px] font-bold bg-white px-2 py-1 rounded border">{log.date}</span><span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">{log.person || '未填人員'}</span><span style={tagStyle((progressTypeMap[log.typeId] || progressTypes.find(x => x.label === log.type) || progressTypeMap.OTHER)?.color || '#475569')} className="text-[11px] font-bold px-2 py-1 rounded border">{log.type}</span><span className="ml-auto text-xs font-bold text-orange-600">{log.progress}%</span></div><p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{log.content || '未輸入描述'}</p></div>)}</div><div className="p-4 bg-gray-50 border-t flex gap-2"><button onClick={() => {const p=quickViewData.project; setQuickViewData(null); openModal(p,false);}} className="flex-1 bg-white border border-blue-200 text-blue-600 font-bold py-2 rounded-xl text-sm">前往編輯專案</button><button onClick={() => setQuickViewData(null)} className="flex-1 bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-sm">關閉</button></div></div></div>}
 
           {isModalOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="resizable-container w-[1120px] h-[88vh]"><div className="bg-gray-800 p-5 flex justify-between items-center text-white shrink-0"><h3 className="font-bold text-lg">{isViewMode ? '查看專案' : editingProject ? '編輯專案' : '新增專案'}</h3><button onClick={() => setIsModalOpen(false)} className="p-1 text-xl">✕</button></div>
             <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5 bg-white">
@@ -711,7 +782,7 @@
                   <div><label className="block text-sm font-bold text-gray-700 mb-1">專案類型</label><select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{projectTypes.filter(t => t.active || t.id === editingProject?.type).map(t => <option key={t.id} value={t.id}>{t.label}{t.active ? '' : '（已停用）'}</option>)}</select></div>
                   {selectedType === 'OTHER' && <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">其他專案類型名稱</label><input name="customTypeName" defaultValue={editingProject?.customTypeName || ''} className="w-full p-2.5 border rounded-xl"/></div>}
                   {selectedType === 'PERMIT' && <div className="md:col-span-2 bg-purple-50/60 border border-purple-100 rounded-xl p-4"><label className="block text-sm font-bold text-purple-800 mb-3">法規類別（可複選）*</label><div className="flex flex-wrap gap-2">{permitCategories.filter(x => x.active || selectedPermitCategories.includes(x.id)).map(c => <label key={c.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ${selectedPermitCategories.includes(c.id) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-purple-700 border-purple-200'}`}><input type="checkbox" checked={selectedPermitCategories.includes(c.id)} onChange={() => togglePermitCategory(c.id)} className="accent-purple-600"/><span className="text-sm font-bold">{c.label}{c.active ? '' : '（已停用）'}</span></label>)}</div></div>}
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">目前狀態</label><select name="status" defaultValue={editingProject?.status || 'ON_TRACK'} className="w-full p-2.5 border rounded-xl bg-white">{Object.entries(STATUS_TYPES).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">執行狀態</label><select value={selectedStatus} onChange={e=>setSelectedStatus(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{editingProject&&!editingProject.executionStatus&&<option value="">舊狀態：{LEGACY_STATUS[editingProject.status]||editingProject.status||'未設定'}（待人工確認）</option>}{Object.entries(STATUS_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>{editingProject&&!editingProject.executionStatus&&<p className="text-xs text-amber-700 mt-1">舊狀態不自動轉換；選擇新版狀態才正式確認。</p>}</div>
                 </div>
 
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -722,31 +793,41 @@
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">開始日期</label><input type="date" required name="startDate" defaultValue={editingProject?.startDate || today()} className="w-full p-2.5 border rounded-xl bg-white"/></div>
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">預計結束</label><input type="date" required name="endDate" defaultValue={editingProject?.endDate || today()} className="w-full p-2.5 border rounded-xl bg-white"/></div>
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">預計進度 (%)</label><input type="number" min="0" max="100" value={expectedProgress} onChange={e => setExpectedProgress(clampProgress(e.target.value))} className="w-full p-2.5 border rounded-xl bg-white"/></div>
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">實際進度</label><div className="w-full p-2.5 border rounded-xl bg-slate-50 font-bold text-green-600">{actualProgress}% <span className="text-[11px] font-normal text-gray-400">由進度紀錄更新</span></div></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">開始日期</label><input type="date" required name="startDate" defaultValue={editingProject?.startDate || (selectedYear==='UNASSIGNED'||Number(selectedYear)===new Date().getFullYear()?today():`${selectedYear}-01-01`)} className="w-full p-2.5 border rounded-xl bg-white"/></div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">預計結束</label><input type="date" required name="endDate" defaultValue={editingProject?.endDate || (selectedYear==='UNASSIGNED'||Number(selectedYear)===new Date().getFullYear()?today():`${selectedYear}-12-31`)} className="w-full p-2.5 border rounded-xl bg-white"/></div>
                 </div>
 
                 <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-                  <div className="flex items-center justify-between mb-3"><div><h4 className="text-sm font-bold text-slate-700">辦理進度紀錄</h4><p className="text-[11px] text-slate-400 mt-1">新增進度後會直接更新專案實際進度；歷程依日期由新到舊顯示。</p></div><span className="text-[11px] font-bold text-slate-400">{executionLogs.length} 筆</span></div>
+                  <div className="flex items-center justify-between mb-3"><div><h4 className="text-sm font-bold text-slate-700">辦理進度紀錄</h4><p className="text-[11px] text-slate-400 mt-1">紀錄實際辦理情形；不再要求填寫百分比。歷程依日期由新到舊顯示。</p></div><span className="text-[11px] font-bold text-slate-400">{executionLogs.length} 筆</span></div>
                   {!isViewMode && <div id="progress-entry" className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">日期</label><input type="date" value={logDraft.date} onChange={e => setLogDraft({...logDraft,date:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white"/></div>
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員（可複選）</label><details className="person-picker relative"><summary className="w-full min-h-[46px] p-2.5 border rounded-lg bg-white cursor-pointer flex items-center justify-between gap-2"><span className={selectedLogPeople.length ? 'text-slate-700 font-bold truncate' : 'text-slate-400'}>{selectedLogPeople.length ? selectedLogPeople.join('、') : '請勾選人員'}</span><span className="text-slate-400">⌄</span></summary><div className="absolute z-40 mt-1 w-full min-w-[240px] max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl p-2">{logPeopleOptions.length ? logPeopleOptions.map(person => <label key={person.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer"><input type="checkbox" checked={selectedLogPeople.includes(person.label)} onChange={() => toggleLogPerson(person.label)} className="accent-blue-600"/><span className="text-sm font-bold text-slate-700">{person.label}{person.retained ? <span className="text-[10px] text-amber-600 ml-1">（已選保留）</span> : ''}</span></label>) : <div className="px-3 py-4 text-xs text-slate-400">此廠區尚未建立人員，請至基本資料新增。</div>}</div></details></div>
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">類型</label><select value={logDraft.typeId} onChange={e => setLogDraft({...logDraft,typeId:e.target.value,customType:e.target.value === 'OTHER' ? logDraft.customType : ''})} className="w-full p-2.5 border rounded-lg bg-white">{progressTypes.filter(x => x.active || x.id === logDraft.typeId).map(x => <option key={x.id} value={x.id}>{x.label}{x.active ? '' : '（已停用）'}</option>)}</select></div>
-                      <div><label className="block text-[11px] font-bold text-blue-500 mb-1">進度 (%)</label><input type="number" min="0" max="100" value={logDraft.progress} onChange={e => setLogDraft({...logDraft,progress:clampProgress(e.target.value)})} className="w-full p-2.5 border-2 border-blue-100 rounded-lg bg-white font-bold text-blue-600"/></div>
+                      
                     </div>
                     {logDraft.typeId === 'OTHER' && <div><label className="block text-[11px] font-bold text-slate-400 mb-1">其他類型名稱</label><input value={logDraft.customType} onChange={e => setLogDraft({...logDraft,customType:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white" placeholder="例如：教育訓練、稽核追蹤"/></div>}
                     <div><label className="block text-[11px] font-bold text-slate-400 mb-1">內容</label><textarea value={logDraft.content} onChange={e => setLogDraft({...logDraft,content:e.target.value})} rows="3" className="w-full p-3 border rounded-lg bg-white resize-y" placeholder="請輸入本次辦理進度、聯繫結果、下一步事項..."/></div>
-                    <div className="flex justify-end gap-2">{logDraft.id && <button type="button" onClick={() => resetLogDraft(actualProgress)} className="px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>}<button type="button" onClick={saveProgressLog} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">{logDraft.id ? '儲存修改' : '新增進度'}</button></div>
+                    <div className="flex justify-end gap-2">{logDraft.id && <button type="button" onClick={() => resetLogDraft()} className="px-4 py-2 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-200">取消修改</button>}<button type="button" onClick={saveProgressLog} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700">{logDraft.id ? '儲存修改' : '新增進度'}</button></div>
                   </div>}
                   <div className="mt-4"><div className="flex justify-between items-center mb-2"><label className="block text-xs font-bold text-slate-400">進度歷程</label><span className="text-[11px] text-slate-400 font-bold">{executionLogs.length} 筆</span></div><div className="space-y-2 max-h-80 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-white">
                     {executionLogs.length === 0 && <div className="p-4 text-xs text-slate-400">尚無進度紀錄。</div>}
-                    {executionLogs.map(log => <div key={log.id} className="progress-card border border-slate-200 rounded-xl p-3 bg-white"><div className="flex flex-wrap gap-2 items-center mb-2"><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.date}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.person || '未填人員'}</span><span style={tagStyle((progressTypeMap[log.typeId] || progressTypes.find(x => x.label === log.type) || progressTypeMap.OTHER)?.color || '#475569')} className="text-[11px] font-bold rounded-full px-2 py-1 border">{log.type}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-green-50 text-green-700 border border-green-100">{log.progress}%</span>{!isViewMode && <div className="ml-auto flex gap-1"><button type="button" onClick={() => editProgressLog(log)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">修改</button><button type="button" onClick={() => deleteProgressLog(log.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold">刪除</button></div>}</div><div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{log.content || '未輸入內容'}</div></div>)}
+                    {executionLogs.map(log => <div key={log.id} className="progress-card border border-slate-200 rounded-xl p-3 bg-white"><div className="flex flex-wrap gap-2 items-center mb-2"><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.date}</span><span className="text-[11px] font-bold rounded-full px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100">{log.person || '未填人員'}</span><span style={tagStyle((progressTypeMap[log.typeId] || progressTypes.find(x => x.label === log.type) || progressTypeMap.OTHER)?.color || '#475569')} className="text-[11px] font-bold rounded-full px-2 py-1 border">{log.type}</span>{!isViewMode && <div className="ml-auto flex gap-1"><button type="button" onClick={() => editProgressLog(log)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold">修改</button><button type="button" onClick={() => deleteProgressLog(log.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold">刪除</button></div>}</div><div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{log.content || '未輸入內容'}</div></div>)}
                   </div></div>
                 </div>
 
+                <div className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4">
+                  <div className="flex items-center justify-between"><div><h4 className="font-bold text-slate-700">待辦事項追蹤</h4><p className="text-xs text-slate-400 mt-1">可建立多筆；未完成待辦會在主畫面提醒。修改後請按下方「儲存變更」才會寫入雲端。</p></div><span className="text-xs text-slate-500">{todos.filter(t=>!t.done).length} 筆未完成／共 {todos.length} 筆</span></div>
+                  {!isViewMode&&<div className="rounded-xl bg-slate-50 border p-3 space-y-3">
+                    <div><label className="block text-xs font-bold text-slate-500 mb-1">待辦事項 *</label><input value={todoDraft.content} onChange={e=>setTodoDraft({...todoDraft,content:e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="例如：確認廠商測試報告" /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label className="block text-xs font-bold text-slate-500 mb-1">負責人</label><input list="todo-person-options" value={todoDraft.owner} onChange={e=>setTodoDraft({...todoDraft,owner:e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="可選擇人員或自行輸入"/><datalist id="todo-person-options">{people.filter(x=>x.active).map(x=><option key={x.id} value={x.label}/>)}</datalist></div><div><label className="block text-xs font-bold text-slate-500 mb-1">預定完成日 *</label><input type="date" value={todoDraft.dueDate} onChange={e=>setTodoDraft({...todoDraft,dueDate:e.target.value})} className="w-full p-2 border rounded-lg bg-white"/></div></div>
+                    <div><label className="block text-xs font-bold text-slate-500 mb-1">備註</label><textarea rows="2" value={todoDraft.notes} onChange={e=>setTodoDraft({...todoDraft,notes:e.target.value})} className="w-full p-2 border rounded-lg bg-white resize-y" /></div>
+                    <div className="flex justify-end gap-2">{todoDraft.id&&<button type="button" onClick={()=>setTodoDraft(emptyTodo())} className="px-3 py-2 text-slate-500 font-bold text-xs">取消修改</button>}<button type="button" onClick={saveTodo} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg text-xs">{todoDraft.id?'儲存待辦修改':'新增待辦'}</button></div>
+                  </div>}
+                  <div className="space-y-2 max-h-[340px] overflow-y-auto">{todos.length===0&&<p className="text-xs text-slate-400 p-4">尚無待辦事項。</p>}
+                    {todos.map(t=><div key={t.id} className="rounded-lg border p-3 bg-white flex items-start gap-3"><input type="checkbox" disabled={isViewMode} checked={t.done} onChange={e=>markTodo(t.id,e.target.checked)} className="mt-1 w-4 h-4"/><div className="flex-1 min-w-0"><div className={`text-sm font-bold whitespace-pre-wrap ${t.done?'text-gray-400 line-through':'text-slate-700'}`}>{t.content}</div><div className="text-xs text-slate-500 mt-1">{t.owner||'未指定負責人'} · 預定 {t.dueDate}</div>{t.done?<div className="text-xs text-green-600 mt-1">已完成：{t.completedAt||'日期未記錄'}</div>:todoAlert(t.dueDate)==='OVERDUE'?<div className="text-xs text-red-600 mt-1">逾期未完成</div>:todoAlert(t.dueDate)==='SOON'?<div className="text-xs text-amber-600 mt-1">30天內到期</div>:null}{t.notes&&<div className="text-xs text-slate-500 whitespace-pre-wrap mt-2">{t.notes}</div>}</div>{!isViewMode&&<div className="flex gap-2 shrink-0"><button type="button" onClick={()=>setTodoDraft({...t})} className="text-blue-600 font-bold text-xs">修改</button><button type="button" onClick={()=>removeTodo(t.id)} className="text-red-600 font-bold text-xs">刪除</button></div>}</div>)}
+                  </div>
+                </div>
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">備註</label><textarea name="description" defaultValue={editingProject?.description || ''} className="w-full p-2.5 border rounded-xl h-20 resize-y bg-white"/></div>
               </fieldset>
 

@@ -274,7 +274,6 @@
       const [filterFactory, setFilterFactory] = useState('ALL');
       const [filterStatus,setFilterStatus] = useState('ALL');
       const [filterAlert,setFilterAlert] = useState('ALL');
-      const [keyword,setKeyword] = useState('');
       const [sortKey,setSortKey] = useState('DUE_ASC');
       const [selectedYear,setSelectedYear] = useState(String(new Date().getFullYear()));
       const [selectedType, setSelectedType] = useState('ENGINEERING');
@@ -282,6 +281,8 @@
       const [selectedPermitCategories, setSelectedPermitCategories] = useState([]);
       const [selectedSupervisionDept, setSelectedSupervisionDept] = useState(SUPERVISION_DEPTS[0]);
       const [selectedStatus,setSelectedStatus] = useState('NOT_STARTED');
+      const [closedDate,setClosedDate] = useState('');
+      const [closureDescription,setClosureDescription] = useState('');
       const [executionLogs, setExecutionLogs] = useState([]);
       const [logDraft, setLogDraft] = useState({ id:null, date:today(), person:'', typeId:'WORK_LOG', customType:'', content:'' });
       const [todos,setTodos] = useState([]);
@@ -355,11 +356,22 @@
         setSelectedPermitCategories(Array.isArray(editingProject?.permitCategories) ? editingProject.permitCategories : []);
         setSelectedSupervisionDept(SUPERVISION_DEPTS.includes(currentDept) ? currentDept : 'OTHER');
         setSelectedStatus(editingProject ? (editingProject.executionStatus || '') : 'NOT_STARTED');
+        // Do not infer the closure date of historical projects with unknown close time.
+        setClosedDate(editingProject?.closedAt || '');
+        setClosureDescription(editingProject?.closureDescription || '');
         setTodos(normalizeTodos(editingProject?.todos));
         setTodoDraft(emptyTodo());
         const defaultProgressType = progressTypes.find(x => x.active)?.id || 'WORK_LOG';
         setLogDraft({ id:null, date:today(), person:'', typeId:defaultProgressType, customType:'', content:'' });
       }, [isModalOpen, editingProject, factories, projectTypes, progressTypes]);
+
+      const changeExecutionStatus = (value) => {
+        if (value === 'COMPLETED' && selectedStatus !== 'COMPLETED' && !closedDate) {
+          // Prior legacy-closed projects must supply a real date, never fabricate one.
+          if (!(editingProject?.status === 'COMPLETED' && !editingProject?.executionStatus)) setClosedDate(today());
+        }
+        setSelectedStatus(value);
+      };
 
       const selectedLogPeople = useMemo(() => splitPeople(logDraft.person), [logDraft.person]);
       const logPeopleOptions = useMemo(() => {
@@ -408,15 +420,12 @@
         todoSoon:yearProjects.reduce((sum,p)=>sum+todoList(p).filter(t=>todoAlert(t.dueDate,t.done)==='SOON').length,0)
       }),[yearProjects,selectedYear]);
       const sortedFilteredProjects=useMemo(()=>{
-        const key=keyword.trim().toLocaleLowerCase();
         const list=yearProjects.filter(p=>{
-          const latest=normalizeLogs(p.executionLogs||[])[0];
-          const matchKeyword=!key || [p.name,p.projectContent,p.mainPic,p.mainDept,latest?.content,...todoList(p).map(x=>x.content)].some(x=>String(x||'').toLocaleLowerCase().includes(key));
           const matchStatus=filterStatus==='ALL' || (filterStatus==='LEGACY' ? !p.executionStatus : p.executionStatus===filterStatus);
           const pAlert=projectAlert(p);
           const anyTodo=todoList(p).some(t=>todoAlert(t.dueDate,t.done)===filterAlert);
           const matchAlert=filterAlert==='ALL' || pAlert===filterAlert || anyTodo;
-          return matchKeyword && matchStatus && matchAlert && (filterType==='ALL'||p.type===filterType) && (filterFactory==='ALL'||p.factory===filterFactory);
+          return matchStatus && matchAlert && (filterType==='ALL'||p.type===filterType) && (filterFactory==='ALL'||p.factory===filterFactory);
         });
         const cmpText=(a,b)=>String(a||'').localeCompare(String(b||''),'zh-Hant');
         return list.sort((a,b)=>{
@@ -426,7 +435,7 @@
           if(sortKey==='DUE_DESC') return cmpText(b.endDate,a.endDate);
           return cmpText(a.endDate||'9999',b.endDate||'9999');
         });
-      },[yearProjects,filterType,filterFactory,filterStatus,filterAlert,keyword,sortKey]);
+      },[yearProjects,filterType,filterFactory,filterStatus,filterAlert,sortKey]);
 
       const openModal = (p=null, viewOnly=false) => {
         setEditingProject(p);
@@ -505,6 +514,14 @@
         const origin=exactYear(startDate);
         if(origin===null || exactYear(endDate)===null) return alert('請輸入有效的開始及結束日期');
         if(endDate<startDate) return alert('預定結束日期不能早於開始日期');
+        const closeDateValue = String(closedDate||'').trim();
+        const closeReason = String(closureDescription||'').trim();
+        if(selectedStatus==='COMPLETED'){
+          if(exactYear(closeDateValue)===null) return alert('請填寫有效的結案日期');
+          if(closeDateValue<startDate) return alert('結案日期不能早於專案開始日期');
+          if(closeDateValue>today()) return alert('結案日期不能晚於今天');
+          if(!closeReason) return alert('請填寫結案說明');
+        }
         const priorOrigin=editingProject?getProjectYear(editingProject):null;
         if(editingProject && priorOrigin!==origin && !window.confirm(`開始日期所屬年度將由 ${priorOrigin||'未設定'} 改為 ${origin}，專案將移至對應年度。是否繼續？`))return;
         const projectData = {
@@ -527,10 +544,19 @@
           projectData.executionStatus=selectedStatus;
           if(!editingProject?.executionStatus)projectData.statusConfirmedAt=today();
           if(selectedStatus==='COMPLETED'){
-            if(editingProject?.executionStatus==='COMPLETED') { /* existing closure date left intact */ }
-            else if(editingProject?.status==='COMPLETED' && !editingProject?.executionStatus) { /* legacy close time unknown; do not fabricate a timestamp */ }
-            else projectData.closedAt=today();
-          }else if(editingProject?.executionStatus==='COMPLETED')projectData.closedAt=null;
+            // A verified closure date is required for correct cross-year tracking.
+            projectData.closedAt=closeDateValue;
+            projectData.closureDescription=closeReason;
+          }else if(editingProject?.executionStatus==='COMPLETED'){
+            // Reopening archives closure details; active closure fields are cleared.
+            const history=Array.isArray(editingProject.closureHistory)?[...editingProject.closureHistory]:[];
+            if(editingProject.closedAt || editingProject.closureDescription){
+              history.push({closedAt:editingProject.closedAt||null,description:editingProject.closureDescription||'',reopenedAt:today()});
+            }
+            projectData.closureHistory=history;
+            projectData.closedAt=null;
+            projectData.closureDescription='';
+          }
         }
         try {
           if (editingProject) await window.__fs_update(editingProject.id, projectData);
@@ -607,11 +633,11 @@
       const handleExportCSV = () => {
         // CSV is a working-table exchange format. Use the complete JSON export for backups.
         const headers=['名稱','摘要','類型','自定義類型','廠區','法規類別','主辦部門','主辦人','督導部門','督導人員',
-          '開始日期','結束日期','原始年度','執行狀態','舊狀態','辦理紀錄','待辦事項','備註'];
+          '開始日期','結束日期','原始年度','執行狀態','舊狀態','辦理紀錄','待辦事項','備註','結案日期','結案說明','歷次結案紀錄'];
         const rows=projects.map(p=>[
           p.name,p.projectContent,p.type,p.customTypeName,p.factory,(p.permitCategories||[]).join('|'),p.mainDept,p.mainPic,
           p.supervisionDept,p.supervisionPic,p.startDate,p.endDate,getProjectYear(p)||'',p.executionStatus||'',p.status||'',
-          JSON.stringify(p.executionLogs||[]),JSON.stringify(p.todos||[]),p.description||''
+          JSON.stringify(p.executionLogs||[]),JSON.stringify(p.todos||[]),p.description||'',p.closedAt||'',p.closureDescription||'',JSON.stringify(p.closureHistory||[])
         ].map(csvEscape));
         const blob=new Blob(['\uFEFF'+[headers.map(csvEscape).join(','),...rows.map(r=>r.join(','))].join('\n')],{type:'text/csv;charset=utf-8'});
         const url=URL.createObjectURL(blob);const link=document.createElement('a');
@@ -678,10 +704,15 @@
                 startDate,endDate,projectYear:exactYear(startDate),
                 executionLogs:normalizeLogs(json(get('辦理紀錄')||get('執行說明',oldFormat?(isNew?15:13):-1))),
                 todos:normalizeTodos(json(get('待辦事項'))),
-                description:get('備註',isNew?(oldFormat?16:-1):14)
+                description:get('備註',isNew?(oldFormat?16:-1):14),
+                closureHistory:json(get('歷次結案紀錄'))
               };
               const newStatus=get('執行狀態');
               if(newStatus && STATUS_TYPES[newStatus]){p.executionStatus=newStatus;p.statusConfirmedAt=today();}
+              const importedClosedAt=get('結案日期');
+              if(importedClosedAt && exactYear(importedClosedAt)!==null)p.closedAt=importedClosedAt;
+              const importedClosureDescription=get('結案說明');
+              if(importedClosureDescription)p.closureDescription=importedClosureDescription;
               const legacy=get('舊狀態')||get('狀態',oldFormat?(isNew?14:12):-1);
               if(legacy)p.status=legacy;
               if(oldFormat){p.expectedProgress=clampProgress(get('預計進度'));p.progress=clampProgress(get('實際進度'));}
@@ -710,7 +741,7 @@
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-2xl font-bold text-gray-800">年度安衛環專案管制總表</h1>
-                    <span className="text-[11px] px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">R1.0 專案執行與待辦追蹤</span>
+                    <span className="text-[11px] px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">R1.1 專案執行與待辦追蹤</span>
                     {!masterCloudOk && <span className="text-xs text-amber-700">基本資料雲端同步異常</span>}
                   </div>
                   <p className="text-xs text-slate-500 mt-2">各年度分開管理；跨年度未結案件共用原始專案，不產生副本。</p>
@@ -735,35 +766,32 @@
             </div>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 mb-3 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <input aria-label="搜尋專案" placeholder="搜尋專案、人員、最新紀錄、待辦..." value={keyword} onChange={e=>setKeyword(e.target.value)} className="border rounded-lg px-3 py-2 flex-1 min-w-[210px] text-sm" />
                 <select aria-label="廠區篩選" value={filterFactory} onChange={e=>setFilterFactory(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部廠區</option>{factories.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}</select>
                 <select aria-label="專案類型篩選" value={filterType} onChange={e=>setFilterType(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部類型</option>{projectTypes.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select>
                 <select aria-label="狀態篩選" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部狀態</option><option value="LEGACY">舊狀態待確認</option>{Object.entries(STATUS_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
                 <select aria-label="期限篩選" value={filterAlert} onChange={e=>setFilterAlert(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="ALL">全部期限</option><option value="OVERDUE">逾期</option><option value="SOON">30天內到期</option></select>
                 <select aria-label="排序方式" value={sortKey} onChange={e=>setSortKey(e.target.value)} className="border rounded-lg px-2 py-2 text-sm bg-white"><option value="DUE_ASC">期限近→遠</option><option value="DUE_DESC">期限遠→近</option><option value="UPDATED">最近更新</option><option value="START_ASC">開始日期</option><option value="NAME">專案名稱</option></select>
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-500"><span>符合條件：<b className="text-slate-700">{sortedFilteredProjects.length}</b> 筆；其中年度延續專案依原案同步更新。</span><button onClick={()=>{setFilterFactory('ALL');setFilterType('ALL');setFilterStatus('ALL');setFilterAlert('ALL');setKeyword('');setSortKey('DUE_ASC');}} className="text-blue-600 font-bold">清除篩選</button></div>
+              <div className="flex items-center justify-between text-xs text-slate-500"><span>符合條件：<b className="text-slate-700">{sortedFilteredProjects.length}</b> 筆；其中年度延續專案依原案同步更新。</span><button onClick={()=>{setFilterFactory('ALL');setFilterType('ALL');setFilterStatus('ALL');setFilterAlert('ALL');setSortKey('DUE_ASC');}} className="text-blue-600 font-bold">清除篩選</button></div>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-              <table className="project-table min-w-[1250px] w-full text-sm text-left border-collapse">
+              <table className="project-table min-w-[1020px] w-full text-sm text-left border-collapse">
                 <thead><tr className="text-slate-600 text-xs">
-                  <th className="p-3 w-32">廠區／類型</th><th className="p-3 min-w-[230px]">專案名稱</th><th className="p-3 w-36">主辦人</th><th className="p-3 w-44">執行狀態</th><th className="p-3 w-32">預定完成日</th><th className="p-3 min-w-[240px]">最新辦理紀錄</th><th className="p-3 min-w-[260px]">下一步待辦</th><th className="p-3 w-28">操作</th>
+                  <th className="p-3 w-32">廠區／類型</th><th className="p-3 min-w-[230px]">專案名稱</th><th className="p-3 w-36">主辦人</th><th className="p-3 w-44">執行狀態</th><th className="p-3 w-32">預定完成日</th><th className="p-3 min-w-[300px]">最新辦理紀錄</th><th className="p-3 w-28">操作</th>
                 </tr></thead>
                 <tbody>
-                  {sortedFilteredProjects.length===0 && <tr><td colSpan="8" className="text-center p-12 text-slate-400">本年度沒有符合篩選條件的專案。</td></tr>}
+                  {sortedFilteredProjects.length===0 && <tr><td colSpan="7" className="text-center p-12 text-slate-400">本年度沒有符合篩選條件的專案。</td></tr>}
                   {sortedFilteredProjects.map(p=>{
                     const origin=getProjectYear(p);const f=factoryMap[p.factory];const t=typeMap[p.type];
                     const latest=normalizeLogs(p.executionLogs||[])[0];
-                    const openTodos=todoList(p).filter(x=>!x.done).sort((a,b)=>String(a.dueDate).localeCompare(String(b.dueDate)));
-                    const nextTodo=openTodos[0];const alertKey=projectAlert(p);
+                    const alertKey=projectAlert(p);
                     return <tr key={p.id} className="hover:bg-blue-50/50">
                       <td className="p-3"><div className="text-[11px] font-bold text-slate-700">{f?.label||'未設定'}</div><div className="text-[11px] text-slate-500 mt-1">{p.type==='OTHER'&&p.customTypeName?p.customTypeName:(t?.label||p.type)}</div></td>
                       <td className="p-3"><button onClick={()=>openModal(p,true)} className="font-bold text-blue-700 hover:underline text-left break-words">{p.name||'未命名'}</button><div className="text-[11px] text-slate-500 mt-1">{origin===Number(selectedYear)?'本年度立案':`原始年度 ${origin||'待確認'} · 跨年度延續`}</div>{p.projectContent&&<div className="text-[11px] text-slate-500 mt-1 line-clamp-2">{p.projectContent}</div>}</td>
                       <td className="p-3"><div className="font-medium">{p.mainPic||'—'}</div><div className="text-xs text-slate-500 mt-1">{p.mainDept||''}</div></td>
-                      <td className="p-3"><div className={`font-bold text-xs ${p.executionStatus?(STATUS_TYPES[p.executionStatus]?.color||'text-slate-600'):'text-amber-700'}`}>{statusLabel(p)}</div>{!p.executionStatus&&<div className="text-[10px] text-amber-700 mt-1">請逐筆確認新版狀態</div>}</td>
+                      <td className="p-3"><div className={`font-bold text-xs ${p.executionStatus?(STATUS_TYPES[p.executionStatus]?.color||'text-slate-600'):'text-amber-700'}`}>{statusLabel(p)}</div>{p.executionStatus==='COMPLETED'&&p.closedAt&&<div className="text-[11px] text-slate-500 mt-1">結案：{p.closedAt}</div>}{!p.executionStatus&&<div className="text-[10px] text-amber-700 mt-1">請逐筆確認新版狀態</div>}</td>
                       <td className="p-3"><div className="font-bold">{p.endDate||'—'}</div>{alertKey==='OVERDUE'&&<span className="inline-block text-[11px] text-red-700 bg-red-50 rounded px-2 py-1 mt-1">逾期未結</span>}{alertKey==='SOON'&&<span className="inline-block text-[11px] text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">30天內到期</span>}</td>
                       <td className="p-3">{latest?<><div className="text-[11px] text-slate-500">{latest.date} · {latest.type} · {latest.person||'未填人員'}</div><div className="line-clamp-3 whitespace-pre-wrap text-xs mt-1">{latest.content}</div></>:<span className="text-slate-400 text-xs">尚無辦理紀錄</span>}</td>
-                      <td className="p-3">{nextTodo?<><div className="text-xs font-semibold whitespace-pre-wrap">{nextTodo.content}</div><div className="text-[11px] text-slate-500 mt-1">{nextTodo.owner||'未指定'} · {nextTodo.dueDate}</div>{todoAlert(nextTodo.dueDate)==='OVERDUE'&&<span className="text-[11px] text-red-700">逾期</span>}{todoAlert(nextTodo.dueDate)==='SOON'&&<span className="text-[11px] text-amber-700">即將到期</span>}{openTodos.length>1&&<div className="text-[11px] text-slate-400 mt-1">另有 {openTodos.length-1} 筆未完成</div>}</>:<span className="text-slate-400 text-xs">無未完成待辦</span>}</td>
                       <td className="p-3"><div className="flex gap-2 flex-wrap"><button onClick={()=>openModal(p,true)} className="text-slate-600 text-xs font-bold">查看</button><button onClick={()=>openModal(p,false)} className="text-blue-600 text-xs font-bold">編輯</button><button onClick={e=>handleDeleteProject(p.id,e)} className="text-red-600 text-xs font-bold">刪除</button></div></td>
                     </tr>;
                   })}
@@ -782,7 +810,18 @@
                   <div><label className="block text-sm font-bold text-gray-700 mb-1">專案類型</label><select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{projectTypes.filter(t => t.active || t.id === editingProject?.type).map(t => <option key={t.id} value={t.id}>{t.label}{t.active ? '' : '（已停用）'}</option>)}</select></div>
                   {selectedType === 'OTHER' && <div className="md:col-span-2"><label className="block text-sm font-bold text-gray-700 mb-1">其他專案類型名稱</label><input name="customTypeName" defaultValue={editingProject?.customTypeName || ''} className="w-full p-2.5 border rounded-xl"/></div>}
                   {selectedType === 'PERMIT' && <div className="md:col-span-2 bg-purple-50/60 border border-purple-100 rounded-xl p-4"><label className="block text-sm font-bold text-purple-800 mb-3">法規類別（可複選）*</label><div className="flex flex-wrap gap-2">{permitCategories.filter(x => x.active || selectedPermitCategories.includes(x.id)).map(c => <label key={c.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ${selectedPermitCategories.includes(c.id) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-purple-700 border-purple-200'}`}><input type="checkbox" checked={selectedPermitCategories.includes(c.id)} onChange={() => togglePermitCategory(c.id)} className="accent-purple-600"/><span className="text-sm font-bold">{c.label}{c.active ? '' : '（已停用）'}</span></label>)}</div></div>}
-                  <div><label className="block text-sm font-bold text-gray-700 mb-1">執行狀態</label><select value={selectedStatus} onChange={e=>setSelectedStatus(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{editingProject&&!editingProject.executionStatus&&<option value="">舊狀態：{LEGACY_STATUS[editingProject.status]||editingProject.status||'未設定'}（待人工確認）</option>}{Object.entries(STATUS_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>{editingProject&&!editingProject.executionStatus&&<p className="text-xs text-amber-700 mt-1">舊狀態不自動轉換；選擇新版狀態才正式確認。</p>}</div>
+                  <div><label className="block text-sm font-bold text-gray-700 mb-1">執行狀態</label><select value={selectedStatus} onChange={e=>changeExecutionStatus(e.target.value)} className="w-full p-2.5 border rounded-xl bg-white">{editingProject&&!editingProject.executionStatus&&<option value="">舊狀態：{LEGACY_STATUS[editingProject.status]||editingProject.status||'未設定'}（待人工確認）</option>}{Object.entries(STATUS_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>{editingProject&&!editingProject.executionStatus&&<p className="text-xs text-amber-700 mt-1">舊狀態不自動轉換；選擇新版狀態才正式確認。</p>}</div>
+                  {selectedStatus==='COMPLETED' && <div className="md:col-span-2 border border-emerald-200 bg-emerald-50/40 rounded-xl p-4 space-y-3">
+                    <h4 className="text-sm font-bold text-slate-700">專案結案資料</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-3 items-start">
+                      <div><label className="block text-sm font-bold text-gray-700 mb-1">結案日期 *</label><input type="date" aria-label="結案日期" required value={closedDate} onChange={e=>setClosedDate(e.target.value)} max={today()} className="w-full p-2.5 border rounded-xl bg-white"/>{!editingProject?.closedAt && editingProject?.status==='COMPLETED' && !editingProject?.executionStatus && <p className="text-[11px] text-amber-700 mt-1">舊案結案日期不明，請人工確認。</p>}</div>
+                      <div><label className="block text-sm font-bold text-gray-700 mb-1">結案說明 *</label><textarea aria-label="結案說明" required rows="3" value={closureDescription} onChange={e=>setClosureDescription(e.target.value)} placeholder="請填寫完成成果、驗收或核准情形、結案依據等" className="w-full p-2.5 border rounded-xl bg-white resize-y"/></div>
+                    </div>
+                    <p className="text-xs text-slate-500">儲存後更新結案狀態與年度追蹤；若日後重新啟動專案，原結案資料會保留在歷史紀錄。</p>
+                  </div>}
+                  {selectedStatus==='COMPLETED' && Array.isArray(editingProject?.closureHistory) && editingProject.closureHistory.length>0 && <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3"><h4 className="text-sm font-bold text-slate-700 mb-2">歷次結案紀錄</h4>{editingProject.closureHistory.map((h,i)=><div key={i} className="text-xs text-slate-600 mb-2 whitespace-pre-wrap">結案日期：{h.closedAt||'未記錄'}；重新啟動：{h.reopenedAt||'未記錄'}；說明：{h.description||'未記錄'}</div>)}</div>}
+                  {selectedStatus!=='COMPLETED' && Array.isArray(editingProject?.closureHistory) && editingProject.closureHistory.length>0 && <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3"><h4 className="text-sm font-bold text-slate-700 mb-2">歷次結案紀錄</h4>{editingProject.closureHistory.map((h,i)=><div key={i} className="text-xs text-slate-600 mb-2 whitespace-pre-wrap">結案日期：{h.closedAt||'未記錄'}；重新啟動：{h.reopenedAt||'未記錄'}；說明：{h.description||'未記錄'}</div>)}</div>}
+
                 </div>
 
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 grid grid-cols-1 md:grid-cols-4 gap-4">

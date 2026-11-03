@@ -100,6 +100,36 @@ export function flareRows(state={},range){
   }
   return [...result].map(([factory,days])=>({factory,days:days.size,dates:[...days].sort()}));
 }
+// 與 /FLARE/index.html 的 factoryConfig、renderAll() 完全相同的廠區歸屬。
+// 同一廠區不同工廠同一天發生事件，廠區合計也只算 1 天。
+export const FLARE_AREAS = Object.freeze([
+  {name:'麥寮廠', factories:['ARO1廠','SM廠麥寮','PABS廠(麥寮)','PC廠']},
+  {name:'海豐廠', factories:['ARO2廠','ARO3廠','SM廠海豐','合成酚廠','PP廠']},
+  {name:'醋酸廠', factories:['HAC廠']},
+]);
+export function flareAreaRows(state={},range){
+  const year=String(range.to).slice(0,4),yearStart=`${year}-01-01`;
+  const index=new Map(FLARE_AREAS.flatMap(area=>area.factories.map(factory=>[factory,area.name])));
+  const annual=new Map(FLARE_AREAS.map(area=>[area.name,new Set()]));
+  const weekly=new Map(FLARE_AREAS.map(area=>[area.name,new Set()]));
+  for(const ev of Array.isArray(state.events)?state.events:[]){
+    const day=dateOnly(ev?.date),name=ev?.factory,area=index.get(name);
+    if(!area||!day||day>range.to)continue;
+    if(state.excludedDays?.[`${day.slice(0,4)}|${name}|${day}`])continue;
+    // FLARE 原表 renderAll：以「有排放事件紀錄」及人工剔除來統計，
+    // 不在週報另加 amount > 0 條件，以免年度數字和原統計表不一致。
+    if(day>=yearStart)annual.get(area).add(day);
+    if(day>=range.from)weekly.get(area).add(day);
+  }
+  return FLARE_AREAS.map(area=>{
+    const dates=[...weekly.get(area.name)].sort();
+    return {factory:area.name,yearDays:annual.get(area.name).size,days:dates.length,dates};
+  });
+}
+function flareDateText(day){
+  const weekday=['日','一','二','三','四','五','六'][new Date(`${day}T00:00:00Z`).getUTCDay()];
+  return `${day.slice(5).replace('-','/')}（${weekday}）`;
+}
 export function genericRows(records,s,range){
   const open=[],finished=[];
   for(const obj of records||[]){const value=String(obj[s.statusField]??'');const done=value===s.doneValue;
@@ -130,19 +160,28 @@ export function buildReport(data,config=DEFAULT_CONFIG,now=new Date()){
   if(conf.sections.tasks)section('環安衛工作管理',taskRows(data.tasks||[],range,conf));
   if(conf.sections.projects)section('年度安衛環專案',projectRows(data.projects||[],range,conf));
   if(conf.sections.flare){
-    const usage=flareRows(data.flare||{},range);
-    lines.push('','【廢氣燃燒塔】各廠本週使用事件日數（同廠同日僅計 1 天）');
-    usage.forEach(x=>lines.push(`${x.factory}：${x.days} 天｜${x.days?'有使用':'未使用'}`));
-    if(data.previousFlare){
-      const last=data.previousFlare;const then=flareRows(data.flare||{}, {from:last.from,to:last.to});
-      const previous=new Map((last.counts||[]).map(x=>[x.factory,x.days]));
-      const changes=then.filter(x=>x.days!==(previous.get(x.factory)||0));
-      if(changes.length){lines.push('','上週補登／修正：');changes.forEach(x=>lines.push(`${x.factory}：${previous.get(x.factory)||0} → ${x.days} 天`));}
+    if(!Array.isArray(data.flare?.events)){
+      lines.push('','【廢氣燃燒塔】尚未取得有效的 FLARE 事件資料，無法判斷使用日數。請檢查 Firebase 來源。');
+    }else{
+      const usage=flareAreaRows(data.flare,range);
+      lines.push('',`【廢氣燃燒塔】${range.to.slice(0,4)} 年各廠區累計使用事件日數（截至 ${range.to}）`);
+      lines.push(`本週區間：${range.from}～${range.to}；各廠區同日不重複計算，排除人工剔除日。`);
+      usage.forEach(x=>lines.push(`${x.factory}：年度累計 ${x.yearDays} 天｜本週 ${x.days} 天｜${x.days?'使用日期：'+x.dates.map(flareDateText).join('、'):'本週無使用'}`));
+      if(data.previousFlare){
+        const last=data.previousFlare;
+        const previous=new Map((last.counts||[]).map(x=>[x.factory,x.days]));
+        // 舊版曾用 10 座工廠存歷史數值，與本版 3 廠區不能直接相比，避免誤報。
+        if(usage.every(x=>previous.has(x.factory))){
+          const then=flareAreaRows(data.flare,{from:last.from,to:last.to});
+          const changes=then.filter(x=>x.days!==previous.get(x.factory));
+          if(changes.length){lines.push('','上週補登／修正（廠區日數）：');changes.forEach(x=>lines.push(`${x.factory}：${previous.get(x.factory)} → ${x.days} 天`));}
+        }
+      }
     }
   }
   for(const s of conf.customSources.filter(x=>x.enabled))section(s.title,genericRows(data.custom?.[s.id]||[],s,range));
   lines.push('','—— 資料來源：Firebase Cloud Firestore｜報表僅供指定 Discord 私人頻道使用');
-  return {text:lines.join('\n'),range,totalOpen,totalFinished,flareCounts:conf.sections.flare?flareRows(data.flare||{},range).map(x=>({factory:x.factory,days:x.days})):[]};
+  return {text:lines.join('\n'),range,totalOpen,totalFinished,flareCounts:conf.sections.flare&&Array.isArray(data.flare?.events)?flareAreaRows(data.flare,range).map(x=>({factory:x.factory,days:x.days})):[]};
 }
 export function splitDiscord(text,max=1800){
   const lines=text.split('\n'),chunks=[];let chunk='';

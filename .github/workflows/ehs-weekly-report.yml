@@ -1,0 +1,29 @@
+name: EHS Discord weekly report (R1.0)
+on:
+  # 初次交付維持停用排程，完成測試與明確核准後才取消下一行的註解。
+  # schedule:
+  #   - cron: '0 * * * *' # 每小時檢查；管理中心自行選週幾及整點（台灣時間），容許 Actions 延遲。
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ehs-weekly-report
+  cancel-in-progress: false
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install server dependency
+        working-directory: weekly-report
+        run: npm install --no-audit --no-fund
+      - name: Check configuration, manual requests, and schedule
+        working-directory: weekly-report
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node runner.mjs

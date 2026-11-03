@@ -1,8 +1,8 @@
 name: EHS Discord weekly report (R1.0)
 on:
   # 初次交付維持停用排程，完成測試與明確核准後才取消下一行的註解。
-   schedule:
-     - cron: '0 * * * *' # 每小時檢查；管理中心自行選週幾及整點（台灣時間），容許 Actions 延遲。
+  schedule:
+    - cron: '0 * * * *' # 每小時檢查；管理中心自行選週幾及整點（台灣時間），容許 Actions 延遲。
   workflow_dispatch:
 permissions:
   contents: read

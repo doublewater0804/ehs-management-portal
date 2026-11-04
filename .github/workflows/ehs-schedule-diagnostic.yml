@@ -1,0 +1,25 @@
+name: EHS Schedule Diagnostic
+
+on:
+  schedule:
+    - cron: '12,27,42,57 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Record scheduler trigger
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          echo 'EHS_SCHEDULE_HEARTBEAT'
+          echo "event_name=${EVENT_NAME}"
+          echo "run_id=${RUN_ID}"
+          echo "utc=$(date -u '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "taipei=$(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M:%S %Z')"

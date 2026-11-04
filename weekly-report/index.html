@@ -2,22 +2,33 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>EHS 自動週報管理中心 R1.0</title>
+<meta name="robots" content="noindex,nofollow"><title>EHS 自動週報管理中心 R1.0.2</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<header><div class="bar"><a href="../index.html">← EHS 入口網站</a><div><strong>EHS 自動週報管理中心</strong><small>R1.0　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
+<header><div class="bar"><a href="../index.html">← EHS 入口網站</a><div><strong>EHS 自動週報管理中心</strong><small>R1.0.2　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
 <main>
 <section id="gate" class="card gate"><h1>管理員身分驗證</h1><p>本頁僅開放現有 EHS 入口平台的指定管理員使用。帳號不符時不會讀取週報設定。</p><p id="auth-message" class="message">正在檢查登入狀態…</p><button id="login">使用 EHS 管理員 Google 帳號登入</button></section>
 <div id="app" hidden>
 <div class="intro"><div><h1>自動週報設定</h1><p>工作／專案保留實際內容與待辦，不顯示進度百分比。FLARE 統計各廠使用事件日數。</p></div><span id="config-status" class="pill">尚未啟用</span></div>
-<section class="card"><h2>一、發送設定</h2><div class="fields"><label class="switch"><input id="enabled" type="checkbox"> 啟用每週自動寄送</label><label>發送日<select id="day"><option value="0">星期日</option><option value="1">星期一</option><option value="2">星期二</option><option value="3">星期三</option><option value="4">星期四</option><option value="5">星期五</option><option value="6">星期六</option></select></label><label>發送時間（台灣，整點）<select id="hour"></select></label></div><p class="hint">預設星期日 18:00。排程檔預設停用，即使勾選「啟用」，也必須另外核准並啟動 GitHub 排程。</p></section>
-<section class="card"><h2>二、納入報告的系統</h2><div class="modules"><label><input type="checkbox" id="tasks"> <span><b>環安衛工作管理系統</b><small>全部未完成工作、本週已完成事項、工作內容、狀態與待辦</small></span></label><label><input type="checkbox" id="projects"> <span><b>年度安衛環專案管制總表</b><small>全部未結案專案、本週結案事項、工作內容與未完成待辦</small></span></label><label><input type="checkbox" id="flare"> <span><b>廠區廢氣燃燒塔管制表</b><small>各廠區本週使用事件日數與是否使用，包含零日數廠區</small></span></label></div></section>
+<section class="card"><h2>一、發送設定</h2><div class="fields"><label class="switch"><input id="enabled" type="checkbox"> 啟用每週自動寄送</label><label>發送日<select id="day"><option value="0">星期日</option><option value="1">星期一</option><option value="2">星期二</option><option value="3">星期三</option><option value="4">星期四</option><option value="5">星期五</option><option value="6">星期六</option></select></label><label>發送時間（台灣，時：分）<input id="send-time" type="time" step="60" required value="18:00"></label></div><p class="hint">預設星期日 18:00；可指定任意分鐘。GitHub Actions 每 5 分鐘檢查，不保證精準整分鐘。當天延遲可補發，跨日不補發。</p></section>
+<section class="card"><h2>二、納入報告的系統</h2><div class="modules"><label><input type="checkbox" id="tasks"> <span><b>環安衛工作管理系統</b><small>全部未完成工作、本週已完成事項、工作內容、狀態與待辦</small></span></label><label><input type="checkbox" id="projects"> <span><b>年度安衛環專案管制總表</b><small>全部未結案專案、本週結案事項、工作內容與未完成待辦</small></span></label><label><input type="checkbox" id="flare"> <span><b>廠區廢氣燃燒塔管制表</b><small>麥寮、海豐、醋酸各廠年度累計與本週事件日期</small></span></label></div></section>
 <section class="card"><h2>三、顯示選項</h2><div class="check-grid"><label><input id="showDescription" type="checkbox"> 顯示工作／專案內容</label><label><input id="showTodo" type="checkbox"> 顯示待辦事項</label><label><input id="showWeeklyUpdates" type="checkbox"> 標示本週更新項目</label><label><input id="showCompletedThisWeek" type="checkbox"> 顯示本週已完成事項</label></div><label class="item-limit">每個分類最多列出 <select id="maxItems"><option value="50">50 筆</option><option value="100">100 筆</option><option value="150">150 筆</option><option value="250">250 筆</option></select> （其餘需於原系統查看）</label></section>
 <section class="card"><h2>四、其他系統（可新增／刪除）</h2><p class="hint">可加入 Firestore 的單一集合；欄位名稱需與來源資料實際相同。系統不會修改來源紀錄。</p><div id="custom-list"></div><details><summary>＋ 新增週報來源</summary><form id="custom-form" class="form-grid"><input type="hidden" id="c-id"><label>顯示名稱<input id="c-title" maxlength="60" required placeholder="例如：主管交辦事項"></label><label>Firestore 集合名稱<input id="c-collection" maxlength="80" required placeholder="例如：ehs_supervisor_records"></label><label>工作名稱欄位<input id="c-titleField" maxlength="40" required value="title"></label><label>狀態欄位<input id="c-statusField" maxlength="40" required value="status"></label><label>更新日期欄位<input id="c-dateField" maxlength="40" required value="updatedAt"></label><label>完成狀態值<input id="c-doneValue" maxlength="60" value="COMPLETED"></label><button type="submit" id="custom-submit">新增／更新來源</button></form></details></section>
-<div class="actions"><button id="save">儲存週報設定至 Firebase</button><button id="preview" class="outline">預覽目前週報</button><button id="test" class="outline">加入 Discord 測試佇列</button></div>
+<div class="actions"><button id="save">儲存週報設定至 Firebase</button><button id="preview" class="outline">預覽目前週報</button><button id="test" class="outline">立即測試 Discord（佇列）</button></div>
+<section class="card"><h2>一次性自動排程測試</h2><p class="hint">不用修改正式的星期日週報排程。設定一個測試日期與分鐘，等待 GitHub Actions 自動觸發並寄出標示「自動排程測試」的訊息；測試不占用正式週報發送次數。</p><div class="fields"><label>測試日期與時間（台灣）<input id="scheduled-test-time" type="datetime-local" step="60"></label><button id="schedule-test" type="button">安排一次自動推播測試</button></div></section>
 <p id="notice" role="status" class="message"></p>
 <section class="card"><h2>週報預覽</h2><p class="hint">只在本人登入後讀取 Firestore，不會傳送到 Discord。</p><pre id="report-preview">按「預覽目前週報」查看內容。</pre></section>
+<section class="card"><h2>五、自動排程監控</h2>
+  <p class="hint">本頁可看到 GitHub 最近一次實際檢查、未發送原因，以及最近正式發送結果。若超過 20 分鐘沒有檢查，請到 GitHub Actions 排查。</p>
+  <div class="monitor-grid">
+    <div><small>下次預定時段</small><strong id="next-scheduled">尚未載入</strong></div>
+    <div><small>最近 GitHub 排程檢查</small><strong id="last-checked">尚未載入</strong></div>
+    <div><small>最近排程結果</small><strong id="last-result">尚未載入</strong></div>
+    <div><small>最近正式發送</small><strong id="last-success">尚未載入</strong></div>
+  </div><p class="message" id="monitor-details">尚未查詢。</p>
+  <div class="actions"><button id="refresh-monitor" class="outline">重新整理監控</button><button id="audit" class="outline">最近排程事件</button></div><div class="history-list" id="audit-list"></div>
+</section>
 <section class="card"><h2>歷史發送紀錄</h2><div class="actions"><button id="history" class="outline">重新整理紀錄</button><button id="requests" class="outline">查看測試佇列</button></div><div id="history-list" class="history-list">尚未查詢。</div></section>
 </div></main>
 <script type="module" src="./admin.mjs"></script>

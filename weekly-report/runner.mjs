@@ -1,110 +1,208 @@
-/* GitHub Actions 專用；不在 GitHub Pages 瀏覽器執行。 */
-import {readFile} from 'node:fs/promises';
+/* R1.0.2：GitHub Actions 專用後端；每日同日補送，異常原因可追蹤。 */
 import {initializeApp,cert,getApps} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
-import {DEFAULT_CONFIG,normalizeConfig,weekRange,localDate,localDay,localHour,buildReport,splitDiscord,flareRows} from './engine.mjs';
+import {DEFAULT_CONFIG,normalizeConfig,weekRange,localDate,localDay,dateShift,buildReport,splitDiscord} from './engine.mjs';
+import {scheduleDecision,lockDecision,scheduledTestDecision,REASONS} from './scheduler.mjs';
+import {deliverDiscord,DiscordRetryableError,DiscordPermanentError,DeliveryUncertainError} from './discord.mjs';
 
 function loadCredential(){
   const secret=process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if(!secret)throw Error('Missing FIREBASE_SERVICE_ACCOUNT_JSON Actions Secret');
   let obj;try{obj=JSON.parse(secret);}catch{throw Error('Invalid FIREBASE_SERVICE_ACCOUNT_JSON JSON');}
-  if(obj.project_id!=='esh-v85'||obj.type!=='service_account')throw Error('Service account must belong to Firebase project esh-v85');
+  if(obj.project_id!=='esh-v85'||obj.type!=='service_account')throw Error('Firebase service account project must be esh-v85');
   return obj;
 }
 const firebaseApp=getApps()[0]||initializeApp({credential:cert(loadCredential())});
 const db=getFirestore(firebaseApp);
 const confRef=db.collection('ehs_weekly_report').doc('config');
-const historyCollection=db.collection('ehs_weekly_report_history');
+const history=db.collection('ehs_weekly_report_history');
 const requests=db.collection('ehs_weekly_report_requests');
-function stamp(){return new Date();}
-async function sendDiscord(text){
-  const webhook=process.env.DISCORD_WEBHOOK_URL;
-  if(!webhook||!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[^/]+$/.test(webhook))
-    throw Error('Discord Webhook Secret missing or invalid');
-  const chunks=splitDiscord(text);
-  for(let i=0;i<chunks.length;i++){
-    let ok=false;
-    for(let attempt=0;attempt<5;attempt++){
-      const response=await fetch(webhook,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username:'EHS 自動週報',content:`${chunks.length>1?`（${i+1}/${chunks.length}）\n`:''}${chunks[i]}`,allowed_mentions:{parse:[]}})});
-      if(response.ok){ok=true;break;}
-      if(response.status===429||response.status>=500){
-        let secs=attempt+1;try{const b=await response.json();if(Number.isFinite(b.retry_after))secs=Math.min(30,Number(b.retry_after)+0.5);}catch{}
-        await new Promise(done=>setTimeout(done,Math.min(30000,secs*1000)));continue;
-      }
-      throw Error(`Discord send failed HTTP ${response.status}`);
-    }
-    if(!ok)throw Error('Discord send failed after retries');
-    if(i!==chunks.length-1)await new Promise(done=>setTimeout(done,800));
-  }
-  return chunks.length;
-}
+const monitorRef=db.collection('ehs_weekly_report_runtime').doc('monitor');
+const audit=db.collection('ehs_weekly_report_audit');
+const eventName=process.env.GITHUB_EVENT_NAME||'workflow_dispatch';
+const runId=`${process.env.GITHUB_RUN_ID||'local'}-${process.env.GITHUB_RUN_ATTEMPT||'1'}`;
+const MAX_REPORT=250000;
+const LEASE_MS=20*60*1000;
+const nowStamp=()=>new Date();
+const displayTime=t=>new Date(t).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false});
+const safeError=e=>String(e?.message||e).slice(0,240);
+function dateSubtract(day,days){const d=new Date(`${day}T00:00:00Z`);d.setUTCDate(d.getUTCDate()-days);return d.toISOString().slice(0,10);}
 async function fetchList(name){const snap=await db.collection(name).get();return snap.docs.map(d=>({id:d.id,...d.data()}));}
 async function fetchSources(cfg){
   const names=[];
   if(cfg.sections.tasks)names.push('ehs_tasks');
   if(cfg.sections.projects)names.push('ehs-dashboard-2024_projects');
-  const custom=cfg.customSources.filter(x=>x.enabled);
-  const outputs=await Promise.all(names.map(fetchList));
-  const byName=Object.fromEntries(names.map((name,i)=>[name,outputs[i]]));
-  const flare=(cfg.sections.flare)?(await db.collection('flare_control').doc('global_state').get()).data()?.state||{}:{};
-  const customOutput={};
-  for(const source of custom)customOutput[source.id]=await fetchList(source.collection);
-  return {tasks:byName['ehs_tasks']||[],projects:byName['ehs-dashboard-2024_projects']||[],flare,custom:customOutput};
+  const byName={};await Promise.all(names.map(async n=>{byName[n]=await fetchList(n);}));
+  const flare=cfg.sections.flare?(await db.collection('flare_control').doc('global_state').get()).data()?.state||{}:{};
+  const custom={};for(const source of cfg.customSources.filter(x=>x.enabled))custom[source.id]=await fetchList(source.collection);
+  return {tasks:byName.ehs_tasks||[],projects:byName['ehs-dashboard-2024_projects']||[],flare,custom};
 }
 async function build(cfg,now){
   const data=await fetchSources(cfg);
   if(cfg.sections.flare){
-    const range=weekRange(now),prior=dateSubtract(range.from,1);
-    const previous=await historyCollection.doc(prior).get();
-    if(previous.exists&&previous.data()?.flareCounts)data.previousFlare={
-      from:dateSubtract(range.from,7),to:prior,counts:previous.data().flareCounts
-    };
+    const range=weekRange(now),prior=dateSubtract(range.from,1),old=(await history.doc(prior).get()).data();
+    if(old?.flareCounts)data.previousFlare={from:dateSubtract(range.from,7),to:prior,counts:old.flareCounts};
   }
-  return {report:buildReport(data,cfg,now),data};
+  const report=buildReport(data,cfg,now);
+  if(report.text.length>MAX_REPORT)throw Error('週報內容超過安全長度，請降低每類顯示筆數。');
+  return report;
 }
-function dateSubtract(day,days){const d=new Date(`${day}T00:00:00Z`);d.setUTCDate(d.getUTCDate()-days);return d.toISOString().slice(0,10);}
-async function claim(ref,criteria){
-  return db.runTransaction(async tx=>{
-    const snapshot=await tx.get(ref),existing=snapshot.data();
-    if(!criteria(existing))return false;
-    tx.set(ref,{status:'processing',lastAttemptAt:stamp(),attemptCount:(existing?.attemptCount||0)+1},{merge:true});
-    return true;
+// 監控每次 Schedule 寫入最後檢查時間；稽核紀錄僅在狀態轉換時產生，避免大量累積。
+async function monitor(code,decision,detail='',extra={}){
+  const timestamp=nowStamp(),isSchedule=eventName==='schedule';
+  if(!isSchedule){
+    await monitorRef.set({lastManualCheckAt:timestamp,lastManualRunId:runId},{merge:true});
+    return;
+  }
+  const payload={lastScheduledCheckAt:timestamp,lastCode:code,lastReason:REASONS[code]||'執行完成',
+    lastDetail:String(detail).slice(0,240),lastRunId:runId,nextScheduled:decision.nextScheduled,
+    lastScheduleSetting:`星期${decision.scheduledDay} ${decision.dueTime}`,updatedAt:timestamp,...extra};
+  const auditRef=audit.doc();
+  await db.runTransaction(async tx=>{
+    const before=(await tx.get(monitorRef)).data()||{};
+    tx.set(monitorRef,payload,{merge:true});
+    const changed=before.lastCode!==code||before.lastCodeDay!==decision.day;
+    if(changed){
+      tx.set(auditRef,{at:timestamp,code,reason:payload.lastReason,detail:payload.lastDetail,
+        scheduledDay:decision.scheduledDay,scheduledTime:decision.dueTime,runId,weekKey:decision.weekKey});
+    }
+    tx.set(monitorRef,{lastCodeDay:decision.day},{merge:true});
+  });
+  console.log(`[R1.0.2] ${code}: ${payload.lastReason}${detail?' '+detail:''} (台灣 ${decision.day} ${decision.localNow})`);
+}
+async function claimHistory(ref){
+  let result;
+  await db.runTransaction(async tx=>{
+    const existing=(await tx.get(ref)).data(),decision=lockDecision(existing);
+    result={...decision,existing};
+    if(decision.claim){
+      tx.set(ref,{status:'claimed',ownerRun:runId,lastAttemptAt:nowStamp(),
+        leaseUntil:new Date(Date.now()+LEASE_MS),attemptCount:(existing?.attemptCount||0)+1,
+        inFlightChunkIndex:null},{merge:true});
+    }else if(decision.code==='NEEDS_REVIEW'&&existing?.status!=='needs_review'){
+      tx.set(ref,{status:'needs_review',lastError:'上次發送狀態未確認，禁止自動重試。',reviewAt:nowStamp()},{merge:true});
+    }
+  });
+  return result;
+}
+async function sendTracked(text,ref,startIndex=0){
+  return deliverDiscord({webhook:process.env.DISCORD_WEBHOOK_URL,text,startIndex,
+    beforeChunk:async(i,total)=>{
+      await ref.set({status:'sending',ownerRun:runId,inFlightChunkIndex:i,totalChunks:total,
+        leaseUntil:new Date(Date.now()+LEASE_MS),sendStartedAt:nowStamp()},{merge:true});
+    },
+    ackChunk:async(i,messageId,total)=>{
+      await ref.set({status:'sending',ownerRun:runId,inFlightChunkIndex:null,nextChunkIndex:i+1,
+        totalChunks:total,lastDiscordMessageId:messageId,lastAckAt:nowStamp(),
+        leaseUntil:new Date(Date.now()+LEASE_MS)},{merge:true});
+    },
+    rejectChunk:async(i,status)=>{
+      await ref.set({status:'sending',inFlightChunkIndex:null,lastDiscordHttpStatus:status,
+        lastRejectedAt:nowStamp()},{merge:true});
+    }
   });
 }
-async function processScheduled(cfg,now){
-  if(!cfg.enabled||localDay(now)!==cfg.day||localHour(now)<cfg.hour)return;
-  const range=weekRange(now),key=range.weekEnd,ref=historyCollection.doc(key);
-  const claimed=await claim(ref,s=>!s||s.status==='failed');
-  if(!claimed){console.log(`Scheduled report ${key} already claimed/sent`);return;}
+async function processScheduled(cfg,now,decision){
+  if(!decision.due){
+    if(decision.code==='WRONG_DAY'&&cfg.enabled){
+      const yesterday=dateShift(localDate(now),-1);
+      const yesterdayDay=new Date(`${yesterday}T00:00:00Z`).getUTCDay();
+      if(yesterdayDay===cfg.day){
+        const prev=weekRange(new Date(`${yesterday}T12:00:00+08:00`));
+        const previousRecord=(await history.doc(prev.weekEnd).get()).data();
+        if(previousRecord?.status!=='sent'){
+          await monitor('MISSED_WINDOW',decision,`漏發日：${yesterday}；無法跨日自動補送。`);
+          return;
+        }
+      }
+    }
+    await monitor(decision.code,decision);return;
+  }
+  const ref=history.doc(decision.weekKey),claimed=await claimHistory(ref);
+  if(!claimed.claim){
+    await monitor(claimed.code,decision,claimed.code==='ALREADY_SENT'?'本週正式週報已有發送紀錄。':'請查看週報發送歷史。');
+    return;
+  }
+  let phase='prepare';
   try{
-    const {report}=await build(cfg,now);
-    const messages=await sendDiscord(report.text);
-    await ref.set({status:'sent',weekStart:range.from,weekEnd:range.weekEnd,report:report.text.slice(0,500000),
-      flareCounts:report.flareCounts,openCount:report.totalOpen,completedCount:report.totalFinished,
-      sentAt:stamp(),messages},{merge:true});
-    console.log(`Weekly report ${key} sent; ${messages} Discord messages`);
-  }catch(error){await ref.set({status:'failed',lastError:String(error.message).slice(0,180),failedAt:stamp()},{merge:true});throw error;}
-}
-async function processRequests(cfg,now){
-  const snapshot=await requests.where('status','==','pending').limit(5).get();
-  for(const item of snapshot.docs){
-    const ref=item.ref;
-    if(!(await claim(ref,s=>s?.status==='pending')))continue;
-    try{
-      const {report}=await build(cfg,now);
-      const messages=await sendDiscord(`【手動測試】\n${report.text}`);
-      await ref.set({status:'sent',sentAt:stamp(),messages},{merge:true});
-      console.log(`Test request processed; ${messages} messages`);
-    }catch(error){await ref.set({status:'failed',error:String(error.message).slice(0,180),failedAt:stamp()},{merge:true});console.error('Test request failed:',error.message);}
+    // 續傳沿用第一次產生的報表及已確認區段，不因重試而改變內容。
+    const report=claimed.existing?.report?{text:claimed.existing.report}:await build(cfg,now);
+    const chunkCount=splitDiscord(report.text).length;
+    const startIndex=Math.min(chunkCount,claimed.existing?.nextChunkIndex||0);
+    if(!claimed.existing?.report){
+      await ref.set({weekStart:decision.weekStart,weekEnd:decision.weekKey,scheduledDate:decision.day,
+        report:report.text,flareCounts:report.flareCounts,totalOpen:report.totalOpen,
+        totalFinished:report.totalFinished,nextChunkIndex:0,createdAt:nowStamp()}, {merge:true});
+    }
+    phase='delivery';
+    const sent=await sendTracked(report.text,ref,startIndex);
+    phase='finalization';
+    await ref.set({status:'sent',sentAt:nowStamp(),messages:sent.messages,
+      nextChunkIndex:sent.messages,inFlightChunkIndex:null,leaseUntil:null,
+      lastError:null,permanentError:false},{merge:true});
+    // Discord 已確認成功後，監控紀錄若寫入失敗，不得把正式週報狀態改回失敗。
+    try{await monitor('SENT',decision,`${sent.messages} 則 Discord 訊息`,{lastSentAt:nowStamp(),lastSentWeekKey:decision.weekKey});}
+    catch(logError){console.error('週報已送達，但監控紀錄更新失敗：',safeError(logError));}
+    console.log(`Weekly report ${decision.weekKey} sent; ${sent.messages} Discord messages (resumed from ${startIndex}).`);
+  }catch(error){
+    const uncertain=error instanceof DeliveryUncertainError||phase==='finalization'||
+      (phase==='delivery'&&!(error instanceof DiscordRetryableError)&&!(error instanceof DiscordPermanentError));
+    const permanent=error instanceof DiscordPermanentError;
+    const code=uncertain?'NEEDS_REVIEW':permanent?'FAILED_PERMANENT':'RETRYABLE_FAILED';
+    await ref.set({status:uncertain?'needs_review':'failed',permanentError:permanent,
+      lastError:safeError(error),failedAt:nowStamp(),leaseUntil:null,
+      ...(uncertain?{}:{inFlightChunkIndex:null})},{merge:true});
+    await monitor(code,decision,safeError(error));
+    throw error; // 讓 GitHub Actions 顯示紅色失敗，而非誤判 Success
   }
 }
-async function main(){
-  const snapshot=await confRef.get();
-  const config=normalizeConfig(snapshot.exists?snapshot.data():DEFAULT_CONFIG);
-  const now=stamp();
-  await processRequests(config,now);
-  await processScheduled(config,now);
-  console.log('EHS weekly-report check completed (no source records changed).');
+async function processRequests(cfg,now){
+  const pending=await requests.where('status','==','pending').limit(50).get();
+  let failure=0;
+  for(const item of pending.docs){
+    const req=item.data(),scheduling=scheduledTestDecision(req,now,eventName);
+    if(req.kind==='scheduled_test'){
+      if(scheduling==='EXPIRED'||scheduling==='INVALID'){
+        await item.ref.set({status:'expired',error:scheduling==='EXPIRED'?'跨日未觸發，不自動補送。':'自動測試日期時間無效。',expiredAt:nowStamp()},{merge:true});
+        continue;
+      }
+      if(scheduling!=='DUE')continue;
+    }else if(req.kind!=='test'){continue;}
+    let locked=false;
+    await db.runTransaction(async tx=>{
+      const snapshot=await tx.get(item.ref);
+      if(snapshot.data()?.status!=='pending')return;
+      tx.set(item.ref,{status:'processing',lastAttemptAt:nowStamp(),ownerRun:runId},{merge:true});locked=true;
+    });
+    if(!locked)continue;
+    let delivered=false;
+    try{
+      const report=await build(cfg,now);
+      const text=`【${req.kind==='scheduled_test'?'自動排程測試':'手動測試'}，不影響正式週報】\n${report.text}`;
+      await item.ref.set({status:'sending',sendStartedAt:nowStamp()},{merge:true});
+      // 測試採單獨紀錄，絕不寫入正式週報 history/weekKey。
+      const sent=await deliverDiscord({webhook:process.env.DISCORD_WEBHOOK_URL,text});
+      delivered=true;
+      await item.ref.set({status:'sent',sentAt:nowStamp(),messages:sent.messages},{merge:true});
+      console.log(`Test request ${item.id} processed; ${sent.messages} messages`);
+    }catch(error){
+      failure++;
+      const uncertain=delivered||error instanceof DeliveryUncertainError;
+      await item.ref.set({status:uncertain?'needs_review':'failed',error:safeError(error),failedAt:nowStamp()},{merge:true});
+      console.error(`Test request ${item.id} failed (${uncertain?'uncertain':'failed'}): ${safeError(error)}`);
+    }
+  }
+  return failure;
 }
-main().catch(e=>{console.error('Weekly-report run failed:',e.message);process.exitCode=1;});
+async function main(){
+  const snap=await confRef.get(),cfg=normalizeConfig(snap.exists?snap.data():DEFAULT_CONFIG);
+  const now=nowStamp(),decision=scheduleDecision(cfg,now,eventName);
+  const failedTests=await processRequests(cfg,now);
+  await processScheduled(cfg,now,decision);
+  if(failedTests)throw Error(`${failedTests} 個 Discord 測試寄送失敗，請查看測試佇列。`);
+  console.log(`EHS R1.0.2 check finished; trigger=${eventName}; no source records modified.`);
+}
+main().catch(async error=>{
+  console.error('Weekly-report run failed:',safeError(error));
+  process.exitCode=1;
+});

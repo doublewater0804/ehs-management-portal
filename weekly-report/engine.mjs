@@ -1,7 +1,7 @@
 /* EHS 週報：可同時於瀏覽器（預覽）與 Node.js（發送）執行。無網路副作用。 */
 export const FACTORIES = ['ARO1廠','SM廠麥寮','PABS廠(麥寮)','PC廠','HAC廠','ARO2廠','ARO3廠','SM廠海豐','合成酚廠','PP廠'];
 export const DEFAULT_CONFIG = Object.freeze({
-  version:1, enabled:false, day:0, hour:18, timezone:'Asia/Taipei',
+  version:2, enabled:false, day:0, hour:18, minute:0, timezone:'Asia/Taipei',
   sections:{tasks:true,projects:true,flare:true},
   features:{showDescription:true,showTodo:true,showWeeklyUpdates:true,showCompletedThisWeek:true},
   customSources:[], maxItems:150,
@@ -18,6 +18,8 @@ export function normalizeConfig(raw={}){
   conf.enabled=src.enabled===true;
   conf.day=Number.isInteger(Number(src.day))&&Number(src.day)>=0&&Number(src.day)<=6?Number(src.day):0;
   conf.hour=Number.isInteger(Number(src.hour))&&Number(src.hour)>=0&&Number(src.hour)<=23?Number(src.hour):18;
+  conf.minute=Number.isInteger(Number(src.minute))&&Number(src.minute)>=0&&Number(src.minute)<=59?Number(src.minute):0;
+  conf.version=2;
   conf.maxItems=Math.min(250,Math.max(10,Number(src.maxItems)||150));
   conf.customSources=Array.isArray(src.customSources)?src.customSources.slice(0,15).filter(c=>
     c&&/^[A-Za-z0-9_-]{1,80}$/.test(c.collection||'')&&/^[A-Za-z0-9_-]{1,40}$/.test(c.titleField||'')&&
@@ -30,6 +32,8 @@ export function normalizeConfig(raw={}){
 // 臺灣無夏令時間；固定 +08:00 換算避免伺服器 UTC 時區誤差。
 export function localDate(date=new Date()) {return new Date(new Date(date).getTime()+8*3600000).toISOString().slice(0,10);}
 export function localHour(date=new Date()) {return Number(new Date(new Date(date).getTime()+8*3600000).toISOString().slice(11,13));}
+export function localMinute(date=new Date()) {return Number(new Date(new Date(date).getTime()+8*3600000).toISOString().slice(14,16));}
+export function localTime(date=new Date()) {return `${String(localHour(date)).padStart(2,"0")}:${String(localMinute(date)).padStart(2,"0")}`;}
 export function localDay(date=new Date()) {return new Date(`${localDate(date)}T00:00:00Z`).getUTCDay();}
 export function dateShift(day,amount) {const d=new Date(`${day}T00:00:00Z`);d.setUTCDate(d.getUTCDate()+amount);return d.toISOString().slice(0,10);}
 export function weekRange(date=new Date()) {
@@ -145,7 +149,7 @@ function showItem(x,idx){
 }
 export function buildReport(data,config=DEFAULT_CONFIG,now=new Date()){
   const conf=normalizeConfig(config),range=weekRange(now),lines=[];
-  lines.push(`EHS 自動總週報｜${range.from}～${range.to}（截至 ${localDate(now)} ${String(localHour(now)).padStart(2,'0')}:${new Date(new Date(now).getTime()+8*3600000).toISOString().slice(14,16)} 台灣時間）`);
+  lines.push(`EHS 自動總週報｜${range.from}～${range.to}（截至 ${localDate(now)} ${localTime(now)} 台灣時間）`);
   lines.push('範圍：所有未結案工作／專案＋本週已完成項目；不顯示進度百分比。');
   let totalOpen=0,totalFinished=0;
   const section=(title,entries)=>{

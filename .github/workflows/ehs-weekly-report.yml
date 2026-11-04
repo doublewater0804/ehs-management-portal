@@ -1,8 +1,9 @@
-name: EHS Discord weekly report (R1.0)
+name: EHS Discord weekly report (R1.0.2)
 on:
-  # 初次交付維持停用排程，完成測試與明確核准後才取消下一行的註解。
+  # GitHub Actions 至少間隔 5 分鐘；避開整點尖峰。實際觸發可能延遲。
   schedule:
-    - cron: '17,47 * * * *' # 每小時檢查；管理中心自行選週幾及整點（台灣時間），容許 Actions 延遲。
+    - cron: '3-58/5 * * * *'
+  # 僅用來處理「Discord 測試佇列」；不會手動補送正式週報。
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,7 +13,7 @@ concurrency:
 jobs:
   report:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

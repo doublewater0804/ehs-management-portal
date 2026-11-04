@@ -2,7 +2,7 @@ name: EHS Discord weekly report (R1.0.2)
 on:
   # GitHub Actions 至少間隔 5 分鐘；避開整點尖峰。實際觸發可能延遲。
   schedule:
-    - cron: '3-58/5 * * * *'
+    - cron: '4-59/5 * * * *'
   # 僅用來處理「Discord 測試佇列」；不會手動補送正式週報。
   workflow_dispatch:
 permissions:

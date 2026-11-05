@@ -3,7 +3,7 @@ import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} f
 import {getFirestore,doc,getDoc,setDoc,collection,getDocs,addDoc,serverTimestamp,query,orderBy,limit,where,runTransaction} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
 import {DEFAULT_CONFIG,normalizeConfig,buildReport,localDate,localTime} from './engine.mjs';
-import {nextScheduledDate,scheduleLabel} from './scheduler.mjs';
+import {nextScheduledDate,scheduleLabel,scheduleDecision} from './scheduler.mjs';
 import {heartbeatHealth,scheduledTestHealth} from './monitoring.mjs';
 const $=id=>document.getElementById(id);
 // 與 EHS 入口相同的 Firebase App 名稱，重用已登入的帳號狀態。
@@ -91,7 +91,9 @@ function showRecords(docs,target){
     const created=r.sentAt?.toDate?.()||r.failedAt?.toDate?.()||r.lastAttemptAt?.toDate?.()||r.createdAt?.toDate?.();
     const diagnostic=scheduledTestHealth(r);
     const derived=diagnostic.code==='EXPIRED_PENDING'||diagnostic.code==='WAITING_GITHUB'?`｜${diagnostic.label}`:'';
-    row.textContent=`${record.id}｜${r.status||'未知'}${derived}｜${created?created.toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚未發送'}${r.lastError||r.error?'｜'+(r.lastError||r.error):''}`;
+    const typeText=({on_time:'準時發送',same_day_delayed:'當日延遲補發',cross_day_catchup:'跨日補發'})[r.actualDeliveryType];
+    const meta=typeText?`｜${typeText}｜原訂 ${r.scheduledDate||'—'} ${r.scheduledTime||'—'}｜延遲 ${Number(r.lateByMinutes)||0} 分鐘`:'';
+    row.textContent=`${record.id}｜${r.status||'未知'}${derived}${meta}｜${created?created.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚未發送'}${r.lastError||r.error?'｜'+(r.lastError||r.error):''}`;
     if(typeof r.report==='string'){
       const button=document.createElement('button');button.className='outline';button.textContent='查看週報內容';button.style.marginLeft='10px';
       button.onclick=()=>{$('report-preview').textContent=r.report;$('report-preview').scrollIntoView({behavior:'smooth'});};row.append(button);
@@ -102,14 +104,14 @@ function showRecords(docs,target){
 $('history').onclick=async()=>{try{mustBeOwner();const list=await getDocs(collection(db,'ehs_weekly_report_history'));const docs=[...list.docs].sort((a,b)=>b.id.localeCompare(a.id)).slice(0,25);showRecords(docs,'history-list');}catch(e){notice(`查詢失敗：${e.message}`,'error');}};
 $('requests').onclick=async()=>{try{mustBeOwner();const list=await getDocs(query(collection(db,'ehs_weekly_report_requests'),orderBy('createdAt','desc'),limit(15)));showRecords(list.docs,'history-list');}catch(e){notice(`查詢失敗：${e.message}`,'error');}};
 
-// R1.0.3：GitHub Schedule 心跳與正式發送開關分開；逾期測試由管理員頁安全地補標記。
+// R1.0.4：區分當日延遲、跨日補發及逾期；沿用 R1.0.3 獨立監控。
 function timeText(value){
   const date=value?.toDate?.()||(value instanceof Date?value:null);
   return date?date.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚無紀錄';
 }
 function outcomeText(code){
   return ({SENT:'正式週報已發送',ALREADY_SENT:'本週已寄送',DISABLED:'正式自動發送關閉（一次性測試仍可執行）',WRONG_DAY:'星期不符',
-    NOT_YET:'尚未到發送時間',MISSED_WINDOW:'跨日漏發（不補寄）',IN_PROGRESS:'處理中',NEEDS_REVIEW:'待人工檢查',
+    NOT_YET:'尚未到發送時間',MISSED_WINDOW:'已超過 12 小時補發期限',SENT_DELAYED:'當日延遲補發成功',SENT_CROSS_DAY:'跨日補發成功',IN_PROGRESS:'處理中',NEEDS_REVIEW:'待人工檢查',
     RETRYABLE_FAILED:'發送失敗（待重試）',FAILED_PERMANENT:'發送失敗（需修正）',ERROR:'執行錯誤'})[code]||code||'尚無紀錄';
 }
 async function refreshPendingTestHealth(){
@@ -151,7 +153,11 @@ async function refreshMonitor(){
   mustBeOwner();
   const snapshot=await getDoc(doc(db,'ehs_weekly_report_runtime','monitor'));
   const value=snapshot.data()||{};
-  $('next-scheduled').textContent=config.enabled?nextScheduledDate(config,new Date()):'正式週報關閉；GitHub 定時檢查仍應執行';
+  const decision=scheduleDecision(config,new Date(),'schedule');
+  $('next-scheduled').textContent=config.enabled?
+    decision.due&&decision.deliveryType==='cross_day_catchup'?
+      `原訂 ${decision.scheduledDate} ${decision.dueTime}；跨日補發至 ${new Date(decision.deadlineAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})}`:
+      nextScheduledDate(config,new Date()):'正式週報關閉；GitHub 定時檢查仍應執行';
   $('last-checked').textContent=timeText(value.lastScheduledCheckAt);
   $('last-result').textContent=outcomeText(value.lastCode);
   $('last-success').textContent=timeText(value.lastSentAt);
@@ -159,6 +165,11 @@ async function refreshMonitor(){
   let detail=health.message+'\n'+(value.lastReason||'尚無正式週報判斷紀錄。');
   if(value.lastDetail)detail+=' '+value.lastDetail;
   if(value.lastRunId)detail+=`\nGitHub Run ${value.lastRunId}`;
+  if(config.enabled&&decision.code==='MISSED_WINDOW'){
+    const lastPeriod=await getDoc(doc(db,'ehs_weekly_report_history',decision.weekKey));
+    if(lastPeriod.data()?.status!=='sent')detail+=`\n依設定推算：${decision.scheduledDate} ${decision.dueTime} 的正式週報已超過 12 小時補發期限，未查到該週已成功發送紀錄；即使 GitHub 沒有觸發，也不會跨期限自動寄送。`;
+  }
+
   if(health.stale)detail+='\n即使「啟用每週自動寄送」未勾選，也需要獨立檢查 GitHub Scheduled 是否持續運作。';
   $('monitor-details').className=`message${health.stale?' warn':''}`;
   $('monitor-details').textContent=detail;

@@ -49,13 +49,28 @@ export function dateOnly(value){
   return '';
 }
 const inWeek=(d,r)=>Boolean(d&&d>=r.from&&d<=r.to);
+// 補發時僅剔除「可由建立時間確定在截止後才新增」的紀錄；無歷史版本不能還原狀態。
+export function createdAfterCutoff(value,cutoff){
+  if(!cutoff||!value)return false;
+  const cut=typeof cutoff==='string'?new Date(cutoff):new Date(cutoff);
+  if(!Number.isFinite(cut.getTime()))return false;
+  const date=dateOnly(value),dateCut=localDate(cut);
+  if(date>dateCut)return true;
+  if(!date||date<dateCut)return false;
+  // 同日若只有 YYYY-MM-DD，無時分證據，不得臆測是在截止後新增。
+  if(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  const ts=value?.toDate?value.toDate():typeof value?.seconds==='number'?new Date(value.seconds*1000):new Date(value);
+  return Number.isFinite(ts?.getTime?.())&&ts.getTime()>cut.getTime();
+}
+
 function lastLog(logs){return (Array.isArray(logs)?logs:[]).filter(x=>x&&typeof x==='object').sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0]||null;}
 const isProjectDone=p=>p.executionStatus?p.executionStatus==='COMPLETED':p.status==='COMPLETED';
 const pStatus=p=>({NOT_STARTED:'未開始',IN_PROGRESS:'辦理中',PENDING:'待確認',PAUSED:'暫停',COMPLETED:'已結案'}[p.executionStatus]||({ON_TRACK:'舊狀態：正常',DELAYED:'舊狀態：落後',COMPLETED:'舊狀態：結案'}[p.status]||'待確認'));
 function orderEntries(items){return items.sort((a,b)=>a.rank-b.rank||String(a.due||'9999').localeCompare(String(b.due||'9999'))||a.name.localeCompare(b.name,'zh-Hant'));}
-export function taskRows(records,range,conf){
+export function taskRows(records,range,conf,cutoff=null){
   const open=[],finished=[];
   for(const t of records||[]){
+    if(createdAfterCutoff(t._createdTs||t.createdAt,cutoff))continue;
     const done=Number(t.progress)>=100,updated=dateOnly(t._updatedTs),created=dateOnly(t._createdTs)||dateOnly(t.createdAt);
     const recent=inWeek(updated,range)||inWeek(created,range)|| (t.progressLogs||[]).some(x=>inWeek(dateOnly(x.date),range));
     // 工作沒有獨立結案日期，本週完成只能保守標示「目前已完成且本週有更新」。
@@ -71,9 +86,10 @@ export function taskRows(records,range,conf){
   }
   return {open:orderEntries(open),finished:orderEntries(finished)};
 }
-export function projectRows(records,range,conf){
+export function projectRows(records,range,conf,cutoff=null){
   const open=[],finished=[];
   for(const p of records||[]){
+    if(createdAfterCutoff(p.createdAt,cutoff))continue;
     const done=isProjectDone(p),closed=dateOnly(p.closedAt),updated=dateOnly(p.updatedAt),created=dateOnly(p.createdAt);
     const logs=Array.isArray(p.executionLogs)?p.executionLogs:[];
     const recent=inWeek(updated,range)||inWeek(created,range)||logs.some(l=>inWeek(dateOnly(l.date),range));
@@ -147,9 +163,16 @@ function showItem(x,idx){
   const main=`${idx+1}. ${x.name}｜${x.status}${mark}${x.due?'｜期限 '+x.due:''}${x.factory?'｜'+x.factory:''}`;
   return [main,x.desc?`　工作內容：${x.desc}`:'',x.todo?`　待辦：${x.todo}`:'',x.note?`　本週紀錄：${x.note}`:''].filter(Boolean);
 }
-export function buildReport(data,config=DEFAULT_CONFIG,now=new Date()){
+export function buildReport(data,config=DEFAULT_CONFIG,now=new Date(),options={}){
   const conf=normalizeConfig(config),range=weekRange(now),lines=[];
   lines.push(`EHS 自動總週報｜${range.from}～${range.to}（截至 ${localDate(now)} ${localTime(now)} 台灣時間）`);
+  if(options.official===true){
+    const readAt=options.readAt?new Date(options.readAt):new Date();
+    const dueText=`${localDate(now)} ${localTime(now)}`;
+    const readText=`${localDate(readAt)} ${localTime(readAt)}`;
+    lines.push(`週報歸屬：${localDate(now)}｜原訂發送／統計截止：${dueText}（台灣）｜實際資料讀取：${readText}（台灣）`);
+    if(readAt.getTime()>new Date(now).getTime())lines.push('※ 工作／專案為實際讀取時的現況，沒有完整歷史快照時無法精確還原截止時狀態；確定在截止後建立的紀錄不列入。FLARE 依事件日期統計，無法區分同日截止時刻前後的事件。');
+  }
   lines.push('範圍：所有未結案工作／專案＋本週已完成項目；不顯示進度百分比。');
   let totalOpen=0,totalFinished=0;
   const section=(title,entries)=>{
@@ -161,8 +184,8 @@ export function buildReport(data,config=DEFAULT_CONFIG,now=new Date()){
     if(finished.length){lines.push('本週完成：');finished.forEach((x,i)=>lines.push(...showItem(x,i)));}
     if(entries.open.length>open.length||entries.finished.length>finished.length)lines.push(`（超過每類 ${conf.maxItems} 筆上限，請至網站查看完整資料）`);
   };
-  if(conf.sections.tasks)section('環安衛工作管理',taskRows(data.tasks||[],range,conf));
-  if(conf.sections.projects)section('年度安衛環專案',projectRows(data.projects||[],range,conf));
+  if(conf.sections.tasks)section('環安衛工作管理',taskRows(data.tasks||[],range,conf,options.official?now:null));
+  if(conf.sections.projects)section('年度安衛環專案',projectRows(data.projects||[],range,conf,options.official?now:null));
   if(conf.sections.flare){
     if(!Array.isArray(data.flare?.events)){
       lines.push('','【廢氣燃燒塔】尚未取得有效的 FLARE 事件資料，無法判斷使用日數。請檢查 Firebase 來源。');

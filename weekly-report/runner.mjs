@@ -1,4 +1,4 @@
-/* R1.0.3：保留 GitHub 原生排程，改進心跳、逾期測試與逐次檢查紀錄。 */
+/* R1.0.4：保留 GitHub 原生排程；正式週報支援原週期 12h 跨日補發。 */
 import {initializeApp,cert,getApps} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {DEFAULT_CONFIG,normalizeConfig,weekRange,localDate,localDay,dateShift,buildReport,splitDiscord} from './engine.mjs';
@@ -40,15 +40,16 @@ async function fetchSources(cfg){
   const custom={};for(const source of cfg.customSources.filter(x=>x.enabled))custom[source.id]=await fetchList(source.collection);
   return {tasks:byName.ehs_tasks||[],projects:byName['ehs-dashboard-2024_projects']||[],flare,custom};
 }
-async function build(cfg,now){
+async function build(cfg,cutoff,official=true){
   const data=await fetchSources(cfg);
+  const sourceReadAt=nowStamp();
   if(cfg.sections.flare){
-    const range=weekRange(now),prior=dateSubtract(range.from,1),old=(await history.doc(prior).get()).data();
+    const range=weekRange(cutoff),prior=dateSubtract(range.from,1),old=(await history.doc(prior).get()).data();
     if(old?.flareCounts)data.previousFlare={from:dateSubtract(range.from,7),to:prior,counts:old.flareCounts};
   }
-  const report=buildReport(data,cfg,now);
+  const report=buildReport(data,cfg,cutoff,{official,readAt:sourceReadAt});
   if(report.text.length>MAX_REPORT)throw Error('週報內容超過安全長度，請降低每類顯示筆數。');
-  return report;
+  return {...report,sourceReadAt};
 }
 // 每次 GitHub Scheduled 寫入心跳及最近 288 次檢查摘要；狀態轉換另寫稽核集合。
 async function monitor(code,decision,detail='',extra={}){
@@ -79,7 +80,7 @@ async function monitor(code,decision,detail='',extra={}){
     }
   });
   wroteScheduledMonitor=true;
-  console.log(`[R1.0.3] ${code}: ${payload.lastReason}${detail?' '+detail:''} (台灣 ${decision.day} ${decision.localNow})`);
+  console.log(`[R1.0.4] ${code}: ${payload.lastReason}${detail?' '+detail:''} (台灣 ${decision.day} ${decision.localNow})`);
 }
 async function claimHistory(ref){
   let result;
@@ -115,17 +116,15 @@ async function sendTracked(text,ref,startIndex=0){
 }
 async function processScheduled(cfg,now,decision){
   if(!decision.due){
-    if(decision.code==='WRONG_DAY'&&cfg.enabled){
-      const yesterday=dateShift(localDate(now),-1);
-      const yesterdayDay=new Date(`${yesterday}T00:00:00Z`).getUTCDay();
-      if(yesterdayDay===cfg.day){
-        const prev=weekRange(new Date(`${yesterday}T12:00:00+08:00`));
-        const previousRecord=(await history.doc(prev.weekEnd).get()).data();
-        if(previousRecord?.status!=='sent'){
-          await monitor('MISSED_WINDOW',decision,`漏發日：${yesterday}；無法跨日自動補送。`);
-          return;
-        }
+    if(decision.code==='MISSED_WINDOW'&&cfg.enabled){
+      // 即使週一以後才恢復觸發，也只判斷原指定發送週期，絕不觸發新一週週報。
+      const existing=(await history.doc(decision.weekKey).get()).data();
+      if(existing?.status==='sent'){
+        await monitor('ALREADY_SENT',decision,`原定 ${decision.scheduledDate} ${decision.dueTime} 已正式發送。`);
+      }else{
+        await monitor('MISSED_WINDOW',decision,`原定 ${decision.scheduledDate} ${decision.dueTime}；補發截止 ${displayTime(decision.deadlineAt)}，已逾期不自動寄送。`);
       }
+      return;
     }
     await monitor(decision.code,decision);return;
   }
@@ -135,26 +134,40 @@ async function processScheduled(cfg,now,decision){
     return;
   }
   let phase='prepare';
+  const cutoff=new Date(decision.dueAt);
   try{
     // 續傳沿用第一次產生的報表及已確認區段，不因重試而改變內容。
-    const report=claimed.existing?.report?{text:claimed.existing.report}:await build(cfg,now);
+    const report=claimed.existing?.report?{text:claimed.existing.report}:await build(cfg,cutoff);
     const chunkCount=splitDiscord(report.text).length;
     const startIndex=Math.min(chunkCount,claimed.existing?.nextChunkIndex||0);
     if(!claimed.existing?.report){
-      await ref.set({weekStart:decision.weekStart,weekEnd:decision.weekKey,scheduledDate:decision.day,
-        report:report.text,flareCounts:report.flareCounts,totalOpen:report.totalOpen,
-        totalFinished:report.totalFinished,nextChunkIndex:0,createdAt:nowStamp()}, {merge:true});
+      await ref.set({weekStart:decision.weekStart,weekEnd:decision.weekKey,
+        scheduledDate:decision.scheduledDate,scheduledTime:decision.dueTime,
+        scheduledDueAt:cutoff,reportCutoffAt:cutoff,sendDeadlineAt:new Date(decision.deadlineAt),
+        sourceReadAt:report.sourceReadAt||nowStamp(),report:report.text,flareCounts:report.flareCounts,
+        totalOpen:report.totalOpen,totalFinished:report.totalFinished,
+        nextChunkIndex:0,createdAt:nowStamp()}, {merge:true});
     }
     phase='delivery';
     const sent=await sendTracked(report.text,ref,startIndex);
     phase='finalization';
-    await ref.set({status:'sent',sentAt:nowStamp(),messages:sent.messages,
+    const sentAt=nowStamp();
+    const lateMinutes=Math.max(0,Math.floor((sentAt.getTime()-cutoff.getTime())/60000));
+    const type=localDate(sentAt)!==decision.scheduledDate?'cross_day_catchup':
+      lateMinutes===0?'on_time':'same_day_delayed';
+    await ref.set({status:'sent',sentAt,messages:sent.messages,
+      actualDeliveryType:type,lateByMinutes:lateMinutes,
+      scheduledDate:decision.scheduledDate,scheduledTime:decision.dueTime,
+      scheduledDueAt:cutoff,sendDeadlineAt:new Date(decision.deadlineAt),
       nextChunkIndex:sent.messages,inFlightChunkIndex:null,leaseUntil:null,
       lastError:null,permanentError:false},{merge:true});
     // Discord 已確認成功後，監控紀錄若寫入失敗，不得把正式週報狀態改回失敗。
-    try{await monitor('SENT',decision,`${sent.messages} 則 Discord 訊息`,{lastSentAt:nowStamp(),lastSentWeekKey:decision.weekKey});}
+    const monitorCode=type==='cross_day_catchup'?'SENT_CROSS_DAY':type==='same_day_delayed'?'SENT_DELAYED':'SENT';
+    try{await monitor(monitorCode,decision,
+      `原訂 ${decision.scheduledDate} ${decision.dueTime}；實際 ${displayTime(sentAt)}；延遲 ${lateMinutes} 分鐘；${sent.messages} 則 Discord 訊息`,
+      {lastSentAt:sentAt,lastSentWeekKey:decision.weekKey,lastSentType:type,lastScheduledDueAt:cutoff});}
     catch(logError){console.error('週報已送達，但監控紀錄更新失敗：',safeError(logError));}
-    console.log(`Weekly report ${decision.weekKey} sent; ${sent.messages} Discord messages (resumed from ${startIndex}).`);
+    console.log(`Weekly report ${decision.weekKey} sent; kind=${type}; scheduled=${decision.scheduledDate} ${decision.dueTime}; actual=${displayTime(sentAt)}; late=${lateMinutes}min; ${sent.messages} Discord messages (resumed from ${startIndex}).`);
   }catch(error){
     const uncertain=error instanceof DeliveryUncertainError||phase==='finalization'||
       (phase==='delivery'&&!(error instanceof DiscordRetryableError)&&!(error instanceof DiscordPermanentError));
@@ -190,7 +203,7 @@ async function processRequests(cfg,now){
     if(!locked)continue;
     let delivered=false;
     try{
-      const report=await build(cfg,now);
+      const report=await build(cfg,now,false);
       const text=`【${req.kind==='scheduled_test'?'自動排程測試':'手動測試'}，不影響正式週報】\n${report.text}`;
       await item.ref.set({status:'sending',sendStartedAt:nowStamp()},{merge:true});
       // 測試採單獨紀錄，絕不寫入正式週報 history/weekKey。
@@ -217,7 +230,7 @@ async function main(){
     currentRunTests=await processRequests(cfg,now);
     await processScheduled(cfg,now,decision);
     if(currentRunTests.failed)throw Error(`${currentRunTests.failed} 個 Discord 測試寄送失敗，請查看測試佇列。`);
-    console.log(`EHS R1.0.3 check finished; trigger=${eventName}; tests=${JSON.stringify(currentRunTests)}; no source records modified.`);
+    console.log(`EHS R1.0.4 check finished; trigger=${eventName}; tests=${JSON.stringify(currentRunTests)}; no source records modified.`);
   }catch(error){
     if(eventName==='schedule'&&!wroteScheduledMonitor){
       try{await monitor('ERROR',decision||scheduleDecision(DEFAULT_CONFIG,now,'schedule'),safeError(error));}

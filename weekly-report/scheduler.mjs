@@ -76,10 +76,10 @@ export function scheduleLabel(rawConfig){
 // 獨立「自動推播測試」的日期時間判斷，完全不碰正式週報的每週防重複紀錄。
 export function scheduledTestDecision(request,now=new Date(),eventName='schedule'){
   if(request?.kind!=='scheduled_test')return 'NOT_SCHEDULED_TEST';
-  if(eventName!=='schedule')return 'WAITING_FOR_SCHEDULE';
   const dueDate=String(request?.dueDate||''),dueTime=String(request?.dueTime||'');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime))return 'INVALID';
   if(localDate(now)>dueDate)return 'EXPIRED';
+  if(eventName!=='schedule')return 'WAITING_FOR_SCHEDULE';
   if(localDate(now)<dueDate||localTime(now)<dueTime)return 'WAITING';
   return 'DUE';
 }

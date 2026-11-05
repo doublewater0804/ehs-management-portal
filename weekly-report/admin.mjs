@@ -1,9 +1,10 @@
 import {initializeApp,getApp,getApps} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,collection,getDocs,addDoc,serverTimestamp,query,orderBy,limit} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,collection,getDocs,addDoc,serverTimestamp,query,orderBy,limit,where,runTransaction} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
 import {DEFAULT_CONFIG,normalizeConfig,buildReport,localDate,localTime} from './engine.mjs';
 import {nextScheduledDate,scheduleLabel} from './scheduler.mjs';
+import {heartbeatHealth,scheduledTestHealth} from './monitoring.mjs';
 const $=id=>document.getElementById(id);
 // 與 EHS 入口相同的 Firebase App 名稱，重用已登入的帳號狀態。
 const fb=getApps().find(a=>a.name==='ehs-portal')||initializeApp(firebaseConfig,'ehs-portal');
@@ -88,7 +89,9 @@ function showRecords(docs,target){
   const el=$(target);el.replaceChildren();if(!docs.length){el.textContent='無紀錄';return;}
   docs.forEach(record=>{const r=record.data(),row=document.createElement('div');row.className='history-item';
     const created=r.sentAt?.toDate?.()||r.failedAt?.toDate?.()||r.lastAttemptAt?.toDate?.()||r.createdAt?.toDate?.();
-    row.textContent=`${record.id}｜${r.status||'未知'}｜${created?created.toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚未發送'}${r.lastError||r.error?'｜'+(r.lastError||r.error):''}`;
+    const diagnostic=scheduledTestHealth(r);
+    const derived=diagnostic.code==='EXPIRED_PENDING'||diagnostic.code==='WAITING_GITHUB'?`｜${diagnostic.label}`:'';
+    row.textContent=`${record.id}｜${r.status||'未知'}${derived}｜${created?created.toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚未發送'}${r.lastError||r.error?'｜'+(r.lastError||r.error):''}`;
     if(typeof r.report==='string'){
       const button=document.createElement('button');button.className='outline';button.textContent='查看週報內容';button.style.marginLeft='10px';
       button.onclick=()=>{$('report-preview').textContent=r.report;$('report-preview').scrollIntoView({behavior:'smooth'});};row.append(button);
@@ -99,43 +102,96 @@ function showRecords(docs,target){
 $('history').onclick=async()=>{try{mustBeOwner();const list=await getDocs(collection(db,'ehs_weekly_report_history'));const docs=[...list.docs].sort((a,b)=>b.id.localeCompare(a.id)).slice(0,25);showRecords(docs,'history-list');}catch(e){notice(`查詢失敗：${e.message}`,'error');}};
 $('requests').onclick=async()=>{try{mustBeOwner();const list=await getDocs(query(collection(db,'ehs_weekly_report_requests'),orderBy('createdAt','desc'),limit(15)));showRecords(list.docs,'history-list');}catch(e){notice(`查詢失敗：${e.message}`,'error');}};
 
-// R1.0.2 排程監控：每次 Schedule 更新後端心跳；沒有心跳時不能把 Actions 綠燈誤判成已寄送。
+// R1.0.3：GitHub Schedule 心跳與正式發送開關分開；逾期測試由管理員頁安全地補標記。
 function timeText(value){
   const date=value?.toDate?.()||(value instanceof Date?value:null);
   return date?date.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚無紀錄';
 }
 function outcomeText(code){
-  return ({SENT:'已發送',ALREADY_SENT:'本週已寄送',DISABLED:'自動發送關閉',WRONG_DAY:'星期不符',
+  return ({SENT:'正式週報已發送',ALREADY_SENT:'本週已寄送',DISABLED:'正式自動發送關閉（一次性測試仍可執行）',WRONG_DAY:'星期不符',
     NOT_YET:'尚未到發送時間',MISSED_WINDOW:'跨日漏發（不補寄）',IN_PROGRESS:'處理中',NEEDS_REVIEW:'待人工檢查',
     RETRYABLE_FAILED:'發送失敗（待重試）',FAILED_PERMANENT:'發送失敗（需修正）',ERROR:'執行錯誤'})[code]||code||'尚無紀錄';
 }
+async function refreshPendingTestHealth(){
+  const now=new Date(),pending=await getDocs(query(collection(db,'ehs_weekly_report_requests'),where('status','==','pending'),limit(100)));
+  const tests=pending.docs.filter(x=>x.data().kind==='scheduled_test');
+  let expired=0;
+  for(const record of tests){
+    if(scheduledTestHealth(record.data(),now).code!=='EXPIRED_PENDING')continue;
+    // Firestore transaction: 若另一個 GitHub run 已經更改狀態，不會覆寫其結果。
+    let transitioned=false;
+    await runTransaction(db,async tx=>{
+      transitioned=false;
+      const latest=await tx.get(record.ref);
+      const req=latest.data();
+      if(req?.status!=='pending'||scheduledTestHealth(req,now).code!=='EXPIRED_PENDING')return;
+      tx.update(record.ref,{status:'expired',error:'跨日未收到 Scheduled 觸發，不自動補送（管理中心檢查）。',
+        expiredAt:serverTimestamp(),expiredBy:'admin-monitor-r103'});
+      transitioned=true;
+    });
+    if(transitioned)expired++;
+  }
+  const refreshed=tests.map(x=>({id:x.id,source:x.data()}))
+    .filter(x=>scheduledTestHealth(x.source,now).code!=='EXPIRED_PENDING')
+    .sort((a,b)=>(a.source.dueDate+' '+a.source.dueTime).localeCompare(b.source.dueDate+' '+b.source.dueTime));
+  const due=refreshed.filter(x=>scheduledTestHealth(x.source,now).code==='WAITING_GITHUB');
+  const future=refreshed.filter(x=>scheduledTestHealth(x.source,now).code==='WAITING_TIME');
+  const el=$('test-pending-status');
+  if(el){
+    if(due.length)el.textContent=`${due.length} 筆一次性測試已到指定時間，仍等待 GitHub Scheduled。最早：${due[0].source.dueDate} ${due[0].source.dueTime}（台灣）；不代表 Discord 失敗。`;
+    else if(future.length)el.textContent=`${future.length} 筆一次性測試等待指定時間；最近：${future[0].source.dueDate} ${future[0].source.dueTime}（台灣）。`;
+    else el.textContent='目前沒有待執行的一次性自動測試。';
+    if(expired)el.textContent+=` 已安全標記 ${expired} 筆跨日過期測試（不發送、不刪除）。`;
+    if(pending.docs.length===100)el.textContent+=' 注意：待處理紀錄超過查詢上限，請查看完整測試佇列。';
+    el.className=`message${due.length?' warn':''}`;
+  }
+  return {due:due.length,upcoming:future.length,expired};
+}
 async function refreshMonitor(){
   mustBeOwner();
-  const ref=doc(db,'ehs_weekly_report_runtime','monitor');
-  const snap=await getDoc(ref),value=snap.data()||{};
-  $('next-scheduled').textContent=config.enabled?nextScheduledDate(config,new Date()):'自動寄送未啟用';
+  const snapshot=await getDoc(doc(db,'ehs_weekly_report_runtime','monitor'));
+  const value=snapshot.data()||{};
+  $('next-scheduled').textContent=config.enabled?nextScheduledDate(config,new Date()):'正式週報關閉；GitHub 定時檢查仍應執行';
   $('last-checked').textContent=timeText(value.lastScheduledCheckAt);
   $('last-result').textContent=outcomeText(value.lastCode);
   $('last-success').textContent=timeText(value.lastSentAt);
-  let detail=value.lastReason||'尚未發現 GitHub Schedule 執行紀錄，請先確認工作流程已部署及啟用。';
+  const health=heartbeatHealth(value.lastScheduledCheckAt);
+  let detail=health.message+'\n'+(value.lastReason||'尚無正式週報判斷紀錄。');
   if(value.lastDetail)detail+=' '+value.lastDetail;
-  if(value.lastRunId)detail+=`　[GitHub Run ${value.lastRunId}]`;
-  const stamp=value.lastScheduledCheckAt?.toDate?.();
-  const lag=stamp?Date.now()-stamp.getTime():Infinity;
-  if(lag>20*60000&&config.enabled)detail+='\n注意：超過 20 分鐘未看到自動檢查；可能是 Actions 延遲、被停用或尚未部署。';
-  $('monitor-details').className=`message${lag>20*60000&&config.enabled?' warn':''}`;
+  if(value.lastRunId)detail+=`\nGitHub Run ${value.lastRunId}`;
+  if(health.stale)detail+='\n即使「啟用每週自動寄送」未勾選，也需要獨立檢查 GitHub Scheduled 是否持續運作。';
+  $('monitor-details').className=`message${health.stale?' warn':''}`;
   $('monitor-details').textContent=detail;
+  $('recent-count').textContent=`已記錄 ${Array.isArray(value.recentChecks)?value.recentChecks.length:0} 筆逐次檢查（至多保留 288 筆）`;
+  try{await refreshPendingTestHealth();}
+  catch(e){$('test-pending-status').className='message warn';$('test-pending-status').textContent=`未能取得／更新待執行測試狀態：${e.message}`;}
 }
 $('refresh-monitor').onclick=async()=>{
-  try{await refreshMonitor();notice('已更新排程監控資訊。','success');}
+  try{await refreshMonitor();notice('已更新 GitHub 心跳與一次性測試狀態。','success');}
   catch(error){notice(`讀取排程監控失敗：${error.message}`,'error');}
 };
 $('audit').onclick=async()=>{
   try{
-    mustBeOwner();const snap=await getDocs(query(collection(db,'ehs_weekly_report_audit'),orderBy('at','desc'),limit(25)));
+    mustBeOwner();
     const container=$('audit-list');container.replaceChildren();
-    if(snap.empty){container.textContent='尚無排程事件紀錄。';return;}
-    for(const record of snap.docs){const d=record.data(),line=document.createElement('div');line.className='history-item';
+    const snap=await getDoc(doc(db,'ehs_weekly_report_runtime','monitor'));
+    const recent=Array.isArray(snap.data()?.recentChecks)?[...snap.data().recentChecks]:[];
+    if(recent.length){
+      for(const item of recent.reverse().slice(0,50)){
+        const row=document.createElement('div');row.className='history-item';
+        const local=new Date(item.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false});
+        row.textContent=`${local}｜Run ${item.runId}｜${outcomeText(item.code)}${item.reason?'｜'+item.reason:''}`;
+        container.append(row);
+      }
+      return;
+    }
+    // 升級前舊版只有狀態轉變事件，向後相容顯示，但不能當作每次檢查的完整紀錄。
+    const old=await getDocs(query(collection(db,'ehs_weekly_report_audit'),orderBy('at','desc'),limit(25)));
+    if(old.empty){container.textContent='尚無 GitHub Scheduled 逐次檢查紀錄。';return;}
+    const explanation=document.createElement('div');explanation.className='hint';
+    explanation.textContent='以下為舊版「狀態變更」紀錄，不代表每次 GitHub 檢查。新版本首次 Scheduled 執行後才會有逐次心跳。';
+    container.append(explanation);
+    for(const record of old.docs){const d=record.data(),line=document.createElement('div');line.className='history-item';
       line.textContent=`${timeText(d.at)}｜${outcomeText(d.code)}｜${d.reason||''}${d.detail?'｜'+d.detail:''}`;
       container.append(line);
     }
@@ -156,5 +212,6 @@ $('schedule-test').onclick=async()=>{
       status:'pending',kind:'scheduled_test',dueDate,dueTime,createdAt:serverTimestamp(),createdBy:auth.currentUser.uid
     });
     notice(`已預約 ${dueDate} ${dueTime} 自動測試。請等待 GitHub Scheduled 執行；不必按 Run workflow。`,'success');
+    await refreshMonitor();
   }catch(error){notice(`自動測試預約失敗：${error.message}`,'error');}
 };

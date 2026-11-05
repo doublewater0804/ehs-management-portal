@@ -1,9 +1,10 @@
-/* R1.0.2：GitHub Actions 專用後端；每日同日補送，異常原因可追蹤。 */
+/* R1.0.3：保留 GitHub 原生排程，改進心跳、逾期測試與逐次檢查紀錄。 */
 import {initializeApp,cert,getApps} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {DEFAULT_CONFIG,normalizeConfig,weekRange,localDate,localDay,dateShift,buildReport,splitDiscord} from './engine.mjs';
 import {scheduleDecision,lockDecision,scheduledTestDecision,REASONS} from './scheduler.mjs';
 import {deliverDiscord,DiscordRetryableError,DiscordPermanentError,DeliveryUncertainError} from './discord.mjs';
+import {appendRecentCheck} from './monitoring.mjs';
 
 function loadCredential(){
   const secret=process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -23,6 +24,8 @@ const eventName=process.env.GITHUB_EVENT_NAME||'workflow_dispatch';
 const runId=`${process.env.GITHUB_RUN_ID||'local'}-${process.env.GITHUB_RUN_ATTEMPT||'1'}`;
 const MAX_REPORT=250000;
 const LEASE_MS=20*60*1000;
+let currentRunTests={sent:0,failed:0,expired:0};
+let wroteScheduledMonitor=false;
 const nowStamp=()=>new Date();
 const displayTime=t=>new Date(t).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false});
 const safeError=e=>String(e?.message||e).slice(0,240);
@@ -47,28 +50,36 @@ async function build(cfg,now){
   if(report.text.length>MAX_REPORT)throw Error('週報內容超過安全長度，請降低每類顯示筆數。');
   return report;
 }
-// 監控每次 Schedule 寫入最後檢查時間；稽核紀錄僅在狀態轉換時產生，避免大量累積。
+// 每次 GitHub Scheduled 寫入心跳及最近 288 次檢查摘要；狀態轉換另寫稽核集合。
 async function monitor(code,decision,detail='',extra={}){
   const timestamp=nowStamp(),isSchedule=eventName==='schedule';
   if(!isSchedule){
     await monitorRef.set({lastManualCheckAt:timestamp,lastManualRunId:runId},{merge:true});
     return;
   }
+  const testNote=[currentRunTests.sent&&`一次性／手動測試已發送 ${currentRunTests.sent} 筆`,
+    currentRunTests.expired&&`測試已過期 ${currentRunTests.expired} 筆`,currentRunTests.failed&&`測試失敗 ${currentRunTests.failed} 筆`].filter(Boolean).join('；');
+  const fullDetail=[detail,testNote].filter(Boolean).join('；').slice(0,240);
   const payload={lastScheduledCheckAt:timestamp,lastCode:code,lastReason:REASONS[code]||'執行完成',
-    lastDetail:String(detail).slice(0,240),lastRunId:runId,nextScheduled:decision.nextScheduled,
+    lastDetail:fullDetail,lastRunId:runId,nextScheduled:decision.nextScheduled,
     lastScheduleSetting:`星期${decision.scheduledDay} ${decision.dueTime}`,updatedAt:timestamp,...extra};
   const auditRef=audit.doc();
   await db.runTransaction(async tx=>{
     const before=(await tx.get(monitorRef)).data()||{};
-    tx.set(monitorRef,payload,{merge:true});
+    const recentChecks=appendRecentCheck(before.recentChecks,{runId,time:timestamp.toISOString(),code,
+      reason:fullDetail||payload.lastReason,testSent:currentRunTests.sent,
+      testExpired:currentRunTests.expired,testFailed:currentRunTests.failed});
+    const alreadyCounted=Array.isArray(before.recentChecks)&&before.recentChecks.some(x=>x?.runId===runId);
+    tx.set(monitorRef,{...payload,recentChecks,lastCodeDay:decision.day,
+      scheduledCheckCount:(Number(before.scheduledCheckCount)||0)+Number(!alreadyCounted)},{merge:true});
     const changed=before.lastCode!==code||before.lastCodeDay!==decision.day;
     if(changed){
       tx.set(auditRef,{at:timestamp,code,reason:payload.lastReason,detail:payload.lastDetail,
         scheduledDay:decision.scheduledDay,scheduledTime:decision.dueTime,runId,weekKey:decision.weekKey});
     }
-    tx.set(monitorRef,{lastCodeDay:decision.day},{merge:true});
   });
-  console.log(`[R1.0.2] ${code}: ${payload.lastReason}${detail?' '+detail:''} (台灣 ${decision.day} ${decision.localNow})`);
+  wroteScheduledMonitor=true;
+  console.log(`[R1.0.3] ${code}: ${payload.lastReason}${detail?' '+detail:''} (台灣 ${decision.day} ${decision.localNow})`);
 }
 async function claimHistory(ref){
   let result;
@@ -159,11 +170,13 @@ async function processScheduled(cfg,now,decision){
 async function processRequests(cfg,now){
   const pending=await requests.where('status','==','pending').limit(50).get();
   let failure=0;
+  const stats={sent:0,failed:0,expired:0};
   for(const item of pending.docs){
     const req=item.data(),scheduling=scheduledTestDecision(req,now,eventName);
     if(req.kind==='scheduled_test'){
       if(scheduling==='EXPIRED'||scheduling==='INVALID'){
         await item.ref.set({status:'expired',error:scheduling==='EXPIRED'?'跨日未觸發，不自動補送。':'自動測試日期時間無效。',expiredAt:nowStamp()},{merge:true});
+        stats.expired++;
         continue;
       }
       if(scheduling!=='DUE')continue;
@@ -184,24 +197,36 @@ async function processRequests(cfg,now){
       const sent=await deliverDiscord({webhook:process.env.DISCORD_WEBHOOK_URL,text});
       delivered=true;
       await item.ref.set({status:'sent',sentAt:nowStamp(),messages:sent.messages},{merge:true});
+      stats.sent++;
       console.log(`Test request ${item.id} processed; ${sent.messages} messages`);
     }catch(error){
-      failure++;
+      failure++;stats.failed++;
       const uncertain=delivered||error instanceof DeliveryUncertainError;
       await item.ref.set({status:uncertain?'needs_review':'failed',error:safeError(error),failedAt:nowStamp()},{merge:true});
       console.error(`Test request ${item.id} failed (${uncertain?'uncertain':'failed'}): ${safeError(error)}`);
     }
   }
-  return failure;
+  return stats;
 }
 async function main(){
-  const snap=await confRef.get(),cfg=normalizeConfig(snap.exists?snap.data():DEFAULT_CONFIG);
-  const now=nowStamp(),decision=scheduleDecision(cfg,now,eventName);
-  const failedTests=await processRequests(cfg,now);
-  await processScheduled(cfg,now,decision);
-  if(failedTests)throw Error(`${failedTests} 個 Discord 測試寄送失敗，請查看測試佇列。`);
-  console.log(`EHS R1.0.2 check finished; trigger=${eventName}; no source records modified.`);
+  const now=nowStamp();
+  let decision;
+  try{
+    const snap=await confRef.get(),cfg=normalizeConfig(snap.exists?snap.data():DEFAULT_CONFIG);
+    decision=scheduleDecision(cfg,now,eventName);
+    currentRunTests=await processRequests(cfg,now);
+    await processScheduled(cfg,now,decision);
+    if(currentRunTests.failed)throw Error(`${currentRunTests.failed} 個 Discord 測試寄送失敗，請查看測試佇列。`);
+    console.log(`EHS R1.0.3 check finished; trigger=${eventName}; tests=${JSON.stringify(currentRunTests)}; no source records modified.`);
+  }catch(error){
+    if(eventName==='schedule'&&!wroteScheduledMonitor){
+      try{await monitor('ERROR',decision||scheduleDecision(DEFAULT_CONFIG,now,'schedule'),safeError(error));}
+      catch(logError){console.error('排程失敗且監控回寫失敗:',safeError(logError));}
+    }
+    throw error;
+  }
 }
+
 main().catch(async error=>{
   console.error('Weekly-report run failed:',safeError(error));
   process.exitCode=1;

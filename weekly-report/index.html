@@ -2,11 +2,11 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>EHS 自動週報管理中心 R1.0.2</title>
+<meta name="robots" content="noindex,nofollow"><title>EHS 自動週報管理中心 R1.0.3</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<header><div class="bar"><a href="../index.html">← EHS 入口網站</a><div><strong>EHS 自動週報管理中心</strong><small>R1.0.2　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
+<header><div class="bar"><a href="../index.html">← EHS 入口網站</a><div><strong>EHS 自動週報管理中心</strong><small>R1.0.3　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
 <main>
 <section id="gate" class="card gate"><h1>管理員身分驗證</h1><p>本頁僅開放現有 EHS 入口平台的指定管理員使用。帳號不符時不會讀取週報設定。</p><p id="auth-message" class="message">正在檢查登入狀態…</p><button id="login">使用 EHS 管理員 Google 帳號登入</button></section>
 <div id="app" hidden>
@@ -18,16 +18,18 @@
 <div class="actions"><button id="save">儲存週報設定至 Firebase</button><button id="preview" class="outline">預覽目前週報</button><button id="test" class="outline">立即測試 Discord（佇列）</button></div>
 <section class="card"><h2>一次性自動排程測試</h2><p class="hint">不用修改正式的星期日週報排程。設定一個測試日期與分鐘，等待 GitHub Actions 自動觸發並寄出標示「自動排程測試」的訊息；測試不占用正式週報發送次數。</p><div class="fields"><label>測試日期與時間（台灣）<input id="scheduled-test-time" type="datetime-local" step="60"></label><button id="schedule-test" type="button">安排一次自動推播測試</button></div></section>
 <p id="notice" role="status" class="message"></p>
+<p id="test-pending-status" class="message">尚未查詢一次性測試狀態。</p>
 <section class="card"><h2>週報預覽</h2><p class="hint">只在本人登入後讀取 Firestore，不會傳送到 Discord。</p><pre id="report-preview">按「預覽目前週報」查看內容。</pre></section>
 <section class="card"><h2>五、自動排程監控</h2>
-  <p class="hint">本頁可看到 GitHub 最近一次實際檢查、未發送原因，以及最近正式發送結果。若超過 20 分鐘沒有檢查，請到 GitHub Actions 排查。</p>
+  <p class="hint">本頁獨立監控 GitHub Scheduled 心跳，即使正式每週寄送關閉也會警示長時間未觸發；顯示每次實際執行（不是每次預定時刻），不代表 Discord 已寄送。</p>
   <div class="monitor-grid">
     <div><small>下次預定時段</small><strong id="next-scheduled">尚未載入</strong></div>
     <div><small>最近 GitHub 排程檢查</small><strong id="last-checked">尚未載入</strong></div>
     <div><small>最近排程結果</small><strong id="last-result">尚未載入</strong></div>
     <div><small>最近正式發送</small><strong id="last-success">尚未載入</strong></div>
   </div><p class="message" id="monitor-details">尚未查詢。</p>
-  <div class="actions"><button id="refresh-monitor" class="outline">重新整理監控</button><button id="audit" class="outline">最近排程事件</button></div><div class="history-list" id="audit-list"></div>
+  <p class="hint" id="recent-count">新版逐次檢查紀錄待載入。</p>
+  <div class="actions"><button id="refresh-monitor" class="outline">重新整理監控</button><button id="audit" class="outline">最近逐次排程紀錄</button></div><div class="history-list" id="audit-list"></div>
 </section>
 <section class="card"><h2>歷史發送紀錄</h2><div class="actions"><button id="history" class="outline">重新整理紀錄</button><button id="requests" class="outline">查看測試佇列</button></div><div id="history-list" class="history-list">尚未查詢。</div></section>
 </div></main>

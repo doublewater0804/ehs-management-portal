@@ -2,6 +2,11 @@
 // Existing cloud entries (including hidden or reclassified entries) take precedence.
 const registrations = [
   {
+    id: 'ehs-smart-calendar-r0', title: 'EHS 智慧行事曆',
+    description: '月份行事曆、中文智慧新增、活動分類、Google 日曆 CSV 匯入／匯出及 Discord 提醒。',
+    href: 'calendar/index.html', category: 'general', order: 52, visible: true, favorite: false
+  },
+  {
     id: 'storage-facilities',
     title: '防止貯存系統污染地下水體-貯存設施統計表',
     description: '管理地上儲槽、地下儲槽與貯存容器基本資料，共用監測設定、井數統計及 Excel 匯出。',

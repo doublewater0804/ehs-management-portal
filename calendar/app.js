@@ -2,7 +2,8 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut,setPersistence,browserLocalPersistence} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,getDocs,onSnapshot,serverTimestamp,writeBatch} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,allowedEmail} from './config.js';
-import {pad,validISO,localDate,parseSmart,googleExport,googleImport,monthOccurrences} from './logic.js';
+import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.2';
+import {icsExport,icsImport} from './ics.js?v=R0.2';
 import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
@@ -126,10 +127,10 @@ $('showHistory').onclick=safe(async()=>{
 });
 document.querySelectorAll('.closeDialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 $('prevMonth').onclick=()=>setView(month===0?year-1:year,(month+11)%12);$('nextMonth').onclick=()=>setView(month===11?year+1:year,(month+1)%12);$('thisMonth').onclick=()=>setView(Number(now.slice(0,4)),Number(now.slice(5,7))-1);$('search').oninput=render;
-$('csvImport').onclick=()=>{if(!user)return tell('請先登入',true);$('csvFile').click()};
-$('csvFile').onchange=safe(async e=>{let file=e.target.files?.[0];if(!file)return;let csv=await file.text();const {events:rows,errors}=googleImport(csv);const active=activeCats();const defaultCategory=active.find(c=>c.id==='other')?.id||active[0]?.id||'';rows.forEach(x=>x.categoryId=defaultCategory);let existing=new Set(events.map(e=>[e.title,e.startDate,e.startTime].join('|')));pendingImport=rows.map(x=>({...x,duplicate:existing.has([x.title,x.startDate,x.startTime].join('|'))||events.some(e=>e.repeat&&e.repeat!=='none'&&e.title===x.title&&e.startTime===x.startTime&&monthOccurrences([e],Number(x.startDate.slice(0,4)),Number(x.startDate.slice(5,7))-1).some(v=>v.occurrenceDate===x.startDate))}));$('importSummary').textContent=`辨識 ${rows.length} 筆，格式問題 ${errors.length} 筆。${errors.slice(0,5).join('；')}`;$('importRows').replaceChildren();pendingImport.forEach((ev,i)=>{let line=el('div','importRow'),check=el('input');check.type='checkbox';check.checked=!ev.duplicate;check.addEventListener('change',()=>ev.selected=check.checked);ev.selected=check.checked;line.append(check,el('label','',`${ev.startDate} ${ev.startTime||(ev.allDay?'全天':'未定時間')}｜${ev.title}${ev.duplicate?'（可能重複，預設不匯入）':''}`));$('importRows').append(line)});$('importDialog').showModal();e.target.value=''});
+$('icsImport').onclick=()=>{if(!user)return tell('請先登入',true);$('icsFile').click()};
+$('icsFile').onchange=safe(async e=>{let file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw Error('ICS 檔案不可超過 5 MB');if(!/\.ics$/i.test(file.name))throw Error('請選擇 .ics 檔案');let content=await file.text();const {events:rows,errors}=icsImport(content);if(!rows.length)throw Error('ICS 沒有可安全匯入的活動。'+errors.slice(0,3).join('；'));const active=activeCats();const defaultCategory=active.find(c=>c.id==='other')?.id||active[0]?.id||'';rows.forEach(x=>{if(!active.some(c=>c.id===x.categoryId))x.categoryId=defaultCategory;});let existing=new Set(events.map(e=>[e.title,e.startDate,e.startTime].join('|')));let inFile=new Set();pendingImport=rows.map(x=>{const fingerprint=[x.title,x.startDate,x.startTime].join('|');const duplicateWithin=inFile.has(fingerprint);inFile.add(fingerprint);return {...x,duplicate:duplicateWithin||existing.has([x.title,x.startDate,x.startTime].join('|'))||events.some(e=>e.repeat&&e.repeat!=='none'&&e.title===x.title&&e.startTime===x.startTime&&monthOccurrences([e],Number(x.startDate.slice(0,4)),Number(x.startDate.slice(5,7))-1).some(v=>v.occurrenceDate===x.startDate))};});$('importSummary').textContent=`可匯入 ${rows.length} 筆；跳過 ${errors.length} 筆不支援或格式錯誤的行程。${errors.slice(0,5).join('；')}`;$('importRows').replaceChildren();pendingImport.forEach((ev,i)=>{let line=el('div','importRow'),check=el('input');check.type='checkbox';check.checked=!ev.duplicate;check.addEventListener('change',()=>ev.selected=check.checked);ev.selected=check.checked;line.append(check,el('label','',`${ev.startDate} ${ev.startTime||(ev.allDay?'全天':'未定時間')}｜${ev.title}${ev.duplicate?'（可能重複，預設不匯入）':''}`));$('importRows').append(line)});$('importDialog').showModal();}finally{e.target.value='';}});
 $('saveImported').onclick=safe(async()=>{assertOnline();let rows=pendingImport.filter(e=>e.selected);for(const obj of rows){const {duplicate,selected,...event}=obj;await saveEvent(event)}$('importDialog').close();tell(`成功匯入 ${rows.length} 筆行程`)});
-$('csvExport').onclick=()=>{
+$('icsExport').onclick=()=>{
  if(!user)return tell('請先登入',true);
  $('exportFrom').value=dateKey(year,month,1);
  $('exportTo').value=dateKey(year,month,new Date(year,month+1,0).getDate());
@@ -147,12 +148,12 @@ $('confirmExport').onclick=safe(async()=>{
   const y=Math.floor(n/12),m=n%12;
   view.push(...monthOccurrences(events,y,m).filter(e=>e.occurrenceDate>=from&&e.occurrenceDate<=to&&!filter.has(e.categoryId)&&(!q||[e.title,e.location,e.owner,e.description].some(t=>String(t||'').toLowerCase().includes(q)))));
  }
- const {csv,skipped,validCount}=googleExport(view);
- if(skipped.length&&!confirm(`${skipped.length} 筆缺少完整起迄時間，無法匯出。確定只匯出 ${validCount} 筆嗎？`))return;
- if(!validCount)return tell('日期區間內沒有符合 Google CSV 格式的完整行程',true);
- const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
- a.href=url;a.download=`EHS_GoogleCalendar_${from.replaceAll('-','')}_${to.replaceAll('-','')}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
- $('exportDialog').close();tell(`已匯出 ${validCount} 筆，略過 ${skipped.length} 筆`);
+ const {ics,skipped,validCount,componentCount}=icsExport(view);
+ if(skipped.length){const details=skipped.slice(0,8).map(e=>`${e.occurrenceDate||e.startDate} ${e.title||'（未命名）'}`).join('\n');if(!confirm(`${skipped.length} 筆缺少完整起迄時間或資料不正確，無法匯出：\n${details}${skipped.length>8?'\n…':''}\n確定只匯出 ${validCount} 次活動嗎？`))return;}
+ if(!validCount)return tell('日期區間內沒有符合 ICS 格式的完整行程',true);
+ const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');
+ a.href=url;a.download=`EHS_GoogleCalendar_${from.replaceAll('-','')}_${to.replaceAll('-','')}.ics`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+ $('exportDialog').close();tell(`已匯出 ${validCount} 次活動（${componentCount} 個日曆項目），略過 ${skipped.length} 筆`);
 });
 function noteMonthKey(){return `${year}-${pad(month+1)}`;}
 function setNoteState(message){$('noteStatus').textContent=message;}

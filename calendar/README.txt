@@ -1,16 +1,22 @@
-EHS 智慧行事曆 R0.1（只更新本 calendar/ 子系統）
+EHS 智慧行事曆 R0.2｜Google 行事曆改用 ICS
 
-頁面：/ehs-management-portal/calendar/index.html
-沿用 ../portal/config.js Firebase Web 設定與既有 Google 登入；不需修改 Firestore Rules。
-本次新增「新增行程」功能列、當日行程上移、月份備註、完整年月標題及台灣政府辦公日曆底色。
-月份備註 Firebase 路徑：ehs_smart_calendar_r0/data/monthly_notes/YYYY-MM
-行程、分類、提醒及既有後端 GitHub Actions 的程式未更動。
+部署方式：這是行事曆子系統增量更新，將部署包內 calendar/ 的五個檔案上傳至 GitHub 儲存庫同名路徑；只覆蓋指定既有檔案，不覆蓋其他資料夾。
 
-假日來源：人事行政總處已核定的 2026、2027 年辦公日曆，內建於 holidays.js。
-紅色＝核定國定假日／補假；灰藍＝核定一般非上班日；白色＝核定上班日。
-其他年度不推測休假資訊，顯示「假日資料未提供」；政府年度資料更新後需更新 holidays.js。
-官方開放資料：https://data.gov.tw/dataset/14718
-2026 核定：https://www.dgpa.gov.tw/information?pid=12574&uid=82
-2027 核定：https://www.dgpa.gov.tw/information?pid=12983&uid=2
+新增：calendar/ics.js
+覆蓋：calendar/index.html、calendar/app.js、calendar/logic.js、calendar/README.txt
+不需要更新：calendar/config.js、calendar/holidays.js、calendar/style.css，以及 portal/、backend/、.github/workflows/ 和其他 EHS 子系統。
 
-正式部署請參閱獨立 R0.1 部署說明 PDF。
+版本 R0.2 功能：
+1. 匯入 Google Calendar .ics（單檔最多 5MB、最多 5000 個 VEVENT），先顯示預覽，疑似重複預設不勾選，按確認才寫入 Firebase。
+2. 匯出 Google Calendar .ics，套用選擇的日期區間、目前分類與搜尋篩選，最多一年。繁體中文 UTF-8，使用 RFC 5545 的 UTC 時間（正確由 Asia/Taipei 轉換），全天活動採日期格式。
+3. 可辨識基本每天／每週／每月週期規則 RRULE；匯出範圍內兩次以上的週期保留 RRULE。Google ICS 的複雜規則、多個 BYDAY、跳過日期 EXDATE、個別修改 RECURRENCE-ID、RDATE 等不會不正確簡化，而是顯示為無法匯入／提示處理。
+4. 沒有結束時間的非全天活動不會自動補一小時或當成全天；匯出前列出略過的行程。Google Calendar 匯入後不會與 EHS 雙向同步。
+5. 原本 EHS 的行程、分類、月份備註與 Firestore 路徑均沿用，不需要修改 Firebase Web 設定或 Firestore Rules。
+
+正式資料：仍在 esh-v85 專案內的 ehs_smart_calendar_r0/data/*；無資料遷移、無刪除舊資料。Google ICS 匯入前須檢查活動預覽及重複提示。
+
+備份與回復：部署前備份四個待覆蓋檔案。如需回復至 R0.1，將 R0.1 的 calendar/index.html、calendar/app.js、calendar/logic.js、calendar/README.txt 復原；ics.js 可保留不使用。已匯入 Firestore 的資料不會因回復程式而自動刪除。
+
+驗收：部署後開啟智慧行事曆，登入既有 Google 管理員帳號，測試 ICS 匯入預覽、確認儲存、重新整理、ICS 匯出及 Google 日曆匯入、智慧新增、分類、月份備註和假日底色。
+
+注意：本機通過 18 項 ICS/解析單元測試及程式靜態驗證；由於執行環境阻擋本機頁面導航，未完成自動化瀏覽器端到端及正式 Firebase／Google 匯入驗收。

@@ -1,1 +1,44 @@
 :root{font-family:system-ui,-apple-system,'Noto Sans TC',sans-serif;color:#14263c;background:#eef5fa}*{box-sizing:border-box}body{margin:0}header{background:#eaf3fa;padding:20px 3%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}h1{margin:0;font-size:28px}h1 small{font-size:12px;color:#65809a}header p{margin:6px 0;color:#617990}.topActions,.buttons,.categories,.toolbarBottom,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,a#home{cursor:pointer;border:1px solid #d7e1ed;background:#fff;border-radius:12px;padding:10px 13px;font-size:14px;color:#15263b;text-decoration:none}button:hover,a#home:hover{background:#eef5ff}button.primary{background:#2463e9;color:white;border-color:#2463e9}button.danger{color:#b42318;border-color:#f2b7b4}.chip{border-radius:20px;padding:8px 12px;background:white;color:#62748b;font-size:13px}.notice{margin:10px auto;max-width:1400px;padding:12px 15px;border:1px solid #e8bb82;background:#fff8e7;border-radius:12px}main{max-width:1500px;margin:auto;padding:12px 18px}.panel{background:white;border:1px solid #d9e5f2;border-radius:20px;padding:17px;margin-bottom:16px}.toolbar{display:grid;gap:13px}.monthTitle{font-size:19px;font-weight:700;min-width:122px;text-align:center}.buttons input{flex:1;min-width:190px;border:1px solid #d7e1ed;border-radius:12px;padding:11px}.categories{border-top:1px solid #e5eaf2;padding-top:12px}.catToggle{display:flex;align-items:center;gap:6px;font-size:14px}.dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0}.toolbarBottom{justify-content:space-between}.muted{color:#728194;font-size:13px}.calendarPanel{padding:7px}.weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekdays{text-align:center;font-weight:700;color:#60748e}.weekdays span{padding:12px 0}.day{border:1px solid #e2eaf4;min-height:115px;padding:7px;overflow:hidden;cursor:pointer}.day:hover{background:#f5f9ff}.day.other{background:#f7f9fb}.day.today{outline:2px solid #2563eb;outline-offset:-2px}.dayNum{font-weight:600;font-size:14px;margin-bottom:5px}.eventPill{font-size:12px;padding:4px;border-radius:6px;margin:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;border:0;text-align:left;width:100%;color:#10213a}.eventPill.done{text-decoration:line-through;opacity:.55}.eventPill.cancel{text-decoration:line-through;opacity:.5}.detailItem{border-bottom:1px solid #edf0f5;padding:10px 3px;display:flex;gap:12px;align-items:center;justify-content:space-between}.detailItem button{max-width:100%;text-align:left}dialog{width:min(680px,calc(100vw - 20px));border:1px solid #d8e2ee;border-radius:18px;padding:22px;max-height:88vh;overflow-y:auto;box-shadow:0 18px 60px #14263c33}dialog::backdrop{background:#0e234c80}dialog h2{margin:0 0 14px;font-size:20px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.field label{font-weight:600;font-size:13px}.field input,.field select,.field textarea,dialog textarea,.categoryAdd input{border:1px solid #cfdbea;border-radius:9px;padding:10px;font:inherit;width:100%}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.actions{justify-content:flex-end;margin-top:16px}#smartPreview{margin-top:15px}.previewRow,.catRow,.importRow{border:1px solid #e1e6ef;padding:10px;border-radius:10px;margin:8px 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap}.previewRow input{width:auto;flex:1;min-width:85px}.previewRow input[type=date]{max-width:150px}.previewRow input[type=time]{max-width:115px}.previewRow input[type=text]{min-width:180px}.categoryAdd{display:flex;gap:8px;margin-top:15px}.categoryAdd input[type=color]{width:65px;min-width:65px;padding:2px}.catRow input[type=text]{min-width:130px;flex:1;border:1px solid #dbe2ec;padding:8px;border-radius:8px}.catRow input[type=color]{width:45px;height:36px;padding:0}.importRow{align-items:flex-start}.importRow label{flex:1;min-width:200px;overflow-wrap:anywhere}#detail:empty:after{content:'尚無行程';color:#8694a8}@media(max-width:720px){header{padding:14px}h1{font-size:23px}main{padding:8px}.panel{padding:10px}.calendarPanel{padding:2px}.day{min-height:73px;padding:3px}.dayNum{font-size:12px}.eventPill{font-size:10px;padding:3px 1px}.buttons button{padding:9px}.two{grid-template-columns:1fr}.monthTitle{min-width:95px;font-size:16px}dialog{padding:14px}}
+
+/* R0.1：緊湊工具列、獨立新增行程列、當日行程上移、月份備註 */
+.toolbar{gap:10px;padding:13px 16px}
+.toolbarMain,.toolbarSecondary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.toolbarMain{border-bottom:1px solid #e5eaf2;padding-bottom:10px}
+.monthNavigation,.toolbarFunctions,.toolbarTools,.addActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.monthNavigation{flex-shrink:0}
+.toolbarFunctions{flex:1;justify-content:flex-end}
+.toolbarFunctions #search{flex:1;min-width:210px;max-width:340px;border:1px solid #d7e1ed;border-radius:12px;padding:11px;font-size:14px}
+.toolbarSecondary .categories{padding-top:0;border-top:0;flex:1}
+.toolbarTools button{padding:8px 11px}
+.addPanel{display:flex;align-items:center;justify-content:flex-start;gap:18px;flex-wrap:wrap;padding:13px 17px}
+.addPanel h2,.detailPanel h2,.calendarHeading h2,.notesHeading h2{font-size:19px;line-height:1.4;margin:0}
+.addActions{gap:10px}
+.addActions button{min-width:160px}
+.detailPanel{padding:15px 18px}
+.detailPanel #detail{margin-top:9px}
+.emptyDetail{font-size:14px;color:#728194;margin:9px 0}
+.calendarPanel{padding:13px 11px 10px}
+.calendarHeading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 2px 5px}
+.holidayLegend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;color:#55677d}
+.holidayLegend span{display:inline-flex;gap:5px;align-items:center}
+.legendDot{width:13px;height:13px;border:1px solid #cbd5e1;border-radius:4px;display:inline-block}
+.holidayLegendDot{background:#fde6e6;border-color:#efb3b3}
+.restLegendDot{background:#e9eff6;border-color:#d1dce8}
+.workLegendDot{background:#fff}
+.holidayStatus{color:#617990;font-size:12px;margin:6px 3px 7px}
+.day.office-holiday{background:#fde6e6}
+.day.office-rest{background:#e9eff6}
+.day.office-work{background:white}
+.day.office-unknown{background:#f7f9fb}
+.day.office-holiday:hover{background:#f9d4d4}
+.day.office-rest:hover{background:#dae7f5}
+.day.selected{box-shadow:inset 0 0 0 2px #2563eb}
+.holidayName{display:block;font-size:11px;color:#a12632;font-weight:600;margin:-1px 0 4px;line-height:1.45;overflow-wrap:anywhere}
+.notesPanel{padding:16px 18px}
+.notesHeading{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+#monthNote{display:block;width:100%;min-height:116px;max-height:60vh;resize:vertical;font:inherit;font-size:15px;line-height:1.65;padding:12px 14px;border:1px solid #cfdbea;border-radius:12px;background:#fff;color:#14263c}
+#monthNote:disabled{background:#f6f8fb;color:#7b8794}
+.notesFooter{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px}
+#saveMonthNote:disabled,.addActions button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:800px){.toolbarMain,.toolbarSecondary{align-items:stretch}.toolbarFunctions{justify-content:flex-start}.toolbarFunctions #search{max-width:none;flex-basis:100%}.addPanel{align-items:flex-start;gap:10px}.addActions{flex:1}.addActions button{flex:1;min-width:145px}.day{min-height:92px}.calendarHeading h2{font-size:17px}}
+@media(max-width:520px){.toolbar{padding:10px}.toolbarTools{width:100%}.toolbarTools button{flex:1}.holidayLegend{gap:8px;font-size:11px}.day{min-height:75px}.dayNum{font-size:12px}.holidayName{font-size:9px}.addActions{width:100%}.addActions button{min-width:130px}.notesPanel{padding:12px}.notesFooter button{width:100%}}

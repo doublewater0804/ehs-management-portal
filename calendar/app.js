@@ -3,9 +3,11 @@ import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirec
 import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,getDocs,onSnapshot,serverTimestamp,writeBatch} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,allowedEmail} from './config.js';
 import {pad,validISO,localDate,parseSmart,googleExport,googleImport,monthOccurrences} from './logic.js';
+import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
-const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`; 
+const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`,monthlyNotesPath=`${root}/data/monthly_notes`;
+let noteUnsub=null,noteKey='',noteOriginal='',noteDirty=false,notePending=false,noteLoaded=false; 
 const dateKey=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
 function tell(message,error=false){$('notice').hidden=false;$('notice').textContent=message;$('notice').style.borderColor=error?'#e19494':'#e8bb82'}
 function safe(fn){return async(...args)=>{try{await fn(...args)}catch(e){console.error(e);tell('操作失敗：'+(e?.message||e),true)}}}
@@ -57,9 +59,42 @@ function category(e){return categories.find(c=>c.id===e.categoryId)||{name:'未�
 function render(){renderCategories();renderCalendar();renderDay()}
 function renderCategories(){const area=$('categories');area.replaceChildren();categories.forEach(c=>{let label=el('label','catToggle');let input=document.createElement('input');input.type='checkbox';input.checked=!filter.has(c.id);input.addEventListener('change',()=>{if(input.checked)filter.delete(c.id);else filter.add(c.id);renderCalendar();renderDay()});label.append(input);const dot=el('i','dot');dot.style.background=c.color;label.append(dot,txt(el('span'),c.name+(c.active?'':'（停用）')));area.append(label)})}
 function shownEvents(){let q=$('search').value.trim().toLowerCase();return monthOccurrences(events,year,month).filter(e=>!filter.has(e.categoryId)&&(!q||[e.title,e.location,e.owner,e.description].some(t=>String(t||'').toLowerCase().includes(q))))}
-function renderCalendar(){let cal=$('calendar');cal.replaceChildren();$('monthLabel').textContent=`${year} 年 ${month+1} 月`;let day0=new Date(year,month,1).getDay(),last=new Date(year,month+1,0).getDate(),count=Math.ceil((day0+last)/7)*7;let view=shownEvents();for(let idx=0;idx<count;idx++){let d=idx-day0+1;let cell=el('div',`day ${d<1||d>last?'other':''}`);if(d>=1&&d<=last){let iso=dateKey(year,month,d);if(iso===today)cell.classList.add('today');cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',iso+' 行程');cell.append(el('div','dayNum',String(d)));cell.addEventListener('click',()=>{selected=iso;renderDay()});cell.addEventListener('keydown',e=>{if(e.key==='Enter'){selected=iso;renderDay()}});const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));same.slice(0,4).forEach(ev=>{let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${ev.startTime||(ev.allDay?'全天':'未定時間')} ${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${category(ev).color}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});if(same.length>4)cell.append(el('small','muted',`另有 ${same.length-4} 件`))}cal.append(cell)}}
-function renderDay(){let area=$('detail');area.replaceChildren();$('detailTitle').textContent=`${selected} 行程`;const add=el('button','','＋ 新增當日行程');add.disabled=!user;add.addEventListener('click',()=>openEditor(null,selected));area.append(add);const same=shownEvents().filter(e=>e.occurrenceDate===selected).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));for(const ev of same){const row=el('div','detailItem');const b=el('button','',`${ev.startTime||(ev.allDay?'全天':'未定時間')}　${ev.title}　〔${category(ev).name}・${{pending:'待辦',completed:'已完成',cancelled:'取消',postponed:'延期'}[ev.status]||ev.status}〕`);b.addEventListener('click',()=>openEditor(ev));row.append(b);if(ev.location)row.append(el('small','muted',ev.location));area.append(row)}}
-function setView(y,m){year=y;month=m;selected=dateKey(year,month,1);render()}
+function renderCalendar(){
+ let cal=$('calendar');cal.replaceChildren();
+ $('monthLabel').textContent=`${year} 年 ${month+1} 月`;
+ $('calendarHeading').textContent=`${year} 年 ${month+1} 月｜月份行事曆`;
+ $('holidayStatus').textContent=officeYearSupported(year)?'依行政院人事行政總處政府行政機關辦公日曆（核定年度）標示；非民間企業個別休假規定。':`${year} 年尚未提供已核對的政府辦公日曆資料，暫不標示上班／休假底色。`;
+ let day0=new Date(year,month,1).getDay(),last=new Date(year,month+1,0).getDate(),count=Math.ceil((day0+last)/7)*7;
+ let view=shownEvents();for(let idx=0;idx<count;idx++){
+  let d=idx-day0+1;let cell=el('div',`day ${d<1||d>last?'other':''}`);
+  if(d>=1&&d<=last){
+   let iso=dateKey(year,month,d);const office=officeDay(iso);
+   cell.classList.add(`office-${office.kind}`);
+   if(iso===today)cell.classList.add('today');if(iso===selected)cell.classList.add('selected');
+   cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',iso+(office.label?' '+office.label:'')+' 行程');
+   cell.append(el('div','dayNum',String(d)));
+   if(office.label)cell.append(el('small','holidayName',office.label));
+   cell.addEventListener('click',()=>{selected=iso;renderCalendar();renderDay()});
+   cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=iso;renderCalendar();renderDay()}});
+   const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+   same.slice(0,4).forEach(ev=>{let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${ev.startTime||(ev.allDay?'全天':'未定時間')} ${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${category(ev).color}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});
+   if(same.length>4)cell.append(el('small','muted',`另有 ${same.length-4} 件`));
+  }
+  cal.append(cell);
+ }
+}
+function renderDay(){
+ let area=$('detail');area.replaceChildren();$('detailTitle').textContent=`${selected}｜當日行程`;
+ const same=shownEvents().filter(e=>e.occurrenceDate===selected).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+ if(!same.length)area.append(el('p','emptyDetail','當日尚無行程，可使用上方「當日行程新增」建立。'));
+ for(const ev of same){const row=el('div','detailItem');const b=el('button','',`${ev.startTime||(ev.allDay?'全天':'未定時間')}　${ev.title}　〔${category(ev).name}・${{pending:'待辦',completed:'已完成',cancelled:'取消',postponed:'延期'}[ev.status]||ev.status}〕`);b.addEventListener('click',()=>openEditor(ev));row.append(b);if(ev.location)row.append(el('small','muted',ev.location));area.append(row)}
+ $('addToday').disabled=!user;
+}
+function setView(y,m){
+ if(y===year&&m===month){selected=dateKey(y,m,1);render();return;}
+ if((noteDirty||notePending)&&!confirm(`「${noteKey}」月份備註有未儲存或正在儲存的內容，確定放棄修改並切換月份嗎？`))return;
+ year=y;month=m;selected=dateKey(year,month,1);render();loadMonthNote();
+}
 function openEditor(ev=null,date=selected){if(!user)return tell('請先登入',true);const form=$('editorForm');form.reset();form.elements.id.value=ev?.id||'';form.elements.title.value=ev?.title||'';form.elements.startDate.value=ev?.startDate||date;form.elements.startTime.value=ev?.startTime||'';form.elements.endDate.value=ev?.endDate||'';form.elements.endTime.value=ev?.endTime||'';form.elements.location.value=ev?.location||'';form.elements.owner.value=ev?.owner||'';form.elements.description.value=ev?.description||'';form.elements.status.value=ev?.status||'pending';form.elements.reminder.value=ev?.reminder||notificationSettings.defaultReminder||'off';form.elements.reminderMinutes.value=ev?.reminderMinutes??60;form.elements.repeat.value=ev?.repeat||'none';form.elements.repeatUntil.value=ev?.repeatUntil||'';form.elements.allDay.checked=!!ev?.allDay;let sel=form.elements.categoryId;sel.replaceChildren();const choices=categories.filter(c=>c.active||c.id===ev?.categoryId);for(let c of choices){let op=new Option(c.name+(c.active?'':'（停用）'),c.id);sel.add(op)}sel.value=ev?.categoryId||(choices.find(c=>c.id==='other')?.id||choices[0]?.id||'');$('editorTitle').textContent=ev?(ev.repeat&&ev.repeat!=='none'?'編輯重複行程（整個系列）':'編輯行程'):'新增行程';$('deleteEvent').hidden=!ev;$('editorDialog').showModal()}
 function editorPayload(){let f=$('editorForm').elements;return Object.fromEntries(['title','startDate','startTime','endDate','endTime','location','owner','description','status','reminder','reminderMinutes','categoryId','repeat','repeatUntil'].map(k=>[k,f[k].value.trim()]).concat([['allDay',f.allDay.checked]]))}
 $('editorForm').addEventListener('submit',safe(async e=>{e.preventDefault();let id=$('editorForm').elements.id.value;await saveEvent(editorPayload(),id||null);$('editorDialog').close();tell('行程已儲存')}));
@@ -119,8 +154,49 @@ $('confirmExport').onclick=safe(async()=>{
  a.href=url;a.download=`EHS_GoogleCalendar_${from.replaceAll('-','')}_${to.replaceAll('-','')}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
  $('exportDialog').close();tell(`已匯出 ${validCount} 筆，略過 ${skipped.length} 筆`);
 });
-function stopListeners(){unsubs.forEach(x=>x());unsubs=[]}
+function noteMonthKey(){return `${year}-${pad(month+1)}`;}
+function setNoteState(message){$('noteStatus').textContent=message;}
+function resetNoteSubscription(){
+ if(noteUnsub){noteUnsub();noteUnsub=null;}
+ noteKey=noteMonthKey();noteOriginal='';noteDirty=false;notePending=false;noteLoaded=false;
+ const input=$('monthNote');input.value='';input.disabled=!user;
+ $('saveMonthNote').disabled=!user;
+ $('notesTitle').textContent=`${year} 年 ${month+1} 月｜月份備註`;
+ setNoteState(user?'雲端讀取中…':'登入後可編輯及儲存');
+}
+function loadMonthNote(){
+ resetNoteSubscription();if(!db||!user)return;
+ const key=noteKey;
+ noteUnsub=onSnapshot(doc(db,monthlyNotesPath,key),snap=>{
+  if(key!==noteKey)return;
+  const latest=snap.exists()?String(snap.data().text||''):'';
+  if(noteDirty){
+   if(latest!==noteOriginal&&latest!==$('monthNote').value)setNoteState('雲端備註已更新；目前輸入尚未儲存，請核對');
+   return;
+  }
+  noteOriginal=latest;noteLoaded=true;$('monthNote').value=latest;
+  setNoteState(latest?'雲端已同步':'本月尚無備註');
+ },err=>{if(key===noteKey){noteLoaded=false;setNoteState('備註讀取失敗');tell('月份備註讀取失敗：'+err.message,true)}});
+}
+$('monthNote').addEventListener('input',()=>{
+ if(!user)return;
+ noteDirty=$('monthNote').value!==noteOriginal;
+ setNoteState(noteDirty?'尚未儲存':(noteLoaded?'已同步':'雲端讀取中…'));
+});
+$('saveMonthNote').addEventListener('click',safe(async()=>{
+ assertOnline();if(!noteLoaded)throw Error('備註尚未載入，請確認網路連線後再儲存');
+ if(notePending)return;
+ const key=noteKey,content=$('monthNote').value;
+ notePending=true;$('saveMonthNote').disabled=true;setNoteState('儲存中…');
+ try{
+  await setDoc(doc(db,monthlyNotesPath,key),{text:content,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),updatedAt:serverTimestamp(),updatedBy:user.email});
+  if(key===noteKey){noteOriginal=content;noteDirty=$('monthNote').value!==content;setNoteState(noteDirty?'已儲存先前內容，但有新的未儲存修改':'已儲存至 Firebase');}
+ }catch(err){if(key===noteKey)setNoteState('備註儲存失敗，內容仍保留');throw err;}finally{notePending=false;$('saveMonthNote').disabled=!user;}
+}));
+window.addEventListener('beforeunload',e=>{if(noteDirty||notePending){e.preventDefault();e.returnValue='';}});
+$('addToday').onclick=()=>openEditor(null,selected);
+function stopListeners(){unsubs.forEach(x=>x());unsubs=[];if(noteUnsub){noteUnsub();noteUnsub=null;}}
 async function init(){if(!firebaseConfig.apiKey||!firebaseConfig.appId||firebaseConfig.projectId!=='esh-v85'){tell('入口網站 Firebase 設定不完整，請確認 portal/config.js。',true);$('cloudStatus').textContent='設定異常';render();return}
- const app=initializeApp(firebaseConfig,'ehs-portal');auth=getAuth(app);db=getFirestore(app);await setPersistence(auth,browserLocalPersistence);getRedirectResult(auth).catch(e=>tell('Google 登入返回失敗：'+e.message,true));$('signIn').onclick=safe(async()=>{let provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});try{await signInWithPopup(auth,provider)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))await signInWithRedirect(auth,provider);else throw e}});$('signOut').onclick=safe(()=>signOut(auth));
- onAuthStateChanged(auth,async current=>{stopListeners();user=null;events=[];categories=[...initialCategories];notificationSettings={enabled:true,defaultReminder:'off'};$('signIn').hidden=!!current;$('signOut').hidden=!current;if(!current){$('cloudStatus').textContent='尚未登入';render();return}if(current.email?.toLowerCase()!==allowedEmail.toLowerCase()){$('cloudStatus').textContent='未授權帳號';tell('此帳號沒有此行事曆的存取權限',true);render();return}user=current;$('cloudStatus').textContent='雲端連線中';unsubs.push(onSnapshot(collection(db,eventsPath),snap=>{events=snap.docs.map(d=>({id:d.id,...d.data()}));render();$('cloudStatus').textContent='● 雲端已同步'},e=>tell('行程讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(doc(db,settingsPath,'reminders'),snap=>{notificationSettings={enabled:true,defaultReminder:'off',...(snap.exists()?snap.data():{})};renderNotificationSettings()},e=>tell('提醒設定讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(collection(db,categoriesPath),snap=>{let custom=snap.docs.map(d=>({id:d.id,...d.data()}));let ids=new Set(custom.map(x=>x.id));categories=[...initialCategories.map(c=>custom.find(x=>x.id===c.id)||c),...custom.filter(c=>!initialCategories.some(d=>d.id===c.id))];render();if($('categoryDialog').open)renderCategoryRows()},e=>tell('分類讀取失敗：'+e.message,true)));});}
-render();init().catch(e=>tell('Firebase 初始化失敗：'+e.message,true));
+ const app=initializeApp(firebaseConfig,'ehs-portal');auth=getAuth(app);db=getFirestore(app);await setPersistence(auth,browserLocalPersistence);getRedirectResult(auth).catch(e=>tell('Google 登入返回失敗：'+e.message,true));$('signIn').onclick=safe(async()=>{let provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});try{await signInWithPopup(auth,provider)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))await signInWithRedirect(auth,provider);else throw e}});$('signOut').onclick=safe(async()=>{if((noteDirty||notePending)&&!confirm('月份備註尚未儲存或正在儲存，確定登出並放棄修改嗎？'))return;await signOut(auth)});
+ onAuthStateChanged(auth,async current=>{stopListeners();user=null;events=[];categories=[...initialCategories];notificationSettings={enabled:true,defaultReminder:'off'};$('signIn').hidden=!!current;$('signOut').hidden=!current;if(!current){$('cloudStatus').textContent='尚未登入';resetNoteSubscription();render();return}if(current.email?.toLowerCase()!==allowedEmail.toLowerCase()){$('cloudStatus').textContent='未授權帳號';tell('此帳號沒有此行事曆的存取權限',true);resetNoteSubscription();render();return}user=current;$('cloudStatus').textContent='雲端連線中';loadMonthNote();unsubs.push(onSnapshot(collection(db,eventsPath),snap=>{events=snap.docs.map(d=>({id:d.id,...d.data()}));render();$('cloudStatus').textContent='● 雲端已同步'},e=>tell('行程讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(doc(db,settingsPath,'reminders'),snap=>{notificationSettings={enabled:true,defaultReminder:'off',...(snap.exists()?snap.data():{})};renderNotificationSettings()},e=>tell('提醒設定讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(collection(db,categoriesPath),snap=>{let custom=snap.docs.map(d=>({id:d.id,...d.data()}));let ids=new Set(custom.map(x=>x.id));categories=[...initialCategories.map(c=>custom.find(x=>x.id===c.id)||c),...custom.filter(c=>!initialCategories.some(d=>d.id===c.id))];render();if($('categoryDialog').open)renderCategoryRows()},e=>tell('分類讀取失敗：'+e.message,true)));});}
+render();resetNoteSubscription();init().catch(e=>tell('Firebase 初始化失敗：'+e.message,true));

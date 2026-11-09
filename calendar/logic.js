@@ -78,28 +78,74 @@ export function parseSmart(input,base=localDate()) {
   }
   return {items,errors};
 }
-// 按月展開重複行程，原始事件只儲存一次；點選個別日期編輯會修改整個系列。
-export function monthOccurrences(events,year,month) {
-  const begin=`${year}-${pad(month+1)}-01`, days=new Date(Date.UTC(year,month+1,0)).getUTCDate();
-  const end=`${year}-${pad(month+1)}-${pad(days)}`;
-  const result=[];
-  for(const e of events) {
-    if(!validISO(e.startDate)||e.startDate>end)continue;
-    const rule=e.repeat||'none';
-    if(rule==='none'){if(e.startDate>=begin)result.push({...e,occurrenceDate:e.startDate});continue;}
-    const lower=e.startDate>begin?e.startDate:begin;
-    for(let d=dayNumber(lower);d<=dayNumber(end);d++) {
-      const s=dateAt(d);
-      if(e.repeatUntil&&s>e.repeatUntil)break;
-      const n=d-dayNumber(e.startDate);
-      const ok=rule==='daily'||(rule==='weekly'&&n%7===0)||(rule==='monthly'&&Number(s.slice(8))===Number(e.startDate.slice(8)));
-      if(ok)result.push({...e,occurrenceDate:s,isOccurrence:s!==e.startDate});
+// R0.4：月曆以「實際涵蓋日期」呈現一筆事件；不寫入多筆資料。
+// endDate 在 EHS 編輯表單中是包含在內的日期；只有「定時事件剛好於 00:00 結束」
+// 才不占用結束日。沒有設定時間的跨日活動仍依日期區間顯示。
+export function visibleEndDate(e) {
+  if (!validISO(e?.startDate)) return '';
+  if (!e.endDate) return e.startDate;
+  if (!validISO(e.endDate) || e.endDate < e.startDate) return '';
+  if (!e.allDay && e.startTime && e.endTime === '00:00' && e.endDate > e.startDate)
+    return dateAt(dayNumber(e.endDate) - 1);
+  return e.endDate;
+}
+
+// 每個結果均攜帶：occurrenceDate（目前顯示日）、occurrenceStart（本次重複事件的真正開始日）。
+// 這兩個欄位僅供前端呈現／ICS 使用，不加入 Firestore。
+// 同一活動跨月／跨年依然只有原始 id，不會複製任何事件。
+export function monthOccurrences(events, year, month) {
+  const begin = `${year}-${pad(month + 1)}-01`;
+  const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const end = `${year}-${pad(month + 1)}-${pad(days)}`;
+  const firstDay = dayNumber(begin), lastDay = dayNumber(end);
+  const result = [];
+  for (const e of events) {
+    if (!validISO(e.startDate) || e.startDate > end) continue;
+    const visibleEnd = visibleEndDate(e);
+    if (!visibleEnd) continue;
+    const startDay = dayNumber(e.startDate);
+    const duration = dayNumber(visibleEnd) - startDay;
+    const rule = e.repeat || 'none';
+    // 從月初回溯「事件長度」，以納入上個月開始但本月仍持續的事件。
+    const firstStart = Math.max(startDay, firstDay - duration);
+    const lastStart = Math.min(lastDay, e.repeatUntil && validISO(e.repeatUntil)
+      ? dayNumber(e.repeatUntil) : lastDay);
+    if (lastStart < firstStart) continue;
+    for (let day = firstStart; day <= lastStart; day++) {
+      const offset = day - startDay;
+      const occurs = rule === 'none' ? offset === 0
+        : rule === 'daily' ? true
+        : rule === 'weekly' ? offset % 7 === 0
+        : rule === 'monthly' ? dateAt(day).slice(8) === e.startDate.slice(8)
+        : false;
+      if (!occurs) continue;
+      const occurrenceStart = dateAt(day);
+      const shownFrom = Math.max(day, firstDay), shownTo = Math.min(day + duration, lastDay);
+      for (let visibleDay = shownFrom; visibleDay <= shownTo; visibleDay++) {
+        result.push({ ...e, occurrenceStart, occurrenceDate: dateAt(visibleDay),
+          isOccurrence: occurrenceStart !== e.startDate });
+      }
+      if (rule === 'none') break;
     }
   }
   return result;
 }
-export function occursOn(e,date) {
-  if(!validISO(date)||!validISO(e.startDate)||date<e.startDate||(e.repeatUntil&&date>e.repeatUntil))return false;
-  const rule=e.repeat||'none', days=dayNumber(date)-dayNumber(e.startDate);
-  return rule==='none'?days===0:rule==='daily'||(rule==='weekly'&&days%7===0)||(rule==='monthly'&&date.slice(8)===e.startDate.slice(8));
+
+// 與月曆展開使用同一套跨日語意；僅用於本地日期判斷，不修改資料。
+export function occursOn(e, date) {
+  if (!validISO(date) || !validISO(e?.startDate)) return false;
+  const visibleEnd = visibleEndDate(e);
+  if (!visibleEnd || date < e.startDate) return false;
+  const duration = dayNumber(visibleEnd) - dayNumber(e.startDate);
+  const dateDay = dayNumber(date), baseDay = dayNumber(e.startDate);
+  const maxStart = Math.min(dateDay, e.repeatUntil && validISO(e.repeatUntil)
+    ? dayNumber(e.repeatUntil) : dateDay);
+  for (let day = Math.max(baseDay, dateDay - duration); day <= maxStart; day++) {
+    const n = day - baseDay;
+    if (e.repeat === 'daily' ||
+        (e.repeat === 'weekly' && n % 7 === 0) ||
+        (e.repeat === 'monthly' && dateAt(day).slice(8) === e.startDate.slice(8)) ||
+        ((!e.repeat || e.repeat === 'none') && n === 0)) return true;
+  }
+  return false;
 }

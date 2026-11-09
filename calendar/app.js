@@ -2,10 +2,10 @@ import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut,setPersistence,browserLocalPersistence} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,getDocs,onSnapshot,serverTimestamp,writeBatch} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,allowedEmail} from './config.js';
-import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.2';
-import {icsExport,icsImport} from './ics.js?v=R0.2';
+import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.4';
+import {icsExport,icsImport} from './ics.js?v=R0.4';
 import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
-import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.3';
+import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.4';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
 const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`,monthlyNotesPath=`${root}/data/monthly_notes`;
@@ -35,7 +35,7 @@ function snapshot(obj){if(!obj)return null;return Object.fromEntries(Object.entr
 // 寫入活動與操作歷史採同一 batch：避免已刪除但歷史紀錄未保存。
 async function saveEvent(ev,id){
  assertOnline();const normalized=validEvent({...ev});
- for(const key of ['id','createdAt','updatedAt','occurrenceDate','isOccurrence'])delete normalized[key];
+ for(const key of ['id','createdAt','updatedAt','occurrenceDate','isOccurrence','occurrenceStart'])delete normalized[key];
  const old=id?events.find(x=>x.id===id):null;
  if(id&&!old)throw Error('行程已不存在，請重新整理');
  const chosen=categories.find(c=>c.id===normalized.categoryId);
@@ -78,7 +78,10 @@ function renderCalendar(){
    if(office.label)cell.append(el('small','holidayName',office.label));
    cell.addEventListener('click',()=>{selected=iso;renderCalendar();renderDay()});
    cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=iso;renderCalendar();renderDay()}});
-   const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+   const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>{
+   const shownStart=e=>e.occurrenceStart===e.occurrenceDate?(e.startTime||''):'';
+   return shownStart(a).localeCompare(shownStart(b));
+  });
    same.slice(0,4).forEach(ev=>{const time=eventTimeText(ev);let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${time?time+' ':''}${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${categoryColor(category(ev).color)}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});
    if(same.length>4)cell.append(el('small','muted',`另有 ${same.length-4} 件`));
   }
@@ -165,7 +168,7 @@ $('confirmExport').onclick=safe(async()=>{
   view.push(...monthOccurrences(events,y,m).filter(e=>e.occurrenceDate>=from&&e.occurrenceDate<=to&&!filter.has(e.categoryId)&&(!q||[e.title,e.location,e.owner,e.description].some(t=>String(t||'').toLowerCase().includes(q)))));
  }
  const {ics,skipped,validCount,componentCount}=icsExport(view);
- if(skipped.length){const details=skipped.slice(0,8).map(e=>`${e.occurrenceDate||e.startDate} ${e.title||'（未命名）'}`).join('\n');if(!confirm(`${skipped.length} 筆缺少完整起迄時間或資料不正確，無法匯出：\n${details}${skipped.length>8?'\n…':''}\n確定只匯出 ${validCount} 次活動嗎？`))return;}
+ if(skipped.length){const details=skipped.slice(0,8).map(e=>`${e.occurrenceStart||e.startDate} ${e.title||'（未命名）'}`).join('\n');if(!confirm(`${skipped.length} 筆缺少完整起迄時間或資料不正確，無法匯出：\n${details}${skipped.length>8?'\n…':''}\n確定只匯出 ${validCount} 次活動嗎？`))return;}
  if(!validCount)return tell('日期區間內沒有符合 ICS 格式的完整行程',true);
  const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');
  a.href=url;a.download=`EHS_GoogleCalendar_${from.replaceAll('-','')}_${to.replaceAll('-','')}.ics`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);

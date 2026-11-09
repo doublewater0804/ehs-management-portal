@@ -1,5 +1,5 @@
-/** EHS R0.2: RFC 5545 iCalendar (.ics) import/export; all UI dates use Asia/Taipei. */
-import {pad, validISO} from './logic.js?v=R0.2';
+/** EHS R0.4: RFC 5545 iCalendar (.ics) import/export; all UI dates use Asia/Taipei. */
+import {pad, validISO} from './logic.js?v=R0.4';
 
 const TZ='Asia/Taipei';
 const oneDay=86400000;
@@ -34,7 +34,8 @@ function taipeiParts(dt){
 const categories={meeting:'會議',audit:'稽核',training:'教育訓練',other:'其他'};
 function hashId(s){let h=2166136261;for(const c of s){h=Math.imul(h^c.codePointAt(0),16777619)>>>0;}return h.toString(36);}
 function occurrence(e){
-  const start=e.occurrenceDate||e.startDate;
+  // R0.4：同一跨日事件會在多個日期格出現，但 ICS 只能以原本「事件開始日」輸出一筆。
+  const start=e.occurrenceStart||e.occurrenceDate||e.startDate;
   if(!validISO(start)||!String(e.title||'').trim())return null;
   if(e.allDay){
     const end=e.endDate||e.startDate;
@@ -61,17 +62,25 @@ function rrule(e,allOccurrences){
  * Repeat events are re-aggregated inside the selected date range; repeated events without
  * full end-time information are deliberately skipped, never converted to all-day events. */
 export function icsExport(events){
-  const groups=new Map(),skipped=[],lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//EHS Management Portal//Smart Calendar R0.2//ZH-TW','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+textEscape('EHS 智慧行事曆'),'X-WR-TIMEZONE:Asia/Taipei'];
+  const groups=new Map(),skipped=[],lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//EHS Management Portal//Smart Calendar R0.4//ZH-TW','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+textEscape('EHS 智慧行事曆'),'X-WR-TIMEZONE:Asia/Taipei'];
+  const skippedKeys=new Set();
   for(const e of events){
+    const start=e.occurrenceStart||e.occurrenceDate||e.startDate;
+    const sourceKey=uidFor(e)+'|'+start;
     const converted=occurrence(e);
-    if(!converted){skipped.push(e);continue;}
+    if(!converted){
+      if(!skippedKeys.has(sourceKey)){skippedKeys.add(sourceKey);skipped.push(e);}
+      continue;
+    }
     const key=e.repeat&&e.repeat!=='none'?'repeat:'+uidFor(e):'single:'+uidFor(e)+':'+converted.start;
-    if(!groups.has(key))groups.set(key,[]);
-    groups.get(key).push(converted);
+    if(!groups.has(key))groups.set(key,new Map());
+    // 去除「跨日在各日期格顯示」及「跨月份取得」所重複帶入的同一次事件。
+    groups.get(key).set(converted.start,converted);
   }
   let validCount=0;
-  for(const group of groups.values()){
-    group.sort((a,b)=>a.start.localeCompare(b.start));const first=group[0],source=first;
+  for(const unique of groups.values()){
+    const group=[...unique.values()].sort((a,b)=>a.start.localeCompare(b.start));
+    const first=group[0],source=first;
     const description=[source.description,source.owner?`負責人：${source.owner}`:''].filter(Boolean).join('\n');
     lines.push('BEGIN:VEVENT','UID:'+uidFor(source),'DTSTAMP:'+stamp(),
       'SUMMARY:'+textEscape(source.title),

@@ -1,4 +1,4 @@
-// R0.3：純前端顯示輔助，不讀寫 Firestore；排序只作用於當日清單。
+// R0.4：純前端顯示輔助，不讀寫 Firestore；排序只作用於當日清單。
 const STATUS_TEXT = Object.freeze({
   pending: '待辦', completed: '已完成', cancelled: '已取消', postponed: '已延期'
 });
@@ -22,7 +22,11 @@ export function categoryTint(raw, whiteWeight = 0.85) {
 
 export function eventTimeText(event) {
   // 未指定開始時間時不產生「未定時間」；原本明確的全天活動仍顯示「全天」。
-  return event.startTime || (event.allDay ? '全天' : '');
+  if (event.allDay) return '全天';
+  // 跨日延續到後續日期時，不把第一天的開始時刻誤當成當天的開始時間。
+  if (event.occurrenceStart && event.occurrenceDate &&
+      event.occurrenceStart !== event.occurrenceDate) return '';
+  return event.startTime || '';
 }
 
 export function eventStatusText(event) {
@@ -42,10 +46,12 @@ export function sortDayEvents(items, categories) {
       const unknown = String(a.categoryId || '').localeCompare(String(b.categoryId || ''), 'zh-Hant');
       if (unknown) return unknown;
     }
-    const aHasTime = Boolean(a.startTime), bHasTime = Boolean(b.startTime);
+    const aTime = eventTimeText(a), bTime = eventTimeText(b);
+    // 「全天」與真正的 HH:MM 分開看待；延續日的原始開始時間不可用於當日排序。
+    const aHasTime = /^\d{2}:\d{2}$/.test(aTime), bHasTime = /^\d{2}:\d{2}$/.test(bTime);
     if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
-    if (aHasTime && bHasTime && a.startTime !== b.startTime)
-      return a.startTime.localeCompare(b.startTime);
+    if (aHasTime && bHasTime && aTime !== bTime)
+      return aTime.localeCompare(bTime);
     const title = String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hant');
     return title || String(a.id || '').localeCompare(String(b.id || ''), 'zh-Hant');
   });

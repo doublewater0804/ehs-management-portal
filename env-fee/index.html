@@ -184,6 +184,22 @@ tr.total td{font-weight:900;color:#074f96;background:#eef6ff}
  body{background:#fff}.app{grid-template-columns:150px 1fr}.sidebar{height:auto;position:static}
  .main{padding:10px}.action-btn,.filters{display:none}.panel,.kpi{box-shadow:none}
 }
+
+/* R1.1 維護介面 */
+.login-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin:0 0 14px;background:#ecf4fd;border:1px solid #bcd4ed;border-radius:10px;font-size:13px}
+.login-bar span{flex:1;min-width:180px;color:#16416a}
+.annual-notes{margin-top:16px}.annual-notes textarea{resize:vertical;min-height:145px;width:100%;border:1px solid #b9c9da;border-radius:8px;padding:12px;line-height:1.7;color:#172334}
+.note-tools{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px}.note-tools #noteMeta{margin-right:auto}
+.muted{font-size:12px;color:#64748b}.cloud-status{padding:9px 12px;background:#e6f6ee;color:#12633a;border-radius:8px;margin-bottom:12px;font-size:13px}.cloud-error{background:#fff2f2;color:#a72b2b}
+.type-form{display:grid;grid-template-columns:minmax(150px,2fr) minmax(100px,1fr) minmax(100px,1fr) auto auto;align-items:end;gap:10px;margin-bottom:18px}
+.type-form input,.type-form select{width:100%;border:1px solid #cbd7e4;padding:10px;border-radius:8px}.type-form .btn{white-space:nowrap}
+.discrepancy{margin:12px 0;font-size:13px;color:#855a0c}.discrepancy details{border:1px solid #ecd9b2;border-radius:9px;background:#fffbf3;padding:10px}
+.discrepancy summary{cursor:pointer;font-weight:700}.discrepancy table{margin-top:8px;background:#fff}.long-note{max-width:250px;white-space:normal!important;overflow-wrap:anywhere;text-align:left}
+.mgmt-table-wrap{max-height:420px;overflow:auto}.mgmt-table{font-size:12px}.mgmt-table thead th{position:sticky;top:0;z-index:1}
+.reason{resize:vertical;min-width:180px;min-height:54px}.annual-notes .panel-title{color:#0d4e91}
+@media(max-width:1100px){.type-form{grid-template-columns:repeat(2,minmax(160px,1fr))}.kpis{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:760px){.type-form{grid-template-columns:1fr}.kpis{grid-template-columns:1fr!important}.note-tools #noteMeta{flex-basis:100%}.sidebar{height:auto}}
+@media print{.login-bar,.note-tools button,.cloud-status{display:none!important}}
 </style>
 </head>
 <body>
@@ -1357,13 +1373,13 @@ function renderStatsTable(){
  const air1Q=[0,1,2,3].map(i=>sites.reduce((s,site)=>s+(d1.air[site]?.[i]??0),0));
  const air2Q=[0,1,2,3].map(i=>sites.reduce((s,site)=>s+(d2.air[site]?.[i]??0),0));
 
- const waterSites=['龍德','彰化','麥寮','新港'];
+ const waterSites=['龍德','彰化','麥寮','新港', ...((getStatsPeriodArray(y1,'water','台醋')||[]).some(v=>v!==null)||(getStatsPeriodArray(y2,'water','台醋')||[]).some(v=>v!==null)?['台醋']:[])];
  const waterRows=waterSites.map((site,idx)=>{
    const w1=d1.water[site]||[null,null];
    const w2=d2.water[site]||[null,null];
    return `
    <tr>
-     ${idx===0?'<td rowspan="5" class="section">水污費<sup>[註2]</sup></td>':''}
+     ${idx===0?'<td rowspan="${waterSites.length+1}" class="section">水污費<sup>[註2]</sup></td>':''}
      <td>${site}</td>
      <td colspan="2">${displayStatsValue(w1[0],true)}</td>
      <td colspan="2">${displayStatsValue(w1[1],true)}</td>
@@ -1414,12 +1430,12 @@ function renderStatsTable(){
      </tr>
 
      <tr>
-       <td rowspan="5" class="section">水污費<sup>[註2]</sup></td>
+       <td rowspan="${waterSites.length+1}" class="section">水污費<sup>[註2]</sup></td>
        <td>廠區</td>
        <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
        <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
      </tr>
-     ${waterRows.replace('<td rowspan="5" class="section">水污費<sup>[註2]</sup></td>','')}
+     ${waterRows.replace(`<td rowspan="${waterSites.length+1}" class="section">水污費<sup>[註2]</sup></td>`,'')}
      <tr class="subtotal">
        <td></td><td>合計</td>
        <td colspan="2">${displayStatsValue(water1H[0])}</td>
@@ -1778,6 +1794,8 @@ function enforceFormSiteRule(){
 
 init();
 </script>
+<script src="r11.js?v=20261109-r11"></script>
+<script type="module" src="fee-cloud.js?v=20261109-r11"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>
 </html>
 

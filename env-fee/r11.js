@@ -285,15 +285,38 @@ function renderTypeRows(){
  tbody.querySelectorAll('[data-typeedit]').forEach(b=>b.onclick=()=>editType(b.dataset.typeedit));
  tbody.querySelectorAll('[data-typetoggle]').forEach(b=>b.onclick=()=>toggleType(b.dataset.typetoggle));
 }
-function editType(id){const t=cloud.types.get(id);if(!t)return;typeEditId=id;$('typeName').value=t.name;$('typeMode').value=t.mode;$('typeScope').value=t.scope;$('typeMode').disabled=$('typeScope').disabled=true;$('typeSave').textContent='儲存名稱';}
+// 分類屬性會決定既有紀錄的唯一鍵。只有尚無有效紀錄時，才允許直接修改申報週期與範圍。
+function typeRecordCount(id){return [...cloud.records.values()].filter(r=>r.type===id&&!r.deleted).length}
+function resetTypeEditor(){
+ typeEditId='';$('feeTypeForm').reset();$('typeMode').disabled=false;$('typeScope').disabled=false;
+ $('typeSave').textContent='新增規費類型';$('typeEditHint').textContent='新增規費時可設定名稱、申報週期及適用範圍。';
+}
+function editType(id){
+ const t=cloud.types.get(id);if(!t)return;
+ typeEditId=id;$('typeName').value=t.name;$('typeMode').value=t.mode;$('typeScope').value=t.scope;
+ const count=typeRecordCount(id),locked=count>0;
+ $('typeMode').disabled=locked;$('typeScope').disabled=locked;
+ $('typeSave').textContent='儲存變更';
+ $('typeEditHint').textContent=locked
+  ?`「${t.name}」已有 ${count} 筆有效雲端紀錄。可修改名稱；為避免既有申報金額或備註遺失，週期與範圍暫時鎖定。如需調整，請先匯出備份並處理相關紀錄，或新增另一個規費類型。`
+  :`「${t.name}」目前沒有有效雲端紀錄，可以修改名稱、申報週期及範圍，儲存後將同步更新報表。`;
+ $('typeName').focus();
+}
 async function toggleType(id){if(!ensureReady())return;const t=cloud.types.get(id);if(!t)return;if(!confirm(`確定${t.active===false?'啟用':'停用'}「${t.name}」？歷史資料仍保留。`))return;try{await window.feeCloudAPI.saveType({...t,active:t.active===false});}catch(e){alert(e.message)}}
 async function saveType(e){
  e.preventDefault();if(!ensureReady())return;
  const name=$('typeName').value.trim();if(!name||name.length>40)return alert('規費名稱需為 1～40 字。');
  if(allTypes().some(t=>t.name===name&&t.id!==typeEditId))return alert('規費名稱不可重複。');
  const previous=typeEditId?cloud.types.get(typeEditId):null;
- const t={id:typeEditId||'fee_'+crypto.randomUUID(),name,mode:previous?.mode||$('typeMode').value,scope:previous?.scope||$('typeScope').value,active:previous?.active??true,createdAt:previous?.createdAt||new Date().toISOString(),color:previous?.color||palette[cloud.types.size%palette.length]};
- try{await window.feeCloudAPI.saveType(t);typeEditId='';$('feeTypeForm').reset();$('typeMode').disabled=$('typeScope').disabled=false;$('typeSave').textContent='新增規費類型';}catch(err){alert('儲存規費類型失敗：'+err.message)}
+ if(typeEditId&&!previous)return alert('此規費類型已不存在，請重新整理資料。');
+ const mode=$('typeMode').value,scope=$('typeScope').value;
+ if(previous&&typeRecordCount(previous.id)>0&&(mode!==previous.mode||scope!==previous.scope)){
+  return alert('此規費已有有效申報紀錄，不能直接變更週期或範圍。請先處理原資料，避免遺失。');
+ }
+ const t={id:typeEditId||'fee_'+crypto.randomUUID(),name,mode,scope,active:previous?.active??true,createdAt:previous?.createdAt||new Date().toISOString(),color:previous?.color||palette[cloud.types.size%palette.length]};
+ $('typeSave').disabled=true;
+ try{await window.feeCloudAPI.saveType(t);resetTypeEditor();}catch(err){alert('儲存規費類型失敗：'+err.message)}
+ finally{$('typeSave').disabled=false}
 }
 function formToRecord(){
  const t=typeOf($('fType').value);if(!t)throw Error('規費類型不存在');
@@ -441,12 +464,12 @@ renderCompareTrend=function(){beforeTrend();const t=typeOf(compareType);if(t&&!t
 function install(){
  $('annualPage').insertAdjacentHTML('beforeend',`<section class="panel annual-notes"><div class="panel-title">年度環保規費備註（依年度＋廠區獨立管理）</div><div class="panel-body"><textarea id="annualNote" rows="6" maxlength="10000" placeholder="填寫當年度的申報說明、異常或其他注意事項…"></textarea><div class="note-tools"><span class="muted" id="noteMeta">尚未建立備註</span><span id="noteDirty" class="muted"></span><button class="btn danger" type="button" id="noteDelete">刪除備註</button><button class="btn primary" type="button" id="noteSave">儲存備註</button></div></div></section><div id="historicalDiscrepancy" class="discrepancy"></div>`);
  $('managerModal').querySelector('.tabs').insertAdjacentHTML('beforeend','<button class="tab" data-tab="types">規費類型管理</button>');
- $('managerModal').querySelector('.modal-body').insertAdjacentHTML('beforeend',`<section id="managerTypes" class="hidden"><form id="feeTypeForm" class="type-form"><div class="form-group"><label>規費名稱</label><input id="typeName" required maxlength="40" placeholder="例如：廢棄物清理費"></div><div class="form-group"><label>申報週期</label><select id="typeMode"><option value="quarter">季度</option><option value="half">半年</option><option value="year">全年</option></select></div><div class="form-group"><label>範圍</label><select id="typeScope"><option value="site">依廠區</option><option value="company">全公司</option></select></div><button class="btn primary" id="typeSave">新增規費類型</button><button class="btn secondary" type="button" id="typeReset">清除</button></form><div class="mgmt-table-wrap"><table><thead><tr><th>類型</th><th>週期</th><th>範圍</th><th>狀態</th><th>操作</th></tr></thead><tbody id="typeRows"></tbody></table></div><p class="note">已有資料的規費類型只能更名或停用，不能更換週期與範圍；停用不刪除歷史紀錄。</p></section>`);
+ $('managerModal').querySelector('.modal-body').insertAdjacentHTML('beforeend',`<section id="managerTypes" class="hidden"><form id="feeTypeForm" class="type-form"><div class="form-group"><label>規費名稱</label><input id="typeName" required maxlength="40" placeholder="例如：廢棄物清理費"></div><div class="form-group"><label>申報週期</label><select id="typeMode"><option value="quarter">季度</option><option value="half">半年</option><option value="year">全年</option></select></div><div class="form-group"><label>範圍</label><select id="typeScope"><option value="site">依廠區</option><option value="company">全公司</option></select></div><button class="btn primary" id="typeSave">新增規費類型</button><button class="btn secondary" type="button" id="typeReset">清除</button><p class="note" id="typeEditHint" style="grid-column:1/-1" aria-live="polite">新增規費時可設定名稱、申報週期及適用範圍。</p></form><div class="mgmt-table-wrap"><table><thead><tr><th>類型</th><th>週期</th><th>範圍</th><th>狀態</th><th>操作</th></tr></thead><tbody id="typeRows"></tbody></table></div><p class="note">沒有有效申報紀錄的自訂規費，可修改名稱、週期與範圍；已有資料的規費只可更名或停用。停用不刪除歷史紀錄。</p></section>`);
  const oldShowManagerTab=showManagerTab;
  showManagerTab=function(tab){oldShowManagerTab(tab);$('managerTypes').classList.toggle('hidden',tab!=='types')};
  document.querySelectorAll('#managerModal .tab').forEach(tab=>tab.onclick=()=>showManagerTab(tab.dataset.tab));
  $('feeTypeForm').onsubmit=saveType;
- $('typeReset').onclick=()=>{typeEditId='';$('feeTypeForm').reset();$('typeMode').disabled=$('typeScope').disabled=false;$('typeSave').textContent='新增規費類型'};
+ $('typeReset').onclick=resetTypeEditor;
  $('managerModal').querySelector('.tabs').insertAdjacentHTML('afterend','<div id="cloudStatus" class="cloud-status">正在檢查 Firebase 登入狀態…</div>');
  $('annualNote').oninput=()=>{dirtyNote=$('annualNote').value!==lastNoteValue;$('noteDirty').textContent=dirtyNote?'內容尚未儲存':''};
  $('noteSave').onclick=async()=>{if(!ensureReady())return;try{const [year,site]=activeNoteKey.split('|');const content=$('annualNote').value;await window.feeCloudAPI.saveNote({id:encodeURIComponent(activeNoteKey),key:activeNoteKey,year:Number(year),site,content});lastNoteValue=content;dirtyNote=false;$('noteDirty').textContent='已儲存';}catch(e){alert('備註儲存失敗：'+e.message)}};

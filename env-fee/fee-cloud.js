@@ -1,7 +1,7 @@
 // EHS 環保規費 R1.1 專用 Firebase bridge：沿用入口網站 portal/config.js，不複製或另建權限規則。
 import {initializeApp,getApps} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {getFirestore,collection,doc,onSnapshot,getDoc,writeBatch,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {getFirestore,collection,doc,onSnapshot,getDoc,getDocsFromServer,query,where,writeBatch,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,ADMIN_EMAIL} from '../portal/config.js';
 const app=getApps().find(a=>a.name==='ehs-portal')||initializeApp(firebaseConfig,'ehs-portal');
 const auth=getAuth(app),db=getFirestore(app);
@@ -58,6 +58,17 @@ window.feeCloudAPI={
  },
  async saveType(t){
   permitted();if(!t.id||!t.name||!['quarter','half','year'].includes(t.mode)||!['company','site'].includes(t.scope))throw Error('規費類型欄位無效');
+  const saved=await getDoc(doc(db,'env_fee_types',t.id));
+  if(saved.exists()){
+   const old=saved.data();
+   if(old.mode!==t.mode||old.scope!==t.scope){
+    // 以伺服器最新紀錄再核對一次，不只依賴畫面快取。
+    const existing=await getDocsFromServer(query(collection(db,'env_fee_records'),where('type','==',t.id)));
+    if(existing.docs.some(d=>d.data().deleted!==true)){
+     throw Error('此規費已有有效申報紀錄，週期／範圍不可直接修改；請先保護並處理原資料。');
+    }
+   }
+  }
   await auditedSet('env_fee_types',t,'type-save');
  },
  async saveNote(n){permitted();if(!n.key||typeof n.content!=='string'||n.content.length>10000)throw Error('備註內容無效');await auditedSet('env_fee_notes',n,n.deleted?'note-delete':'note-save')},

@@ -5,6 +5,7 @@ import {firebaseConfig,allowedEmail} from './config.js';
 import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.2';
 import {icsExport,icsImport} from './ics.js?v=R0.2';
 import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
+import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.3';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
 const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`,monthlyNotesPath=`${root}/data/monthly_notes`;
@@ -78,17 +79,32 @@ function renderCalendar(){
    cell.addEventListener('click',()=>{selected=iso;renderCalendar();renderDay()});
    cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=iso;renderCalendar();renderDay()}});
    const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
-   same.slice(0,4).forEach(ev=>{let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${ev.startTime||(ev.allDay?'全天':'未定時間')} ${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${category(ev).color}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});
+   same.slice(0,4).forEach(ev=>{const time=eventTimeText(ev);let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${time?time+' ':''}${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${categoryColor(category(ev).color)}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});
    if(same.length>4)cell.append(el('small','muted',`另有 ${same.length-4} 件`));
   }
   cal.append(cell);
  }
 }
 function renderDay(){
- let area=$('detail');area.replaceChildren();$('detailTitle').textContent=`${selected}｜當日行程`;
- const same=shownEvents().filter(e=>e.occurrenceDate===selected).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+ const area=$('detail');area.replaceChildren();$('detailTitle').textContent=`${selected}｜當日行程`;
+ const same=sortDayEvents(shownEvents().filter(e=>e.occurrenceDate===selected),categories);
  if(!same.length)area.append(el('p','emptyDetail','當日尚無行程，可使用上方「當日行程新增」建立。'));
- for(const ev of same){const row=el('div','detailItem');const b=el('button','',`${ev.startTime||(ev.allDay?'全天':'未定時間')}　${ev.title}　〔${category(ev).name}・${{pending:'待辦',completed:'已完成',cancelled:'取消',postponed:'延期'}[ev.status]||ev.status}〕`);b.addEventListener('click',()=>openEditor(ev));row.append(b);if(ev.location)row.append(el('small','muted',ev.location));area.append(row)}
+ for(const ev of same){
+  const cat=category(ev), color=categoryColor(cat.color), row=el('div','detailItem');
+  const b=el('button','detailEvent');b.type='button';
+  b.style.backgroundColor=categoryTint(color);
+  b.style.borderLeftColor=color;
+  const tag=el('span','detailCategory',cat.name);tag.style.borderColor=color;
+  tag.style.backgroundColor=categoryTint(color,0.70);
+  b.append(tag);
+  const time=eventTimeText(ev);
+  if(time)b.append(el('span','detailTime',time));
+  b.append(el('span','detailEventTitle',ev.title));
+  b.append(el('span','detailStatus',eventStatusText(ev)));
+  if(ev.location)b.append(el('span','detailLocation',ev.location));
+  b.addEventListener('click',()=>openEditor(ev));
+  row.append(b);area.append(row);
+ }
  $('addToday').disabled=!user;
 }
 function setView(y,m){

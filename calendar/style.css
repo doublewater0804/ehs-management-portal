@@ -42,3 +42,25 @@
 #saveMonthNote:disabled,.addActions button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:800px){.toolbarMain,.toolbarSecondary{align-items:stretch}.toolbarFunctions{justify-content:flex-start}.toolbarFunctions #search{max-width:none;flex-basis:100%}.addPanel{align-items:flex-start;gap:10px}.addActions{flex:1}.addActions button{flex:1;min-width:145px}.day{min-height:92px}.calendarHeading h2{font-size:17px}}
 @media(max-width:520px){.toolbar{padding:10px}.toolbarTools{width:100%}.toolbarTools button{flex:1}.holidayLegend{gap:8px;font-size:11px}.day{min-height:75px}.dayNum{font-size:12px}.holidayName{font-size:9px}.addActions{width:100%}.addActions button{min-width:130px}.notesPanel{padding:12px}.notesFooter button{width:100%}}
+
+
+/* R0.3：當日行程依分類淺色底、類別前置、狀態分開顯示。 */
+.detailItem{display:block;padding:6px 2px 9px}
+.detailItem .detailEvent{
+  width:100%;max-width:100%;display:flex;align-items:center;justify-content:flex-start;
+  flex-wrap:wrap;gap:6px 9px;min-width:0;padding:11px 13px;
+  text-align:left;border:1px solid #d7e1ed;border-left:4px solid #9ca3af;
+  border-radius:11px;color:#14263c;line-height:1.5;white-space:normal;
+}
+.detailItem .detailEvent:hover{filter:brightness(.97)}
+.detailItem .detailEvent:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.detailCategory{
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  border:1px solid #a0b1c5;border-radius:7px;padding:2px 8px;
+  font-size:12px;font-weight:700;color:#14263c;
+}
+.detailTime{font-size:13px;font-weight:700;color:#1e395f;white-space:nowrap}
+.detailEventTitle{font-size:14px;overflow-wrap:anywhere;min-width:0}
+.detailStatus{font-size:12px;color:#43556e;white-space:nowrap}
+.detailLocation{flex-basis:100%;font-size:12px;color:#596e84;overflow-wrap:anywhere}
+@media(max-width:520px){.detailItem .detailEvent{padding:10px;gap:5px 7px}.detailEventTitle{font-size:13px}}

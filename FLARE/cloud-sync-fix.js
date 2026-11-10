@@ -56,7 +56,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
       };
 
       // 原始排放資料的原子修改：只改目標日期，並拒絕已由其他端更新的舊版本。
-      window.__flareCloudEditEvents = async ({ factory, dateISO, originalEvents, amounts, deletedIndexes }) => {
+      window.__flareCloudEditEvents = async ({ factory, dateISO, originalEvents, amounts, reasons = [], deleteLinkedNotes = true, deletedIndexes }) => {
         const deleted = new Set(deletedIndexes);
         const serverState = await runTransaction(db, async (transaction) => {
           const snap = await transaction.get(flareDoc);
@@ -71,18 +71,35 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
           }
           let targetIndex = 0;
           const modifiedAt = new Date().toISOString();
+          const priorLinkedIds = new Set(selected.map(event=>String(event.id)));
           state.events = state.events.flatMap(event => {
             if (!isTarget(event)) return [event];
             const index = targetIndex++;
             if (deleted.has(index) || Number(amounts[index]) === 0) return [];
             const nextAmount = Number(amounts[index]);
-            if (nextAmount === Number(event.amount || 0)) return [event];
+            const nextReason = event.source === 'manual' ? (reasons[index] ?? event.reason ?? '') : event.reason;
+            const amountChanged = nextAmount !== Number(event.amount || 0);
+            if (!amountChanged && nextReason === event.reason) return [event];
             const previous = Number(event.amount || 0);
             const history = Array.isArray(event.amountEditHistory) ? [...event.amountEditHistory] : [];
-            history.push({ from: previous, to: nextAmount, at: modifiedAt });
-            return [{ ...event, amount: nextAmount, amountModifiedAt: modifiedAt,
-              amountModifiedFrom: previous, amountEditHistory: history.slice(-20) }];
+            if (amountChanged) history.push({ from: previous, to: nextAmount, at: modifiedAt });
+            return [{ ...event, amount: nextAmount, reason: nextReason,
+              amountModifiedAt: amountChanged ? modifiedAt : event.amountModifiedAt,
+              amountModifiedFrom: amountChanged ? previous : event.amountModifiedFrom,
+              amountEditHistory: history.slice(-20) }];
           });
+          if(Array.isArray(state.r07?.records)){
+            const nextMap = new Map(state.events.map(e=>[String(e.id),e]));
+            state.r07.records = state.r07.records.filter(r=>{
+              if(!r.linkedEventId || !priorLinkedIds.has(String(r.linkedEventId))) return true;
+              return nextMap.has(String(r.linkedEventId)) || !deleteLinkedNotes;
+            }).map(r=>{
+              if(!r.linkedEventId || !priorLinkedIds.has(String(r.linkedEventId))) return r;
+              const ev=nextMap.get(String(r.linkedEventId));
+              if(!ev) return {...r,linkedEventId:'',source:'manual'};
+              return {...r,date:ev.date,factory:ev.factory,content:`${ev.factory}｜${ev.reason||''}`};
+            });
+          }
           state.updatedAtLocal = modifiedAt;
           transaction.update(flareDoc, { state, updatedAt: serverTimestamp() });
           return state;

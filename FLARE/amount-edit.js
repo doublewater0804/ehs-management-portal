@@ -44,6 +44,7 @@
       #${MODAL_ID} .fae-zero-toggle:hover{background:#edf4ff;border-color:#8fb0e5}
       #${MODAL_ID} .fae-amount{width:160px;border:1px solid #b8c5d8;border-radius:8px;padding:8px 10px;text-align:right;font-size:14px;font-weight:800;color:#172033;background:#fff;outline:none}
       #${MODAL_ID} .fae-amount:focus{border-color:#1d5fd0;box-shadow:0 0 0 3px rgba(29,95,208,.12)}
+      #${MODAL_ID} .fae-reason{width:230px;min-height:55px;resize:vertical;border:1px solid #b8c5d8;border-radius:8px;padding:7px;font-size:12px;background:#fff}
       #${MODAL_ID} .fae-total{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;padding:14px 2px 4px;color:#526175;font-size:12px;font-weight:800}
       #${MODAL_ID} .fae-total strong{color:#0f2f5f;font-size:20px;font-weight:900}
       #${MODAL_ID} .fae-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px 18px}
@@ -56,6 +57,8 @@
     `;
     document.head.appendChild(style);
   }
+
+  function escapeReason(text) { return String(text||'').replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x])); }
 
   function fmt(value) {
     const n = Number(value || 0);
@@ -117,6 +120,7 @@
 
     const inputs = [...modal.querySelectorAll('.fae-amount')];
     const amounts = inputs.map(input => input.value.trim() === '' ? NaN : Number(input.value));
+    const reasons = originalEvents.map((event,index) => modal.querySelector(`[data-fae-reason="${index}"]`)?.value.trim() ?? String(event.reason||''));
     const deletedIndexes = new Set();
     inputs.forEach((input, index) => {
       if (input.closest('tr')?.dataset.deleted === 'true' || amounts[index] === 0) deletedIndexes.add(index);
@@ -128,7 +132,9 @@
 
     const changedIndexes = amounts.map((value, index) => ({ value, index }))
       .filter(({value,index}) => !deletedIndexes.has(index) && Math.abs(value - Number(originalEvents[index]?.amount || 0)) > 0.000001);
-    if (!deletedIndexes.size && !changedIndexes.length) { closeModal(); return; }
+    const reasonChanges = reasons.map((reason,index)=>({reason,index}))
+      .filter(({reason,index}) => !deletedIndexes.has(index) && reason !== String(originalEvents[index]?.reason||''));
+    if (!deletedIndexes.size && !changedIndexes.length && !reasonChanges.length) { closeModal(); return; }
 
     const live = getState();
     if (!live || !Array.isArray(live.events)) {
@@ -143,8 +149,11 @@
       alert('此日期的原始紀錄已被更新，請關閉視窗重新開啟後再修改。');
       return;
     }
-    const description = `${factory} / ${dateISO}\n刪除 ${deletedIndexes.size} 筆（包含所有 0 流量紀錄）\n修改 ${changedIndexes.length} 筆排放量。`;
+    const description = `${factory} / ${dateISO}\n刪除 ${deletedIndexes.size} 筆（包含所有 0 流量紀錄）\n修改 ${changedIndexes.length} 筆排放量、${reasonChanges.length} 筆原因。`;
     if (!confirm(`${description}\n\n刪除為永久刪除，且當日最後一筆也可刪除。確定儲存至雲端？`)) return;
+    const linkedCount = [...deletedIndexes].filter(index => originalEvents[index]?.source==='manual' && originalEvents[index]?.reason).length;
+    // Cancel on this second prompt means keep the original note, but detach its event link.
+    const deleteLinkedNotes = linkedCount ? confirm(`有 ${linkedCount} 筆人工排放紀錄有關聯使用原因。\n「確定」：一併刪除原因備註；「取消」：保留原因備註並解除關聯。`) : true;
 
     const saveBtn = modal.querySelector('[data-fae-save]');
     const cancelBtn = modal.querySelector('[data-fae-cancel]');
@@ -159,14 +168,29 @@
           String(event?.date || '').trim() !== String(dateISO || '').trim()) return [event];
       const index = ordinal++;
       if (deletedIndexes.has(index)) return [];
-      if (!changes.has(index)) return [event];
+      const newAmount = changes.has(index) ? changes.get(index) : Number(event.amount || 0);
+      const reasonChanged = reasons[index] !== String(event.reason||'');
+      if (!changes.has(index) && !reasonChanged) return [event];
       const previous = Number(event.amount || 0);
       const history = Array.isArray(event.amountEditHistory) ? [...event.amountEditHistory] : [];
-      history.push({ from: previous, to: changes.get(index), at: changedAt });
-      return [{ ...event, amount: changes.get(index), amountModifiedAt: changedAt,
-        amountModifiedFrom: previous, amountEditHistory: history.slice(-20) }];
+      if(changes.has(index)) history.push({ from: previous, to: newAmount, at: changedAt });
+      return [{ ...event, amount: newAmount, reason: reasonChanged ? reasons[index] : event.reason,
+        amountModifiedAt: changes.has(index) ? changedAt : event.amountModifiedAt,
+        amountModifiedFrom: changes.has(index) ? previous : event.amountModifiedFrom,
+        amountEditHistory: history.slice(-20) }];
     });
     const nextState = { ...live, events: nextEvents, updatedAtLocal: changedAt };
+    const priorIds = new Set(originalEvents.map(e=>String(e.id)));
+    nextState.r07 = {...(live.r07||{}), records: [...(live.r07?.records||[])].filter(r=>{
+      if(!r.linkedEventId || !priorIds.has(String(r.linkedEventId))) return true;
+      const still = nextEvents.find(e=>String(e.id)===String(r.linkedEventId));
+      return Boolean(still) || !deleteLinkedNotes;
+    }).map(r=>{
+      if(!r.linkedEventId || !priorIds.has(String(r.linkedEventId))) return r;
+      const still=nextEvents.find(e=>String(e.id)===String(r.linkedEventId));
+      if(!still) return {...r,linkedEventId:'',source:'manual'};
+      return {...r,content:`${still.factory}｜${still.reason||''}`,date:still.date,factory:still.factory};
+    })};
 
     try {
       if (typeof window.setFirebaseSyncStatus === 'function') {
@@ -174,7 +198,7 @@
       }
       // 優先使用 Firestore transaction，以伺服器端原始資料版本檢查避免誤覆蓋。
       if (typeof window.__flareCloudEditEvents === 'function') {
-        await window.__flareCloudEditEvents({ factory, dateISO, originalEvents, amounts, deletedIndexes: [...deletedIndexes] });
+        await window.__flareCloudEditEvents({ factory, dateISO, originalEvents, amounts, reasons, deleteLinkedNotes, deletedIndexes: [...deletedIndexes] });
       } else {
         await window.__flareCloudPush(nextState);
         if (typeof window.__applyFlareCloudState === 'function') window.__applyFlareCloudState(nextState);
@@ -213,6 +237,7 @@
         <td>${sourceLabel(event.source)}</td>
         <td>${typeLabel(event.type)}</td>
         <td><input class="fae-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(event.amount || 0)}" data-index="${index}" aria-label="第 ${index + 1} 筆排放量"></td>
+        <td>${event.source === 'manual' ? `<textarea class="fae-reason" rows="2" data-fae-reason="${index}" maxlength="3000" placeholder="使用原因">${escapeReason(event.reason||'')}</textarea>` : '—'}</td>
         <td><button type="button" class="fae-delete" data-fae-delete="${index}" aria-label="刪除第 ${index + 1} 筆紀錄">刪除</button></td>
       </tr>`).join('');
     const zeroTools = zeroCount > 0 ? `
@@ -234,7 +259,7 @@
           <div class="fae-note">可以逐筆修改流量或標記刪除。儲存時將自動永久刪除本日所有 0 流量紀錄（含原有 0 流量），並依剩餘紀錄重新計算分類與統計；不改變定檢期間與匯入規則。</div>
           <div class="fae-table-wrap">
             <table>
-              <thead><tr><th>#</th><th>來源</th><th>類型</th><th>排放量 (NM3)</th><th>操作</th></tr></thead>
+              <thead><tr><th>#</th><th>來源</th><th>類型</th><th>排放量 (NM3)</th><th>使用原因</th><th>操作</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
           </div>

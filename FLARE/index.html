@@ -244,6 +244,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 <p class="text-gray-500 text-sm mt-1">廠區自主管理系統 (台塑工業專用)</p>
 </div>
 <div class="flex flex-wrap gap-2 no-print items-center">
+<a id="flare-r07-event-link" class="flare-r07-top-btn" href="./index.html?view=r07-event">① FLARE 使用事件及原因</a>
+<a id="flare-r07-interference-link" class="flare-r07-top-btn" href="./index.html?view=r07-interference">② 干擾流量</a>
 <div class="top-import-control" id="top-import-control">
 <button class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm font-bold" id="top-import-toggle" type="button">匯入資料 ▼</button>
 <div class="top-import-menu hidden" id="top-import-menu">
@@ -552,6 +554,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 <label class="block font-medium text-gray-700">排放量 (NM3)</label>
 <input class="mt-1 block w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-blue-500" id="amount" required="" step="0.1" type="number"/>
 </div>
+<div><label class="block font-medium text-gray-700">使用原因（必填）</label>
+<textarea id="event-reason" required maxlength="3000" rows="3" class="mt-1 block w-full rounded border-gray-300 p-2 border focus:ring-2 focus:ring-blue-500" placeholder="請填寫 FLARE 使用事件及原因"></textarea></div>
 <button class="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition shadow" type="submit">儲存紀錄</button>
 </form>
 </div><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-orange-500">
@@ -642,24 +646,14 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 </tbody>
 </table>
 </div>
-<style media="print">#remarks-interference-details:not([open]) > .print-remark-content, #remarks-event-details:not([open]) > .print-remark-content {display:block!important;} #remarks-interference-details:not([open]), #remarks-event-details:not([open]) {display:block!important;} .print-remark-content {white-space:pre-wrap;} </style>
-<!-- R0.6 分類備註 -->
-<div class="mt-4 p-4 bg-white border border-black rounded shadow-sm">
-<h3 class="font-bold text-sm border-b pb-2 mb-2">備註管理</h3>
-<details open class="border rounded mb-3 p-3" id="remarks-event-details">
-<summary class="font-bold text-sm cursor-pointer">① FLARE 使用事件及原因 <span class="ml-2 text-[11px] text-green-700 no-print" id="manual-remarks-save-status">已載入</span></summary>
+<!-- R0.7 其他備註；既有 R0.6 文字只做遷移來源備份，絕不覆蓋此欄。 -->
+<div class="mt-4 p-4 bg-white border border-slate-300 rounded shadow-sm" id="flare-other-remarks-box">
+<h3 class="font-bold text-sm border-b pb-2 mb-2">其他備註 <span class="ml-2 text-[11px] text-green-700 no-print" id="manual-remarks-save-status">已載入</span></h3>
 <div class="screen-remark-editor no-print mt-2">
-<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed" style="height:180px;min-height:90px;resize:vertical;overflow-y:auto" id="manual-remarks" placeholder="使用日期、設備異常、停機原因及處理情形"></textarea>
-<div class="flex flex-wrap justify-between gap-2 mt-2"><p class="text-[11px] text-gray-400">按下儲存後同步雲端；一般 Excel 匯入不會更動備註。</p><div class="flex gap-2"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold" id="save-manual-remarks-btn" type="button">儲存事件原因</button><button class="bg-gray-100 px-3 py-1.5 rounded text-xs" id="restore-manual-remarks-btn" type="button">還原已儲存內容</button></div></div>
-</div><div class="print-remark-content text-[11px] leading-relaxed mt-2" id="manual-remarks-print"></div>
-</details>
-<details class="border rounded p-3" id="remarks-interference-details">
-<summary class="font-bold text-sm cursor-pointer">② 干擾流量 <span class="ml-2 text-[11px] text-green-700 no-print" id="interference-remarks-save-status">已載入</span></summary>
-<div class="screen-remark-editor no-print mt-2">
-<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed" style="height:180px;min-height:90px;resize:vertical;overflow-y:auto" id="interference-remarks" placeholder="各廠干擾流量、削減量及統計數據"></textarea>
-<div class="flex flex-wrap justify-between gap-2 mt-2"><p class="text-[11px] text-gray-400">與事件原因分開儲存。</p><div class="flex gap-2"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold" id="save-interference-remarks-btn" type="button">儲存干擾流量</button><button class="bg-gray-100 px-3 py-1.5 rounded text-xs" id="restore-interference-remarks-btn" type="button">還原已儲存內容</button></div></div>
-</div><div class="print-remark-content text-[11px] leading-relaxed mt-2" id="interference-remarks-print"></div>
-</details>
+<textarea class="w-full rounded border border-gray-300 p-3 text-[12px] leading-relaxed" style="height:160px;min-height:90px;resize:vertical;overflow-y:auto" id="manual-remarks" placeholder="此欄是獨立年度其他備註，不會混入①與②的紀錄"></textarea>
+<div class="flex flex-wrap justify-between gap-2 mt-2"><p class="text-[11px] text-gray-400">按年度獨立保存，不影響①、②及原始 FLARE 統計。</p><div class="flex gap-2"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold" id="save-manual-remarks-btn" type="button">儲存其他備註</button><button class="bg-gray-100 px-3 py-1.5 rounded text-xs" id="restore-manual-remarks-btn" type="button">還原</button></div></div>
+</div>
+<div class="print-remark-content text-[11px] leading-relaxed mt-2" id="manual-remarks-print"></div>
 </div>
 <!-- 頁尾說明 (僅列印可見) -->
 <div class="mt-4 text-[10px] text-gray-400 hidden print:block text-right">
@@ -894,6 +888,19 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             return out;
         }
 
+        function collectOtherRemarksState() {
+            const out = {};
+            Object.keys(localStorage).filter(k => k.startsWith('flare_other_remarks_')).forEach(k => {
+                out[k.replace('flare_other_remarks_', '')] = localStorage.getItem(k) || '';
+            });
+            return out;
+        }
+
+        function applyOtherRemarksState(other = {}) {
+            Object.keys(localStorage).filter(k => k.startsWith('flare_other_remarks_')).forEach(k => localStorage.removeItem(k));
+            Object.entries(other || {}).forEach(([year, value]) => localStorage.setItem(getOtherRemarksKey(year), String(value || '')));
+        }
+
         function collectInterferenceRemarksState() {
             const out = {};
             Object.keys(localStorage).filter(k => k.startsWith('flare_interference_remarks_')).forEach(k => {
@@ -917,7 +924,9 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 customFactoryAliasRules,
                 manualRemarks: collectManualRemarksState(),
                 interferenceRemarks: collectInterferenceRemarksState(),
-                schemaVersion: 1,
+                otherRemarks: collectOtherRemarksState(),
+                r07: window.FlareR07?.getState() || { records: [], migrationMarks: {} },
+                schemaVersion: 2,
                 updatedAtLocal: new Date().toISOString()
             };
         }
@@ -937,11 +946,14 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 excludedDays = state.excludedDays || {};
                 customFactoryAliasRules = Array.isArray(state.customFactoryAliasRules) ? state.customFactoryAliasRules : [];
                 applyManualRemarksState(state.manualRemarks || {});
+                applyOtherRemarksState(state.otherRemarks || {});
+                Object.keys(localStorage).filter(k => k.startsWith('flare_interference_remarks_')).forEach(k => localStorage.removeItem(k));
                 Object.entries(state.interferenceRemarks || {}).forEach(([year, value]) => {
                     localStorage.setItem(getInterferenceRemarksKey(year), String(value || ''));
                 });
                 // Old cloud snapshots hold both sections in manualRemarks.
                 Object.keys(state.manualRemarks || {}).forEach(year => ensureRemarksMigrated(year));
+                window.FlareR07?.applyCloud(state.r07, state.manualRemarks || {}, collectInterferenceRemarksState());
                 persistFlareStateToLocal();
                 renderFactoryAliasManager();
                 resetPendingFactoryAliases();
@@ -950,6 +962,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
                 resetMaintenanceImportState();
                 renderAll();
                 setFirebaseSyncStatus('☁️ 已同步雲端', 'ok');
+                window.FlareR07?.onCloudReady();
             } finally {
                 __flareApplyingRemote = false;
             }
@@ -1002,6 +1015,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             bindScheduleExcelImportEvents();
             bindMaintenanceCSVEvents();
             bindManualRemarksEvents();
+            window.FlareR07?.init();
             bindExclusionModalEvents();
             bindSchedulePeriodEvents();
             bindFactoryAliasManagementEvents();
@@ -1079,11 +1093,13 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
         function initYearSelector() {
             const selector = document.getElementById('view-year');
             const currentYear = new Date().getFullYear();
-            for(let i = currentYear - 3; i <= currentYear + 2; i++) {
+            const requestedYear = Number(new URLSearchParams(location.search).get('year'));
+            const initialYear = Number.isInteger(requestedYear) && requestedYear >= 2000 && requestedYear <= 2100 ? requestedYear : currentYear;
+            for(let i = Math.min(currentYear - 3, initialYear); i <= Math.max(currentYear + 2, initialYear); i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
                 opt.text = i;
-                if(i === currentYear) opt.selected = true;
+                if(i === initialYear) opt.selected = true;
                 selector.appendChild(opt);
             }
         }
@@ -1323,6 +1339,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             return `flare_manual_remarks_${year}`;
         }
 
+        function getOtherRemarksKey(year) { return `flare_other_remarks_${year}`; }
+
         // R0.6: legacy notes are backed up and split once, without changing text contents.
         function getInterferenceRemarksKey(year) { return `flare_interference_remarks_${year}`; }
         function splitLegacyRemarks(year) {
@@ -1384,7 +1402,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
         function remarkConfig(kind) {
             return kind === 'interference'
                 ? { input: 'interference-remarks', status: 'interference-remarks-save-status', print: 'interference-remarks-print', key: getInterferenceRemarksKey }
-                : { input: 'manual-remarks', status: 'manual-remarks-save-status', print: 'manual-remarks-print', key: getManualRemarksKey };
+                : { input: 'manual-remarks', status: 'manual-remarks-save-status', print: 'manual-remarks-print', key: getOtherRemarksKey };
         }
         function setRemarkStatus(kind, value, warn = false) {
             const el = document.getElementById(remarkConfig(kind).status);
@@ -1477,21 +1495,27 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
         }
         function clearManualRemarksStorage() {
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('flare_manual_remarks_') || key.startsWith('flare_interference_remarks_')) localStorage.removeItem(key);
+                if (key.startsWith('flare_manual_remarks_') || key.startsWith('flare_interference_remarks_') || key.startsWith('flare_other_remarks_')) localStorage.removeItem(key);
             });
+            window.FlareR07?.clearAll();
         }
 
         // 處理事件填報
         document.getElementById('event-form').onsubmit = (e) => {
             e.preventDefault();
+            if (window.__flareCloudHydrated !== true) return alert('請等 Firebase 完成雲端同步，再儲存人工排放紀錄。');
             const newEvent = {
-                id: Date.now(),
+                id: `manual-${Date.now()}-${Math.random().toString(36).slice(2,9)}`,
                 source: 'manual',
                 factory: document.getElementById('factory').value,
                 type: document.querySelector('input[name="period_type"]:checked').value,
                 date: document.getElementById('date').value,
-                amount: parseFloat(document.getElementById('amount').value)
+                amount: parseFloat(document.getElementById('amount').value),
+                reason: document.getElementById('event-reason').value.trim()
             };
+            if (!newEvent.reason) return alert('使用原因為必填。');
+            if (!newEvent.factory || !newEvent.date || !Number.isFinite(newEvent.amount) || newEvent.amount < 0) return alert('請確認工廠、日期及排放量。');
+            window.FlareR07?.addLinkedEvent(newEvent);
             events.push(newEvent);
             saveData();
             renderAll();
@@ -2896,6 +2920,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             document.getElementById('summary-hai-feng').innerText = areaDayCounters["海豐區"].size;
             document.getElementById('summary-hac').innerText = areaDayCounters["HAC廠"].size;
             renderExclusionLists(year);
+            window.FlareR07?.updateAreaCounters(year);
+            window.FlareR07?.render();
 
         }
 
@@ -3455,6 +3481,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 <!-- FLARE 原始排放紀錄修改 / Firebase 同步模組（使用版本參數避免 GitHub Pages 舊快取） -->
 <script type="module" src="./sync-guard.js?v=20261027-1"></script>
 <script type="module" src="./cloud-sync-fix.js?v=20261027-2"></script>
-<script src="./amount-edit.js?v=20261027-2"></script>
+<script src="./r07.js?v=20261110-1"></script>
+<script src="./layout-redesign.js?v=20261110-1"></script>
+<script src="./amount-edit.js?v=20261110-1"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>
 </html>

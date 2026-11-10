@@ -619,6 +619,18 @@
       cap.className = 'flare-summary-caption';
       cap.textContent = caption;
       body.append(labelEl, value, cap);
+      const area = label.includes('麥寮') ? '麥寮廠' : label.includes('海豐') ? '海豐廠' : label.includes('醋酸') ? '醋酸廠' : '';
+      const suffix = area === '麥寮廠' ? 'mai-liao' : area === '海豐廠' ? 'hai-feng' : 'hac';
+      const interference = document.createElement('a');
+      interference.className = 'r07-summary-link';
+      interference.href = `./index.html?view=r07-interference&area=${encodeURIComponent(area)}`;
+      interference.addEventListener('click',()=>{
+        const url=new URL(interference.href,location.href);
+        url.searchParams.set('year',String(document.getElementById('view-year')?.value||new Date().getFullYear()));
+        interference.href=url.href;
+      });
+      interference.innerHTML = `干擾流量天數：<strong id="r07-interference-days-${suffix}">0</strong> 天 ↗`;
+      body.appendChild(interference);
       card.append(iconEl, body);
       return card;
     };
@@ -659,11 +671,12 @@
 
     shell.className = 'flare-summary-shell';
     shell.replaceChildren(grid);
+    window.FlareR07?.updateAreaCounters(Number(document.getElementById('view-year')?.value || new Date().getFullYear()));
   }
 
   function configureReportView() {
     const toolbar = getTopToolbar();
-    if (toolbar && !document.getElementById('flare-open-input-page')) {
+    if (toolbar && !root.classList.contains('flare-r07-view') && !document.getElementById('flare-open-input-page')) {
       const link = makeLink('./data-input.html', '資料輸入', 'input-link');
       link.id = 'flare-open-input-page';
       toolbar.insertBefore(link, document.getElementById('firebase-sync-status'));

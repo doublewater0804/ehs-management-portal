@@ -377,35 +377,27 @@
   };
   const init=()=>{
     if(initialized)return;initialized=true;
-    // Preserve the currently viewed historical year when navigating between R0.7 pages.
-    document.querySelectorAll('#flare-r07-event-link,#flare-r07-interference-link').forEach(link=>{
-      link.addEventListener('click',()=>{const url=new URL(link.href,location.href);url.searchParams.set('year',String(selectedYear()));link.href=url.href;});
-    });
-    const view=new URLSearchParams(location.search).get('view');
-    if(!['r07-event','r07-interference'].includes(view))return;
-    const kind=view==='r07-event'?'event':'interference';
-    const givenArea=new URLSearchParams(location.search).get('area');activeArea=AREAS.includes(givenArea)?givenArea:'';
-    document.documentElement.classList.add('flare-r07-view');
+    // R0.7.1: initialize one workspace for both manager views so navigation is in-place;
+    // the report DOM and its bound events stay mounted and Firestore never reconnects.
+    const kind='event';
     const shell=document.querySelector('.app-shell'),header=shell?.firstElementChild;
     if(!shell||!header)return;
     const el=document.createElement('section');el.id='r07-workspace';el.dataset.kind=kind;el.className='no-print';
     el.innerHTML=`<div class="r07-head"><div><h2>${kind==='event'?'① FLARE 使用事件及原因':'② 干擾流量管理'}</h2><p><span data-r07-year></span> 年度｜<span data-r07-count></span></p></div><div class="r07-tools"><a href="./index.html" class="r07-btn">← 返回統計報表</a><button type="button" id="r07-new" class="r07-btn primary">＋ 新增紀錄</button><button type="button" id="r07-csv" class="r07-btn">匯出 CSV</button><button type="button" id="r07-print" class="r07-btn">列印</button></div></div>
       <div class="r07-review" id="r07-review-warning"></div>
-      ${kind==='interference'?`<div class="r07-filter"><label>廠區篩選 <select id="r07-area-filter"><option value="">全部廠區</option>${AREAS.map(a=>`<option value="${a}">${a}</option>`).join('')}</select></label><span>同日同工廠自動彙總顯示；原始紀錄仍可逐筆修改。</span></div>`:''}
+      <div class="r07-filter"><label>廠區篩選 <select id="r07-area-filter"><option value="">全部廠區</option>${AREAS.map(a=>`<option value="${a}">${a}</option>`).join('')}</select></label><span>同日同工廠自動彙總顯示；原始紀錄仍可逐筆修改。</span></div>
       <div class="r07-message" id="r07-message" aria-live="polite"></div>
       <form id="r07-editor" class="r07-editor hidden"><div class="r07-form-title" data-r07-form-title>新增紀錄</div><div class="r07-grid"><label>日期（必填）<input name="r07-date" type="date" required></label><label class="r07-factory-field">工廠（必選，廠區自動帶入）<select name="r07-factory"><option value="">請選擇…</option>${AREAS.map(a=>`<optgroup label="${a}">${AREA_FACTORIES[a].map(f=>`<option value="${f}">${f}</option>`).join('')}</optgroup>`).join('')}</select></label><label class="r07-amount-field">干擾流量 (NM³)<input name="r07-amount" type="number" step="any" min="0" placeholder="0 或正數"></label><label class="r07-wide">內容（必填）<textarea name="r07-content" rows="3" required maxlength="6000"></textarea></label></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存紀錄</button><button type="button" id="r07-cancel" class="r07-btn">取消</button></div></form>
       <div id="r07-group-detail" class="r07-group-detail hidden"><div class="r07-group-heading"><strong data-r07-group-title></strong><button type="button" id="r07-close-detail" class="r07-btn">關閉</button></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody data-r07-group-body></tbody></table></div></div>
       <div id="r07-results"></div>
-      ${kind==='interference'?`<section class="r07-import"><h3>Excel／CSV 干擾流量匯入</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」；廠區由工廠自動對應。僅讀取 Excel 第一個工作表。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><select id="r07-import-mode"><option value="append">新增不同事件、完全重複略過</option><option value="skip">同日期同工廠已存在則略過</option><option value="replace">取代同日期同工廠原始明細</option></select><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認匯入</button></div><div id="r07-import-preview" aria-live="polite"></div></section>`:''}`;
+      <section class="r07-import"><h3>Excel／CSV 干擾流量匯入</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」；廠區由工廠自動對應。僅讀取 Excel 第一個工作表。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><select id="r07-import-mode"><option value="append">新增不同事件、完全重複略過</option><option value="skip">同日期同工廠已存在則略過</option><option value="replace">取代同日期同工廠原始明細</option></select><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認匯入</button></div><div id="r07-import-preview" aria-live="polite"></div></section>`;
     header.insertAdjacentElement('afterend',el);
-    el.querySelector('.r07-head a[href="./index.html"]')?.addEventListener('click',event=>{
-      const url=new URL('./index.html',location.href);url.searchParams.set('year',String(selectedYear()));event.currentTarget.href=url.href;
-    });
+    el.querySelector('.r07-head a[href="./index.html"]')?.setAttribute('data-r07-return','1');
     document.getElementById('r07-new').addEventListener('click',()=>showForm());
     document.getElementById('r07-editor').addEventListener('submit',saveForm);
     document.getElementById('r07-cancel').addEventListener('click',()=>form().classList.add('hidden'));
     document.getElementById('r07-print').addEventListener('click',()=>window.print());
-    document.getElementById('r07-csv').addEventListener('click',()=>exportCSV(kind));
+    document.getElementById('r07-csv').addEventListener('click',()=>exportCSV(el.dataset.kind));
     document.getElementById('r07-close-detail').addEventListener('click',()=>document.getElementById('r07-group-detail').classList.add('hidden'));
     el.addEventListener('click',event=>{
       const btn=event.target.closest('[data-r07-action],[data-r07-group]');if(!btn)return;
@@ -414,19 +406,69 @@
       if(btn.dataset.r07Action==='edit'&&row)showForm(row);
       if(btn.dataset.r07Action==='delete'&&row)deleteRow(row.id);
     });
-    if(kind==='interference'){
-      el.querySelector('#r07-area-filter').addEventListener('change',e=>{activeArea=e.target.value;render();});
-      el.querySelector('#r07-file').addEventListener('change',e=>onFile(e.target));
-      el.querySelector('#r07-confirm-import').addEventListener('click',confirmImport);
-      el.querySelector('#r07-template').addEventListener('click',downloadTemplate);
-    }
-    render();
+    el.querySelector('#r07-area-filter').addEventListener('change',e=>{activeArea=e.target.value;render();});
+    el.querySelector('#r07-file').addEventListener('change',e=>onFile(e.target));
+    el.querySelector('#r07-confirm-import').addEventListener('click',confirmImport);
+    el.querySelector('#r07-template').addEventListener('click',downloadTemplate);
+
+    const activateRoute=()=>{
+      const query=new URLSearchParams(location.search);
+      const view=query.get('view');
+      const isEvent=view==='r07-event';
+      const isInterference=view==='r07-interference';
+      const isManager=isEvent||isInterference;
+      document.documentElement.classList.toggle('flare-r07-view',isManager);
+      if(isManager){
+        const currentKind=isEvent?'event':'interference';
+        el.dataset.kind=currentKind;
+        el.querySelector('.r07-head h2').textContent=isEvent?'① FLARE 使用事件及原因':'② 干擾流量管理';
+        el.querySelector('.r07-filter').classList.toggle('hidden',!isInterference);
+        el.querySelector('.r07-import').classList.toggle('hidden',!isInterference);
+        activeArea=isInterference&&AREAS.includes(query.get('area'))?query.get('area'):'';
+        el.querySelector('#r07-area-filter').value=activeArea;
+        el.querySelector('#r07-editor').classList.add('hidden');
+        el.querySelector('#r07-group-detail').classList.add('hidden');
+        render();
+      }
+      // Required on entry, return and browser back/forward (including iPad Safari).
+      window.scrollTo(0,0);
+    };
+    const goTo=(view,area='')=>{
+      const url=new URL('./index.html',location.href);
+      url.searchParams.set('year',String(selectedYear()));
+      if(view){url.searchParams.set('view',view);if(area)url.searchParams.set('area',area);}
+      if(url.href!==location.href)window.history.pushState({flareView:view||'report'},'',url);
+      activateRoute();
+    };
+    document.addEventListener('click',event=>{
+      const link=event.target.closest?.('a#flare-r07-event-link,a#flare-r07-interference-link,a.r07-summary-link,a[data-r07-return]');
+      if(!link)return;
+      // Only intercept same-site routes; EHS home and unrelated links remain untouched.
+      const url=new URL(link.href,location.href);
+      const directory=new URL('./',location.href).pathname;
+      if(url.origin!==location.origin||![directory,directory+'index.html'].includes(url.pathname))return;
+      event.preventDefault();
+      if(link.hasAttribute('data-r07-return'))goTo('');
+      else {
+        const target=url.searchParams.get('view');
+        if(target==='r07-event'||target==='r07-interference')goTo(target,url.searchParams.get('area')||'');
+      }
+    });
+    window.addEventListener('popstate',activateRoute);
+    activateRoute();
   };
   window.FlareR07={getState,applyCloud,onCloudReady,init,clearAll,addLinkedEvent,syncLinkedChanges,countAreaDays,updateAreaCounters,normalizeFactory,areaOf,isoDate,parseCSV,parseImportRows,getRecords:()=>records.map(x=>({...x})),render,migration:()=>({marks:{...marks},count:records.length})};
   const style=document.createElement('style');style.textContent=`
     .flare-r07-top-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 11px;border:1px solid #c9d8ef;border-radius:8px;background:#fff;color:#164bb0;font-size:12px;font-weight:800;white-space:nowrap;text-decoration:none}
     .flare-r07-top-btn:hover{background:#edf4ff}
-    html.flare-r07-view .main-layout,html.flare-r07-view .app-shell > .bg-white:not(#r07-workspace),html.flare-r07-view #top-import-panel{display:none!important}
+    /* R0.7.1: .flare-report-view's late !important display:block used to revive the report.
+       Explicit dual-class selector has greater specificity. Summary is rebuilt as
+       .flare-summary-shell by layout-redesign.js and therefore needs its own selector. */
+    html.flare-r07-view.flare-report-view .main-layout,
+    html.flare-r07-view .app-shell > .flare-summary-shell,
+    html.flare-r07-view .app-shell > .bg-white:not(#r07-workspace),
+    html.flare-r07-view #top-import-panel{display:none!important}
+    #r07-workspace{display:none!important}
     html.flare-r07-view #r07-workspace{display:block!important}
     #r07-workspace{max-width:1220px;margin:12px auto 30px;background:#fff;border:1px solid #d7dfeb;border-radius:12px;box-shadow:0 8px 20px rgba(15,47,95,.06);padding:24px;color:#253248;font-size:13px}
     #r07-workspace .hidden{display:none!important}

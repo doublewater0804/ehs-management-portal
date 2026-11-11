@@ -7,6 +7,11 @@ const registrations = [
     href: 'calendar/index.html', category: 'general', order: 52, visible: true, favorite: false
   },
   {
+    id: 'equipment-voc-r01', title: '設備元件 VOC 檢測管理系統',
+    description: '每季統計表圖片上傳、OCR 數字與備註辨識、人工校對、版本追溯、Dashboard 及歷年比較。',
+    href: 'equipment-voc/index.html?v=20261111-r01', category: 'environment', order: 85, visible: true, favorite: false
+  },
+  {
     id: 'storage-facilities',
     title: '防止貯存系統污染地下水體-貯存設施統計表',
     description: '管理地上儲槽、地下儲槽與貯存容器基本資料，共用監測設定、井數統計及 Excel 匯出。',

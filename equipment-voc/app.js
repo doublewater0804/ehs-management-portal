@@ -1,14 +1,14 @@
 import {
-  APP_VERSION,DEPARTMENTS,FACTORY_LIST,FIELDS,emptyQuarter,clone,fmt,
+  DEPARTMENTS,FACTORY_LIST,FIELDS,emptyQuarter,clone,fmt,
   rowMetrics,sumRows,departmentMetrics,totalsFor,validateData
-} from "./model.js?v=20261111-r01";
-import * as cloud from "./cloud.js?v=20261111-r01";
+} from "./model.js?v=20261111-r011";
+import * as cloud from "./cloud.js?v=20261111-r011";
 import {recognizeEquipmentTable} from "./ocr.js?v=20261111-r01";
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let records=[],recordsLoaded=false,selectedYear=2026,selectedQuarter=3,draft=null;
-let draftImageFile=null,draftImagePath=null,imageObjectUrl="",imageFileName="";
+let draftImageFile=null,imageObjectUrl="",imageFileName="";
 let ocrResult=null,ocrIssues=[],activeTab="dashboard",unsubscribe=null,authUser=null,busy=false;
 
 function quarterKey(){return `${selectedYear}_Q${selectedQuarter}`;}
@@ -49,9 +49,9 @@ function setFactoryField(factoryId,field,value){
 }
 function clearImagePreview(){
   if(imageObjectUrl){URL.revokeObjectURL(imageObjectUrl);imageObjectUrl="";}
-  draftImageFile=null;draftImagePath=null;imageFileName="";
+  draftImageFile=null;imageFileName="";
   $("image-preview").innerHTML='<div class="empty-preview">尚未選擇圖片</div>';
-  $("source-image-meta").textContent="";
+  $("source-image-meta").textContent="原始圖片不會上傳 Firebase；請自行保留本機原檔。";
   $("clear-image-button").disabled=true;$("ocr-button").disabled=true;
   $("image-input").value="";
 }
@@ -86,13 +86,12 @@ function createDraft(){
   const base=activeRecord();
   if(base){
     draft={year:selectedYear,quarter:selectedQuarter,quarterKey:quarterKey(),factories:clone(base.factories),notes:String(base.notes||""),sourceFileName:base.sourceFileName||""};
-    draftImagePath=base.sourceImagePath||null;
-    imageFileName=base.sourceFileName||"";
   }else{
     draft=emptyQuarter(selectedYear,selectedQuarter);
-    draftImagePath=null;imageFileName="";
   }
-  draftImageFile=null;ocrResult=null;ocrIssues=[];
+  clearImagePreview();
+  imageFileName=base?.sourceFileName||"";
+  ocrResult=null;ocrIssues=[];
   $("confirm-data").checked=false;
   $("image-input").value="";
   $("save-button").hidden=false;$("cancel-button").hidden=false;$("edit-button").hidden=true;
@@ -212,7 +211,7 @@ function renderReportTable(){
 }
 function renderHistory(){
   const rows=recordsForQuarter();
-  $("history-table").innerHTML=`<thead><tr><th>版本</th><th>狀態</th><th>建立時間</th><th>原始圖片</th><th>操作</th></tr></thead><tbody>${
+  $("history-table").innerHTML=`<thead><tr><th>版本</th><th>狀態</th><th>建立時間</th><th>來源檔名（僅文字，不保存圖片）</th><th>操作</th></tr></thead><tbody>${
     rows.length?rows.map(r=>`<tr><td>V${r.version}</td><td>${r.isOfficial?'<span class="badge-good">正式版本</span>':r.status==="superseded"?'<span class="badge-muted">歷史版本</span>':'<span class="badge-warn">待確認</span>'}</td><td>${currentDate(r.createdAt)}</td><td>${esc(r.sourceFileName||"—")}</td><td><button class="button light" data-load-record="${r.id}">載入檢視</button> ${!r.isOfficial?`<button class="button success" data-official-record="${r.id}">設為正式版本</button> ${r.status==="pending"?`<button class="button light" data-delete-record="${r.id}">刪除待確認版</button>`:""}`:""}</td></tr>`).join(""):`<tr><td colspan="5" class="empty-state">本季度尚無版本紀錄。</td></tr>`
   }</tbody>`;
 }
@@ -260,22 +259,15 @@ function updateOCRCheckTable(){
   $("ocr-summary").textContent=`數字辨識 ${ocrResult.okCount}/${ocrResult.total}`;
   $("ocr-notes").textContent=`標題辨識：${ocrResult.titleText||"未辨識"}\n備註辨識：\n${ocrResult.notesText||"未辨識，請人工輸入。"}`;
 }
-async function loadCurrentImagePreview(){
+function loadCurrentImagePreview(){
   if(draftImageFile){
     if(!imageObjectUrl)imageObjectUrl=URL.createObjectURL(draftImageFile);
     setImagePreview(imageObjectUrl,draftImageFile.name);return;
   }
-  const imagePath=draftImagePath||activeRecord()?.sourceImagePath;
-  if(imagePath){
-    try{
-      if(imageObjectUrl){URL.revokeObjectURL(imageObjectUrl);imageObjectUrl="";}
-      const loaded=await cloud.loadImage(imagePath);imageObjectUrl=loaded.url;imageFileName=loaded.fileName;
-      setImagePreview(loaded.url,loaded.fileName);
-    }catch(error){$("image-preview").innerHTML=`<div class="empty-preview">${esc(error.message)}</div>`;}
-    return;
-  }
-  $("image-preview").innerHTML='<div class="empty-preview">尚未選擇圖片</div>';
-  $("source-image-meta").textContent="儲存正式版本前，請上傳本季原始統計圖片。";
+  const lastName=draft?.sourceFileName||activeRecord()?.sourceFileName||"";
+  $("image-preview").innerHTML='<div class="empty-preview">圖片僅用於本機 OCR 與預覽，不會上傳 Firebase。需要再次辨識時，請重新選擇圖片。</div>';
+  $("source-image-meta").textContent=lastName?`歷史來源檔名（僅文字紀錄）：${lastName}`:"請自行保留原始圖片；頁面重新載入後無法從雲端取回。";
+  $("clear-image-button").disabled=true;$("ocr-button").disabled=true;
 }
 function setOCRProgress(p){
   $("ocr-progress-wrap").hidden=false;
@@ -286,15 +278,6 @@ function setOCRProgress(p){
 async function runOCR(){
   if(!draft)createDraft();
   if(!draft)return;
-  if(!draftImageFile&&draftImagePath){
-    try{
-      const loaded=await cloud.loadImage(draftImagePath);
-      const response=await fetch(loaded.url);
-      draftImageFile=await response.blob();imageFileName=loaded.fileName;
-      if(imageObjectUrl)URL.revokeObjectURL(imageObjectUrl);
-      imageObjectUrl=URL.createObjectURL(draftImageFile);setImagePreview(imageObjectUrl,loaded.fileName);
-    }catch(error){setMessage(`無法讀取已保存的原始圖片：${error.message}`,"danger");return;}
-  }
   if(!draftImageFile){setMessage("請先選擇原始統計表圖片。","warning");showTab("ocr");return;}
   $("ocr-button").disabled=true;$("ocr-result").hidden=false;$("ocr-result").textContent="正在啟動 OCR…";
   $("confirm-data").checked=false;ocrResult=null;ocrIssues=[];
@@ -328,24 +311,22 @@ async function runOCR(){
 }
 async function saveDraft(){
   if(!draft||busy)return;
-  if(!$("confirm-data").checked){setMessage("請先勾選「已核對原始圖片及數據」。","warning");showTab("ocr");return;}
+  if(!$("confirm-data").checked){setMessage("請先勾選「已核對本季廠別、數據及備註」。","warning");showTab("ocr");return;}
   try{
     validateData(draft);
     const t=totalsFor(draft);
     if(t.missingCount>0)throw new Error(`仍有 ${t.missingCount} 個廠別資料未提供，請補齊或標示未執行。`);
-    if(!draftImageFile&&!draftImagePath)throw new Error("尚未選擇原始圖片，正式版本必須保留來源圖片。");
   }catch(error){setMessage(error.message,"warning");showTab("table");return;}
   busy=true;$("save-button").disabled=true;
   try{
     const saved=await cloud.saveRevision(draft,{
-      imageFile:draftImageFile,
-      existingImagePath:draftImagePath,
-      fileName:draftImageFile?.name||imageFileName||draft.sourceFileName
+      fileName:draftImageFile?.name||imageFileName||draft.sourceFileName||""
     });
-    draft=null;draftImageFile=null;draftImagePath=null;imageFileName="";
-    if(imageObjectUrl){URL.revokeObjectURL(imageObjectUrl);imageObjectUrl="";}
-    $("confirm-data").checked=false;$("image-preview").innerHTML='<div class="empty-preview">原始圖片已保存至雲端</div>';
-    setMessage(saved.isOfficial?`已儲存為 ${selectedYear} Q${selectedQuarter} 正式版本 V${saved.version}。`:`已儲存為待確認版本 V${saved.version}；原正式版本保持不變，請至版本紀錄指定正式版本。`);
+    draft=null;ocrResult=null;ocrIssues=[];
+    clearImagePreview();updateOCRCheckTable();
+    $("ocr-result").hidden=true;$("ocr-progress-wrap").hidden=true;
+    $("confirm-data").checked=false;
+    setMessage((saved.isOfficial?`已儲存為 ${selectedYear} Q${selectedQuarter} 正式版本 V${saved.version}。`:`已儲存為待確認版本 V${saved.version}；原正式版本保持不變，請至版本紀錄指定正式版本。`)+" 只儲存統計資料，圖片未上傳雲端，請自行保存原圖。");
     renderAll();showTab("dashboard");
   }catch(error){setMessage(`儲存失敗：${error.message}`,"danger");}
   finally{busy=false;$("save-button").disabled=false;}
@@ -379,7 +360,7 @@ async function loadRecordToDraft(id){
   if(draft&&!confirm("載入歷史版本會捨棄目前草稿，是否繼續？"))return;
   draft={year:record.year,quarter:record.quarter,quarterKey:record.quarterKey,factories:clone(record.factories),notes:record.notes||"",sourceFileName:record.sourceFileName||""};
   if(imageObjectUrl){URL.revokeObjectURL(imageObjectUrl);imageObjectUrl="";}
-  draftImagePath=record.sourceImagePath||null;draftImageFile=null;imageFileName=record.sourceFileName||"";
+  clearImagePreview();imageFileName=record.sourceFileName||"";
   selectedYear=record.year;selectedQuarter=record.quarter;$("year-select").value=String(selectedYear);$("quarter-select").value=String(selectedQuarter);
   $("confirm-data").checked=false;renderAll();showTab("table");await loadCurrentImagePreview();
   setMessage(`已載入 V${record.version} 作為草稿。儲存時會建立新版本，不會覆蓋原版本。`);
@@ -410,7 +391,7 @@ function onImageSelected(e){
   if(file.size>12*1024*1024){setMessage("圖片超過 12 MB，請先縮小圖片。","warning");return;}
   if(!draft)createDraft();
   if(!draft)return;
-  draftImageFile=file;draftImagePath=null;imageFileName=file.name;draft.sourceFileName=file.name;
+  draftImageFile=file;imageFileName=file.name;draft.sourceFileName=file.name;
   if(imageObjectUrl)URL.revokeObjectURL(imageObjectUrl);
   imageObjectUrl=URL.createObjectURL(file);setImagePreview(imageObjectUrl,file.name);
   ocrResult=null;ocrIssues=[];updateOCRCheckTable();$("confirm-data").checked=false;

@@ -1,4 +1,4 @@
-export const APP_VERSION = "R0.1";
+export const APP_VERSION = "R0.1.1";
 export const DEPARTMENTS = [
   { id: "chem1", name: "化一部", factories: [
     { id: "aro-1", name: "ARO-1" }, { id: "aro-2", name: "ARO-2" }, { id: "aro-3", name: "ARO-3" }

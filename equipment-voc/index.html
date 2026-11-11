@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b365d">
+<title>設備元件 VOC 檢測管理系統</title>
+<link rel="stylesheet" href="./style.css?v=20261111-r01">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">EHS</div>
+    <div><strong>設備元件 VOC 檢測管理系統</strong><small>VOC ≥ 1,000 ppm｜季度檢測統計</small></div>
+  </div>
+  <div class="top-actions">
+    <span id="account-label" class="account-label">尚未登入</span>
+    <button id="login-button" class="button primary">Google 登入</button>
+    <button id="logout-button" class="button light" hidden>登出</button>
+  </div>
+</header>
+
+<main id="auth-view" class="auth-wrap">
+  <section class="auth-card">
+    <div class="auth-icon">☁</div>
+    <h1>EHS 雲端資料登入</h1>
+    <p>本系統沿用 EHS 入口網站 Firebase Authentication。請使用已授權的管理員 Google 帳號登入。</p>
+    <p id="auth-status" class="status-line" role="status">正在連接登入服務…</p>
+    <button id="auth-login-button" class="button primary wide">使用 Google 帳號登入</button>
+    <small>僅授權管理員可讀取及維護資料。</small>
+  </section>
+</main>
+
+<main id="app-view" class="app-shell" hidden>
+  <section class="page-heading">
+    <div>
+      <div class="eyebrow">ENVIRONMENTAL MANAGEMENT</div>
+      <h1>設備元件 VOC 檢測管理</h1>
+      <p>每季圖片上傳、OCR 數字辨識、人工校對及歷年統計。</p>
+    </div>
+    <div class="period-controls">
+      <label>年度<select id="year-select"></select></label>
+      <label>季度<select id="quarter-select"><option value="1">第一季</option><option value="2">第二季</option><option value="3">第三季</option><option value="4">第四季</option></select></label>
+    </div>
+  </section>
+
+  <div id="global-message" class="message" role="status" hidden></div>
+  <nav class="tabs" aria-label="系統功能">
+    <button class="tab active" data-tab="dashboard">總覽 Dashboard</button>
+    <button class="tab" data-tab="table">季度統計表</button>
+    <button class="tab" data-tab="ocr">圖片 OCR 辨識</button>
+    <button class="tab" data-tab="history">版本紀錄</button>
+    <button class="tab" data-tab="trends">歷年比較</button>
+  </nav>
+
+  <section id="view-dashboard" class="view-section">
+    <div id="draft-notice" class="notice" hidden></div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="dashboard-grid">
+      <section class="panel">
+        <div class="panel-heading"><div><h2>各事業部檢測統計</h2><p>依正式版本計算</p></div><span class="panel-tag">部門彙總</span></div>
+        <div class="table-scroll"><table class="simple-table" id="department-summary"></table></div>
+      </section>
+      <section class="panel">
+        <div class="panel-heading"><div><h2>設備類別異常比例</h2><p>異常點數 ÷ 檢測數 × 100%</p></div></div>
+        <div id="category-chart" class="category-chart"></div>
+      </section>
+    </div>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>本季資料狀態</h2><p>未執行與資料未提供分開管理</p></div><span id="record-status" class="status-pill">尚未建立</span></div>
+      <div id="data-quality" class="quality-grid"></div>
+    </section>
+  </section>
+
+  <section id="view-table" class="view-section" hidden>
+    <div class="toolbar-row">
+      <div><h2>季度 VOC 檢測統計表</h2><p class="muted">保留原始統計表欄位；比例、小計及合計由系統計算。</p></div>
+      <div class="toolbar-buttons">
+        <button id="edit-button" class="button primary">建立／修正資料</button>
+        <button id="save-button" class="button success" hidden>確認並儲存新版本</button>
+        <button id="cancel-button" class="button light" hidden>取消草稿</button>
+        <button id="excel-button" class="button light">匯出 Excel</button>
+        <button id="print-button" class="button light">列印／另存 PDF</button>
+      </div>
+    </div>
+    <div id="table-alert" class="notice" hidden></div>
+    <div class="table-scroll report-scroll"><table id="voc-report" class="voc-report"></table></div>
+    <div class="notes-panel">
+      <label for="notes-input">本季備註</label>
+      <textarea id="notes-input" rows="3" placeholder="輸入本季檢測頻率、特殊情形或統計說明。" disabled></textarea>
+    </div>
+    <div class="footnote">統計門檻：VOC ≥ 1,000 ppm。雜項元件是否納入，依每季正式來源表註記為準。</div>
+  </section>
+
+  <section id="view-ocr" class="view-section" hidden>
+    <div class="toolbar-row">
+      <div><h2>圖片上傳與 OCR 辨識</h2><p class="muted">固定表格版型；先辨識數字及備註，再由管理員逐欄確認。</p></div>
+      <span class="panel-tag">圖片不會送至第三方 OCR API</span>
+    </div>
+    <div class="upload-layout">
+      <section class="panel upload-panel">
+        <div class="upload-drop" id="upload-drop">
+          <div class="upload-symbol">⇧</div>
+          <strong>選擇季度統計表圖片</strong>
+          <span>支援 PNG、JPG；建議使用完整、正向、清晰的原始表格。</span>
+          <input id="image-input" type="file" accept="image/png,image/jpeg">
+          <label for="image-input" class="button primary">選擇圖片</label>
+          <small>單張圖片上限 12 MB。原始圖片確認儲存後，會分段保存於 EHS Firestore。</small>
+        </div>
+        <div class="ocr-actions">
+          <button id="ocr-button" class="button primary" disabled>開始 OCR 辨識</button>
+          <button id="clear-image-button" class="button light" disabled>清除圖片</button>
+        </div>
+        <div class="progress-wrap" id="ocr-progress-wrap" hidden>
+          <div class="progress-head"><span id="ocr-progress-text">準備中…</span><strong id="ocr-progress-value">0%</strong></div>
+          <div class="progress-track"><div id="ocr-progress-bar"></div></div>
+        </div>
+        <div id="ocr-result" class="ocr-result" hidden></div>
+        <div class="confirm-row" id="confirm-row">
+          <label><input type="checkbox" id="confirm-data"> 我已核對原始圖片、廠別、數字及備註，確認可儲存。</label>
+        </div>
+        <p class="hint">OCR 只提供初步辨識結果。若欄位辨識失敗，請回到「季度統計表」人工修正；資料未完整或未勾選確認時，不允許儲存。</p>
+      </section>
+      <section class="panel preview-panel">
+        <div class="panel-heading"><div><h2>原始圖片預覽</h2><p>檢查圖片方向、完整性與表格邊界</p></div></div>
+        <div id="image-preview" class="image-preview"><div class="empty-preview">尚未選擇圖片</div></div>
+        <div id="source-image-meta" class="image-meta"></div>
+      </section>
+    </div>
+    <section class="panel ocr-detail-panel">
+      <div class="panel-heading"><div><h2>OCR 辨識檢查</h2><p>辨識結果會依固定廠別順序填入表格</p></div><span id="ocr-summary" class="status-pill">尚未辨識</span></div>
+      <div class="table-scroll"><table id="ocr-check-table" class="simple-table"></table></div>
+      <div id="ocr-notes" class="ocr-notes"></div>
+    </section>
+  </section>
+
+  <section id="view-history" class="view-section" hidden>
+    <div class="toolbar-row"><div><h2>季度版本紀錄</h2><p class="muted">同一年度、季度重新上傳時建立新版本；舊版本保留。</p></div><span class="panel-tag">正式版本與待確認版本分開</span></div>
+    <section class="panel"><div class="table-scroll"><table id="history-table" class="simple-table"></table></div></section>
+  </section>
+
+  <section id="view-trends" class="view-section" hidden>
+    <div class="toolbar-row"><div><h2>歷年季度比較</h2><p class="muted">只納入各季度已指定的正式版本。</p></div></div>
+    <div class="dashboard-grid">
+      <section class="panel"><div class="panel-heading"><div><h2>各季檢測總數</h2><p>設備元件檢測總數（件）</p></div></div><div id="trend-count-chart" class="trend-chart"></div></section>
+      <section class="panel"><div class="panel-heading"><div><h2>各季整體異常比例</h2><p>異常總數 ÷ 檢測總數 × 100%</p></div></div><div id="trend-rate-chart" class="trend-chart"></div></section>
+    </div>
+    <section class="panel"><div class="panel-heading"><div><h2>正式版本比較明細</h2></div></div><div class="table-scroll"><table id="trend-table" class="simple-table"></table></div></section>
+  </section>
+</main>
+
+<footer>設備元件 VOC 檢測管理系統 R0.1｜EHS 管理入口平台</footer>
+<script type="module" src="./app.js?v=20261111-r01"></script>
+<script src="../ehs-home-button.js?v=20261005-1"></script>
+</body>
+</html>

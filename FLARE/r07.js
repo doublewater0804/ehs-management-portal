@@ -1,4 +1,4 @@
-/* FLARE R0.7.2 – newest-first event/interference lists and same-day multi-factory batch entry.
+/* FLARE R0.7.3 – CSV import entry, date-level details/edit/delete and active date highlighting.
    Shared Firestore document remains flare_control/global_state; this script never changes FLARE day counters. */
 (() => {
   'use strict';
@@ -61,7 +61,7 @@
     return m?toAmount(m[1]):null;
   };
   const fromStore=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||'null')??fallback;}catch{return fallback;}};
-  let records=fromStore(KEY,[]), marks=fromStore(MARK_KEY,{}), activeArea='', pendingImport=[], batchDrafts=[];
+  let records=fromStore(KEY,[]), marks=fromStore(MARK_KEY,{}), activeArea='', pendingImport=[], batchDrafts=[], activeDate=null;
   if (!Array.isArray(records)) records=[];
   if (!marks || typeof marks!=='object'||Array.isArray(marks)) marks={};
   let cloudReady=false, needsSave=false, initialized=false;
@@ -213,7 +213,7 @@
       yearRows(year,'event').sort(newestFirst).map((r,i)=>[i+1,displayDate(r.date),r.content]);
     const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.2_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.3_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   const rowButton=(action,row,label)=>`<button type="button" class="r07-action" data-r07-action="${action}" data-r07-id="${html(row.id)}">${label}</button>`;
   const showMessage=text=>{const el=document.getElementById('r07-message');if(el)el.textContent=text;};
@@ -234,10 +234,18 @@
       root.querySelector('[data-r07-count]').textContent=`流量合計 ${sum.toLocaleString('zh-TW')} NM³｜有流量日期 ${days} 日｜${groups.length} 筆工廠彙整`;
       const dates=[...new Set(groups.map(g=>g.date))].sort((a,b)=>b.localeCompare(a));
       let sequence=0;
+      // R0.7.3: one detail/edit control and one delete control per date.
+      // The detail is rendered directly under its date, not in a duplicate panel above the list.
+      if(activeDate!==null&&!dates.includes(activeDate))activeDate=null;
       body.innerHTML=dates.map(date=>{
         const subs=groups.filter(g=>g.date===date);
         const daily=subs.reduce((a,g)=>a+g.amount,0);
-        return `<section class="r07-date"><div class="r07-date-heading"><strong>${displayDate(date)}</strong><span>當日合計：${daily.toLocaleString('zh-TW')} NM³</span></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${subs.map(g=>`<tr><td>${++sequence}</td><td>${html(g.area)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td><td><button type="button" class="r07-action" data-r07-group="${html(g.date+'|'+g.factory)}">明細／編輯</button></td></tr>`).join('')}</tbody></table></div></section>`;
+        const expanded=activeDate===date;
+        const allDayRows=yearRows(year,'interference').filter(r=>r.date===date).sort((a,b)=>
+          (AREAS.indexOf(areaOf(a.factory))-AREAS.indexOf(areaOf(b.factory)))||
+          a.factory.localeCompare(b.factory,'zh-TW')||(a.createdAt||'').localeCompare(b.createdAt||''));
+        const canDelete=/^\d{4}-\d{2}-\d{2}$/.test(date);
+        return `<section class="r07-date ${expanded?'r07-date-editing':''}" data-r07-date="${html(date)}"><div class="r07-date-heading"><strong>${displayDate(date)}${expanded?'<span class="r07-edit-indicator">編輯中</span>':''}</strong><div class="r07-date-controls"><span>當日合計：${daily.toLocaleString('zh-TW')} NM³</span><button type="button" class="r07-action" data-r07-date-details="${html(date)}" aria-expanded="${expanded}">${expanded?'收合明細':'明細／編輯'}</button><button type="button" class="r07-action r07-danger" data-r07-delete-date="${html(date)}" ${canDelete?'':'disabled title="日期未確認，請先修正日期"'}>刪除當日</button></div></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th></tr></thead><tbody>${subs.map(g=>`<tr><td>${++sequence}</td><td>${html(g.area)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td></tr>`).join('')}</tbody></table></div>${expanded?`<div class="r07-day-detail"><strong>${displayDate(date)}｜當日全部廠區原始明細（${allDayRows.length} 筆）</strong><p>可逐筆編輯／刪除；與上方彙整列不同，這裡保留每筆來源紀錄。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${allDayRows.map((r,i)=>`<tr><td>${i+1}</td><td>${html(areaOf(r.factory))||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('')}</tbody></table></div></div>`:''}</section>`;
       }).join('')||'<p class="r07-empty">本年度尚無干擾流量紀錄。</p>';
       root.querySelector('#r07-area-filter').value=activeArea;
     }
@@ -249,13 +257,14 @@
   const showForm=(record=null)=>{
     const root=form();if(!root)return;
     batchForm()?.classList.add('hidden');
+    const kind=document.getElementById('r07-workspace')?.dataset.kind;
+    if(kind==='interference'&&record?.date){activeDate=record.date;render();}
     root.classList.remove('hidden');root.dataset.id=record?.id||'';
     root.querySelector('[name="r07-date"]').value=record?.date||'';
     root.querySelector('[name="r07-factory"]').value=record?.factory||'';
     root.querySelector('[name="r07-amount"]').value=record?.amount??'';
     root.querySelector('[name="r07-content"]').value=record?.content||'';
     root.querySelector('[data-r07-form-title]').textContent=record?'修改紀錄':'新增紀錄';
-    const kind=document.getElementById('r07-workspace')?.dataset.kind;
     root.querySelector('.r07-factory-field').classList.toggle('hidden',kind!=='interference');
     root.querySelector('.r07-amount-field').classList.toggle('hidden',kind!=='interference');
     root.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -335,7 +344,7 @@
     }
     if(target){Object.assign(target,{date,factory:kind==='event'?target.factory:factory,amount,content,needsReview:false});}
     else records.push(normalizeRecord({kind,date,factory,amount,content,source:'manual'}));
-    root.classList.add('hidden');root.dataset.id='';push();showMessage('紀錄已更新，正在同步 Firebase。');
+    root.classList.add('hidden');root.dataset.id='';activeDate=null;push();showMessage('紀錄已更新，正在同步 Firebase。');
   };
   const deleteRow=rid=>{
     if(!validateMutation())return;
@@ -349,15 +358,33 @@
     }
     records=records.filter(r=>r.id!==rid);push();
   };
-  const showGroup=(key)=>{
-    const sep=key.indexOf('|'),date=key.slice(0,sep),factory=key.slice(sep+1);
-    const rows=records.filter(r=>r.kind==='interference'&&r.date===date&&r.factory===factory);
-    const root=document.getElementById('r07-group-detail');
-    if(!root)return;
-    root.classList.remove('hidden');
-    root.querySelector('[data-r07-group-title]').textContent=`${displayDate(date)}｜${areaOf(factory)}｜${factory}（${rows.length} 筆原始紀錄）`;
-    root.querySelector('[data-r07-group-body]').innerHTML=rows.map((r,i)=>`<tr><td>${i+1}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('');
-    root.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const toggleDateDetails=date=>{
+    activeDate=activeDate===date?null:date;
+    form()?.classList.add('hidden');
+    render();
+    document.querySelector('#r07-results .r07-date-editing')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  const deleteDay=date=>{
+    if(!validateMutation())return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number(date.slice(0,4))!==selectedYear()){
+      alert('日期不正確，請先確認日期後再刪除。');return;
+    }
+    // Delete the whole date, including rows from other areas while a filter is active.
+    const targets=yearRows(selectedYear(),'interference').filter(r=>r.date===date);
+    if(!targets.length)return;
+    const areas=[...new Set(targets.map(r=>areaOf(r.factory)).filter(Boolean))];
+    const factories=new Set(targets.map(r=>r.factory).filter(Boolean));
+    const volume=targets.reduce((sum,r)=>sum+(r.amount??0),0);
+    const info=`${displayDate(date)}\n廠區：${areas.join('、')||'待確認'}\n工廠：${factories.size} 個\n原始紀錄：${targets.length} 筆\n當日流量合計：${volume.toLocaleString('zh-TW')} NM³`;
+    if(!confirm(`${info}\n\n將刪除此日期「全部廠區」的干擾流量紀錄（包含待確認原始資料），確定繼續？`))return;
+    if(!confirm(`再次確認：永久刪除 ${displayDate(date)} 當日全部 ${targets.length} 筆干擾流量？\n此操作將同步 Firebase，且不影響原 FLARE 使用事件日數。`))return;
+    try{
+      localStorage.setItem(`flare_r073_deleted_day_backup_${date}_${Date.now()}`,JSON.stringify(targets));
+    }catch(error){alert('本機備份失敗，已取消刪除以保護原始資料。');return;}
+    const remove=new Set(targets.map(r=>r.id));
+    records=records.filter(r=>!remove.has(r.id));
+    activeDate=null;form()?.classList.add('hidden');batchForm()?.classList.add('hidden');
+    push();showMessage(`已刪除 ${displayDate(date)} 當日 ${targets.length} 筆干擾流量，原始資料已先備份於本機，正在同步 Firebase。`);
   };
   const parseCSV=(text)=>{
     text=String(text).replace(/^\uFEFF/,'');
@@ -397,8 +424,11 @@
         matrix=window.XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]],{header:1,raw:false,defval:''});
       }else throw Error('僅支援 Excel（.xlsx/.xls）或 CSV。');
       const parsed=parseImportRows(matrix);pendingImport=parsed.items;
+      const existing=new Set(yearRows(selectedYear(),'interference').map(signature));
+      const duplicateExisting=pendingImport.filter(r=>existing.has(signature(r))).length;
+      const conflictExisting=pendingImport.filter(r=>yearRows(selectedYear(),'interference').some(x=>x.date===r.date&&x.factory===r.factory&&!existing.has(signature(r)))).length;
       const prev=document.getElementById('r07-import-preview');
-      prev.innerHTML=`<strong>可匯入 ${pendingImport.length} 筆</strong>，${parsed.messages.length} 項檢查訊息。<div class="r07-scroll"><table class="r07-table"><thead><tr><th>日期</th><th>廠區</th><th>工廠</th><th>流量</th><th>內容</th></tr></thead><tbody>${pendingImport.slice(0,30).map(r=>`<tr><td>${displayDate(r.date)}</td><td>${areaOf(r.factory)}</td><td>${html(r.factory)}</td><td>${r.amount}</td><td>${html(r.content)}</td></tr>`).join('')}</tbody></table></div>${parsed.messages.slice(0,20).map(m=>`<p class="r07-warn">${html(m)}</p>`).join('')}`;
+      prev.innerHTML=`<strong>檔案有效資料 ${pendingImport.length} 筆</strong>｜與雲端既有資料完全重複 ${duplicateExisting} 筆｜同日同工廠可能衝突 ${conflictExisting} 筆｜${parsed.messages.length} 項檢查訊息。<div class="r07-scroll"><table class="r07-table"><thead><tr><th>日期</th><th>廠區</th><th>工廠</th><th>流量</th><th>內容</th></tr></thead><tbody>${pendingImport.slice(0,30).map(r=>`<tr><td>${displayDate(r.date)}</td><td>${areaOf(r.factory)}</td><td>${html(r.factory)}</td><td>${r.amount}</td><td>${html(r.content)}</td></tr>`).join('')}</tbody></table></div>${parsed.messages.slice(0,20).map(m=>`<p class="r07-warn">${html(m)}</p>`).join('')}`;
       document.getElementById('r07-confirm-import').disabled=!pendingImport.length||!!parsed.errors.length;
       if(parsed.errors.length)showMessage('匯入檔存在無效資料，請修正後重新選擇，避免部分匯入。');
     }catch(err){document.getElementById('r07-import-preview').textContent=`解析失敗：${err.message}`;document.getElementById('r07-confirm-import').disabled=true;}
@@ -408,23 +438,34 @@
     const mode=document.getElementById('r07-import-mode').value;
     const year=selectedYear();
     let added=0,duplicate=0,skipped=0,replaced=0;
-    const planned=[];const scratch=[...records];
+    const planned=[],scratch=[...records];
+    const originalGroups=new Set(yearRows(year,'interference').map(r=>`${r.date}|${r.factory}`));
+    const replacedGroups=new Set(),fileSignatures=new Set();
     for(const row of pendingImport){
-      if(scratch.some(r=>r.kind==='interference'&&signature(r)===signature(row))){duplicate++;continue;}
-      const conflicts=scratch.filter(r=>r.kind==='interference'&&r.date===row.date&&r.factory===row.factory);
-      if(conflicts.length&&mode==='skip'){skipped++;continue;}
-      if(conflicts.length&&mode==='replace'){
-        // Preserve originals in browser backup before replacing a date/factory group.
+      const sig=signature(row),groupKey=`${row.date}|${row.factory}`;
+      if(fileSignatures.has(sig)){duplicate++;continue;}
+      fileSignatures.add(sig);
+      if(mode==='skip'&&originalGroups.has(groupKey)){skipped++;continue;}
+      if(mode==='replace'&&!replacedGroups.has(groupKey)){
+        // Remove prior cloud rows only once per group: distinct rows within this CSV
+        // must not replace one another during the same import.
+        const conflicts=scratch.filter(r=>r.kind==='interference'&&r.date===row.date&&r.factory===row.factory);
         planned.push(...conflicts);replaced+=conflicts.length;
         for(const rec of conflicts){const idx=scratch.indexOf(rec);if(idx>=0)scratch.splice(idx,1);}
+        replacedGroups.add(groupKey);
       }
+      if(scratch.some(r=>r.kind==='interference'&&signature(r)===sig)){duplicate++;continue;}
       scratch.push(normalizeRecord(row));added++;
     }
     if(!confirm(`年度 ${year}\n預計新增 ${added} 筆、完全重複 ${duplicate} 筆、略過 ${skipped} 筆、取代舊紀錄 ${replaced} 筆。\n確定匯入至 Firebase？`))return;
-    if(planned.length){const backupKey=`flare_r07_import_replace_backup_${Date.now()}`;localStorage.setItem(backupKey,JSON.stringify(planned));}
+    if(planned.length){
+      try{localStorage.setItem(`flare_r07_import_replace_backup_${Date.now()}`,JSON.stringify(planned));}
+      catch(error){alert('取代資料的本機備份失敗，已取消匯入。');return;}
+    }
     records=scratch;pendingImport=[];document.getElementById('r07-import-preview').textContent='匯入完成';
     document.getElementById('r07-confirm-import').disabled=true;document.getElementById('r07-file').value='';
-    push();showMessage(`已加入 ${added} 筆，重複 ${duplicate} 筆、略過 ${skipped} 筆；取代資料已備份於本機。`);
+    if(added||replaced)push();
+    showMessage(`已加入 ${added} 筆，重複 ${duplicate} 筆、略過 ${skipped} 筆；取代資料已先備份於本機。`);
   };
   const downloadTemplate=()=>{
     const lines=[['日期','工廠','干擾流量 (NM³)','內容'],[`${selectedYear()}/11/10`,'ARO1廠','150','範例：設備異常（請刪除範例列）']];
@@ -439,20 +480,19 @@
     const shell=document.querySelector('.app-shell'),header=shell?.firstElementChild;
     if(!shell||!header)return;
     const el=document.createElement('section');el.id='r07-workspace';el.dataset.kind=kind;el.className='no-print';
-    el.innerHTML=`<div class="r07-head"><div><h2>${kind==='event'?'① FLARE 使用事件及原因':'② 干擾流量管理'}</h2><p><span data-r07-year></span> 年度｜<span data-r07-count></span></p></div><div class="r07-tools"><a href="./index.html" class="r07-btn">← 返回統計報表</a><button type="button" id="r07-new" class="r07-btn primary">＋ 新增紀錄</button><button type="button" id="r07-csv" class="r07-btn">匯出 CSV</button><button type="button" id="r07-print" class="r07-btn">列印</button></div></div>
+    el.innerHTML=`<div class="r07-head"><div><h2>${kind==='event'?'① FLARE 使用事件及原因':'② 干擾流量管理'}</h2><p><span data-r07-year></span> 年度｜<span data-r07-count></span></p></div><div class="r07-tools"><a href="./index.html" class="r07-btn">← 返回統計報表</a><button type="button" id="r07-new" class="r07-btn primary">＋ 新增紀錄</button><button type="button" id="r07-import-toggle" class="r07-btn" aria-controls="r07-import-panel" aria-expanded="false">匯入 CSV</button><button type="button" id="r07-csv" class="r07-btn">匯出 CSV</button><button type="button" id="r07-print" class="r07-btn">列印</button></div></div>
       <div class="r07-review" id="r07-review-warning"></div>
       <div class="r07-filter"><label>廠區篩選 <select id="r07-area-filter"><option value="">全部廠區</option>${AREAS.map(a=>`<option value="${a}">${a}</option>`).join('')}</select></label><span>同日同工廠自動彙總顯示；原始紀錄仍可逐筆修改。</span></div>
       <div class="r07-message" id="r07-message" aria-live="polite"></div>
       <form id="r07-editor" class="r07-editor hidden"><div class="r07-form-title" data-r07-form-title>新增紀錄</div><div class="r07-grid"><label>日期（必填）<input name="r07-date" type="date" required></label><label class="r07-factory-field">工廠（必選，廠區自動帶入）<select name="r07-factory"><option value="">請選擇…</option>${AREAS.map(a=>`<optgroup label="${a}">${AREA_FACTORIES[a].map(f=>`<option value="${f}">${f}</option>`).join('')}</optgroup>`).join('')}</select></label><label class="r07-amount-field">干擾流量 (NM³)<input name="r07-amount" type="number" step="any" min="0" placeholder="0 或正數"></label><label class="r07-wide">內容（必填）<textarea name="r07-content" rows="3" required maxlength="6000"></textarea></label></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存紀錄</button><button type="button" id="r07-cancel" class="r07-btn">取消</button></div></form>
       <form id="r07-batch-editor" class="r07-editor hidden"><div class="r07-form-title">干擾流量批次新增</div><div class="r07-batch-date"><label>日期（共用，必填）<input name="r07-batch-date" type="date" required></label><p>選擇一次日期，即可新增同一天不同工廠的多筆干擾流量；每個工廠的流量與內容分別填寫。</p></div><div id="r07-batch-items"></div><div class="r07-tools"><button type="button" id="r07-batch-add" class="r07-btn">＋ 新增廠處</button><span class="r07-batch-count" data-r07-batch-count></span></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存當日所有紀錄</button><button type="button" id="r07-batch-cancel" class="r07-btn">取消</button></div></form>
-      <div id="r07-group-detail" class="r07-group-detail hidden"><div class="r07-group-heading"><strong data-r07-group-title></strong><button type="button" id="r07-close-detail" class="r07-btn">關閉</button></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody data-r07-group-body></tbody></table></div></div>
       <div id="r07-results"></div>
-      <section class="r07-import"><h3>Excel／CSV 干擾流量匯入</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」；廠區由工廠自動對應。僅讀取 Excel 第一個工作表。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><select id="r07-import-mode"><option value="append">新增不同事件、完全重複略過</option><option value="skip">同日期同工廠已存在則略過</option><option value="replace">取代同日期同工廠原始明細</option></select><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認匯入</button></div><div id="r07-import-preview" aria-live="polite"></div></section>`;
+      <section id="r07-import-panel" class="r07-import hidden"><h3>Excel／CSV 干擾流量匯入</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」；廠區由工廠自動對應。僅讀取 Excel 第一個工作表。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><select id="r07-import-mode"><option value="append">新增不同事件、完全重複略過</option><option value="skip">同日期同工廠已存在則略過</option><option value="replace">取代同日期同工廠原始明細</option></select><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認匯入</button></div><div id="r07-import-preview" aria-live="polite"></div></section>`;
     header.insertAdjacentElement('afterend',el);
     el.querySelector('.r07-head a[href="./index.html"]')?.setAttribute('data-r07-return','1');
     document.getElementById('r07-new').addEventListener('click',()=>el.dataset.kind==='interference'?showBatchForm():showForm());
     document.getElementById('r07-editor').addEventListener('submit',saveForm);
-    document.getElementById('r07-cancel').addEventListener('click',()=>form().classList.add('hidden'));
+    document.getElementById('r07-cancel').addEventListener('click',()=>{form().classList.add('hidden');activeDate=null;render();});
     document.getElementById('r07-batch-editor').addEventListener('submit',saveBatchForm);
     document.getElementById('r07-batch-cancel').addEventListener('click',()=>batchForm().classList.add('hidden'));
     document.getElementById('r07-batch-add').addEventListener('click',()=>{batchDrafts=readBatchDrafts();batchDrafts.push(newBatchDraft());renderBatchRows();});
@@ -467,10 +507,16 @@
     });
     document.getElementById('r07-print').addEventListener('click',()=>window.print());
     document.getElementById('r07-csv').addEventListener('click',()=>exportCSV(el.dataset.kind));
-    document.getElementById('r07-close-detail').addEventListener('click',()=>document.getElementById('r07-group-detail').classList.add('hidden'));
+    document.getElementById('r07-import-toggle').addEventListener('click',()=>{
+      const panel=document.getElementById('r07-import-panel');
+      panel.classList.toggle('hidden');
+      document.getElementById('r07-import-toggle').setAttribute('aria-expanded',String(!panel.classList.contains('hidden')));
+      if(!panel.classList.contains('hidden'))panel.scrollIntoView({behavior:'smooth',block:'start'});
+    });
     el.addEventListener('click',event=>{
-      const btn=event.target.closest('[data-r07-action],[data-r07-group]');if(!btn)return;
-      if(btn.dataset.r07Group){showGroup(btn.dataset.r07Group);return;}
+      const btn=event.target.closest('[data-r07-action],[data-r07-date-details],[data-r07-delete-date]');if(!btn)return;
+      if(btn.hasAttribute('data-r07-date-details')){toggleDateDetails(btn.dataset.r07DateDetails);return;}
+      if(btn.hasAttribute('data-r07-delete-date')){deleteDay(btn.dataset.r07DeleteDate);return;}
       const row=records.find(r=>r.id===btn.dataset.r07Id);
       if(btn.dataset.r07Action==='edit'&&row)showForm(row);
       if(btn.dataset.r07Action==='delete'&&row)deleteRow(row.id);
@@ -492,12 +538,14 @@
         el.dataset.kind=currentKind;
         el.querySelector('.r07-head h2').textContent=isEvent?'① FLARE 使用事件及原因':'② 干擾流量管理';
         el.querySelector('.r07-filter').classList.toggle('hidden',!isInterference);
-        el.querySelector('.r07-import').classList.toggle('hidden',!isInterference);
+        el.querySelector('#r07-import-toggle').classList.toggle('hidden',!isInterference);
+        el.querySelector('#r07-import-panel').classList.add('hidden');
+        el.querySelector('#r07-import-toggle').setAttribute('aria-expanded','false');
+        activeDate=null;
         activeArea=isInterference&&AREAS.includes(query.get('area'))?query.get('area'):'';
         el.querySelector('#r07-area-filter').value=activeArea;
         el.querySelector('#r07-editor').classList.add('hidden');
         el.querySelector('#r07-batch-editor').classList.add('hidden');
-        el.querySelector('#r07-group-detail').classList.add('hidden');
         render();
       }
       // Required on entry, return and browser back/forward (including iPad Safari).
@@ -574,13 +622,22 @@
     #r07-workspace .r07-date{margin:16px 0;border:1px solid #d7dfeb;border-radius:8px;overflow:hidden}
     #r07-workspace .r07-date-heading{display:flex;justify-content:space-between;flex-wrap:wrap;background:#edf4fd;padding:12px 14px;color:#174fb2}
     #r07-workspace .r07-date-heading span{font-weight:800}
-    #r07-workspace .r07-group-detail{margin:16px 0;padding:16px;border:1px solid #a7c0e8;border-radius:8px;background:#f8fbff}
+    #r07-workspace .r07-date-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    #r07-workspace .r07-date-controls span{margin-right:8px}
+    #r07-workspace .r07-date-editing{border:2px solid #e7a53b;background:#fffaf0;box-shadow:0 0 0 2px rgba(245,158,11,.10)}
+    #r07-workspace .r07-date-editing>.r07-date-heading{background:#ffedc4;color:#925200}
+    #r07-workspace .r07-edit-indicator{font-size:11px;padding:3px 7px;margin-left:10px;border-radius:10px;background:#f59e0b;color:#fff}
+    #r07-workspace .r07-day-detail{padding:14px;background:#fffbf0;border-top:1px solid #f6d898}
+    #r07-workspace .r07-day-detail>p{margin:6px 0 10px;font-size:12px;color:#8a5b17}
+    #r07-workspace .r07-action.r07-danger{color:#b42318;border-color:#f5b2ab;background:#fff}
+    #r07-workspace .r07-action.r07-danger:hover{background:#fff1ef}
+    #r07-workspace .r07-action:disabled{opacity:.5;cursor:not-allowed}
     #r07-workspace .r07-import{border-top:1px solid #e2e8f0;padding-top:20px;margin-top:24px}
     #r07-workspace .r07-import p{color:#64748b;margin-bottom:10px}#r07-workspace .r07-import .r07-tools{margin:10px 0}
     #r07-workspace .r07-warn{font-size:11px;color:#b45309}#r07-workspace .r07-message{color:#146c43;font-size:12px;margin-bottom:8px}
     .r07-summary-link{display:inline-block;margin-top:7px;color:#1d5fd0!important;text-decoration:none!important;border-top:1px solid #e2e8f0;padding-top:7px;font-size:12px;font-weight:800}
     .r07-summary-link:hover{text-decoration:underline!important}
     @media(max-width:760px){#r07-workspace{padding:12px}#r07-workspace .r07-grid,#r07-workspace .r07-batch-fields,#r07-workspace .r07-batch-date{grid-template-columns:1fr}#r07-workspace .r07-table{min-width:580px}}
-    @media print{body{background:#fff!important}html.flare-r07-view #r07-workspace{display:block!important;border:0;box-shadow:none;padding:0}html.flare-r07-view .app-shell > .flex.flex-col,html.flare-r07-view #r07-workspace .r07-tools,html.flare-r07-view #r07-workspace .r07-editor,html.flare-r07-view #r07-workspace .r07-import,html.flare-r07-view #r07-workspace .r07-group-detail{display:none!important}html.flare-r07-view #r07-workspace,#r07-workspace .r07-head{display:block!important}#r07-workspace .r07-date{break-inside:avoid}}
+    @media print{body{background:#fff!important}html.flare-r07-view #r07-workspace{display:block!important;border:0;box-shadow:none;padding:0}html.flare-r07-view .app-shell > .flex.flex-col,html.flare-r07-view #r07-workspace .r07-tools,html.flare-r07-view #r07-workspace .r07-editor,html.flare-r07-view #r07-workspace .r07-import,html.flare-r07-view #r07-workspace .r07-date-controls button,html.flare-r07-view #r07-workspace .r07-day-detail{display:none!important}html.flare-r07-view #r07-workspace,#r07-workspace .r07-head{display:block!important}#r07-workspace .r07-date{break-inside:avoid}}
   `;document.head.appendChild(style);
 })();

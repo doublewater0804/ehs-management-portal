@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b365d">
 <title>設備元件 VOC 檢測管理系統</title>
-<link rel="stylesheet" href="./style.css?v=20261111-r01">
+<link rel="stylesheet" href="./style.css?v=20261111-r012">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -89,6 +89,7 @@
     <div class="notes-panel">
       <label for="notes-input">本季備註</label>
       <textarea id="notes-input" rows="3" placeholder="輸入本季檢測頻率、特殊情形或統計說明。" disabled></textarea>
+      <p id="notes-help" class="notes-help">正式資料可進入修正模式後修改備註及統計數字。</p>
     </div>
     <div class="footnote">統計門檻：VOC ≥ 1,000 ppm。雜項元件是否納入，依每季正式來源表註記為準。</div>
   </section>
@@ -136,22 +137,31 @@
   </section>
 
   <section id="view-history" class="view-section" hidden>
-    <div class="toolbar-row"><div><h2>季度版本紀錄</h2><p class="muted">同一年度、季度重新上傳時建立新版本；舊版本保留。</p></div><span class="panel-tag">正式版本與待確認版本分開</span></div>
+    <div class="toolbar-row"><div><h2>季度版本紀錄</h2><p class="muted">正式資料修正時直接覆蓋原正式紀錄；首次建檔及待確認版本仍依原版本規則管理。</p></div><span class="panel-tag">正式版本與待確認版本分開</span></div>
     <section class="panel"><div class="table-scroll"><table id="history-table" class="simple-table"></table></div></section>
   </section>
 
   <section id="view-trends" class="view-section" hidden>
-    <div class="toolbar-row"><div><h2>歷年季度比較</h2><p class="muted">只納入各季度已指定的正式版本。</p></div></div>
+    <div class="toolbar-row"><div><h2>歷年季度比較</h2><p class="muted">只納入各季度已指定的正式資料；可依全廠、事業部或單一廠別分析。</p></div></div>
+    <section class="panel trend-filter-panel">
+      <div class="trend-filter-row">
+        <label>分析範圍<select id="trend-scope"><option value="all">全廠</option><option value="department">事業部</option><option value="factory">單一廠別</option></select></label>
+        <label id="trend-department-wrap" hidden>事業部<select id="trend-department"></select></label>
+        <label id="trend-factory-wrap" hidden>廠別<select id="trend-factory"></select></label>
+        <div id="trend-scope-description" class="trend-scope-description">目前分析：全廠；只納入各季度正式資料。</div>
+      </div>
+    </section>
     <div class="dashboard-grid">
-      <section class="panel"><div class="panel-heading"><div><h2>各季檢測總數</h2><p>設備元件檢測總數（件）</p></div></div><div id="trend-count-chart" class="trend-chart"></div></section>
-      <section class="panel"><div class="panel-heading"><div><h2>各季整體異常比例</h2><p>異常總數 ÷ 檢測總數 × 100%</p></div></div><div id="trend-rate-chart" class="trend-chart"></div></section>
+      <section class="panel"><div class="panel-heading"><div><h2 id="trend-count-title">全廠－各季檢測總數</h2><p>設備元件檢測總數（件）</p></div></div><div id="trend-count-chart" class="trend-chart"></div></section>
+      <section class="panel"><div class="panel-heading"><div><h2 id="trend-rate-title">全廠－各季整體異常比例</h2><p>異常總數 ÷ 檢測總數 × 100%</p></div></div><div id="trend-rate-chart" class="trend-chart"></div></section>
     </div>
-    <section class="panel"><div class="panel-heading"><div><h2>正式版本比較明細</h2></div></div><div class="table-scroll"><table id="trend-table" class="simple-table"></table></div></section>
+    <section class="panel"><div class="panel-heading"><div><h2 id="trend-table-title">全廠－正式資料比較明細</h2><p>檢測總數、異常總數、異常比例及資料狀態；未執行／未提供不視為 0</p></div></div><div class="table-scroll"><table id="trend-table" class="simple-table"></table></div></section>
+    <section class="panel trend-category-panel"><div class="panel-heading"><div><h2>四大設備類別季度比較</h2><p>各類別分別比較檢測數、異常點數及異常比例</p></div></div><div class="table-scroll"><table id="trend-category-table" class="simple-table trend-category-table"></table></div></section>
   </section>
 </main>
 
-<footer>設備元件 VOC 檢測管理系統 R0.1.1｜EHS 管理入口平台</footer>
-<script type="module" src="./app.js?v=20261111-r011"></script>
+<footer>設備元件 VOC 檢測管理系統 R0.1.2｜EHS 管理入口平台</footer>
+<script type="module" src="./app.js?v=20261111-r012"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script>
 </body>
 </html>

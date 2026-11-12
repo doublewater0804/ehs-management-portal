@@ -1,13 +1,13 @@
 import {
   DEPARTMENTS,FACTORY_LIST,FIELDS,emptyQuarter,clone,fmt,
-  rowMetrics,sumRows,departmentMetrics,totalsFor,validateData
-} from "./model.js?v=20261111-r011";
-import * as cloud from "./cloud.js?v=20261111-r011";
+  rowMetrics,sumRows,departmentMetrics,totalsFor,metricsForScope,validateData
+} from "./model.js?v=20261111-r012";
+import * as cloud from "./cloud.js?v=20261111-r012";
 import {recognizeEquipmentTable} from "./ocr.js?v=20261111-r01";
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let records=[],recordsLoaded=false,selectedYear=2026,selectedQuarter=3,draft=null;
+let records=[],recordsLoaded=false,selectedYear=2026,selectedQuarter=3,draft=null,draftTargetRecordId=null;
 let draftImageFile=null,imageObjectUrl="",imageFileName="";
 let ocrResult=null,ocrIssues=[],activeTab="dashboard",unsubscribe=null,authUser=null,busy=false;
 
@@ -78,7 +78,7 @@ function selectPeriod(){
     $("year-select").value=String(selectedYear);$("quarter-select").value=String(selectedQuarter);return;
   }
   selectedYear=Number($("year-select").value);selectedQuarter=Number($("quarter-select").value);
-  draft=null;ocrResult=null;ocrIssues=[];clearImagePreview();$("confirm-data").checked=false;
+  draft=null;draftTargetRecordId=null;ocrResult=null;ocrIssues=[];clearImagePreview();$("confirm-data").checked=false;
   renderAll();
 }
 function createDraft(){
@@ -86,8 +86,10 @@ function createDraft(){
   const base=activeRecord();
   if(base){
     draft={year:selectedYear,quarter:selectedQuarter,quarterKey:quarterKey(),factories:clone(base.factories),notes:String(base.notes||""),sourceFileName:base.sourceFileName||""};
+    draftTargetRecordId=base.isOfficial?base.id:null;
   }else{
     draft=emptyQuarter(selectedYear,selectedQuarter);
+    draftTargetRecordId=null;
   }
   clearImagePreview();
   imageFileName=base?.sourceFileName||"";
@@ -101,14 +103,18 @@ function createDraft(){
 function cancelDraft(){
   if(!draft)return;
   if(!confirm("確定取消草稿？尚未儲存的修改會遺失。"))return;
-  draft=null;ocrResult=null;ocrIssues=[];clearImagePreview();$("confirm-data").checked=false;renderAll();
+  draft=null;draftTargetRecordId=null;ocrResult=null;ocrIssues=[];clearImagePreview();$("confirm-data").checked=false;renderAll();
 }
 function updateEditControls(){
   $("save-button").hidden=!draft;
   $("cancel-button").hidden=!draft;
   $("edit-button").hidden=!!draft;
-  $("edit-button").textContent=activeRecord()?"建立修正版":"開始建立本季資料";
+  $("edit-button").textContent=activeRecord()?"修正季度資料":"開始建立本季資料";
+  $("save-button").textContent=draftTargetRecordId?"確認並覆蓋正式資料":"確認並儲存新版本";
   $("notes-input").disabled=!draft;
+  $("notes-help").textContent=draftTargetRecordId
+    ?"目前為正式資料修正模式；儲存後直接更新原正式紀錄，不另建版本。"
+    :"備註與統計數字可一併修改；首次建立仍依原版本規則儲存。";
 }
 function renderKpis(data){
   const t=totalsFor(data);
@@ -145,7 +151,7 @@ function renderDataQuality(data){
   $("draft-notice").hidden=!(draft||!record);
   $("draft-notice").className="notice warning";
   $("draft-notice").textContent=draft
-    ?"目前顯示尚未儲存的草稿。請完成 OCR／人工校對，並於確認後儲存為新版本。"
+    ?"目前顯示尚未儲存的草稿。請完成 OCR／人工校對，確認後儲存。"
     :!record?`${selectedYear} 年第 ${selectedQuarter} 季尚無雲端紀錄。請上傳原始統計表圖片開始建檔。`:"";
   const alert=$("table-alert");
   if(t.missingCount>0){
@@ -211,31 +217,82 @@ function renderReportTable(){
 }
 function renderHistory(){
   const rows=recordsForQuarter();
-  $("history-table").innerHTML=`<thead><tr><th>版本</th><th>狀態</th><th>建立時間</th><th>來源檔名（僅文字，不保存圖片）</th><th>操作</th></tr></thead><tbody>${
-    rows.length?rows.map(r=>`<tr><td>V${r.version}</td><td>${r.isOfficial?'<span class="badge-good">正式版本</span>':r.status==="superseded"?'<span class="badge-muted">歷史版本</span>':'<span class="badge-warn">待確認</span>'}</td><td>${currentDate(r.createdAt)}</td><td>${esc(r.sourceFileName||"—")}</td><td><button class="button light" data-load-record="${r.id}">載入檢視</button> ${!r.isOfficial?`<button class="button success" data-official-record="${r.id}">設為正式版本</button> ${r.status==="pending"?`<button class="button light" data-delete-record="${r.id}">刪除待確認版</button>`:""}`:""}</td></tr>`).join(""):`<tr><td colspan="5" class="empty-state">本季度尚無版本紀錄。</td></tr>`
+  $("history-table").innerHTML=`<thead><tr><th>版本</th><th>狀態</th><th>建立時間</th><th>最後修正時間</th><th>修正次數</th><th>來源檔名（僅文字，不保存圖片）</th><th>操作</th></tr></thead><tbody>${
+    rows.length?rows.map(r=>`<tr><td>V${r.version}</td><td>${r.isOfficial?'<span class="badge-good">正式版本</span>':r.status==="superseded"?'<span class="badge-muted">歷史版本</span>':'<span class="badge-warn">待確認</span>'}</td><td>${currentDate(r.createdAt)}</td><td>${r.lastCorrectedAt?currentDate(r.lastCorrectedAt):"—"}</td><td class="num">${Number(r.correctionCount||0)}</td><td>${esc(r.sourceFileName||"—")}</td><td><button class="button light" data-load-record="${r.id}">${r.isOfficial?"載入修正":"載入檢視"}</button> ${!r.isOfficial?`<button class="button success" data-official-record="${r.id}">設為正式版本</button> ${r.status==="pending"?`<button class="button light" data-delete-record="${r.id}">刪除待確認版</button>`:""}`:""}</td></tr>`).join(""):`<tr><td colspan="7" class="empty-state">本季度尚無版本紀錄。</td></tr>`
   }</tbody>`;
 }
 function officialRecords(){
   return records.filter(r=>r.isOfficial).sort((a,b)=>(a.year-b.year)||(a.quarter-b.quarter));
 }
-function renderBarChart(targetId,rows,key,rate=false){
-  const vals=rows.map(r=>rate?(totalsFor(r).overallRate||0):totalsFor(r).totalCount);
-  const max=Math.max(1,...vals);
-  $(targetId).innerHTML=rows.length?rows.map((r,i)=>{
-    const v=vals[i],height=Math.max(2,v/max*145);
-    return `<div class="trend-item"><strong class="trend-value">${rate?fmt(v,3)+"%":fmt(v)}</strong><div class="trend-bar ${rate?"rate":""}" style="height:${height}px" title="${r.year} Q${r.quarter}"></div><span class="trend-label">${r.year} Q${r.quarter}</span></div>`;
+function getTrendScope(){
+  return {
+    scope:$("trend-scope").value||"all",
+    departmentId:$("trend-department").value||DEPARTMENTS[0].id,
+    factoryId:$("trend-factory").value||DEPARTMENTS[0].factories[0].id
+  };
+}
+function trendScopeLabel(selection){
+  if(selection.scope==="all")return "全廠";
+  const dept=DEPARTMENTS.find(d=>d.id===selection.departmentId)||DEPARTMENTS[0];
+  if(selection.scope==="department")return dept.name;
+  const factory=FACTORY_LIST.find(f=>f.id===selection.factoryId);
+  return factory?.name||"單一廠別";
+}
+function updateTrendFilterVisibility(){
+  const selection=getTrendScope();
+  $("trend-department-wrap").hidden=selection.scope==="all";
+  $("trend-factory-wrap").hidden=selection.scope!=="factory";
+  const dept=DEPARTMENTS.find(d=>d.id===selection.departmentId)||DEPARTMENTS[0];
+  const factorySelect=$("trend-factory");
+  const previous=factorySelect.value;
+  factorySelect.innerHTML=dept.factories.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join("");
+  factorySelect.value=dept.factories.some(f=>f.id===previous)?previous:dept.factories[0].id;
+  $("trend-scope-description").textContent=`目前分析：${trendScopeLabel(getTrendScope())}；只納入各季度正式資料。`;
+}
+function renderBarChart(targetId,entries,rate=false){
+  const vals=entries.map(x=>x.metrics.completedCount>0?(rate?x.metrics.overallRate:x.metrics.totalCount):null);
+  const max=Math.max(1,...vals.map(v=>v??0));
+  $(targetId).innerHTML=entries.length?entries.map((entry,i)=>{
+    const v=vals[i],height=v===null?2:Math.max(2,v/max*145);
+    return `<div class="trend-item"><strong class="trend-value">${v===null?"—":rate?fmt(v,3)+"%":fmt(v)}</strong><div class="trend-bar ${rate?"rate":""}" style="height:${height}px" title="${entry.record.year} Q${entry.record.quarter}"></div><span class="trend-label">${entry.record.year} Q${entry.record.quarter}</span></div>`;
   }).join(""):'<div class="empty-state">尚無正式季度資料可供比較。</div>';
 }
 function renderTrends(){
-  const rows=officialRecords(),recent=rows.slice(-12);
-  renderBarChart("trend-count-chart",recent,"totalCount",false);
-  renderBarChart("trend-rate-chart",recent,"overallRate",true);
-  $("trend-table").innerHTML=`<thead><tr><th>年度季度</th><th class="num">檢測總數</th><th class="num">異常總數</th><th class="num">異常比例</th><th>正式版本</th></tr></thead><tbody>${
-    recent.length?recent.slice().reverse().map(r=>{const t=totalsFor(r);return `<tr><td>${r.year} Q${r.quarter}</td><td class="num">${fmt(t.totalCount)}</td><td class="num">${fmt(t.totalAbnormal)}</td><td class="num">${t.overallRate===null?"—":fmt(t.overallRate,3)+"%"}</td><td>V${r.version}</td></tr>`;}).join(""):'<tr><td colspan="5" class="empty-state">尚無正式季度資料。</td></tr>'
+  if(!$("trend-scope"))return;
+  updateTrendFilterVisibility();
+  const selection=getTrendScope(),label=trendScopeLabel(selection);
+  const rows=officialRecords().slice(-12);
+  const entries=rows.map(record=>({record,metrics:metricsForScope(record,selection.scope,selection.departmentId,selection.factoryId)}));
+  $("trend-count-title").textContent=`${label}－各季檢測總數`;
+  $("trend-rate-title").textContent=`${label}－各季整體異常比例`;
+  renderBarChart("trend-count-chart",entries,false);
+  renderBarChart("trend-rate-chart",entries,true);
+  $("trend-table-title").textContent=`${label}－正式資料比較明細`;
+  $("trend-table").innerHTML=`<thead><tr><th>年度季度</th><th class="num">檢測總數</th><th class="num">異常總數</th><th class="num">異常比例</th><th>資料狀態</th><th>正式版本</th></tr></thead><tbody>${
+    entries.length?entries.slice().reverse().map(({record,metrics:m})=>{
+      const quality=selection.scope==="factory"?(m.selectedStatus==="completed"?"已檢測":m.selectedStatus==="not_executed"?"未執行":"資料未提供"):`已檢測 ${m.completedCount}／${m.selectedCount}；未執行 ${m.notExecutedCount}；未提供 ${m.missingCount}`;
+      const hasData=m.completedCount>0;
+      return `<tr><td>${record.year} Q${record.quarter}</td><td class="num">${hasData?fmt(m.totalCount):"—"}</td><td class="num">${hasData?fmt(m.totalAbnormal):"—"}</td><td class="num">${m.overallRate===null?"—":fmt(m.overallRate,3)+"%"}</td><td>${quality}</td><td>V${record.version}</td></tr>`;
+    }).join(""):'<tr><td colspan="6" class="empty-state">尚無正式季度資料。</td></tr>'
   }</tbody>`;
+  $("trend-category-table").innerHTML=`<thead><tr><th rowspan="2">年度季度</th>${FIELDS.map(f=>`<th colspan="3">${f.label}</th>`).join("")}<th rowspan="2">資料狀態</th></tr><tr>${FIELDS.map(()=>"<th>檢測數</th><th>異常數</th><th>異常比例</th>").join("")}</tr></thead><tbody>${
+    entries.length?entries.slice().reverse().map(({record,metrics:m})=>{
+      const hasData=m.completedCount>0;
+      const cells=FIELDS.map(f=>`<td class="num">${hasData?fmt(m[f.count]):"—"}</td><td class="num">${hasData?fmt(m[f.abnormal]):"—"}</td><td class="num">${m[f.ratio]===null?"—":fmt(m[f.ratio],3)+"%"}</td>`).join("");
+      const quality=selection.scope==="factory"?(m.selectedStatus==="completed"?"已檢測":m.selectedStatus==="not_executed"?"未執行":"資料未提供"):`完成 ${m.completedCount}/${m.selectedCount}`;
+      return `<tr><td>${record.year} Q${record.quarter}</td>${cells}<td>${quality}</td></tr>`;
+    }).join(""):'<tr><td colspan="14" class="empty-state">尚無正式季度資料。</td></tr>'
+  }</tbody>`;
+}
+function initializeTrendFilters(){
+  $("trend-department").innerHTML=DEPARTMENTS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("");
+  $("trend-department").value=DEPARTMENTS[0].id;
+  $("trend-scope").value="all";
+  updateTrendFilterVisibility();
 }
 function renderAll(){
   renderDashboard();renderReportTable();renderHistory();updateEditControls();
+  if(activeTab==="trends")renderTrends();
 }
 function findQuarterFromTitle(text){
   const s=String(text||"").replace(/\s/g,"");
@@ -317,16 +374,25 @@ async function saveDraft(){
     const t=totalsFor(draft);
     if(t.missingCount>0)throw new Error(`仍有 ${t.missingCount} 個廠別資料未提供，請補齊或標示未執行。`);
   }catch(error){setMessage(error.message,"warning");showTab("table");return;}
+  if(draftTargetRecordId&&!confirm(`即將直接覆蓋 ${selectedYear} Q${selectedQuarter} 的原正式資料，不另建立新版本。確定儲存修正？`))return;
   busy=true;$("save-button").disabled=true;
   try{
-    const saved=await cloud.saveRevision(draft,{
-      fileName:draftImageFile?.name||imageFileName||draft.sourceFileName||""
-    });
-    draft=null;ocrResult=null;ocrIssues=[];
+    const fileName=draftImageFile?.name||imageFileName||draft.sourceFileName||"";
+    let saved,successMessage;
+    if(draftTargetRecordId){
+      saved=await cloud.updateOfficialRecord(draftTargetRecordId,draft,{fileName});
+      records=[saved,...records.filter(r=>r.id!==saved.id)];
+      successMessage=`已直接更新 ${selectedYear} Q${selectedQuarter} 正式資料 V${saved.version}；未新增版本，累計修正 ${saved.correctionCount} 次。`;
+    }else{
+      saved=await cloud.saveRevision(draft,{fileName});
+      records=[saved,...records.filter(r=>r.id!==saved.id)];
+      successMessage=saved.isOfficial?`已儲存為 ${selectedYear} Q${selectedQuarter} 正式版本 V${saved.version}。`:`已儲存為待確認版本 V${saved.version}；原正式版本保持不變，請至版本紀錄指定正式版本。`;
+    }
+    draft=null;draftTargetRecordId=null;ocrResult=null;ocrIssues=[];
     clearImagePreview();updateOCRCheckTable();
     $("ocr-result").hidden=true;$("ocr-progress-wrap").hidden=true;
     $("confirm-data").checked=false;
-    setMessage((saved.isOfficial?`已儲存為 ${selectedYear} Q${selectedQuarter} 正式版本 V${saved.version}。`:`已儲存為待確認版本 V${saved.version}；原正式版本保持不變，請至版本紀錄指定正式版本。`)+" 只儲存統計資料，圖片未上傳雲端，請自行保存原圖。");
+    setMessage(successMessage+" 只儲存統計資料，圖片未上傳雲端，請自行保存原圖。");
     renderAll();showTab("dashboard");
   }catch(error){setMessage(`儲存失敗：${error.message}`,"danger");}
   finally{busy=false;$("save-button").disabled=false;}
@@ -359,11 +425,12 @@ async function loadRecordToDraft(id){
   const record=records.find(r=>r.id===id);if(!record)return;
   if(draft&&!confirm("載入歷史版本會捨棄目前草稿，是否繼續？"))return;
   draft={year:record.year,quarter:record.quarter,quarterKey:record.quarterKey,factories:clone(record.factories),notes:record.notes||"",sourceFileName:record.sourceFileName||""};
+  draftTargetRecordId=record.isOfficial?record.id:null;
   if(imageObjectUrl){URL.revokeObjectURL(imageObjectUrl);imageObjectUrl="";}
   clearImagePreview();imageFileName=record.sourceFileName||"";
   selectedYear=record.year;selectedQuarter=record.quarter;$("year-select").value=String(selectedYear);$("quarter-select").value=String(selectedQuarter);
   $("confirm-data").checked=false;renderAll();showTab("table");await loadCurrentImagePreview();
-  setMessage(`已載入 V${record.version} 作為草稿。儲存時會建立新版本，不會覆蓋原版本。`);
+  setMessage(record.isOfficial?`已載入正式版本 V${record.version}。儲存修正時會直接覆蓋原正式資料。`:`已載入 V${record.version}。此版本不是正式資料，儲存時會依版本規則建立新紀錄。`);
 }
 async function handleHistoryClick(e){
   const load=e.target.closest("[data-load-record]"),official=e.target.closest("[data-official-record]"),del=e.target.closest("[data-delete-record]");
@@ -412,6 +479,9 @@ function initializeEvents(){
   $("ocr-button").onclick=runOCR;
   $("clear-image-button").onclick=()=>{if(!confirm("清除目前圖片？若尚未儲存，圖片選擇將被取消。"))return;clearImagePreview();ocrResult=null;updateOCRCheckTable();};
   $("history-table").addEventListener("click",handleHistoryClick);
+  $("trend-scope").onchange=()=>{updateTrendFilterVisibility();renderTrends();};
+  $("trend-department").onchange=()=>{updateTrendFilterVisibility();renderTrends();};
+  $("trend-factory").onchange=renderTrends;
   $("excel-button").onclick=exportExcel;
   $("print-button").onclick=()=>window.print();
   $("confirm-data").onchange=()=>{$("save-button").disabled=false;};
@@ -439,5 +509,5 @@ function handleAuth(user){
     },error=>setMessage(`讀取雲端資料失敗：${error.message}`,"danger"));
   }catch(error){setMessage(error.message,"danger");}
 }
-initializePeriodSelectors();initializeEvents();updateOCRCheckTable();
+initializePeriodSelectors();initializeTrendFilters();initializeEvents();updateOCRCheckTable();
 cloud.observeAuth(handleAuth);

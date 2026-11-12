@@ -180,3 +180,16 @@ footer{text-align:center;color:#8a9aa8;font-size:11px;padding:18px}
  .notes-panel textarea{display:none}
  #print-notes-text{display:block!important;white-space:pre-wrap;font-size:8.5pt}
 }
+
+/* R0.1.2 historical comparison controls */
+.trend-filter-panel{margin-bottom:16px}
+.trend-filter-row{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px}
+.trend-filter-row label{display:grid;gap:6px;min-width:180px;font-size:12px;font-weight:800;color:#496176}
+.trend-filter-row select{min-width:180px;padding:9px 30px 9px 10px;border:1px solid #c9d7e3;border-radius:8px;background:#fff;color:var(--text)}
+.trend-scope-description{flex:1;min-width:220px;padding:10px 12px;border-radius:8px;background:#f2f7fb;color:#526d82;font-size:12px}
+.trend-category-panel{margin-top:16px}
+.trend-category-table{min-width:1120px}
+.trend-category-table th{text-align:center!important}
+.trend-category-table td.num{text-align:right}
+.notes-help{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:680px){.trend-filter-row{align-items:stretch;flex-direction:column}.trend-filter-row label,.trend-filter-row select{width:100%}.trend-scope-description{min-width:0}}

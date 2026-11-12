@@ -1,4 +1,4 @@
-export const APP_VERSION = "R0.1.1";
+export const APP_VERSION = "R0.1.2";
 export const DEPARTMENTS = [
   { id: "chem1", name: "化一部", factories: [
     { id: "aro-1", name: "ARO-1" }, { id: "aro-2", name: "ARO-2" }, { id: "aro-3", name: "ARO-3" }
@@ -80,4 +80,29 @@ export function validateData(data){
   }
   if(ids.size!==FACTORY_LIST.length)throw new Error("廠別清單不完整，請逐一確認 13 個廠別。");
   return data;
+}
+
+
+// Aggregate official-quarter data for the selected historical comparison scope.
+// Department scope intentionally returns only the department total; factory scope
+// returns the selected factory's metrics and its inspection status.
+export function metricsForScope(data, scope="all", departmentId="", factoryId="") {
+  const allRows = Array.isArray(data?.factories) ? data.factories : [];
+  let selectedRows = allRows;
+  if (scope === "department") {
+    selectedRows = allRows.filter(row => row.departmentId === departmentId);
+  } else if (scope === "factory") {
+    const row = allRows.find(item => item.id === factoryId);
+    selectedRows = row ? [row] : [];
+  }
+  const completed = selectedRows.filter(row => row.status === "completed");
+  const metrics = sumRows(completed);
+  return {
+    ...metrics,
+    completedCount: completed.length,
+    notExecutedCount: selectedRows.filter(row => row.status === "not_executed").length,
+    missingCount: selectedRows.filter(row => row.status === "missing").length,
+    selectedCount: selectedRows.length,
+    selectedStatus: scope === "factory" ? (selectedRows[0]?.status || "missing") : null
+  };
 }

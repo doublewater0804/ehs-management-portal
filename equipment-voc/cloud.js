@@ -20,7 +20,7 @@ export function watchRecords(ok,fail){
     ok(rows);
   },fail);
 }
-// R0.1.1: source images stay in the browser only; Firestore stores structured
+// R0.1.2: source images stay in the browser only; Firestore stores structured
 // quarterly statistics and optional filename text, never image bytes or URLs.
 export async function saveRevision(data,{fileName=""}={}){
   assertOwner();
@@ -68,4 +68,45 @@ export async function deletePendingRevision(record){
     tx.delete(ref);
   });
   // Do not access Storage, even for records created with older versions.
+}
+
+
+// R0.1.2: correct the existing official record in place (no new revision).
+// The transaction verifies that the target is still the official record for its quarter.
+export async function updateOfficialRecord(recordId,data,{fileName=""}={}){
+  assertOwner();
+  const targetRef=doc(db,RECORDS,recordId),user=auth.currentUser;
+  return runTransaction(db,async tx=>{
+    const targetSnap=await tx.get(targetRef);
+    if(!targetSnap.exists())throw new Error("找不到要修正的正式資料。");
+    const current=targetSnap.data();
+    if(!current.isOfficial||current.status!=="official")throw new Error("這筆資料已不是正式版本，請重新載入最新正式資料後再修正。");
+    if(Number(current.year)!==Number(data.year)||Number(current.quarter)!==Number(data.quarter)||current.quarterKey!==data.quarterKey)throw new Error("修正資料的年度或季度與原正式紀錄不一致，已阻止覆蓋。");
+    const quarterRef=doc(db,QUARTERS,current.quarterKey||data.quarterKey);
+    const quarterSnap=await tx.get(quarterRef);
+    const quarter=quarterSnap.exists()?quarterSnap.data():{};
+    if(quarter.officialRecordId&&quarter.officialRecordId!==recordId)throw new Error("此季度的正式版本已變更，為避免覆蓋他人更新，請重新載入資料。");
+    const now=new Date();
+    const correctionCount=Number(current.correctionCount||0)+1;
+    const patch={
+      factories:data.factories,
+      notes:String(data.notes||""),
+      sourceFileName:String(fileName||data.sourceFileName||current.sourceFileName||""),
+      // Preserve any legacy image-reference metadata; this release never accesses Storage.
+      correctionCount,
+      lastCorrectedBy:user.uid,
+      lastCorrectedAt:serverTimestamp(),
+      updatedAt:serverTimestamp()
+    };
+    tx.update(targetRef,patch);
+    if(!quarterSnap.exists()||!quarter.officialRecordId){
+      tx.set(quarterRef,{
+        year:Number(current.year),quarter:Number(current.quarter),quarterKey:current.quarterKey,
+        officialRecordId:recordId,latestRecordId:recordId,
+        versionCount:Math.max(Number(quarter.versionCount||0),Number(current.version||1)),
+        updatedAt:serverTimestamp()
+      },{merge:true});
+    }
+    return {...current,...data,...patch,id:recordId,updatedAt:now,lastCorrectedAt:now,correctionCount};
+  });
 }

@@ -810,6 +810,44 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
       });
     };
 
+    // R0.7.5 – update exactly one interference source row using a Firestore
+    // transaction. Other FLARE records and r07 migration state are untouched.
+    // Compare the record as the editor opened it to prevent stale-device edits.
+    window.__flareR075Update = async (recordId, expected, patch) => {
+      if (!auth.currentUser) throw new Error('登入已失效，請重新登入。');
+      if (typeof window.__flareR074WaitForIdle === 'function') await window.__flareR074WaitForIdle();
+      const normalizeAmount = v => (v === null || v === undefined || v === '') ? null : Number(v);
+      const signature = row => JSON.stringify({
+        id: String(row?.id || ''),kind: String(row?.kind || ''),
+        year: Number(row?.year || 0), date: String(row?.date || ''),
+        factory: String(row?.factory || ''),amount: normalizeAmount(row?.amount),
+        content: String(row?.content || ''),needsReview: Boolean(row?.needsReview),
+        source: String(row?.source || 'manual'),linkedEventId: String(row?.linkedEventId || '')
+      });
+      return await runTransaction(db, async transaction => {
+        const snap = await transaction.get(FLARE_DOC);
+        const state = snap.data()?.state;
+        const rows = state?.r07?.records;
+        if (!snap.exists() || !Array.isArray(rows)) throw new Error('Firebase 尚無有效的 FLARE 紀錄。');
+        const positions = rows.map((row, i) => String(row.id) === String(recordId) ? i : -1).filter(i => i >= 0);
+        if (positions.length !== 1) throw new Error('原始紀錄已刪除或識別碼重複，已停止修改。');
+        const at = positions[0];
+        if (rows[at].kind !== 'interference') throw new Error('只能在此修改干擾流量原始紀錄。');
+        if (signature(rows[at]) !== signature(expected)) throw new Error('其他裝置已變更此筆資料；請重新載入最新內容再編輯。');
+        const next = { ...rows[at], date: patch.date, factory: patch.factory,
+          amount: patch.amount, content: patch.content, year: patch.year, needsReview: false };
+        const updated = [...rows];updated[at] = next;
+        // Only touch the r07 row collection; the import-history transactions and
+        // other FLARE subsystem fields continue to use their existing paths.
+        transaction.update(FLARE_DOC, {
+          'state.r07.records': updated,
+          'state.updatedAtLocal': new Date().toISOString(),
+          updatedAt: serverTimestamp()
+        });
+        return next;
+      });
+    };
+
     onSnapshot(FLARE_DOC, (snap) => {
       if (snap.exists()) {
         const data = snap.data() || {};
@@ -3541,7 +3579,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 <!-- FLARE 原始排放紀錄修改 / Firebase 同步模組（使用版本參數避免 GitHub Pages 舊快取） -->
 <script type="module" src="./sync-guard.js?v=20261027-1"></script>
 <script type="module" src="./cloud-sync-fix.js?v=20261027-2"></script>
-<script src="./r07.js?v=20261112-r074-1"></script>
+<script src="./r07.js?v=20261112-r075-1"></script>
 <script src="./layout-redesign.js?v=20261110-1"></script>
 <script src="./amount-edit.js?v=20261110-1"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>

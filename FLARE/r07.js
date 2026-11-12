@@ -1,4 +1,4 @@
-/* FLARE R0.7.4 – CSV per-group diff preview, atomic approved writes, cloud history and safe restoration.
+/* FLARE R0.7.5 – inline interference detail editing with per-record Firestore transaction.
    Shared Firestore document remains flare_control/global_state; this script never changes FLARE day counters. */
 (() => {
   'use strict';
@@ -65,6 +65,7 @@
   if (!Array.isArray(records)) records=[];
   if (!marks || typeof marks!=='object'||Array.isArray(marks)) marks={};
   let cloudReady=false, needsSave=false, initialized=false;
+  let inlineEdit=null, inlineBusy=false;
   let selectedDiffs=new Set(),inspectedDiffs=new Set(),importBusy=false,historyRows=[],historyVisible=false;
   const selectedYear=()=>Number(document.getElementById('view-year')?.value||new Date().getFullYear());
   const saved=()=>{localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(MARK_KEY,JSON.stringify(marks));};
@@ -127,6 +128,9 @@
     return changed;
   };
   const applyCloud=(r07,legacyManual={},legacyInterference={})=>{
+    // Firestore snapshots can arrive while a local inline form is open.
+    // Capture the unsaved draft before the list is reconstructed.
+    captureInlineDraft();
     cloudReady=false;
     // Cloud is authoritative; never copy stale local R0.7 rows over a new cloud snapshot.
     records=Array.isArray(r07?.records)?r07.records.map(normalizeRecord):[];
@@ -214,11 +218,78 @@
       yearRows(year,'event').sort(newestFirst).map((r,i)=>[i+1,displayDate(r.date),r.content]);
     const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.4_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.5_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   const rowButton=(action,row,label)=>`<button type="button" class="r07-action" data-r07-action="${action}" data-r07-id="${html(row.id)}">${label}</button>`;
+  const inlineForm=()=>document.getElementById('r075-inline-form');
+  const captureInlineDraft=()=>{
+    if(!inlineEdit)return;
+    const el=inlineForm();if(!el||el.dataset.r075Id!==inlineEdit.id)return;
+    inlineEdit.draft={
+      date:el.querySelector('[name="r075-date"]')?.value??inlineEdit.draft.date,
+      factory:el.querySelector('[name="r075-factory"]')?.value??inlineEdit.draft.factory,
+      amount:el.querySelector('[name="r075-amount"]')?.value??inlineEdit.draft.amount,
+      content:el.querySelector('[name="r075-content"]')?.value??inlineEdit.draft.content
+    };
+  };
+  const draftChanged=()=>{
+    if(!inlineEdit)return false;
+    captureInlineDraft();
+    const d=inlineEdit.draft,old=inlineEdit.original;
+    return d.date!==old.date||d.factory!==old.factory||String(d.amount)!==String(old.amount??'')||d.content!==old.content;
+  };
+  const leaveInline=()=>{
+    if(!inlineEdit)return true;
+    if(inlineBusy){alert('這筆紀錄正在儲存雲端，請等待交易完成。');return false;}
+    if(draftChanged()&&!confirm('這筆紀錄尚未儲存，確定放棄目前修改？'))return false;
+    inlineEdit=null;
+    return true;
+  };
+  const factoryOptions=chosen=>`<option value="">請選擇工廠…</option>${AREAS.map(area=>`<optgroup label="${html(area)}">${AREA_FACTORIES[area].map(f=>`<option value="${html(f)}" ${chosen===f?'selected':''}>${html(f)}</option>`).join('')}</optgroup>`).join('')}`;
+  const inlineMarkup=(r,index)=>{
+    const d=inlineEdit.draft;
+    return `<tr class="r075-row-editing" data-r075-editing="${html(r.id)}"><td colspan="6"><form id="r075-inline-form" data-r075-id="${html(r.id)}" class="r075-inline-form"><div class="r075-inline-heading"><strong>項目 ${index+1}－原位編輯</strong><span class="r075-chip">編輯中</span></div><div class="r075-inline-fields"><label>日期（必填）<input name="r075-date" type="date" value="${html(d.date)}" required ${inlineBusy?'disabled':''}></label><label>工廠（必選）<select name="r075-factory" required ${inlineBusy?'disabled':''}>${factoryOptions(d.factory)}</select><small>廠區自動帶入：<strong data-r075-area>${html(areaOf(d.factory)||'請選擇工廠')}</strong></small></label><label>干擾流量 (NM³)<input name="r075-amount" type="number" min="0" step="any" value="${html(d.amount)}" required ${inlineBusy?'disabled':''}></label><label class="r075-content-field">內容（必填）<textarea name="r075-content" rows="3" maxlength="6000" required ${inlineBusy?'disabled':''}>${html(d.content)}</textarea></label></div><div class="r075-inline-actions"><button type="button" class="r07-btn" data-r075-cancel ${inlineBusy?'disabled':''}>取消</button><button type="submit" class="r07-btn primary" ${inlineBusy?'disabled':''}>${inlineBusy?'儲存中…':'儲存修改'}</button></div></form></td></tr>`;
+  };
+  const startInlineEdit=row=>{
+    if(!row||row.kind!=='interference'||!validateMutation()||!leaveInline())return;
+    batchForm()?.classList.add('hidden');form()?.classList.add('hidden');
+    activeDate=row.date;
+    inlineEdit={id:row.id,url:location.href,original:{...row},draft:{date:row.date,factory:row.factory,amount:row.amount??'',content:row.content},year:selectedYear()};
+    render();
+    document.getElementById('r075-inline-form')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  const cancelInline=()=>{if(inlineBusy)return;inlineEdit=null;render();};
+  const saveInline=async ev=>{
+    ev.preventDefault();
+    if(!inlineEdit||inlineBusy||!validateMutation())return;
+    captureInlineDraft();
+    const current=inlineEdit;
+    const d=current.draft,date=isoDate(d.date,selectedYear()),factory=normalizeFactory(d.factory),amount=toAmount(d.amount),content=String(d.content||'').trim();
+    if(!date||Number(date.slice(0,4))!==current.year||current.year!==selectedYear())return alert('日期必須符合目前選取年度。');
+    if(!factory)return alert('請選擇有效工廠。');
+    if(amount===null)return alert('干擾流量必須是 0 或正數。');
+    if(!content)return alert('內容不可空白。');
+    if(typeof window.__flareR075Update!=='function')return alert('Firebase 交易更新元件尚未就緒，未修改資料。');
+    // Only update the selected record ID, and never queue a full-document overwrite.
+    // Cloud transaction compares original record fields before changing anything.
+    inlineBusy=true;render();showMessage('正在檢查 Firebase 最新版本並儲存此筆紀錄…');
+    try{
+      const updated=await window.__flareR075Update(current.id,current.original,{date,factory,amount,content,year:current.year,needsReview:false});
+      const local=records.find(r=>r.id===current.id);
+      if(local)Object.assign(local,updated);
+      saved();
+      inlineEdit=null;activeDate=date;
+      render();updateAreaCounters(selectedYear());
+      showMessage(`Firebase 已確認儲存成功：${displayDate(date)} ${factory}。`);
+      document.querySelector(`#r07-results [data-r07-date="${date}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }catch(error){
+      showMessage(`原位編輯未確認成功：${error.message}。請先檢查雲端狀態，勿重複儲存。`);
+      alert(`儲存未完成或發生版本衝突：${error.message}\n請確認雲端現況後再操作。`);
+    }finally{inlineBusy=false;render();}
+  };
   const showMessage=text=>{const el=document.getElementById('r07-message');if(el)el.textContent=text;};
   const render=()=>{
+    captureInlineDraft();
     const root=document.getElementById('r07-workspace');if(!root)return;
     const kind=root.dataset.kind,year=selectedYear();
     root.querySelector('[data-r07-year]').textContent=String(year);
@@ -246,7 +317,7 @@
           (AREAS.indexOf(areaOf(a.factory))-AREAS.indexOf(areaOf(b.factory)))||
           a.factory.localeCompare(b.factory,'zh-TW')||(a.createdAt||'').localeCompare(b.createdAt||''));
         const canDelete=/^\d{4}-\d{2}-\d{2}$/.test(date);
-        return `<section class="r07-date ${expanded?'r07-date-editing':''}" data-r07-date="${html(date)}"><div class="r07-date-heading"><strong>${displayDate(date)}${expanded?'<span class="r07-edit-indicator">編輯中</span>':''}</strong><div class="r07-date-controls"><span>當日合計：${daily.toLocaleString('zh-TW')} NM³</span><button type="button" class="r07-action" data-r07-date-details="${html(date)}" aria-expanded="${expanded}">${expanded?'收合明細':'明細／編輯'}</button><button type="button" class="r07-action r07-danger" data-r07-delete-date="${html(date)}" ${canDelete?'':'disabled title="日期未確認，請先修正日期"'}>刪除當日</button></div></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th></tr></thead><tbody>${subs.map(g=>`<tr><td>${++sequence}</td><td>${html(g.area)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td></tr>`).join('')}</tbody></table></div>${expanded?`<div class="r07-day-detail"><strong>${displayDate(date)}｜當日全部廠區原始明細（${allDayRows.length} 筆）</strong><p>可逐筆編輯／刪除；與上方彙整列不同，這裡保留每筆來源紀錄。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${allDayRows.map((r,i)=>`<tr><td>${i+1}</td><td>${html(areaOf(r.factory))||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('')}</tbody></table></div></div>`:''}</section>`;
+        return `<section class="r07-date ${expanded?'r07-date-editing':''}" data-r07-date="${html(date)}"><div class="r07-date-heading"><strong>${displayDate(date)}${expanded?'<span class="r07-edit-indicator">編輯中</span>':''}</strong><div class="r07-date-controls"><span>當日合計：${daily.toLocaleString('zh-TW')} NM³</span><button type="button" class="r07-action" data-r07-date-details="${html(date)}" aria-expanded="${expanded}">${expanded?'收合明細':'明細／編輯'}</button><button type="button" class="r07-action r07-danger" data-r07-delete-date="${html(date)}" ${canDelete?'':'disabled title="日期未確認，請先修正日期"'}>刪除當日</button></div></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th></tr></thead><tbody>${subs.map(g=>`<tr><td>${++sequence}</td><td>${html(g.area)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td></tr>`).join('')}</tbody></table></div>${expanded?`<div class="r07-day-detail"><strong>${displayDate(date)}｜當日全部廠區原始明細（${allDayRows.length} 筆）</strong><p>可逐筆編輯／刪除；與上方彙整列不同，這裡保留每筆來源紀錄。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${allDayRows.map((r,i)=>inlineEdit?.id===r.id?inlineMarkup(r,i):`<tr><td>${i+1}</td><td>${html(areaOf(r.factory))||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('')}</tbody></table></div></div>`:''}</section>`;
       }).join('')||'<p class="r07-empty">本年度尚無干擾流量紀錄。</p>';
       root.querySelector('#r07-area-filter').value=activeArea;
     }
@@ -256,6 +327,7 @@
   };
   const form=()=>document.getElementById('r07-editor');
   const showForm=(record=null)=>{
+    if(!leaveInline())return;
     const root=form();if(!root)return;
     batchForm()?.classList.add('hidden');
     const kind=document.getElementById('r07-workspace')?.dataset.kind;
@@ -290,6 +362,7 @@
     root.querySelector('[data-r07-batch-count]').textContent=`共 ${batchDrafts.length} 筆廠處紀錄`;
   };
   const showBatchForm=()=>{
+    if(!leaveInline())return;
     const single=form(),root=batchForm();if(!root)return;
     single?.classList.add('hidden');if(single)single.dataset.id='';
     root.classList.remove('hidden');
@@ -348,7 +421,7 @@
     root.classList.add('hidden');root.dataset.id='';activeDate=null;push();showMessage('紀錄已更新，正在同步 Firebase。');
   };
   const deleteRow=rid=>{
-    if(!validateMutation())return;
+    if(!validateMutation()||!leaveInline())return;
     const row=records.find(r=>r.id===rid);if(!row)return;
     if(!confirm('確定永久刪除此筆紀錄？此操作會同步雲端。'))return;
     if(row.linkedEventId){
@@ -360,13 +433,14 @@
     records=records.filter(r=>r.id!==rid);push();
   };
   const toggleDateDetails=date=>{
+    if(!leaveInline())return;
     activeDate=activeDate===date?null:date;
     form()?.classList.add('hidden');
     render();
     document.querySelector('#r07-results .r07-date-editing')?.scrollIntoView({behavior:'smooth',block:'nearest'});
   };
   const deleteDay=date=>{
-    if(!validateMutation())return;
+    if(!validateMutation()||!leaveInline())return;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number(date.slice(0,4))!==selectedYear()){
       alert('日期不正確，請先確認日期後再刪除。');return;
     }
@@ -620,20 +694,26 @@
     document.getElementById('r07-print').addEventListener('click',()=>window.print());
     document.getElementById('r07-csv').addEventListener('click',()=>exportCSV(el.dataset.kind));
     document.getElementById('r07-import-toggle').addEventListener('click',()=>{
+      if(!leaveInline())return;
       const panel=document.getElementById('r07-import-panel');
       panel.classList.toggle('hidden');
       document.getElementById('r07-import-toggle').setAttribute('aria-expanded',String(!panel.classList.contains('hidden')));
       if(!panel.classList.contains('hidden'))panel.scrollIntoView({behavior:'smooth',block:'start'});
     });
+    el.addEventListener('submit',event=>{if(event.target?.id==='r075-inline-form')saveInline(event);});
     el.addEventListener('click',event=>{
+      if(event.target.closest('[data-r075-cancel]')){cancelInline();return;}
       const btn=event.target.closest('[data-r07-action],[data-r07-date-details],[data-r07-delete-date]');if(!btn)return;
       if(btn.hasAttribute('data-r07-date-details')){toggleDateDetails(btn.dataset.r07DateDetails);return;}
       if(btn.hasAttribute('data-r07-delete-date')){deleteDay(btn.dataset.r07DeleteDate);return;}
       const row=records.find(r=>r.id===btn.dataset.r07Id);
-      if(btn.dataset.r07Action==='edit'&&row)showForm(row);
+      if(btn.dataset.r07Action==='edit'&&row){if(row.kind==='interference')startInlineEdit(row);else showForm(row);}
       if(btn.dataset.r07Action==='delete'&&row)deleteRow(row.id);
     });
-    el.querySelector('#r07-area-filter').addEventListener('change',e=>{activeArea=e.target.value;render();});
+    el.addEventListener('change',event=>{
+      if(event.target.matches('[name="r075-factory"]')){const label=inlineForm()?.querySelector('[data-r075-area]');if(label)label.textContent=areaOf(event.target.value)||'請選擇工廠';}
+    });
+    el.querySelector('#r07-area-filter').addEventListener('change',e=>{if(!leaveInline()){e.target.value=activeArea;return;}activeArea=e.target.value;render();});
     el.querySelector('#r07-file').addEventListener('change',e=>onFile(e.target));
     el.querySelector('#r07-confirm-import').addEventListener('click',confirmImport);
     el.querySelector('#r07-template').addEventListener('click',downloadTemplate);
@@ -679,7 +759,7 @@
         el.querySelector('#r074-history').classList.add('hidden');
         el.querySelector('#r07-import-panel').classList.add('hidden');
         el.querySelector('#r07-import-toggle').setAttribute('aria-expanded','false');
-        activeDate=null;
+        activeDate=null;inlineEdit=null;
         activeArea=isInterference&&AREAS.includes(query.get('area'))?query.get('area'):'';
         el.querySelector('#r07-area-filter').value=activeArea;
         el.querySelector('#r07-editor').classList.add('hidden');
@@ -704,13 +784,14 @@
       const directory=new URL('./',location.href).pathname;
       if(url.origin!==location.origin||![directory,directory+'index.html'].includes(url.pathname))return;
       event.preventDefault();
+      if(!leaveInline())return;
       if(link.hasAttribute('data-r07-return'))goTo('');
       else {
         const target=url.searchParams.get('view');
         if(target==='r07-event'||target==='r07-interference')goTo(target,url.searchParams.get('area')||'');
       }
     });
-    window.addEventListener('popstate',activateRoute);
+    window.addEventListener('popstate',()=>{const previous=inlineEdit?.url;if(!leaveInline()){history.pushState({flareView:'r07-interference'},'',previous||location.href);return;}activateRoute();});
     activateRoute();
   };
   window.FlareR07={getState,applyCloud,onCloudReady,init,clearAll,addLinkedEvent,syncLinkedChanges,countAreaDays,updateAreaCounters,normalizeFactory,areaOf,isoDate,parseCSV,parseImportRows,getRecords:()=>records.map(x=>({...x})),render,migration:()=>({marks:{...marks},count:records.length})};
@@ -767,6 +848,18 @@
     #r07-workspace .r07-edit-indicator{font-size:11px;padding:3px 7px;margin-left:10px;border-radius:10px;background:#f59e0b;color:#fff}
     #r07-workspace .r07-day-detail{padding:14px;background:#fffbf0;border-top:1px solid #f6d898}
     #r07-workspace .r07-day-detail>p{margin:6px 0 10px;font-size:12px;color:#8a5b17}
+    #r07-workspace .r075-row-editing td{background:#fff7df;padding:12px;border-left:3px solid #eab04b;border-right:3px solid #eab04b}
+    #r07-workspace .r075-inline-form{border:1px solid #eab04b;border-radius:9px;padding:13px;background:#fffaf0;min-width:0}
+    #r07-workspace .r075-inline-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:#80500f}
+    #r07-workspace .r075-chip{border-radius:14px;background:#f59e0b;color:white;padding:3px 9px;font-size:11px;font-weight:800}
+    #r07-workspace .r075-inline-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    #r07-workspace .r075-inline-fields label{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:12px}
+    #r07-workspace .r075-inline-fields input,#r07-workspace .r075-inline-fields select,#r07-workspace .r075-inline-fields textarea{width:100%;max-width:100%;border-radius:6px;border:1px solid #bdcde4;background:#fff;padding:9px;font-size:14px;min-width:0;color:#172b4d}
+    #r07-workspace .r075-inline-fields small{font-weight:500;color:#64748b}
+    #r07-workspace .r075-content-field{grid-column:1/-1}
+    #r07-workspace .r075-inline-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}
+    @media(max-width:760px){#r07-workspace .r075-inline-fields{grid-template-columns:1fr}}
+
     #r07-workspace .r07-action.r07-danger{color:#b42318;border-color:#f5b2ab;background:#fff}
     #r07-workspace .r07-action.r07-danger:hover{background:#fff1ef}
     #r07-workspace .r07-action:disabled{opacity:.5;cursor:not-allowed}

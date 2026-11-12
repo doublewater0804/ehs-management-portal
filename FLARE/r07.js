@@ -1,4 +1,4 @@
-/* FLARE R0.7.3 – CSV import entry, date-level details/edit/delete and active date highlighting.
+/* FLARE R0.7.4 – CSV per-group diff preview, atomic approved writes, cloud history and safe restoration.
    Shared Firestore document remains flare_control/global_state; this script never changes FLARE day counters. */
 (() => {
   'use strict';
@@ -61,10 +61,11 @@
     return m?toAmount(m[1]):null;
   };
   const fromStore=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||'null')??fallback;}catch{return fallback;}};
-  let records=fromStore(KEY,[]), marks=fromStore(MARK_KEY,{}), activeArea='', pendingImport=[], batchDrafts=[], activeDate=null;
+  let records=fromStore(KEY,[]), marks=fromStore(MARK_KEY,{}), activeArea='', pendingImport=null, batchDrafts=[], activeDate=null;
   if (!Array.isArray(records)) records=[];
   if (!marks || typeof marks!=='object'||Array.isArray(marks)) marks={};
   let cloudReady=false, needsSave=false, initialized=false;
+  let selectedDiffs=new Set(),inspectedDiffs=new Set(),importBusy=false,historyRows=[],historyVisible=false;
   const selectedYear=()=>Number(document.getElementById('view-year')?.value||new Date().getFullYear());
   const saved=()=>{localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(MARK_KEY,JSON.stringify(marks));};
   const push=()=>{
@@ -213,7 +214,7 @@
       yearRows(year,'event').sort(newestFirst).map((r,i)=>[i+1,displayDate(r.date),r.content]);
     const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.3_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.4_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   const rowButton=(action,row,label)=>`<button type="button" class="r07-action" data-r07-action="${action}" data-r07-id="${html(row.id)}">${label}</button>`;
   const showMessage=text=>{const el=document.getElementById('r07-message');if(el)el.textContent=text;};
@@ -413,8 +414,63 @@
     items.forEach(row=>{const sig=signature(row);if(!seen.has(sig)){seen.add(sig);uniques.push(row);}else messages.push('檔案內有完全重複紀錄，已忽略一筆。');});
     return {items:uniques,messages,errors};
   };
+  // An import is a date+factory GROUP operation; the original rows are never
+  // implicitly merged away by preview, and unselected groups are untouched.
+  const r074Key=r=>`${r.date}|${normalizeFactory(r.factory)}`;
+  const normalizedText=v=>String(v??'').replace(/\r\n?/g,'\n').trim();
+  const groupText=rows=>rows.map(r=>normalizedText(r.content)).filter(Boolean).join('；');
+  const groupAmount=rows=>rows.every(r=>toAmount(r.amount)===null)?null:rows.reduce((sum,r)=>sum+(toAmount(r.amount)??0),0);
+  const equalAmount=(a,b)=>(a===null&&b===null)||(a!==null&&b!==null&&Math.abs(a-b)<0.0000001);
+  // Including stable ID and metadata detects later edits, additions and deletions.
+  const stableRows=rows=>JSON.stringify((rows||[]).map(r=>Object.keys(r).sort().map(k=>[k,r[k]]))
+    .sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  const groupOf=(all,key)=>all.filter(r=>r.kind==='interference'&&r074Key(r)===key);
+  const compareGroups=(imports,serverRecords)=>{
+    const incoming=new Map(),output=[];
+    imports.forEach(row=>{
+      const key=r074Key(row);
+      if(!incoming.has(key))incoming.set(key,[]);
+      incoming.get(key).push(row);
+    });
+    for(const [key,rows] of incoming){
+      const existing=groupOf(serverRecords,key),beforeAmount=groupAmount(existing),afterAmount=groupAmount(rows);
+      const beforeText=groupText(existing),afterText=groupText(rows);
+      const same=existing.length&&equalAmount(beforeAmount,afterAmount)&&beforeText===afterText;
+      const status=!existing.length?'new':same?'same':existing.length>1?'special':'changed';
+      output.push({key,date:rows[0].date,factory:rows[0].factory,area:areaOf(rows[0].factory),
+        rows,existing,beforeAmount,afterAmount,beforeText,afterText,status,
+        baseline:stableRows(existing),amountChanged:!equalAmount(beforeAmount,afterAmount),contentChanged:beforeText!==afterText});
+    }
+    return output.sort((a,b)=>b.date.localeCompare(a.date)||a.factory.localeCompare(b.factory,'zh-TW'));
+  };
+  const importSelection=()=>pendingImport?.diffs.filter(d=>selectedDiffs.has(d.key)&&d.status!=='same')||[];
+  const importPanel=()=>document.getElementById('r07-import-preview');
+  const renderImportPreview=()=>{
+    const host=importPanel();if(!host)return;
+    if(!pendingImport){host.textContent='尚未選擇匯入檔案。';return;}
+    const diffs=pendingImport.diffs;
+    const count=k=>diffs.filter(d=>d.status===k).length;
+    const labels={new:'新增',changed:'有差異',same:'相同',special:'特殊差異'};
+    host.innerHTML=`<div class="r074-summary"><strong>檔案：${html(pendingImport.fileName)}</strong><p>有效 ${pendingImport.rawCount} 筆｜新增 ${count('new')} 組｜有差異 ${count('changed')} 組｜相同 ${count('same')} 組｜特殊差異 ${count('special')} 組</p><p class="r074-note">預設全部保留；只提交有勾選的日期＋工廠組。相同資料不重複寫入，CSV 未包含的舊資料不會刪除。</p></div>
+      <div class="r07-tools"><button type="button" class="r07-btn" id="r074-select-all">全選可覆蓋項目</button><button type="button" class="r07-btn" id="r074-select-none">全部保留</button><span id="r074-selected-count">已選 ${selectedDiffs.size} 組</span></div>
+      <div class="r07-scroll"><table class="r07-table r074-diff-table"><thead><tr><th>確認覆蓋</th><th>狀態</th><th>日期／工廠</th><th>比對欄位</th><th>Firebase 現有值</th><th>CSV 匯入值</th></tr></thead><tbody>${diffs.map(d=>{
+        const isSpecial=d.status==='special',allowed=!isSpecial||inspectedDiffs.has(d.key);
+        const statusClass=d.status==='special'?'r074-special':d.status==='changed'?'r074-changed':d.status==='new'?'r074-new':'r074-same';
+        const beforeAmount=d.existing.length?(d.beforeAmount===null?'待確認':String(d.beforeAmount)):'無紀錄';
+        const afterAmount=String(d.afterAmount??'待確認');
+        const showDetails=isSpecial||d.rows.length>1;
+        return `<tr class="${statusClass}"><td>${d.status==='same'?'—':`<input type="checkbox" data-r074-check="${html(d.key)}" ${selectedDiffs.has(d.key)?'checked':''} ${allowed?'':'disabled title="請先展開原始明細"'} aria-label="覆蓋 ${html(d.date)} ${html(d.factory)}">`}</td><td>${labels[d.status]}</td><td>${displayDate(d.date)}<br>${html(d.area)}｜${html(d.factory)}${showDetails?`<br><button class="r07-action" type="button" data-r074-inspect="${html(d.key)}">${inspectedDiffs.has(d.key)?'收合明細':'展開原始明細'}</button>`:''}${isSpecial&&!inspectedDiffs.has(d.key)?'<br><small class="r07-warn">須先檢視全部舊紀錄</small>':''}</td><td>${d.status==='new'?'新增':`${d.amountChanged?'流量':''}${d.amountChanged&&d.contentChanged?'＋':''}${d.contentChanged?'內容':''}`||'相同'}</td><td>流量：<strong>${html(beforeAmount)}</strong><div class="r074-long">${html(d.beforeText||'—')}</div></td><td>流量：<strong>${html(afterAmount)}</strong><div class="r074-long">${html(d.afterText||'—')}</div></td></tr>
+          ${inspectedDiffs.has(d.key)?`<tr class="r074-details"><td colspan="6"><strong>Firebase 原始明細（${d.existing.length} 筆）</strong><ol>${d.existing.map((r,i)=>`<li>${i+1}. ${html(r.id)}｜${r.amount===null?'待確認':html(r.amount)} NM³｜${html(r.content)}</li>`).join('')||'<li>無既有紀錄</li>'}</ol><strong>CSV 原始明細（${d.rows.length} 筆）</strong><ol>${d.rows.map((r,i)=>`<li>${i+1}. ${html(r.amount)} NM³｜${html(r.content)}</li>`).join('')}</ol>${isSpecial?'<p class="r07-warn">勾選後將以 CSV 所列全部明細取代本組舊資料；舊資料會完整備份並保留復原功能。</p>':''}</td></tr>`:''}`;
+      }).join('')}</tbody></table></div>${pendingImport.messages.map(m=>`<p class="r07-warn">${html(m)}</p>`).join('')}`;
+    const countHost=document.getElementById('r074-selected-count');if(countHost)countHost.textContent=`已選 ${selectedDiffs.size} 組`;
+    document.getElementById('r07-confirm-import').disabled=importBusy||!importSelection().length||!!pendingImport.errors.length;
+  };
   const onFile=async input=>{
-    pendingImport=[];const file=input.files?.[0];if(!file)return;
+    pendingImport=null;selectedDiffs.clear();inspectedDiffs.clear();
+    const file=input.files?.[0];if(!file)return;
+    const confirmBtn=document.getElementById('r07-confirm-import');confirmBtn.disabled=true;
+    if(!validateMutation())return;
+    const currentYear=selectedYear();importPanel().textContent='正在讀取 CSV，並從 Firebase 取得最新資料進行差異比對…';
     try{
       let matrix;
       if(/\.csv$/i.test(file.name))matrix=parseCSV(await file.text());
@@ -423,49 +479,105 @@
         const book=window.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
         matrix=window.XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]],{header:1,raw:false,defval:''});
       }else throw Error('僅支援 Excel（.xlsx/.xls）或 CSV。');
-      const parsed=parseImportRows(matrix);pendingImport=parsed.items;
-      const existing=new Set(yearRows(selectedYear(),'interference').map(signature));
-      const duplicateExisting=pendingImport.filter(r=>existing.has(signature(r))).length;
-      const conflictExisting=pendingImport.filter(r=>yearRows(selectedYear(),'interference').some(x=>x.date===r.date&&x.factory===r.factory&&!existing.has(signature(r)))).length;
-      const prev=document.getElementById('r07-import-preview');
-      prev.innerHTML=`<strong>檔案有效資料 ${pendingImport.length} 筆</strong>｜與雲端既有資料完全重複 ${duplicateExisting} 筆｜同日同工廠可能衝突 ${conflictExisting} 筆｜${parsed.messages.length} 項檢查訊息。<div class="r07-scroll"><table class="r07-table"><thead><tr><th>日期</th><th>廠區</th><th>工廠</th><th>流量</th><th>內容</th></tr></thead><tbody>${pendingImport.slice(0,30).map(r=>`<tr><td>${displayDate(r.date)}</td><td>${areaOf(r.factory)}</td><td>${html(r.factory)}</td><td>${r.amount}</td><td>${html(r.content)}</td></tr>`).join('')}</tbody></table></div>${parsed.messages.slice(0,20).map(m=>`<p class="r07-warn">${html(m)}</p>`).join('')}`;
-      document.getElementById('r07-confirm-import').disabled=!pendingImport.length||!!parsed.errors.length;
-      if(parsed.errors.length)showMessage('匯入檔存在無效資料，請修正後重新選擇，避免部分匯入。');
-    }catch(err){document.getElementById('r07-import-preview').textContent=`解析失敗：${err.message}`;document.getElementById('r07-confirm-import').disabled=true;}
+      const parsed=parseImportRows(matrix);
+      if(parsed.errors.length)throw Error(`有 ${parsed.errors.length} 列無效：${parsed.errors.slice(0,10).join('；')}。請修正後重新匯入，避免部分資料寫入。`);
+      if(!parsed.items.length)throw Error('未找到有效資料列。');
+      if(typeof window.__flareR074Read!=='function')throw Error('Firebase 安全比對元件尚未就緒，請重新整理。');
+      if(typeof window.__flareR074WaitForIdle==='function')await window.__flareR074WaitForIdle();
+      const cloud=await window.__flareR074Read();
+      if(currentYear!==selectedYear())throw Error('比對期間年度已改變，請重新選擇檔案。');
+      const diffs=compareGroups(parsed.items,Array.isArray(cloud.records)?cloud.records:[]);
+      pendingImport={year:currentYear,fileName:file.name,rawCount:parsed.items.length,diffs,messages:parsed.messages,errors:parsed.errors};
+      renderImportPreview();
+    }catch(err){pendingImport=null;importPanel().textContent=`匯入比對失敗：${err.message}`;confirmBtn.disabled=true;}
   };
-  const confirmImport=()=>{
-    if(!validateMutation()||!pendingImport.length)return;
-    const mode=document.getElementById('r07-import-mode').value;
-    const year=selectedYear();
-    let added=0,duplicate=0,skipped=0,replaced=0;
-    const planned=[],scratch=[...records];
-    const originalGroups=new Set(yearRows(year,'interference').map(r=>`${r.date}|${r.factory}`));
-    const replacedGroups=new Set(),fileSignatures=new Set();
-    for(const row of pendingImport){
-      const sig=signature(row),groupKey=`${row.date}|${row.factory}`;
-      if(fileSignatures.has(sig)){duplicate++;continue;}
-      fileSignatures.add(sig);
-      if(mode==='skip'&&originalGroups.has(groupKey)){skipped++;continue;}
-      if(mode==='replace'&&!replacedGroups.has(groupKey)){
-        // Remove prior cloud rows only once per group: distinct rows within this CSV
-        // must not replace one another during the same import.
-        const conflicts=scratch.filter(r=>r.kind==='interference'&&r.date===row.date&&r.factory===row.factory);
-        planned.push(...conflicts);replaced+=conflicts.length;
-        for(const rec of conflicts){const idx=scratch.indexOf(rec);if(idx>=0)scratch.splice(idx,1);}
-        replacedGroups.add(groupKey);
-      }
-      if(scratch.some(r=>r.kind==='interference'&&signature(r)===sig)){duplicate++;continue;}
-      scratch.push(normalizeRecord(row));added++;
+  const commitDiffs=(r07,approved,batchId,filename,year)=>{
+    const base=Array.isArray(r07.records)?r07.records:[];
+    let next=[...base];
+    const entries=[];
+    for(const diff of approved){
+      const before=groupOf(base,diff.key);
+      // Fail the ENTIRE import if any selected group changed since preview.
+      if(stableRows(before)!==diff.baseline)throw Error(`雲端資料已變更：${diff.date} ${diff.factory}。請重新匯入 CSV 比對，未覆蓋任何資料。`);
+      const after=diff.rows.map(row=>normalizeRecord({...row,id:id(),year,createdAt:stamp(),source:'import'}));
+      next=next.filter(r=>r074Key(r)!==diff.key||r.kind!=='interference');
+      next.push(...after);
+      entries.push({key:diff.key,date:diff.date,factory:diff.factory,action:before.length?'replace':'new',before,after});
     }
-    if(!confirm(`年度 ${year}\n預計新增 ${added} 筆、完全重複 ${duplicate} 筆、略過 ${skipped} 筆、取代舊紀錄 ${replaced} 筆。\n確定匯入至 Firebase？`))return;
-    if(planned.length){
-      try{localStorage.setItem(`flare_r07_import_replace_backup_${Date.now()}`,JSON.stringify(planned));}
-      catch(error){alert('取代資料的本機備份失敗，已取消匯入。');return;}
-    }
-    records=scratch;pendingImport=[];document.getElementById('r07-import-preview').textContent='匯入完成';
-    document.getElementById('r07-confirm-import').disabled=true;document.getElementById('r07-file').value='';
-    if(added||replaced)push();
-    showMessage(`已加入 ${added} 筆，重複 ${duplicate} 筆、略過 ${skipped} 筆；取代資料已先備份於本機。`);
+    const audit={id:batchId,year,filename,createdAt:stamp(),status:'committed',entries,
+      newGroups:entries.filter(e=>e.action==='new').length,replacedGroups:entries.filter(e=>e.action==='replace').length,
+      oldRecordCount:entries.reduce((n,e)=>n+e.before.length,0),newRecordCount:entries.reduce((n,e)=>n+e.after.length,0)};
+    // Firestore document limit is 1MiB; fail before writes rather than risk an
+    // unbacked replacement. Plenty of headroom is reserved for document metadata.
+    if(new TextEncoder().encode(JSON.stringify(audit)).length>850000)throw Error('此批匯入備份超過單一文件安全容量，請分批匯入。沒有修改雲端。');
+    return {nextR07:{...r07,records:next},historyDoc:audit,result:{...audit,entries:undefined}};
+  };
+  const confirmImport=async()=>{
+    if(importBusy||!validateMutation()||!pendingImport)return;
+    const chosen=importSelection();if(!chosen.length)return;
+    const year=pendingImport.year;
+    if(year!==selectedYear()){alert('年度已變更，請重新匯入比對。');return;}
+    if(chosen.some(d=>d.status==='special'&&!inspectedDiffs.has(d.key))){alert('特殊差異須先展開舊紀錄明細。');return;}
+    const added=chosen.filter(d=>d.status==='new').length;
+    const replaced=chosen.length-added;
+    if(!confirm(`年度 ${year}\n已選擇新增 ${added} 組、覆蓋 ${replaced} 組。\n其餘資料維持原狀。\n確定先備份原始明細，再使用 Firebase 交易提交？`))return;
+    if(typeof window.__flareR074Atomic!=='function')return alert('Firebase 交易功能尚未就緒。');
+    const snapshot=pendingImport;
+    const filename=snapshot.fileName;
+    const batchId=id();
+    importBusy=true;renderImportPreview();showMessage('正在以 Firebase 交易檢查最新資料並建立覆蓋備份，尚未確認成功…');
+    try{
+      const result=await window.__flareR074Atomic(batchId,r07=>commitDiffs(r07,chosen,batchId,filename,year));
+      pendingImport=null;selectedDiffs.clear();inspectedDiffs.clear();
+      importPanel().textContent=`已確認雲端交易提交成功：新增 ${result.newGroups} 組、覆蓋 ${result.replacedGroups} 組。匯入批次 ${batchId} 已備份，可由「匯入歷史／復原」查詢。`;
+      document.getElementById('r07-file').value='';
+      showMessage(`Firebase 已完成：新增 ${result.newGroups} 組、覆蓋 ${result.replacedGroups} 組。`);
+      // The realtime snapshot will authoritatively refresh records and counters.
+      if(historyVisible)await showImportHistory();
+    }catch(err){
+      showMessage(`匯入未完成：${err.message}。所有勾選資料均未標示成功；如有疑問請先查詢匯入歷史。`);
+      alert(`未能完成 CSV 匯入：${err.message}\n請檢查網路及雲端資料，再重新比對。`);
+    }finally{importBusy=false;if(pendingImport)renderImportPreview();else document.getElementById('r07-confirm-import').disabled=true;}
+  };
+  const showImportHistory=async()=>{
+    historyVisible=true;
+    const host=document.getElementById('r074-history');if(!host)return;
+    host.classList.remove('hidden');host.textContent='正在從 Firebase 讀取匯入歷史…';
+    try{
+      if(typeof window.__flareR074ListHistory!=='function')throw Error('Firebase 匯入歷史查詢功能尚未就緒。');
+      const y=selectedYear();historyRows=await window.__flareR074ListHistory(y);
+      if(y!==selectedYear())return showImportHistory();
+      host.innerHTML=`<h3>${y} 年匯入歷史及復原</h3><p>備份保存在 Firebase；復原前會再次確認目前資料是否仍與匯入後相同，若後續有修改則整批停止復原。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>匯入時間</th><th>檔案</th><th>新增／覆蓋</th><th>狀態</th><th>操作</th></tr></thead><tbody>${historyRows.map(h=>`<tr><td>${html(h.createdAt||'')}</td><td>${html(h.filename||'')}</td><td>${Number(h.newGroups)||0}／${Number(h.replacedGroups)||0}</td><td>${h.status==='restored'?'已復原':'已提交'}</td><td><button type="button" class="r07-action" data-r074-history-detail="${html(h.id)}">查看備份</button> ${h.status==='restored'?'':`<button type="button" class="r07-action r07-danger" data-r074-restore="${html(h.id)}">復原此批</button>`}</td></tr>`).join('')||'<tr><td colspan="5">本年度尚無匯入歷史</td></tr>'}</tbody></table></div><div id="r074-history-details"></div>`;
+    }catch(err){host.textContent=`匯入歷史讀取失敗：${err.message}`;}
+  };
+  const renderHistoryDetails=auditId=>{
+    const audit=historyRows.find(h=>h.id===auditId),host=document.getElementById('r074-history-details');if(!audit||!host)return;
+    host.innerHTML=`<h3>備份批次 ${html(audit.id)}</h3><div class="r07-scroll"><table class="r07-table"><thead><tr><th>日期／工廠</th><th>覆蓋前原始紀錄</th><th>匯入後原始紀錄</th></tr></thead><tbody>${(audit.entries||[]).map(e=>`<tr><td>${html(e.date)}<br>${html(e.factory)}</td><td>${(e.before||[]).map(r=>`${html(r.amount)} NM³｜${html(r.content)}<br>`).join('')||'（無）'}</td><td>${(e.after||[]).map(r=>`${html(r.amount)} NM³｜${html(r.content)}<br>`).join('')||'（無）'}</td></tr>`).join('')}</tbody></table></div>`;
+  };
+  const restoreImport=async auditId=>{
+    if(importBusy||!validateMutation())return;
+    const audit=historyRows.find(h=>h.id===auditId);if(!audit||audit.status==='restored')return;
+    if(Number(audit.year)!==selectedYear()){alert('請切換至匯入批次所屬年度後再操作。');return;}
+    if(!confirm(`準備復原匯入批次：${audit.filename}\n影響 ${(audit.entries||[]).length} 組日期＋工廠資料。\n復原前將比對目前雲端是否仍與匯入後一致；任何衝突都會取消整批復原。確定繼續？`))return;
+    if(!confirm('第二次確認：復原將移除本批新增／覆蓋後的資料，並恢復覆蓋前完整原始紀錄。確定送出 Firebase 交易？'))return;
+    importBusy=true;showMessage('正在進行雲端復原交易與衝突檢查…');
+    try{
+      await window.__flareR074Atomic(auditId,(r07,stored)=>{
+        if(stored.status!=='committed')throw Error('本批資料已復原或狀態不允許復原。');
+        const base=Array.isArray(r07.records)?r07.records:[];
+        let next=[...base];
+        for(const entry of stored.entries||[]){
+          if(stableRows(groupOf(base,entry.key))!==stableRows(entry.after))
+            throw Error(`復原衝突：${entry.date} ${entry.factory} 已被後續修改、刪除或新增，已停止整批復原。`);
+          next=next.filter(r=>r.kind!=='interference'||r074Key(r)!==entry.key);
+          next.push(...entry.before);
+        }
+        return {nextR07:{...r07,records:next},historyDoc:{...stored,status:'restored',restoredAt:stamp()},result:{count:(stored.entries||[]).length}};
+      },true);
+      showMessage('Firebase 復原交易已完成；受影響資料已還原，其他資料保留。');
+      await showImportHistory();
+    }catch(err){showMessage(`復原未完成：${err.message}`);alert(`復原未完成：${err.message}`);}
+    finally{importBusy=false;}
   };
   const downloadTemplate=()=>{
     const lines=[['日期','工廠','干擾流量 (NM³)','內容'],[`${selectedYear()}/11/10`,'ARO1廠','150','範例：設備異常（請刪除範例列）']];
@@ -487,7 +599,7 @@
       <form id="r07-editor" class="r07-editor hidden"><div class="r07-form-title" data-r07-form-title>新增紀錄</div><div class="r07-grid"><label>日期（必填）<input name="r07-date" type="date" required></label><label class="r07-factory-field">工廠（必選，廠區自動帶入）<select name="r07-factory"><option value="">請選擇…</option>${AREAS.map(a=>`<optgroup label="${a}">${AREA_FACTORIES[a].map(f=>`<option value="${f}">${f}</option>`).join('')}</optgroup>`).join('')}</select></label><label class="r07-amount-field">干擾流量 (NM³)<input name="r07-amount" type="number" step="any" min="0" placeholder="0 或正數"></label><label class="r07-wide">內容（必填）<textarea name="r07-content" rows="3" required maxlength="6000"></textarea></label></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存紀錄</button><button type="button" id="r07-cancel" class="r07-btn">取消</button></div></form>
       <form id="r07-batch-editor" class="r07-editor hidden"><div class="r07-form-title">干擾流量批次新增</div><div class="r07-batch-date"><label>日期（共用，必填）<input name="r07-batch-date" type="date" required></label><p>選擇一次日期，即可新增同一天不同工廠的多筆干擾流量；每個工廠的流量與內容分別填寫。</p></div><div id="r07-batch-items"></div><div class="r07-tools"><button type="button" id="r07-batch-add" class="r07-btn">＋ 新增廠處</button><span class="r07-batch-count" data-r07-batch-count></span></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存當日所有紀錄</button><button type="button" id="r07-batch-cancel" class="r07-btn">取消</button></div></form>
       <div id="r07-results"></div>
-      <section id="r07-import-panel" class="r07-import hidden"><h3>Excel／CSV 干擾流量匯入</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」；廠區由工廠自動對應。僅讀取 Excel 第一個工作表。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><select id="r07-import-mode"><option value="append">新增不同事件、完全重複略過</option><option value="skip">同日期同工廠已存在則略過</option><option value="replace">取代同日期同工廠原始明細</option></select><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認匯入</button></div><div id="r07-import-preview" aria-live="polite"></div></section>`;
+      <section id="r07-import-panel" class="r07-import hidden"><h3>Excel／CSV 干擾流量匯入與差異比對</h3><p>使用標準欄位「日期、工廠、干擾流量 (NM³)、內容」。上傳後會重新讀取 Firebase 雲端資料，比對「日期＋工廠」的流量和內容；先逐筆勾選，再進行交易提交，沒有選取的資料不變。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認已選取差異並儲存雲端</button><button type="button" id="r074-history-toggle" class="r07-btn">匯入歷史／復原</button></div><div id="r07-import-preview" aria-live="polite"></div><section id="r074-history" class="r074-history hidden"></section></section>`;
     header.insertAdjacentElement('afterend',el);
     el.querySelector('.r07-head a[href="./index.html"]')?.setAttribute('data-r07-return','1');
     document.getElementById('r07-new').addEventListener('click',()=>el.dataset.kind==='interference'?showBatchForm():showForm());
@@ -525,6 +637,30 @@
     el.querySelector('#r07-file').addEventListener('change',e=>onFile(e.target));
     el.querySelector('#r07-confirm-import').addEventListener('click',confirmImport);
     el.querySelector('#r07-template').addEventListener('click',downloadTemplate);
+    el.querySelector('#r074-history-toggle').addEventListener('click',()=>{
+      if(historyVisible){historyVisible=false;document.getElementById('r074-history').classList.add('hidden');}
+      else showImportHistory();
+    });
+    el.querySelector('#r07-import-preview').addEventListener('click',event=>{
+      const inspect=event.target.closest('[data-r074-inspect]');
+      if(inspect){const key=inspect.dataset.r074Inspect;if(inspectedDiffs.has(key)){inspectedDiffs.delete(key);selectedDiffs.delete(key);}else inspectedDiffs.add(key);renderImportPreview();return;}
+      if(event.target.closest('#r074-select-all')){
+        selectedDiffs=new Set((pendingImport?.diffs||[]).filter(d=>d.status!=='same'&&(d.status!=='special'||inspectedDiffs.has(d.key))).map(d=>d.key));
+        renderImportPreview();return;
+      }
+      if(event.target.closest('#r074-select-none')){selectedDiffs.clear();renderImportPreview();}
+    });
+    el.querySelector('#r07-import-preview').addEventListener('change',event=>{
+      const input=event.target.closest('[data-r074-check]');if(!input)return;
+      if(input.checked)selectedDiffs.add(input.dataset.r074Check);else selectedDiffs.delete(input.dataset.r074Check);
+      renderImportPreview();
+    });
+    el.querySelector('#r074-history').addEventListener('click',event=>{
+      const detail=event.target.closest('[data-r074-history-detail]');
+      if(detail){renderHistoryDetails(detail.dataset.r074HistoryDetail);return;}
+      const restore=event.target.closest('[data-r074-restore]');
+      if(restore)restoreImport(restore.dataset.r074Restore);
+    });
 
     const activateRoute=()=>{
       const query=new URLSearchParams(location.search);
@@ -539,6 +675,8 @@
         el.querySelector('.r07-head h2').textContent=isEvent?'① FLARE 使用事件及原因':'② 干擾流量管理';
         el.querySelector('.r07-filter').classList.toggle('hidden',!isInterference);
         el.querySelector('#r07-import-toggle').classList.toggle('hidden',!isInterference);
+        pendingImport=null;selectedDiffs.clear();inspectedDiffs.clear();historyVisible=false;
+        el.querySelector('#r074-history').classList.add('hidden');
         el.querySelector('#r07-import-panel').classList.add('hidden');
         el.querySelector('#r07-import-toggle').setAttribute('aria-expanded','false');
         activeDate=null;
@@ -634,6 +772,12 @@
     #r07-workspace .r07-action:disabled{opacity:.5;cursor:not-allowed}
     #r07-workspace .r07-import{border-top:1px solid #e2e8f0;padding-top:20px;margin-top:24px}
     #r07-workspace .r07-import p{color:#64748b;margin-bottom:10px}#r07-workspace .r07-import .r07-tools{margin:10px 0}
+    #r07-workspace .r074-diff-table td{min-width:95px;overflow-wrap:anywhere}#r07-workspace .r074-diff-table td:nth-child(1){min-width:76px}#r07-workspace .r074-diff-table td:nth-child(5),#r07-workspace .r074-diff-table td:nth-child(6){min-width:210px}
+    #r07-workspace .r074-diff-table .r074-new{background:#f4faf5}#r07-workspace .r074-diff-table .r074-changed{background:#fffdf7}#r07-workspace .r074-diff-table .r074-special{background:#fff7ed}
+    #r07-workspace .r074-long{white-space:pre-wrap;overflow-wrap:anywhere;max-width:430px;margin-top:5px}#r07-workspace .r074-summary{padding:12px;border:1px solid #d9e5f5;border-radius:8px;background:#f8fbff;margin:12px 0}
+    #r07-workspace .r074-summary .r074-note{font-size:12px;color:#475569}#r07-workspace .r074-details{background:#fffdfa}#r07-workspace .r074-details ol{padding-left:22px;margin:8px 0}#r07-workspace .r074-details li{margin-bottom:4px}
+    #r07-workspace .r074-history{border-top:1px solid #d7e3f0;padding-top:15px;margin-top:18px}#r07-workspace .r074-history .r07-table td{max-width:440px;overflow-wrap:anywhere}
+
     #r07-workspace .r07-warn{font-size:11px;color:#b45309}#r07-workspace .r07-message{color:#146c43;font-size:12px;margin-bottom:8px}
     .r07-summary-link{display:inline-block;margin-top:7px;color:#1d5fd0!important;text-decoration:none!important;border-top:1px solid #e2e8f0;padding-top:7px;font-size:12px;font-weight:800}
     .r07-summary-link:hover{text-decoration:underline!important}

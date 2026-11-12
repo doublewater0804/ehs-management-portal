@@ -726,7 +726,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
   import { requireFirebaseUser, firebaseErrorText } from "../firebase-mobile-auth.js?v=20260826-1128";
-  import { initializeFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { initializeFirestore, doc, setDoc, onSnapshot, serverTimestamp, getDocFromServer, collection, query, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBGgf0A5MFOqPxQvlX8tACski48bMYI_DU",
@@ -771,6 +771,43 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
     };
     window.__flareCloudUploadLocal = async (state) => {
       await setDoc(FLARE_DOC, { state, updatedAt: serverTimestamp(), migratedAt: serverTimestamp() }, { merge: true });
+    };
+
+    // R0.7.4: read the actual server state, not an optimistic browser cache.
+    // Atomic import/restore updates only state.r07 (not the other FLARE subsystems),
+    // and writes the audit/backup document in the same Firestore transaction.
+    const historyCollection = collection(db, 'flare_r07_import_history');
+    window.__flareR074Read = async () => {
+      const snapshot = await getDocFromServer(FLARE_DOC);
+      if (!snapshot.exists() || !snapshot.data()?.state) throw new Error('Firebase 找不到正式雲端資料，已停止匯入。');
+      return snapshot.data().state.r07 || { records: [], migrationMarks: {}, version: 1 };
+    };
+    window.__flareR074ListHistory = async (year) => {
+      const result = await getDocs(query(historyCollection, where('year', '==', Number(year))));
+      return result.docs.map(d => ({ ...d.data(), id: d.id }))
+        .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    };
+    window.__flareR074Atomic = async (auditId, transformer, readExistingAudit = false) => {
+      if (!auth.currentUser) throw new Error('登入已失效，請重新登入再操作。');
+      if (typeof window.__flareR074WaitForIdle === 'function') await window.__flareR074WaitForIdle();
+      const auditRef = doc(db, 'flare_r07_import_history', auditId);
+      return await runTransaction(db, async tx => {
+        const snap = await tx.get(FLARE_DOC);
+        // Transaction reads must all finish before writes begin.
+        const priorAudit = readExistingAudit ? await tx.get(auditRef) : null;
+        if (!snap.exists() || !snap.data()?.state) throw new Error('雲端狀態不存在，拒絕覆蓋。');
+        if (readExistingAudit && !priorAudit.exists()) throw new Error('找不到指定備份批次，無法復原。');
+        if (!readExistingAudit && priorAudit) throw new Error('匯入批次代碼已存在，請重新匯入。');
+        const result = transformer(snap.data().state.r07 || { records: [], migrationMarks: {}, version: 1 }, priorAudit?.data() || null);
+        if (!result || !result.nextR07 || !result.historyDoc) throw new Error('交易資料不完整，已取消。');
+        tx.update(FLARE_DOC, {
+          'state.r07': result.nextR07,
+          'state.updatedAtLocal': new Date().toISOString(),
+          updatedAt: serverTimestamp()
+        });
+        tx.set(auditRef, result.historyDoc);
+        return result.result;
+      });
     };
 
     onSnapshot(FLARE_DOC, (snap) => {
@@ -859,6 +896,8 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
         let lastImportContext = null;
         let __flareApplyingRemote = false;
         let __flareCloudSaveTimer = null;
+        let __flareCloudSavePromise = null;
+        let __flareCloudLastSaveError = null;
         let manualRemarksDirty = false;
         let manualRemarksLoadedYear = null;
 
@@ -968,20 +1007,41 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
             }
         }
 
+        function runQueuedFlareSave() {
+            __flareCloudSaveTimer = null;
+            if (typeof window.__flareCloudPush !== 'function') return Promise.resolve();
+            setFirebaseSyncStatus('☁️ 雲端儲存中…', 'info');
+            const promise = window.__flareCloudPush(getFlareCloudState())
+                .then(() => { __flareCloudLastSaveError = null; setFirebaseSyncStatus('☁️ 已儲存雲端', 'ok'); })
+                .catch((err) => {
+                    __flareCloudLastSaveError = err;
+                    console.error(err);
+                    setFirebaseSyncStatus('☁️ 雲端儲存失敗', 'err');
+                    throw err;
+                });
+            __flareCloudSavePromise = promise;
+            promise.finally(() => { if (__flareCloudSavePromise === promise) __flareCloudSavePromise = null; }).catch(() => {});
+            return promise;
+        }
+
         function queueFlareCloudSave() {
             if (__flareApplyingRemote) return;
             if (typeof window.__flareCloudPush !== 'function') return;
             clearTimeout(__flareCloudSaveTimer);
-            __flareCloudSaveTimer = setTimeout(() => {
-                setFirebaseSyncStatus('☁️ 雲端儲存中…', 'info');
-                window.__flareCloudPush(getFlareCloudState())
-                    .then(() => setFirebaseSyncStatus('☁️ 已儲存雲端', 'ok'))
-                    .catch((err) => {
-                        console.error(err);
-                        setFirebaseSyncStatus('☁️ 雲端儲存失敗', 'err');
-                    });
-            }, 600);
+            __flareCloudSaveTimer = setTimeout(() => { runQueuedFlareSave().catch(() => {}); }, 600);
         }
+
+        // Wait for all already-queued changes before taking the authoritative
+        // server snapshot for an R0.7.4 import/restore transaction.
+        window.__flareR074WaitForIdle = async () => {
+            if (__flareCloudSavePromise) await __flareCloudSavePromise;
+            if (__flareCloudSaveTimer !== null) {
+                clearTimeout(__flareCloudSaveTimer);
+                await runQueuedFlareSave();
+            }
+            if (__flareCloudSavePromise) await __flareCloudSavePromise;
+            if (__flareCloudLastSaveError) throw new Error('原有 FLARE 雲端儲存失敗，請先處理同步錯誤再匯入。');
+        };
 
         function uploadLocalFlareDataToCloud() {
             if (typeof window.__flareCloudUploadLocal !== 'function') {
@@ -3481,7 +3541,7 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 <!-- FLARE 原始排放紀錄修改 / Firebase 同步模組（使用版本參數避免 GitHub Pages 舊快取） -->
 <script type="module" src="./sync-guard.js?v=20261027-1"></script>
 <script type="module" src="./cloud-sync-fix.js?v=20261027-2"></script>
-<script src="./r07.js?v=20261112-r073-1"></script>
+<script src="./r07.js?v=20261112-r074-1"></script>
 <script src="./layout-redesign.js?v=20261110-1"></script>
 <script src="./amount-edit.js?v=20261110-1"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>

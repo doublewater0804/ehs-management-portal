@@ -1,4 +1,4 @@
-/* 環保規費 Dashboard R1.1。既有 DATA/STATS_DATA 保留為原始唯讀基準；雲端覆寫僅作用於執行期。 */
+/* 環保規費 Dashboard R1.2 基底。既有 DATA/STATS_DATA 保留為原始唯讀基準；雲端覆寫僅作用於執行期。 */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
@@ -243,7 +243,7 @@ renderStatsTable=function(){
  cells[5].textContent=fmtStatic(getStatsYearTotal(STATS_DATA[y1])+qa.reduce((a,b)=>a+b,0));
  cells[10].textContent=fmtStatic(getStatsYearTotal(STATS_DATA[y2])+qb.reduce((a,b)=>a+b,0));
 };
-function fmtStatic(n){return Number(n||0).toLocaleString('zh-TW')}
+function fmtStatic(n){return Number(n||0).toLocaleString('zh-TW',{maximumFractionDigits:12})}
 function renderDiscrepancy(){
  const rows=Object.keys(rawStats).map(y=>{
   const d=rawStats[y],n=Object.values(d.air||{}).flat().reduce((a,b)=>a+(b||0),0)+ (d.soil||[]).reduce((a,b)=>a+(b||0),0)+Object.values(d.water||{}).flat().reduce((a,b)=>a+(b||0),0);
@@ -325,8 +325,8 @@ function formToRecord(){
  if(!Number.isInteger(year)||year<2016||year>2100)throw Error('年度超出範圍');
  if(!periods(t).includes(period))throw Error('期間不符合規費週期');
  if(t.scope==='site'&&!sites.includes(site))throw Error('請選擇廠區');
- if(status!=='尚未申報'&&(!$('fAmount').value.trim()||!Number.isFinite(amount)||amount<0||!Number.isInteger(amount)))throw Error('原始金額必須是非負整數');
- if(!Number.isFinite(refund)||refund<0||!Number.isInteger(refund)||amount!==null&&refund>amount)throw Error('退費不可大於原始金額');
+ if(status!=='尚未申報'&&(!$('fAmount').value.trim()||!Number.isFinite(amount)||amount<0))throw Error('原始金額必須是非負數字');
+ if(!Number.isFinite(refund)||refund<0||amount!==null&&refund>amount)throw Error('退費不可大於原始金額');
  return {year,period,type:t.id,site,amount,refund,status,note:$('fNote').value.trim().slice(0,2000)};
 }
 function renderManagerRowsR11(){
@@ -449,7 +449,7 @@ exportData=function(format){
    for(const [name,data] of [['規費資料',rows],['年度備註',auxRows('notes')],['規費類型',auxRows('types')],['差異原因',auxRows('reasons')]]){
     XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data.length?data:[{訊息:'無資料'}]),name);
    }
-   XLSX.writeFile(wb,`環保規費_R1.1_${new Date().toISOString().slice(0,10)}.xlsx`);
+   XLSX.writeFile(wb,`環保規費_R1.2_${new Date().toISOString().slice(0,10)}.xlsx`);
   }
   status.className='io-status ok';status.textContent=`已產生 ${rows.length} 筆規費資料的${format==='csv'?' CSV':' Excel'} 匯出檔。`;
  }catch(e){status.className='io-status error';status.textContent='匯出失敗：'+e.message}
@@ -507,6 +507,6 @@ window.envFeeR11.applyCloud=function(part){
  $('commitImport').disabled=!ok||!pendingImportRows.length;
  syncModels();
 };
-window.envFeeR11.getModel={typeOf,allTypes,periods,keyOf,recId,notes:()=>cloud.notes};
+window.envFeeR11.getModel={typeOf,allTypes,periods,keyOf,recId,baselineRecord,effectiveRecord,notes:()=>cloud.notes};
 install();
 })();

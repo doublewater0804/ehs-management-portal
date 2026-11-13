@@ -379,8 +379,8 @@ tr.total td{font-weight:900;color:#074f96;background:#eef6ff}
         <h2>匯入環保規費資料</h2>
         <div class="io-body">
           <div class="help-box">
-            支援 Excel（.xlsx）與 CSV。必要欄位：年度、期間、規費類型、範圍／廠區、原始金額。<br>
-            選用欄位：退費／扣抵、申報狀態、備註。
+            支援原始「空污／土污／水污費用年度彙總 Excel」及標準明細 Excel／CSV。<br>
+            自動辨識年度、季別／半年及廠區；#REF! 與空白安全略過，雲端變更先預覽差異再確認。
           </div>
 
           <div class="io-row" style="margin-top:14px">
@@ -480,8 +480,8 @@ tr.total td{font-weight:900;color:#074f96;background:#eef6ff}
             <div class="form-group"><label>期間</label><select id="fPeriod"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option><option>上半年</option><option>下半年</option><option>全年</option></select></div>
             <div class="form-group"><label>規費類型</label><select id="fType"><option value="air">空污費</option><option value="soil">土污費</option><option value="water">水污費</option></select></div>
             <div class="form-group"><label>範圍／廠區</label><select id="fSite"><option>全公司</option><option>龍德</option><option>彰化</option><option>麥寮</option><option>台醋</option><option>新港</option></select></div>
-            <div class="form-group"><label>原始金額</label><input type="number" id="fAmount" min="0" step="1" required></div>
-            <div class="form-group"><label>退費／扣抵</label><input type="number" id="fRefund" min="0" step="1" value="0"></div>
+            <div class="form-group"><label>原始金額</label><input type="number" id="fAmount" min="0" step="any" required></div>
+            <div class="form-group"><label>退費／扣抵</label><input type="number" id="fRefund" min="0" step="any" value="0"></div>
             <div class="form-group"><label>申報狀態</label><select id="fStatus"><option>已申報</option><option>尚未申報</option></select></div>
             <div class="form-group full"><label>備註／差異原因</label><textarea id="fNote" rows="3"></textarea></div>
           </div>
@@ -511,7 +511,7 @@ let unit=1,currentPage='annual';
 let annualYear=2026,annualSite='all';
 let compareYear=2026,compareType='air',compareMode='qoq',compareSite='all',trendBasis='full',comparePeriod=0,trendStartKey='',trendEndKey='';
 
-const fmt=n=>n===null||n===undefined?'尚未申報':Math.round(n/unit).toLocaleString('zh-TW');
+const fmt=n=>n===null||n===undefined?'尚未申報':(n/unit).toLocaleString('zh-TW',{maximumFractionDigits:10});
 const pct=(a,b)=>!b?'—':((a-b)/b*100).toFixed(1)+'%';
 const signed=n=>(n>0?'+':'')+fmt(n);
 const unitName=()=>unit===1?'元':unit===1000?'千元':'萬元';
@@ -1794,8 +1794,10 @@ function enforceFormSiteRule(){
 
 init();
 </script>
-<script src="r11.js?v=20261109-r111"></script>
-<script type="module" src="fee-cloud.js?v=20261109-r111"></script>
+<script src="r11.js?v=20261113-r12"></script>
+<script src="fee-import-r12.js?v=20261113-r12"></script>
+<script src="fee-ui-r12.js?v=20261113-r12"></script>
+<script type="module" src="fee-cloud.js?v=20261113-r12"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>
 </html>
 

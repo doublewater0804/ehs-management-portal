@@ -1374,12 +1374,12 @@ function renderStatsTable(){
  const air2Q=[0,1,2,3].map(i=>sites.reduce((s,site)=>s+(d2.air[site]?.[i]??0),0));
 
  const waterSites=['龍德','彰化','麥寮','新港', ...((getStatsPeriodArray(y1,'water','台醋')||[]).some(v=>v!==null)||(getStatsPeriodArray(y2,'water','台醋')||[]).some(v=>v!==null)?['台醋']:[])];
- const waterRows=waterSites.map((site,idx)=>{
+ // 水污費的項目欄已由半年表頭的 rowspan 涵蓋；明細列不再重複建立項目欄。
+ const waterRows=waterSites.map(site=>{
    const w1=d1.water[site]||[null,null];
    const w2=d2.water[site]||[null,null];
    return `
    <tr>
-     ${idx===0?'<td rowspan="${waterSites.length+1}" class="section">水污費<sup>[註2]</sup></td>':''}
      <td>${site}</td>
      <td colspan="2">${displayStatsValue(w1[0],true)}</td>
      <td colspan="2">${displayStatsValue(w1[1],true)}</td>
@@ -1435,7 +1435,7 @@ function renderStatsTable(){
        <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
        <td colspan="2">上半年</td><td colspan="2">下半年</td><td>總計</td>
      </tr>
-     ${waterRows.replace(`<td rowspan="${waterSites.length+1}" class="section">水污費<sup>[註2]</sup></td>`,'')}
+     ${waterRows}
      <tr class="subtotal">
        <td></td><td>合計</td>
        <td colspan="2">${displayStatsValue(water1H[0])}</td>

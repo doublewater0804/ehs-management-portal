@@ -1,4 +1,4 @@
-/* FLARE R0.7.6 – local screenshot OCR, pipe-aware interference data and import review.
+/* FLARE R0.7.7 – per-date area-separated interference tables, preserving R0.7.6 OCR and cloud logic.
    Shared Firestore document remains flare_control/global_state; this script never changes FLARE day counters. */
 (() => {
   'use strict';
@@ -225,7 +225,7 @@
       yearRows(year,'event').sort(newestFirst).map((r,i)=>[i+1,displayDate(r.date),r.content]);
     const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.6_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.7_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   const rowButton=(action,row,label)=>`<button type="button" class="r07-action" data-r07-action="${action}" data-r07-id="${html(row.id)}">${label}</button>`;
   const inlineForm=()=>document.getElementById('r075-inline-form');
@@ -321,13 +321,24 @@
       if(activeDate!==null&&!dates.includes(activeDate))activeDate=null;
       body.innerHTML=dates.map(date=>{
         const subs=groups.filter(g=>g.date===date);
-        const daily=subs.reduce((a,g)=>a+g.amount,0);
         const expanded=activeDate===date;
         const allDayRows=yearRows(year,'interference').filter(r=>r.date===date).sort((a,b)=>
           (AREAS.indexOf(areaOf(a.factory))-AREAS.indexOf(areaOf(b.factory)))||
           a.factory.localeCompare(b.factory,'zh-TW')||(a.createdAt||'').localeCompare(b.createdAt||''));
         const canDelete=/^\d{4}-\d{2}-\d{2}$/.test(date);
-        return `<section class="r07-date ${expanded?'r07-date-editing':''}" data-r07-date="${html(date)}"><div class="r07-date-heading"><strong>${displayDate(date)}${expanded?'<span class="r07-edit-indicator">編輯中</span>':''}</strong><div class="r07-date-controls"><span>當日合計：${daily.toLocaleString('zh-TW')} NM³</span><button type="button" class="r07-action" data-r07-date-details="${html(date)}" aria-expanded="${expanded}">${expanded?'收合明細':'明細／編輯'}</button><button type="button" class="r07-action r07-danger" data-r07-delete-date="${html(date)}" ${canDelete?'':'disabled title="日期未確認，請先修正日期"'}>刪除當日</button></div></div><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>管道編號</th><th>流量 (NM³)</th><th>內容</th></tr></thead><tbody>${subs.map(g=>`<tr><td>${++sequence}</td><td>${html(g.area)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.pipe)||'<span class="r07-warn">未指定（舊資料）</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td></tr>`).join('')}</tbody></table></div>${expanded?`<div class="r07-day-detail"><strong>${displayDate(date)}｜當日全部廠區原始明細（${allDayRows.length} 筆）</strong><p>可逐筆編輯／刪除；與上方彙整列不同，這裡保留每筆來源紀錄。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>管道編號</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${allDayRows.map((r,i)=>inlineEdit?.id===r.id?inlineMarkup(r,i):`<tr><td>${i+1}</td><td>${html(areaOf(r.factory))||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.pipe)||'<span class="r07-warn">未指定</span>'}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('')}</tbody></table></div></div>`:''}</section>`;
+        // Only the presentation is grouped by area: each original entry remains untouched.
+        // Unknown legacy factories belong to their own visible review group, not a guessed area.
+        const areaNames=[...new Set(subs.map(g=>g.area||''))].sort((a,b)=>
+          (a?AREAS.indexOf(a):AREAS.length)-(b?AREAS.indexOf(b):AREAS.length));
+        const areaTables=areaNames.map(area=>{
+          const areaRows=subs.filter(g=>(g.area||'')===area);
+          const subtotal=areaRows.reduce((sum,g)=>sum+g.amount,0);
+          const hasNumeric=areaRows.some(g=>g.entries.some(r=>r.amount!==null));
+          const title=area||'待確認廠區（歷史資料）';
+          const subtotalLabel=hasNumeric?`${subtotal.toLocaleString('zh-TW')} NM³`:'待確認';
+          return `<section class="r077-area" data-r077-area="${html(area||'unknown')}"><div class="r077-area-heading"><strong>${html(title)}</strong><span class="r077-area-subtotal">小計：${subtotalLabel}</span></div><div class="r07-scroll"><table class="r07-table r077-area-table"><thead><tr><th>項目</th><th>工廠</th><th>管道編號</th><th>流量 (NM³)</th><th>內容</th></tr></thead><tbody>${areaRows.map(g=>`<tr><td>${++sequence}</td><td>${html(g.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${html(g.pipe)||'<span class="r07-warn">未指定（舊資料）</span>'}</td><td>${g.entries.every(r=>r.amount===null)?'待確認':g.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${g.entries.map(r=>html(r.content)).filter(Boolean).join('<div class="r07-content-line"></div>')||'—'}</td></tr>`).join('')}</tbody></table></div></section>`;
+        }).join('');
+        return `<section class="r07-date ${expanded?'r07-date-editing':''}" data-r07-date="${html(date)}"><div class="r07-date-heading"><strong>${displayDate(date)}${expanded?'<span class="r07-edit-indicator">編輯中</span>':''}</strong><div class="r07-date-controls"><button type="button" class="r07-action" data-r07-date-details="${html(date)}" aria-expanded="${expanded}">${expanded?'收合明細':'明細／編輯'}</button><button type="button" class="r07-action r07-danger" data-r07-delete-date="${html(date)}" ${canDelete?'':'disabled title="日期未確認，請先修正日期"'}>刪除當日</button></div></div><div class="r077-areas">${areaTables}</div>${expanded?`<div class="r07-day-detail"><strong>${displayDate(date)}｜當日全部廠區原始明細（${allDayRows.length} 筆）</strong><p>可逐筆編輯／刪除；與上方彙整列不同，這裡保留每筆來源紀錄。</p><div class="r07-scroll"><table class="r07-table"><thead><tr><th>項目</th><th>廠區</th><th>工廠</th><th>管道編號</th><th>流量 (NM³)</th><th>內容</th><th>操作</th></tr></thead><tbody>${allDayRows.map((r,i)=>inlineEdit?.id===r.id?inlineMarkup(r,i):`<tr><td>${i+1}</td><td>${html(areaOf(r.factory))||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.factory)||'<span class="r07-warn">待確認</span>'}</td><td>${html(r.pipe)||'<span class="r07-warn">未指定</span>'}</td><td>${r.amount===null?'待確認':r.amount.toLocaleString('zh-TW')}</td><td class="r07-content">${html(r.content)}</td><td>${rowButton('edit',r,'編輯')} ${rowButton('delete',r,'刪除')}</td></tr>`).join('')}</tbody></table></div></div>`:''}</section>`;
       }).join('')||'<p class="r07-empty">本年度尚無干擾流量紀錄。</p>';
       root.querySelector('#r07-area-filter').value=activeArea;
     }
@@ -954,6 +965,16 @@
     #r07-workspace .r07-content{white-space:pre-wrap;overflow-wrap:anywhere;min-width:250px}
     #r07-workspace .r07-content-line{border-top:1px dashed #cbd5e1;margin:6px 0}
     #r07-workspace .r07-date{margin:16px 0;border:1px solid #d7dfeb;border-radius:8px;overflow:hidden}
+    /* R0.7.7: each area gets its own clearly separated table below a single date header. */
+    #r07-workspace .r077-areas{padding:12px 14px 2px;display:flex;flex-direction:column;gap:12px}
+    #r07-workspace .r077-area{border:1px solid #d7dfeb;border-radius:8px;overflow:hidden;background:#fff;break-inside:avoid}
+    #r07-workspace .r077-area-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 12px;background:#f2f6fb;color:#123b70;border-bottom:1px solid #d7dfeb}
+    #r07-workspace .r077-area-heading strong{font-weight:900;font-size:14px}
+    #r07-workspace .r077-area-subtotal{font-weight:800;color:#1753a6;font-size:12px}
+    #r07-workspace .r077-area .r07-scroll{padding:0 10px}
+    #r07-workspace .r077-area-table{margin:0 0 3px}
+    #r07-workspace .r077-area-table td:last-child{width:40%}
+    @media(max-width:760px){#r07-workspace .r077-areas{padding:8px;gap:9px}#r07-workspace .r077-area-heading{padding:9px}}
     #r07-workspace .r07-date-heading{display:flex;justify-content:space-between;flex-wrap:wrap;background:#edf4fd;padding:12px 14px;color:#174fb2}
     #r07-workspace .r07-date-heading span{font-weight:800}
     #r07-workspace .r07-date-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

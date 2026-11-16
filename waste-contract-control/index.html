@@ -298,6 +298,30 @@
     }
     .multi-check input{width:auto;min-height:auto}
 
+    /* R0.1：合約清單五欄篩選，保留原有表格與搜尋功能。 */
+    .contract-list-title{margin:0 0 12px}
+    .contract-filter-toolbar{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(130px,1fr)) repeat(2,minmax(120px,1fr)) auto;
+      align-items:end;
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .contract-filter-toolbar .field{min-width:0}
+    .contract-filter-toolbar .field label{white-space:nowrap}
+    .contract-filter-toolbar .filter-reset{white-space:nowrap}
+    @media(max-width:1180px){
+      .contract-filter-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:680px){
+      .contract-filter-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .contract-filter-toolbar .filter-keyword{grid-column:1/-1}
+    }
+    @media(max-width:440px){
+      .contract-filter-toolbar{grid-template-columns:minmax(0,1fr)}
+      .contract-filter-toolbar .filter-keyword{grid-column:auto}
+    }
+
     .compare-builder{
       display:grid;
       gap:12px;
@@ -568,7 +592,7 @@
             <h4 class="section-title">60日內到期提醒 <small id="expiryCount"></small></h4>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>合約編號</th><th>廠區</th><th>生產廠</th><th>到期日</th><th>剩餘天數</th><th>狀態</th></tr></thead>
+                <thead><tr><th>合約編號</th><th>廠區</th><th>生產廠／部門</th><th>到期日</th><th>剩餘天數</th><th>狀態</th></tr></thead>
                 <tbody id="expiryTable"></tbody>
               </table>
             </div>
@@ -578,7 +602,7 @@
             <h4 class="section-title">合約概況總覽 <small>依合約廢棄物明細</small></h4>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>廠區</th><th>生產廠</th><th>廢棄物</th><th>處理方式</th><th>月清運量</th><th>清處單價</th></tr></thead>
+                <thead><tr><th>廠區</th><th>生產廠／部門</th><th>廢棄物</th><th>處理方式</th><th>月清運量</th><th>清處單價</th></tr></thead>
                 <tbody id="overviewTable"></tbody>
               </table>
             </div>
@@ -590,14 +614,14 @@
         <div class="page-head">
           <div>
             <h3>基本資料管理</h3>
-            <p>維護廠區、生產廠、廢棄物、處理方式及合作機構。</p>
+            <p>維護廠區、生產廠／部門、廢棄物、處理方式及合作機構。</p>
           </div>
         </div>
 
         <div class="master-layout">
           <div class="card master-menu" id="masterMenu">
             <button class="active" data-master="sites">廠區管理</button>
-            <button data-master="factories">生產廠管理</button>
+            <button data-master="factories">生產廠／部門管理</button>
             <button data-master="wastes">廢棄物管理</button>
             <button data-master="methods">處理方式管理</button>
             <button data-master="haulers">清除機構管理</button>
@@ -638,7 +662,7 @@
         <div class="page-head">
           <div>
             <h3>清運合約管理</h3>
-            <p>一份合約可對應同一廠區內多個生產廠，並包含多種廢棄物。</p>
+            <p>一份合約可對應同一廠區內多個生產廠／部門，並包含多種廢棄物。</p>
           </div>
         </div>
 
@@ -720,7 +744,7 @@
               <div class="field institution-field"><label>清除機構（可選擇或自行輸入）</label><input id="contractHauler" list="haulerOptions" placeholder="選擇或輸入清除機構"><datalist id="haulerOptions"></datalist></div>
 
               <div class="field institution-field"><label>處理機構（可選擇或自行輸入）</label><input id="contractProcessor" list="processorOptions" placeholder="選擇或輸入處理機構"><datalist id="processorOptions"></datalist></div>
-              <div class="field span-2"><label>生產廠（可多選）</label><div class="multi-check" id="factoryChecks"></div></div>
+              <div class="field span-2"><label>生產廠／部門（可多選）</label><div class="multi-check" id="factoryChecks"></div></div>
               <div class="field"><label>備註</label><textarea id="contractNote"></textarea></div>
 
               <div class="subsection-title">外包申請資料</div>
@@ -768,16 +792,18 @@
         </div>
 
         <div class="card">
-          <div class="split">
-            <h4 class="section-title">合約清單</h4>
-            <div class="toolbar">
-              <div class="field"><label>狀態</label><select id="contractListStatus"><option value="">全部</option></select></div>
-              <div class="field"><label>關鍵字</label><input id="contractSearch" placeholder="合約編號、名稱、廢棄物、廠區"></div>
-            </div>
+          <h4 class="section-title contract-list-title">合約清單</h4>
+          <div class="contract-filter-toolbar no-print" id="contractListFilters">
+            <div class="field"><label for="contractListSite">廠區</label><select id="contractListSite" aria-label="合約清單廠區篩選"><option value="">全部廠區</option></select></div>
+            <div class="field"><label for="contractListFactory">生產廠／部門</label><select id="contractListFactory" aria-label="合約清單生產廠部門篩選"><option value="">全部單位</option></select></div>
+            <div class="field"><label for="contractListWaste">廢棄物名稱</label><select id="contractListWaste" aria-label="合約清單廢棄物篩選"><option value="">全部廢棄物</option></select></div>
+            <div class="field"><label for="contractListStatus">狀態</label><select id="contractListStatus"><option value="">全部</option></select></div>
+            <div class="field filter-keyword"><label for="contractSearch">關鍵字</label><input id="contractSearch" placeholder="合約編號、名稱、廢棄物、廠區"></div>
+            <button class="btn secondary filter-reset" type="button" id="resetContractFiltersBtn">重設篩選</button>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>合約編號</th><th>合約名稱</th><th>廢棄物名稱</th><th>廠區</th><th>生產廠</th><th>期限</th><th>狀態</th><th>廢棄物數</th><th>操作</th></tr></thead>
+              <thead><tr><th>合約編號</th><th>合約名稱</th><th>廢棄物名稱</th><th>廠區</th><th>生產廠／部門</th><th>期限</th><th>狀態</th><th>廢棄物數</th><th>操作</th></tr></thead>
               <tbody id="contractTable"></tbody>
             </table>
           </div>
@@ -814,7 +840,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>廠區</th><th>生產廠</th><th>廢棄物</th><th>處理方式</th>
+                  <th>廠區</th><th>生產廠／部門</th><th>廢棄物</th><th>處理方式</th>
                   <th>月清運量</th><th>清除單價</th><th>處理單價</th><th>清處單價</th>
                   <th>合約期限</th><th>清除機構</th><th>處理機構</th><th>合約</th>
                 </tr>
@@ -1247,6 +1273,13 @@
       "siteId": "Smscyunztvuvj",
       "note": "",
       "id": "Fmsczhdzs3ndn"
+    },
+    {
+      "code": "03-2390",
+      "name": "直屬台化儲運處新港儲運課－資材",
+      "siteId": "Smscyunztvuvj",
+      "note": "外包申請部門；僅新增至新港，不變更彰化既有資材單位。",
+      "id": "F-XINGANG-03-2390"
     },
     {
       "code": "GB00",
@@ -1829,7 +1862,7 @@
   "processors": [],
   "contracts": [],
   "firebaseConfig": {},
-  "masterSeedVersion": 2
+  "masterSeedVersion": 3
 };
   defaultState.firebaseConfig={...FIREBASE_CONFIG};
 
@@ -1891,13 +1924,33 @@
     return result;
   }
 
-  const MASTER_SEED_VERSION = 2;
+  const MASTER_SEED_VERSION = 3;
+
+  // 升級 v2->v3 僅補入本次明確核准的新港單位，不重建其他已刪除主檔。
+  function ensureXinGangDepartment(data){
+    if(!Array.isArray(data.sites) || !Array.isArray(data.factories)) return data;
+    const site=data.sites.find(x=>x.name==="新港" || x.code==="U" || x.id==="Smscyunztvuvj");
+    if(!site) return data;
+    const target=defaultState.factories.find(x=>x.id==="F-XINGANG-03-2390");
+    if(!target) return data;
+    const sameCode=code=>normalizeDeptCode(code)==="032390" || normalizeDeptCode(code)==="2390";
+    const found=data.factories.find(x=>x.siteId===site.id &&
+      (x.id===target.id || sameCode(x.code) || normalizeDeptName(x.name)===normalizeDeptName(target.name)));
+    if(!found) data.factories.push({...clone(target),siteId:site.id});
+    return data;
+  }
 
   function applyMasterSeed(base){
     const source = base && typeof base === "object" ? base : {};
-    const result = normalizeContractPricing({...clone(defaultState), ...source});
+    const result = normalizeContractPricing({...clone(defaultState), ...clone(source)});
     result.firebaseConfig={...FIREBASE_CONFIG};
-    if(Number(source.masterSeedVersion || 0) >= MASTER_SEED_VERSION) return result;
+    const oldVersion=Number(source.masterSeedVersion || 0);
+    if(oldVersion >= MASTER_SEED_VERSION) return result;
+    if(oldVersion >= 2){
+      ensureXinGangDepartment(result);
+      result.masterSeedVersion=MASTER_SEED_VERSION;
+      return result;
+    }
 
     const sites = Array.isArray(source.sites) ? clone(source.sites) : [];
     const siteIdMap = new Map();
@@ -1934,6 +1987,7 @@
     result.factories=factories;
     result.wastes=wastes;
     result.methods=methods;
+    ensureXinGangDepartment(result);
     result.masterSeedVersion=MASTER_SEED_VERSION;
     return result;
   }
@@ -2089,7 +2143,7 @@
 
     const meta = {
       dashboard:["儀表板","掌握合約狀態、廠區與60日內到期資訊"],
-      masters:["基本資料管理","維護廠區、生產廠、廢棄物、處理方式及合作機構"],
+      masters:["基本資料管理","維護廠區、生產廠／部門、廢棄物、處理方式及合作機構"],
       contracts:["清運合約管理","管理合約期限、月清運量與清除／處理／清處單價"],
       compare:["比較分析","跨廠比較處理方式與費用"],
       annual:["年度清運量與費用","追蹤2022年至2025年清運量及清除處理費用"],
@@ -2110,7 +2164,7 @@
 
     const items = [
       ["🏢", state.sites.length, "廠區數"],
-      ["🏭", state.factories.length, "生產廠數"],
+      ["🏭", state.factories.length, "生產廠／部門數"],
       ["📋", active, "有效合約數"],
       ["⚠", expiring, "60日內到期合約"]
     ];
@@ -2154,7 +2208,7 @@
 
   const masterMeta = {
     sites:{title:"廠區", fields:["code","name","note"], headers:["代碼","名稱","備註"]},
-    factories:{title:"生產廠", fields:["code","name","siteId","note"], headers:["代碼","名稱","所屬廠區","備註"]},
+    factories:{title:"生產廠／部門", fields:["code","name","siteId","note"], headers:["代碼","名稱","所屬廠區","備註"]},
     wastes:{title:"廢棄物", fields:["code","name","hazard","form","note"], headers:["廢棄物代碼","名稱","有害／一般","固態／液態","備註"]},
     methods:{title:"處理方式", fields:["code","name","note"], headers:["代碼","名稱","備註"]},
     haulers:{title:"清除機構", fields:["code","name","note"], headers:["代碼","名稱","備註"]},
@@ -2951,21 +3005,60 @@
     return closest && closest.d<=1 ? closest.x : null;
   }
 
+  function normalizeDeptName(value){
+    return String(value||"").normalize("NFKC")
+      .replace(/[‐‑‒–—―－﹣−]/g,"-")
+      .replace(/[\s\-_:：、，。.,（）()／/]/g,"")
+      .replace(/^直屬/,"")
+      .toUpperCase();
+  }
+
+  function normalizeDeptCode(value){
+    return String(value||"").normalize("NFKC").toUpperCase().replace(/[^0-9A-Z]/g,"");
+  }
+
+  function ocrFactoryNameCandidates(value,siteId){
+    const q=normalizeDeptName(value);
+    if(q.length<3) return [];
+    const factories=state.factories.filter(x=>!siteId || x.siteId===siteId);
+    const exact=factories.filter(x=>normalizeDeptName(x.name)===q);
+    if(exact.length) return exact;
+    // OCR 文字可能含部門前綴，但不得因過短的部分名稱誤選單位。
+    return factories.filter(x=>{
+      const n=normalizeDeptName(x.name);
+      return n.length>=6 && q.length>=n.length && q.includes(n);
+    });
+  }
+
+  function ocrFactoryCodeCandidates(value,siteId){
+    const code=normalizeDeptCode(value);
+    if(code.length<4) return [];
+    return state.factories.filter(x=>{
+      if(siteId && x.siteId!==siteId) return false;
+      const master=String(x.code||"").normalize("NFKC").toUpperCase();
+      const full=normalizeDeptCode(master);
+      const suffix=normalizeDeptCode(master.split(/[-‐‑‒–—―－﹣−]/).at(-1));
+      return code===full || (suffix.length>=4 && code===suffix);
+    });
+  }
+
   function findOcrFactory(value,siteId){
-    const q=String(value||"").replace(/[\s直屬]/g,"");
-    if(!q) return null;
-    const matches=state.factories
-      .filter(x=>!siteId || x.siteId===siteId)
-      .filter(x=>q.includes(x.name.replace(/\s/g,"")))
-      .sort((a,b)=>b.name.length-a.name.length);
-    return matches[0] || null;
+    const matches=ocrFactoryNameCandidates(value,siteId);
+    return matches.length===1 ? matches[0] : null;
   }
 
   function findOcrFactoryByData(data,siteId){
-    const byName=findOcrFactory(data.applicationDepartmentName||"",siteId);
-    if(byName) return byName;
-    const code=String(data.applicationDepartmentCode||"").split("-").at(-1).toUpperCase();
-    return state.factories.find(x=>(!siteId||x.siteId===siteId) && String(x.code||"").toUpperCase()===code) || null;
+    const name=String(data.applicationDepartmentName||"").trim();
+    const code=String(data.applicationDepartmentCode||"").trim();
+    const byName=name ? ocrFactoryNameCandidates(name,siteId) : [];
+    const byCode=code ? ocrFactoryCodeCandidates(code,siteId) : [];
+    if(name && code){
+      const matched=byName.filter(x=>byCode.some(y=>y.id===x.id));
+      // 名稱與代碼皆提供時必須互相吻合，避免只靠一項猜測。
+      return matched.length===1 ? matched[0] : null;
+    }
+    const found=name ? byName : byCode;
+    return found.length===1 ? found[0] : null;
   }
 
   function correctTemplateDataByMasters(data,confidence){
@@ -3157,19 +3250,37 @@
     count++; renderContractSelectors(); markOcrFilled($("#contractSite"));
     if($("#workArea").classList.contains("ocr-filled")) $("#workArea").value=site.name;
   }
-  const chosenSite=$("#contractSite").value || site?.id || "",factory=findOcrFactoryByData(data,chosenSite);
-  const factoryConfidence=Math.max(confidence.applicationDepartmentName??100,confidence.applicationDepartmentCode??100);
-  if(factory && factoryConfidence>=threshold){
+  let chosenSite=$("#contractSite").value || site?.id || "";
+  const qualifiedData={
+    applicationDepartmentName:(confidence.applicationDepartmentName??100)>=threshold ? data.applicationDepartmentName : "",
+    applicationDepartmentCode:(confidence.applicationDepartmentCode??100)>=threshold ? data.applicationDepartmentCode : ""
+  };
+  const factory=findOcrFactoryByData(qualifiedData,chosenSite);
+  let factoryNeedsReview=false;
+  if(factory && !chosenSite && putOcrValue("contractSite",factory.siteId)){
+    chosenSite=factory.siteId;
+    renderContractSelectors();
+    markOcrFilled($("#contractSite"));
+    count++;
+  }
+  if(factory){
     const checkbox=$(`#factoryChecks input[value="${factory.id}"]`);
     if(checkbox && !checkbox.checked){ checkbox.checked=true; markOcrFilled(checkbox); count++; }
+    else if(!checkbox) factoryNeedsReview=true;
   }else if(data.applicationDepartmentName || data.applicationDepartmentCode){
-    markOcrLow("factoryChecks",data.applicationDepartmentName||data.applicationDepartmentCode); low++;
+    factoryNeedsReview=true;
+  }
+  if(factoryNeedsReview){
+    markOcrLow("factoryChecks",data.applicationDepartmentName||data.applicationDepartmentCode);
+    low++;
   }
   if(!options.deferMessage){
-    const message=count ? `已預填 ${count} 個欄位${low?`；${low} 個低可信度欄位請人工確認`:""}。` : `未自動填入資料${low?`；${low} 個欄位可信度不足`:""}。`;
+    let message=count ? `已預填 ${count} 個欄位${low?`；${low} 個欄位請人工確認`:""}` : `未自動填入資料${low?`；${low} 個欄位請人工確認`:""}`;
+    if(factoryNeedsReview) message+="；申請部門未能唯一對應，請人工勾選";
+    message+="。資料尚未儲存，請確認後按「儲存合約」。";
     setOcrStatus(message,100); toast(message);
   }
-  return {count,low};
+  return {count,low,factoryNeedsReview};
 }
   function applyContractOcrText(text){
     if(!String(text||"").trim()) return toast("尚無可套用的辨識文字");
@@ -3209,6 +3320,7 @@
       const low=upper.low+detail.low;
       let message=parts.length ? `已預填 ${parts.join("、")}` : "未自動填入資料";
       if(low) message+=`；${low} 個欄位／明細列請人工確認`;
+      if(upper.factoryNeedsReview) message+="；申請部門未能唯一對應，請人工勾選";
       if(detail.preserved) message+="；原有明細已保留，新辨識列附加於後";
       message+="。資料尚未儲存，請確認後再按「儲存合約」。";
       setOcrStatus(message,100); toast(message);
@@ -3265,7 +3377,7 @@
     const factories = state.factories.filter(f => !selectedSite || f.siteId === selectedSite);
     $("#factoryChecks").innerHTML = factories.length ? factories.map(f => `
       <label><input type="checkbox" value="${f.id}" ${checked.has(f.id)?"checked":""}>${esc(f.name)}</label>
-    `).join("") : `<span class="muted">請先建立生產廠</span>`;
+    `).join("") : `<span class="muted">請先建立生產廠／部門</span>`;
   }
 
   function detectLinePricingMode(line={}){
@@ -3401,15 +3513,55 @@
     return [...new Set(labels)];
   }
 
+  // 篩選欄位的選項取自現有合約，並依已選廠區／單位／廢棄物連動。
+  function renderContractFilterOptions(){
+    const contracts=Array.isArray(state.contracts) ? state.contracts : [];
+    const siteEl=$("#contractListSite");
+    const factoryEl=$("#contractListFactory");
+    const wasteEl=$("#contractListWaste");
+    let siteId=siteEl.value, factoryId=factoryEl.value, wasteId=wasteEl.value;
+    const siteIds=new Set(contracts.map(c=>c.siteId));
+    const siteOptions=state.sites.filter(x=>siteIds.has(x.id));
+    if(siteId && !siteIds.has(siteId)) siteId="";
+    siteEl.innerHTML=optionHtml(siteOptions,siteId,"全部廠區");
+    siteEl.value=siteId;
+
+    const siteContracts=contracts.filter(c=>!siteId || c.siteId===siteId);
+    const hasWaste=(c,id)=>(c.lines||[]).some(line=>line.wasteId===id);
+    const availableWastes=new Set(siteContracts.flatMap(c=>(c.lines||[]).map(x=>x.wasteId).filter(Boolean)));
+    if(wasteId && !availableWastes.has(wasteId)) wasteId="";
+
+    const factoryContracts=siteContracts.filter(c=>!wasteId || hasWaste(c,wasteId));
+    const factoryIds=new Set(factoryContracts.flatMap(c=>c.factoryIds||[]));
+    const factoryOptions=state.factories.filter(f=>factoryIds.has(f.id) && (!siteId || f.siteId===siteId));
+    if(factoryId && !factoryIds.has(factoryId)) factoryId="";
+    factoryEl.innerHTML=optionHtml(factoryOptions,factoryId,"全部單位");
+    factoryEl.value=factoryId;
+
+    const wasteContracts=siteContracts.filter(c=>!factoryId || (c.factoryIds||[]).includes(factoryId));
+    const wasteIds=new Set(wasteContracts.flatMap(c=>(c.lines||[]).map(x=>x.wasteId).filter(Boolean)));
+    const wasteOptions=state.wastes.filter(w=>wasteIds.has(w.id));
+    if(wasteId && !wasteIds.has(wasteId)) wasteId="";
+    wasteEl.innerHTML=wasteOptionHtml(wasteOptions,wasteId,"全部廢棄物");
+    wasteEl.value=wasteId;
+  }
+
   function renderContractTable(){
+    renderContractFilterOptions();
     const q = $("#contractSearch").value.trim().toLowerCase();
     const status = $("#contractListStatus").value;
+    const site = $("#contractListSite").value;
+    const factory = $("#contractListFactory").value;
+    const waste = $("#contractListWaste").value;
     const rows = state.contracts.filter(c => {
       const factoryIds=Array.isArray(c.factoryIds) ? c.factoryIds : [];
       const wasteText=contractWasteLabels(c).join(" ");
       const text = [c.no,c.name,c.requestNo,c.previousContractNo,c.currentContractor,c.applicationDepartmentName,c.workArea,
         wasteText,nameOf("sites",c.siteId),...factoryIds.map(id=>nameOf("factories",id))].join(" ").toLowerCase();
-      return (!q || text.includes(q)) && (!status || c.status === status);
+      return (!q || text.includes(q)) && (!status || c.status === status)
+        && (!site || c.siteId===site)
+        && (!factory || factoryIds.includes(factory))
+        && (!waste || (c.lines||[]).some(line=>line.wasteId===waste));
     });
 
     $("#contractTable").innerHTML = rows.length ? rows.map(c => {
@@ -3431,12 +3583,14 @@
           <button class="btn danger small" data-delete-contract="${c.id}">刪除</button>
         </td>
       </tr>`;
-    }).join("") : `<tr><td colspan="9" class="empty">無合約資料</td></tr>`;
+    }).join("") : `      <tr><td colspan="9" class="empty">沒有符合篩選條件的合約資料</td></tr>`;
   }
 
   function renderContractPage(){
     const statuses = ["草稿","有效","已到期","終止","停用"];
+    const selectedStatus=$("#contractListStatus").value;
     $("#contractListStatus").innerHTML = `<option value="">全部</option>${statuses.map(s=>`<option>${s}</option>`).join("")}`;
+    $("#contractListStatus").value=statuses.includes(selectedStatus)?selectedStatus:"";
     renderContractSelectors();
     refreshContractLineMasterOptions();
     renderContractTable();
@@ -3854,7 +4008,7 @@
 
   function renderDataSummary(){
     const items = [
-      ["廠區",state.sites.length],["生產廠",state.factories.length],["廢棄物",state.wastes.length],
+      ["廠區",state.sites.length],["生產廠／部門",state.factories.length],["廢棄物",state.wastes.length],
       ["處理方式",state.methods.length],["清除機構",state.haulers.length],["處理機構",state.processors.length],
       ["合約",state.contracts.length],["合約廢棄物明細",state.contracts.reduce((n,c)=>n+c.lines.length,0)]
     ];
@@ -4375,6 +4529,13 @@
   });
   $("#contractSearch").addEventListener("input",renderContractTable);
   $("#contractListStatus").addEventListener("change",renderContractTable);
+  ["contractListSite","contractListFactory","contractListWaste"].forEach(id=>{
+    $("#"+id).addEventListener("change",renderContractTable);
+  });
+  $("#resetContractFiltersBtn").addEventListener("click",()=>{
+    ["contractListSite","contractListFactory","contractListWaste","contractListStatus","contractSearch"].forEach(id=>$("#"+id).value="");
+    renderContractTable();
+  });
 
   $("#applyCompareBtn").addEventListener("click",renderCompare);
   $("#resetCompareBtn").addEventListener("click",() => {

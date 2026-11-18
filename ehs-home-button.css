@@ -1,0 +1,77 @@
+/* EHS 首頁統一導覽 R1.0，依智慧行事曆 R0.4 視覺標準。 */
+#ehs-portal-home-button,
+#homeBtn.ehs-home-native-button {
+  box-sizing: border-box !important;
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 10px 13px !important;
+  border: 1px solid #d7e1ed !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #15263b !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font: 500 14px/20px system-ui, -apple-system, 'Noto Sans TC', 'Microsoft JhengHei', sans-serif !important;
+  letter-spacing: normal !important;
+  text-decoration: none !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  cursor: pointer !important;
+  transform: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+#ehs-portal-home-button:hover, #homeBtn.ehs-home-native-button:hover { background: #eef5ff !important; }
+#ehs-portal-home-button:focus-visible, #homeBtn.ehs-home-native-button:focus-visible { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
+#ehs-portal-home-button .ehs-home-icon, #homeBtn.ehs-home-native-button .ehs-home-icon { font-size: 15px; line-height: 1; }
+.ehs-home-action-host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.ehs-home-flex-row { flex-wrap: wrap !important; min-height: 58px; height: auto !important; gap: 10px; }
+.ehs-home-fallback-bar { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; background: transparent; }
+/* 既有版型適配：不讓首頁按鈕遮蓋工具列或超出小螢幕。 */
+body.ehs-home--workhours header > div:first-child,
+body.ehs-home--task nav > div:first-child > div:first-child { height: auto !important; min-height: 64px; flex-wrap: wrap !important; padding-top: 8px; padding-bottom: 8px; gap: 10px; }
+body.ehs-home--performance .topbar { flex-wrap: wrap !important; }
+body.ehs-home--eia .topbar { height: auto !important; min-height: 60px; flex-wrap: wrap; gap: 8px; padding-top: 9px; padding-bottom: 9px; }
+body.ehs-home--toxic-drill .page-topbar { height: auto !important; min-height: 70px; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+body.ehs-home--supervisor-board .topbar { flex-wrap: wrap; }
+body.ehs-home--organization-management .header-inner { flex-wrap: wrap; gap: 10px; }
+body.ehs-home--incident-investigation > header { flex-wrap: wrap; gap: 10px; }
+body.ehs-home--performance .topbar .actions { flex-wrap: wrap !important; justify-content: flex-end; }
+body.ehs-home--typhoon-duty .topbar { height: auto; min-height: 70px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+body.ehs-home--typhoon-duty .toplinks { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+body.ehs-home--weekly-report header .bar { flex-wrap: wrap; }
+body.ehs-home--flare-management .topbar { display: grid; grid-template-columns: minmax(0,1fr) auto; }
+body.ehs-home--flare-management .topbar > div:nth-child(2) { order: initial; }
+body.ehs-home--env-fee .header { flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+body.ehs-home--env-fee .header #ehs-portal-home-button { margin-left: auto !important; }
+body.ehs-home--env-fee .ehs-home-title-stack { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+body.ehs-home--routine-work .top { flex-wrap: wrap; }
+/* 例行工作系統原版在窄螢幕仍強制 1080px 主內容，側邊說明可能蓋住導覽。 */
+@media (max-width: 1024px) {
+  body.ehs-home--routine-work .layout { grid-template-columns: minmax(0, 1fr); }
+  body.ehs-home--routine-work aside { position: static; height: auto; }
+  body.ehs-home--routine-work aside .help { position: static; margin-top: 12px; }
+  body.ehs-home--routine-work main { padding: 16px; }
+}
+@media (max-width: 760px) {
+  .ehs-home-action-host { justify-content: flex-end; max-width: 100%; }
+  #ehs-portal-home-button, #homeBtn.ehs-home-native-button { min-height: 40px !important; padding: 9px 12px !important; font-size: 13px !important; }
+  body.ehs-home--flare-management .topbar { grid-template-columns: 1fr; }
+  body.ehs-home--flare-management .ehs-home-status-actions { justify-content: flex-end; }
+  body.ehs-home--workhours header > div:first-child,
+  body.ehs-home--task nav > div:first-child > div:first-child { align-items: flex-start !important; }
+}
+@media print {
+  #ehs-portal-home-button, #homeBtn.ehs-home-native-button, .ehs-home-fallback-bar { display: none !important; }
+}

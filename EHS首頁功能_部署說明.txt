@@ -1,0 +1,41 @@
+EHS 首頁功能統一優化 R1.0－GitHub 部署說明
+日期：2026-11-18
+
+【一、部署目標】
+GitHub Repository：ehs-management-portal
+網站：https://doublewater0804.github.io/ehs-management-portal/
+部署內容：EHS 管理入口網站全部原始碼、22 個業務／管理子系統與共用首頁導覽 R1.0。
+
+【二、準備】
+1. 先到 GitHub 將原本 Repository 下載 ZIP 當作備份。若已有人在你提供 ZIP 後修改正式程式，先比對差異，不可直接覆蓋較新版本。
+2. 解壓本部署包，開啟內層「ehs-management-portal-main」資料夾。
+3. 請確認該資料夾內直接看得到 index.html、app.js、portal、FLARE、calendar、ehs-home-button.js 與新增的 ehs-home-button.css。
+
+【三、上傳到 GitHub】
+1. 打開 GitHub 內正確的 ehs-management-portal Repository。
+2. 將內層「ehs-management-portal-main」資料夾的『內容』更新到 Repository 根目錄，而不是再上傳一層同名資料夾。
+3. 上傳全部本次更新的檔案和新增的 ehs-home-button.css。若透過網頁 Upload files，請確認保留原本所有子資料夾的階層。
+4. 提交 Commit，若 GitHub Pages 設定為 main 分支 / (root)，維持原設定，不必重新建立 Pages。
+5. 若使用 git：將解壓後內層目錄中的所有檔案同步至 Git 工作目錄，檢查 git diff 後 commit/push 到既有主分支。
+
+【四、更新後檢查】
+1. 開啟正式入口網站，確認原有分類、Google 登入和子系統連結仍可使用。
+2. 開啟 FLARE，確認不再有右上角浮動按鈕，首頁按鈕改在標題功能列最後方。
+3. 開啟智慧行事曆，確認原有「🏠 EHS 首頁」按鈕不變。
+4. 開啟主管交辦、颱風值勤、每周工作重點及自動週報中心，確認不出現兩顆首頁按鈕。
+5. 各子系統點「🏠 EHS 首頁」，應在同一分頁回到 https://doublewater0804.github.io/ehs-management-portal/。
+6. 在 iPad 與 iPhone 瀏覽器或加入主畫面模式檢查按鈕是否可見、可按，不遮擋其他操作。
+7. 檢查現有 Firebase 登入、資料同步和匯入匯出功能仍正常。
+
+【五、快取注意】
+所有共用 JS 引用已更新為 ehs-home-button.js?v=20261118-r1，避免沿用舊版浮動按鈕。
+若仍看到舊樣式，請強制重新整理；iPhone / iPad 加入主畫面模式可關閉並重新開啟後再檢查。
+
+【六、本次不需要】
+不需要更換 Firebase Config，不需要重貼 Firestore Security Rules，不需要建立新的 Firebase Project，亦不需要修改原有 GitHub Actions 工作流程。
+
+【七、尚未實測的部分】
+已完成原始碼結構、JS 模擬及離線版面測試；因沒有正式 Firebase 帳號會話或 GitHub 部署授權，尚未驗證雲端正式登入後畫面與實際 iPad/iPhone 主畫面模式。請部署後依第【四】點完成驗收。
+
+【八、失敗回復】
+請參照 EHS首頁功能_回復說明.txt。

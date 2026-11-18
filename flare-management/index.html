@@ -97,9 +97,9 @@
 <body>
 <div class="shell">
   <header class="topbar">
-    <button class="back" onclick="history.back()">← 返回 EHS Command Center</button>
+    
     <div><h1>廢氣燃燒塔使用使用計劃書平台</h1><div class="subtitle">Excel 上傳・Markdown 章節・廠處對應・圖片管理</div></div>
-    <div class="status" id="cloudStatus">● Firebase 尚未設定</div>
+    <div class="ehs-home-status-actions"><div class="status" id="cloudStatus">● Firebase 尚未設定</div></div>
   </header>
 
 
@@ -1565,5 +1565,5 @@ $('downloadExcelBtn').onclick=()=>{if(!state.workbookBuffer)return;downloadBlob(
 
 loadLocal(); renderAll(); renderGlobalNotes(); initFirebase();
 </script>
-<script src="../ehs-home-button.js?v=20261005-1"></script></body>
+<script src="../ehs-home-button.js?v=20261118-r1"></script></body>
 </html>

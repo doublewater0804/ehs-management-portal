@@ -131,6 +131,7 @@
     .person-picker summary { list-style:none; }
     .person-picker summary::-webkit-details-marker { display:none; }
   </style>
+<link rel="stylesheet" href="../ehs-home-button.css?v=20261118-r1" />
 </head>
 <body>
   <div id="root"></div>
@@ -726,7 +727,7 @@
         reader.readAsText(file);
       };
 
-      if (isLoading) return <div className="h-screen flex items-center justify-center flex-col gap-4"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div><p className="text-gray-500 font-bold">同步中...</p></div>;
+      if (isLoading) return <div className="min-h-screen bg-gray-50 p-5"><div className="max-w-[1700px] mx-auto flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-xl border"><strong>年度安衛環專案管制總表</strong><a id="ehs-portal-home-button" href="../" title="返回 EHS 管理入口網站"><span className="ehs-home-icon" aria-hidden="true">🏠</span><span>EHS 首頁</span></a></div><div className="h-60 flex items-center justify-center flex-col gap-4"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div><p className="text-gray-500 font-bold">同步中...</p></div></div>;
 
       const masterLabels = { factories:'廠區管理', people:'人員管理', projectTypes:'專案類型管理', permitCategories:'法規類別管理', progressTypes:'進度類型管理' };
       const currentMasterItems = [...(masterDraft[masterTab] || [])].sort((a,b) => a.order - b.order);
@@ -758,6 +759,7 @@
                   <button onClick={()=>fileInputRef.current?.click()} className="px-3 py-2 border rounded-lg text-sm">CSV匯入</button>
                   <button onClick={handleExportCSV} className="px-3 py-2 border rounded-lg text-sm">CSV匯出</button>
                   <button onClick={handleExportJSON} className="px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg font-bold text-sm">完整JSON備份</button>
+                  <a id="ehs-portal-home-button" href="../" title="返回 EHS 管理入口網站" aria-label="EHS 首頁"><span className="ehs-home-icon" aria-hidden="true">🏠</span><span>EHS 首頁</span></a>
                 </div>
               </div>
             </div>
@@ -899,5 +901,5 @@
 
     window.__firebaseReady.then(() => ReactDOM.createRoot(document.getElementById('root')).render(<App />));
   </script>
-<script src="../ehs-home-button.js?v=20261005-1"></script></body>
+</body>
 </html>

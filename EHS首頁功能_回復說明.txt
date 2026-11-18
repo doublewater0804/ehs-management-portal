@@ -1,0 +1,7 @@
+EHS 首頁功能統一優化 R1.0－版本回復說明
+
+1. 發布前先備份 GitHub 原本 main 分支程式或保存舊版 Repository ZIP。
+2. 如更新後出現功能異常，先檢查 GitHub Pages 是否完成部署、是否誤放一層資料夾，以及瀏覽器是否快取舊程式。
+3. 需要完整回復時，將 GitHub Repository 回到部署前的 Commit，或以上傳前備份完整覆蓋原 Repo（須保留完整目錄結構）。
+4. R1.0 本身不修改正式 Firestore 資料或 Rules，無需額外進行雲端資料還原。
+5. 請勿只還原舊 ehs-home-button.js 卻保留新版 HTML 引用；若回復版本，應一起回復該 Commit 對應的所有檔案。

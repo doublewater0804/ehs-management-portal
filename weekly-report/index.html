@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<header><div class="bar"><a href="../index.html">← EHS 入口網站</a><div><strong>EHS 自動週報管理中心</strong><small>R1.0.4　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
+<header><div class="bar"><div><strong>EHS 自動週報管理中心</strong><small>R1.0.4　Firebase → GitHub Actions → Discord</small></div><button id="logout" class="outline" hidden>登出</button></div></header>
 <main>
 <section id="gate" class="card gate"><h1>管理員身分驗證</h1><p>本頁僅開放現有 EHS 入口平台的指定管理員使用。帳號不符時不會讀取週報設定。</p><p id="auth-message" class="message">正在檢查登入狀態…</p><button id="login">使用 EHS 管理員 Google 帳號登入</button></section>
 <div id="app" hidden>
@@ -34,4 +34,4 @@
 <section class="card"><h2>歷史發送紀錄</h2><div class="actions"><button id="history" class="outline">重新整理紀錄</button><button id="requests" class="outline">查看測試佇列</button></div><div id="history-list" class="history-list">尚未查詢。</div></section>
 </div></main>
 <script type="module" src="./admin.mjs"></script>
-</body></html>
+<script src="../ehs-home-button.js?v=20261118-r1"></script></body></html>

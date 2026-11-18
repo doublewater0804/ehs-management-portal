@@ -1,80 +1,89 @@
+/* EHS 首頁統一導覽 R1.0。
+ * 按鈕嵌入各子系統標題功能列，不使用 position:fixed，不改動 Firebase 或頁面業務資料。
+ */
 (() => {
-  const SCRIPT_URL = document.currentScript?.src || '';
-  const BUTTON_ID = 'ehs-portal-home-button';
-  const STYLE_ID = 'ehs-portal-home-button-style';
+  'use strict';
+  const script = document.currentScript;
+  const scriptUrl = script && script.src ? new URL(script.src) : new URL('../ehs-home-button.js', location.href);
+  const rootUrl = new URL('./', scriptUrl);
+  const portalUrl = rootUrl.href;
+  const buttonId = 'ehs-portal-home-button';
+  const rootPath = rootUrl.pathname;
+  const relative = location.pathname.startsWith(rootPath) ? location.pathname.slice(rootPath.length) : '';
+  const system = relative.split('/')[0];
 
-  function installHomeButton() {
-    if (document.getElementById(BUTTON_ID)) return;
+  // 適配表：所有業務子系統的「標題區右上角功能列」，避免錯誤插入其他內容區域。
+  const hosts = {
+    'FLARE': '.app-shell > div:first-child > div:nth-child(2)',
+    'eia': 'header.topbar .top-actions',
+    'env-fee': '.app > main > .header',
+    'environmental-fines': 'header.top .actions',
+    'equipment-voc': 'header.topbar .top-actions',
+    'flare-management': 'header.topbar .ehs-home-status-actions',
+    'incident-investigation': 'body > header .toolbar',
+    'organization-management': 'header.app-header .header-actions',
+    'performance': 'section.topbar .actions',
+    'routine-work': 'main > .top .actions',
+    'shutdown-inspection': 'body > header .account',
+    'storage-facilities': 'body > header .account',
+    'task': 'body > nav > div > div.flex.justify-between > div:last-child',
+    'toxic-drill': 'header.page-topbar',
+    'waste-contract-control': 'header.topbar .top-actions',
+    'workhours': 'body > header > div > div:last-child',
+    'supervisor-board': 'header.topbar .header-end',
+    'typhoon-duty': 'header.topbar .toplinks',
+    'weekly-focus': '#report.topbar .top-actions',
+    'weekly-report': 'body > header .bar'
+  };
+  if (!(system in hosts)) return;
+  document.body && document.body.classList.add('ehs-home--' + system);
 
-    const portalUrl = SCRIPT_URL
-      ? new URL('./', SCRIPT_URL).href
-      : new URL('../', window.location.href).href;
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = new URL('ehs-home-button.css?v=20261118-r1', rootUrl).href;
+  stylesheet.dataset.ehsHomeStyle = 'r1';
+  if (!document.querySelector('link[data-ehs-home-style]')) document.head.appendChild(stylesheet);
 
-    if (!document.getElementById(STYLE_ID)) {
-      const style = document.createElement('style');
-      style.id = STYLE_ID;
-      style.textContent = `
-        #${BUTTON_ID} {
-          position: fixed;
-          top: max(12px, env(safe-area-inset-top));
-          right: max(12px, env(safe-area-inset-right));
-          z-index: 2147483647;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          min-height: 42px;
-          padding: 9px 14px;
-          border: 1px solid rgba(15, 23, 42, 0.14);
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.96);
-          color: #0f172a;
-          font: 700 14px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-          text-decoration: none;
-          box-shadow: 0 5px 18px rgba(15, 23, 42, 0.18);
-          -webkit-backdrop-filter: blur(10px);
-          backdrop-filter: blur(10px);
-          -webkit-tap-highlight-color: transparent;
-        }
-        #${BUTTON_ID}:hover,
-        #${BUTTON_ID}:focus-visible {
-          background: #f8fafc;
-          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.24);
-          outline: none;
-        }
-        #${BUTTON_ID}:active {
-          transform: translateY(1px);
-        }
-        #${BUTTON_ID} .ehs-home-short { display: none; }
-        @media (max-width: 600px) {
-          #${BUTTON_ID} {
-            min-height: 40px;
-            padding: 8px 12px;
-            font-size: 13px;
-          }
-          #${BUTTON_ID} .ehs-home-full { display: none; }
-          #${BUTTON_ID} .ehs-home-short { display: inline; }
-        }
-        @media print {
-          #${BUTTON_ID} { display: none !important; }
-        }
-      `;
-      document.head.appendChild(style);
+  function insert() {
+    const host = document.querySelector(hosts[system]);
+    if (!host) return false;
+    if (document.getElementById(buttonId)) return true;
+    host.classList.add('ehs-home-action-host');
+    // 颱風系統應用程式會以 #homeBtn 更新連結，必須保留原 ID 以免破壞登入後狀態更新。
+    if (system === 'typhoon-duty') {
+      const nativeHome = document.getElementById('homeBtn');
+      if (nativeHome) {
+        nativeHome.classList.add('ehs-home-native-button');
+        nativeHome.href = portalUrl;
+        nativeHome.target = '_self';
+        nativeHome.setAttribute('aria-label', 'EHS 首頁');
+        nativeHome.title = '返回 EHS 管理入口網站';
+        nativeHome.innerHTML = '<span class="ehs-home-icon" aria-hidden="true">🏠</span><span>EHS 首頁</span>';
+        host.appendChild(nativeHome); // 最後方；保留程式原本使用的 #homeBtn
+        return true;
+      }
     }
-
     const home = document.createElement('a');
-    home.id = BUTTON_ID;
+    home.id = buttonId;
     home.href = portalUrl;
     home.target = '_self';
-    home.setAttribute('aria-label', '返回 EHS 管理入口平台');
-    home.setAttribute('title', '返回 EHS 管理入口平台');
-    home.innerHTML = '<span aria-hidden="true">🏠</span><span class="ehs-home-full">EHS首頁</span><span class="ehs-home-short">首頁</span>';
-    document.body.appendChild(home);
+    home.setAttribute('aria-label', 'EHS 首頁');
+    home.title = '返回 EHS 管理入口網站';
+    home.innerHTML = '<span class="ehs-home-icon" aria-hidden="true">🏠</span><span>EHS 首頁</span>';
+    host.appendChild(home);  // 最後一個操作按鈕
+    return true;
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', installHomeButton, { once: true });
-  } else {
-    installHomeButton();
+  // 所有目標系統的標題容器都在靜態 HTML 內；若外部程式延遲掛載，短暫監看一次。
+  function start() {
+    document.body.classList.add('ehs-home--' + system);
+    if (insert()) return;
+    const observer = new MutationObserver(() => {
+      if (insert()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(() => observer.disconnect(), 10000);
   }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-  <title>年度安衛環專案管制總表 R1.0｜年度與待辦管理</title>
+  <title>年度安衛環專案管制總表 R1.1｜年度與待辦管理</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -290,6 +290,7 @@
       const emptyTodo = () => ({id:null,content:'',owner:'',dueDate:'',notes:''});
       const [todoDraft,setTodoDraft] = useState(emptyTodo);
       const fileInputRef = useRef(null);
+      const logPersonPickerRef = useRef(null);
       const factories = useMemo(() => normalizeItems(master.factories, DEFAULT_MASTER.factories), [master.factories]);
       const projectTypes = useMemo(() => normalizeItems(master.projectTypes, DEFAULT_MASTER.projectTypes), [master.projectTypes]);
       const permitCategories = useMemo(() => normalizeItems(master.permitCategories, DEFAULT_MASTER.permitCategories), [master.permitCategories]);
@@ -299,6 +300,28 @@
       const factoryMap = useMemo(() => Object.fromEntries(factories.map(x => [x.id, x])), [factories]);
       const permitMap = useMemo(() => Object.fromEntries(permitCategories.map(x => [x.id, x])), [permitCategories]);
       const progressTypeMap = useMemo(() => Object.fromEntries(progressTypes.map(x => [x.id, x])), [progressTypes]);
+
+      // R1.1: 收合辦理進度的人員複選選單；僅控制 UI，不更動選取資料。
+      useEffect(() => {
+        if (!isModalOpen || isViewMode) return;
+        const closeOnOutside = (event) => {
+          const picker = logPersonPickerRef.current;
+          if (picker?.open && !picker.contains(event.target)) picker.open = false;
+        };
+        const closeOnEscape = (event) => {
+          const picker = logPersonPickerRef.current;
+          if (event.key === 'Escape' && picker?.open) {
+            picker.open = false;
+            event.preventDefault();
+          }
+        };
+        document.addEventListener('pointerdown', closeOnOutside, true);
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+          document.removeEventListener('pointerdown', closeOnOutside, true);
+          document.removeEventListener('keydown', closeOnEscape);
+        };
+      }, [isModalOpen, isViewMode]);
 
       useEffect(() => {
         let unsubProjects = null;
@@ -461,6 +484,8 @@
           const next = selected.includes(name) ? selected.filter(x => x !== name) : [...selected, name];
           return { ...prev, person:next.join('、') };
         });
+        // 勾選或取消任一人員後立即收合，重新開啟仍可繼續複選。
+        if (logPersonPickerRef.current) logPersonPickerRef.current.open = false;
       };
 
       const resetLogDraft = () => {
@@ -843,7 +868,7 @@
                   {!isViewMode && <div id="progress-entry" className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">日期</label><input type="date" value={logDraft.date} onChange={e => setLogDraft({...logDraft,date:e.target.value})} className="w-full p-2.5 border rounded-lg bg-white"/></div>
-                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員（可複選）</label><details className="person-picker relative"><summary className="w-full min-h-[46px] p-2.5 border rounded-lg bg-white cursor-pointer flex items-center justify-between gap-2"><span className={selectedLogPeople.length ? 'text-slate-700 font-bold truncate' : 'text-slate-400'}>{selectedLogPeople.length ? selectedLogPeople.join('、') : '請勾選人員'}</span><span className="text-slate-400">⌄</span></summary><div className="absolute z-40 mt-1 w-full min-w-[240px] max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl p-2">{logPeopleOptions.length ? logPeopleOptions.map(person => <label key={person.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer"><input type="checkbox" checked={selectedLogPeople.includes(person.label)} onChange={() => toggleLogPerson(person.label)} className="accent-blue-600"/><span className="text-sm font-bold text-slate-700">{person.label}{person.retained ? <span className="text-[10px] text-amber-600 ml-1">（已選保留）</span> : ''}</span></label>) : <div className="px-3 py-4 text-xs text-slate-400">此廠區尚未建立人員，請至基本資料新增。</div>}</div></details></div>
+                      <div><label className="block text-[11px] font-bold text-slate-400 mb-1">人員（可複選）</label><details ref={logPersonPickerRef} className="person-picker relative"><summary className="w-full min-h-[46px] p-2.5 border rounded-lg bg-white cursor-pointer flex items-center justify-between gap-2"><span className={selectedLogPeople.length ? 'text-slate-700 font-bold truncate' : 'text-slate-400'}>{selectedLogPeople.length ? selectedLogPeople.join('、') : '請勾選人員'}</span><span className="text-slate-400">⌄</span></summary><div className="absolute z-40 mt-1 w-full min-w-[240px] max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl p-2">{logPeopleOptions.length ? logPeopleOptions.map(person => <label key={person.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer"><input type="checkbox" checked={selectedLogPeople.includes(person.label)} onChange={() => toggleLogPerson(person.label)} className="accent-blue-600"/><span className="text-sm font-bold text-slate-700">{person.label}{person.retained ? <span className="text-[10px] text-amber-600 ml-1">（已選保留）</span> : ''}</span></label>) : <div className="px-3 py-4 text-xs text-slate-400">此廠區尚未建立人員，請至基本資料新增。</div>}</div></details></div>
                       <div><label className="block text-[11px] font-bold text-slate-400 mb-1">類型</label><select value={logDraft.typeId} onChange={e => setLogDraft({...logDraft,typeId:e.target.value,customType:e.target.value === 'OTHER' ? logDraft.customType : ''})} className="w-full p-2.5 border rounded-lg bg-white">{progressTypes.filter(x => x.active || x.id === logDraft.typeId).map(x => <option key={x.id} value={x.id}>{x.label}{x.active ? '' : '（已停用）'}</option>)}</select></div>
                       
                     </div>

@@ -1,5 +1,5 @@
 import * as cloud from './cloud.js';
-import {START_YEAR,INITIAL_SITES,recordKey,validYear,validDate,addDays,assess,todayTaipei,sortedSites,sortedUnits,proposedUnit,displayAssigned,summary,validateDrill} from './model.js';
+import {START_YEAR,INITIAL_SITES,recordKey,validYear,validDate,addDays,assess,todayTaipei,sortedSites,sortedUnits,proposedUnit,displayAssigned,summary,validateDrill,yearInventory,isYearClosed,hasFormalYearData,canRemoveYear,unitWasUsed,validateBatchUnits} from './model.js';
 import {exportXlsx,parseXlsx} from './excel.js';
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7,8 +7,9 @@ const attrs=x=>esc(x);
 const textOrDash=x=>x?esc(x):'—';
 const currentYear=Math.max(START_YEAR,Number(todayTaipei().slice(0,4)));
 let year=currentYear, tab='overview', authorized=false,unsub=null, authSeq=0,busy=false;
-let data={sites:[],units:[],rotations:[],drills:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
+let data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
 let imported=[];
+let bulkRows=[];
 function notice(message,type=''){const e=$('toast');e.textContent=message;e.className=`notice ${type}`;e.hidden=!message;}
 function connected(label,tone='muted'){$('cloud-status').textContent=label;$('cloud-status').className=`pill ${tone}`;}
 const getSite=id=>data.sites.find(s=>s.id===id);
@@ -16,14 +17,25 @@ const recordOf=(y,siteId)=>data.drills.find(d=>d.id===recordKey(y,siteId));
 const rotationOf=(y,siteId)=>data.rotations.find(d=>d.id===recordKey(y,siteId));
 const siteRows=()=>sortedSites(data.sites).filter(site=>site.active!==false||!!recordOf(year,site.id)||!!rotationOf(year,site.id));
 const days=()=>Number(data.settings?.noticeDays??7);
+const allYears=()=>yearInventory(data.years,data.drills,data.rotations);
+const currentYearInfo=(y=year)=>allYears().find(row=>row.year===Number(y));
+const yearClosed=(y=year)=>isYearClosed(currentYearInfo(y));
 const readOnly=()=>!authorized||!data.ready||data.fromCache;
-function setupYears(){for(let y=START_YEAR;y<=2100;y++)$('selected-year').add(new Option(`${y} 年`,String(y)));$('selected-year').value=year;}
+function setupYears(){$('selected-year').innerHTML=`<option value="${year}">${year} 年</option>`;}
+function refreshYearSelect(){
+ const entries=allYears().filter(row=>row.status!=='deleted');
+ if(!entries.some(row=>row.year===year))year=entries.find(row=>row.year===currentYear)?.year||entries[0]?.year||START_YEAR;
+ $('selected-year').innerHTML=entries.map(r=>`<option value="${r.year}">${r.year} 年${r.status==='archived'?'（封存）':''}</option>`).join('');
+ $('selected-year').value=String(year);
+ $('selected-year').disabled=!entries.length;
+}
 function setTab(next){tab=next;document.querySelectorAll('#tabs [data-tab]').forEach(b=>{const yes=b.dataset.tab===next;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false')});document.querySelectorAll('.tab-panel').forEach(p=>p.hidden=p.id!==`tab-${next}`);}
 function render(){if(!authorized||!data.ready)return;
+ refreshYearSelect();
  $('print-heading').textContent=`${year}年度｜空氣污染突發事故緊急應變演練管制總表`;
  const sites=sortedSites(data.sites),siteOptions=sites.map(s=>`<option value="${attrs(s.id)}">${esc(s.name)}${s.active===false?'（停用）':''}</option>`).join('');
  for(const id of ['filter-site','unit-site-filter']){const node=$(id),old=node.value;node.innerHTML=`<option value="">全部公私場所</option>${siteOptions}`;node.value=sites.some(s=>s.id===old)?old:'';}
- renderOverview();renderRotation();renderBasic();renderStatistics();
+ renderOverview();renderRotation();renderYears();renderBasic();renderStatistics();
  $('init-sites').hidden=INITIAL_SITES.every(s=>sites.some(v=>v.id===s.id));
  $('notice-days').value=days();
 }
@@ -36,10 +48,13 @@ function filteredYearRows(){
  });
 }
 function renderOverview(){
+ const closed=yearClosed();
+ $('year-alert').hidden=!closed;
+ $('year-alert').textContent=closed?`${year} 年度已${currentYearInfo()?.status==='archived'?'封存':'刪除'}，目前僅供查詢；請至「年度管理」復原後再修改。`:'';
  const stat=summary(data.sites,data.drills,year,todayTaipei(),days());
  $('kpis').innerHTML=[['應辦公私場所',stat.sites,'年度適用廠區'],['已完成演練',stat.drilled,'已記錄實際日期'],['已發文備查',stat.sent,'已記錄發文日期'],['尚待發文',stat.awaiting,'含尚未演練'],['備查逾期',stat.overdue,'演練後超過30日']].map((v,i)=>`<div class="kpi ${i===4?'alert':''}"><div class="value">${v[1]}</div><div class="label">${v[0]}</div><div class="foot">${v[2]}</div></div>`).join('');
  const rows=filteredYearRows();
- $('overview-rows').innerHTML=rows.length?rows.map(x=>`<tr><td class="emph">${esc(x.site.name)}${x.site.active===false?' <small>（已停用）</small>':''}</td><td>${textOrDash(x.record?.originalUnitName||x.rotation?.originalUnitName||x.base.unit?.name)}</td><td>${x.assigned.name?esc(x.assigned.name):`<small>${esc(x.base.message||'待建檔')}</small>`}${x.assigned.changed?' <small>（調整）</small>':''}</td><td>${textOrDash(x.record?.plannedDate)}</td><td>${textOrDash(x.record?.actualDate)}</td><td>${textOrDash(x.s.deadline)}</td><td>${textOrDash(x.record?.sentDate)}</td><td>${textOrDash(x.record?.refNumber)}</td><td><span class="status ${x.s.tone}">${esc(x.s.label)}</span></td><td class="no-print"><button type="button" class="table-action" data-edit-drill="${attrs(x.site.id)}">${x.record?'編輯':'登錄'}</button></td></tr>`).join(''):`<tr><td colspan="10" class="empty">${data.sites.length?'目前篩選條件沒有紀錄。':'尚未建立公私場所，請至基本資料管理初始化。'}</td></tr>`;
+ $('overview-rows').innerHTML=rows.length?rows.map(x=>`<tr><td class="emph">${esc(x.site.name)}${x.site.active===false?' <small>（已停用）</small>':''}</td><td>${textOrDash(x.record?.originalUnitName||x.rotation?.originalUnitName||x.base.unit?.name)}</td><td>${x.assigned.name?esc(x.assigned.name):`<small>${esc(x.base.message||'待建檔')}</small>`}${x.assigned.changed?' <small>（調整）</small>':''}</td><td>${textOrDash(x.record?.plannedDate)}</td><td>${textOrDash(x.record?.actualDate)}</td><td>${textOrDash(x.s.deadline)}</td><td>${textOrDash(x.record?.sentDate)}</td><td>${textOrDash(x.record?.refNumber)}</td><td><span class="status ${x.s.tone}">${esc(x.s.label)}</span></td><td class="no-print"><button type="button" class="table-action" data-edit-drill="${attrs(x.site.id)}" ${closed?'disabled title="已封存年度僅供查詢"':''}>${closed?'已封存':x.record?'編輯':'登錄'}</button></td></tr>`).join(''):`<tr><td colspan="10" class="empty">${data.sites.length?'目前篩選條件沒有紀錄。':'尚未建立公私場所，請至基本資料管理初始化。'}</td></tr>`;
 }
 function renderRotation(){
  const sites=sortedSites(data.sites).filter(s=>s.active!==false);
@@ -50,11 +65,20 @@ function renderRotation(){
   const r=recordOf(y,site.id),rot=rotationOf(y,site.id),a=displayAssigned(site,data.units,y,r,rot);
   return `<td>${a.name?esc(a.name):`<small>${esc(a.message)}</small>`}${a.changed?' <small>（已調整）</small>':''}${r?.actualDate?'<br><small>已演練</small>':''}</td>`;}).join('')}</tr>`).join('');
 }
+function renderYears(){
+ const years=allYears(),active=years.filter(x=>x.status!=='deleted'),deleted=years.filter(x=>x.status==='deleted');
+ $('years-rows').innerHTML=active.map(entry=>{
+  const rows=data.drills.filter(d=>Number(d.year)===entry.year),hasFormal=hasFormalYearData(entry.year,data.drills);
+  const drilled=rows.filter(d=>d.actualDate).length,sent=rows.filter(d=>d.sentDate).length;
+  return `<tr><td class="emph">${entry.year} 年</td><td><span class="year-status ${entry.status==='archived'?'archived':'active'}">${entry.status==='archived'?'已封存':'管理中'}${entry.implicit?'（沿用既有）':''}</span></td><td>${data.sites.filter(s=>s.active!==false).length}</td><td>${drilled} ／ ${sent}</td><td>${esc(entry.note||'—')}</td><td class="no-print"><button type="button" class="table-action" data-year-show="${entry.year}">管理演練</button><button type="button" class="table-action" data-year-edit="${entry.year}">編輯</button>${entry.status==='archived'?`<button type="button" class="table-action" data-year-restore="${entry.year}">解除封存</button>`:`<button type="button" class="table-action muted" data-year-archive="${entry.year}">封存</button>${hasFormal?'':`<button type="button" class="table-action danger" data-year-remove="${entry.year}">刪除</button>`}`}</td></tr>`;
+ }).join('')||'<tr><td colspan="6" class="empty">尚無可用年度。</td></tr>';
+ $('years-deleted').innerHTML=deleted.length?deleted.map(e=>`<div class="basic-item"><span>${e.year} 年（已刪除，資料未清除）</span><button type="button" class="table-action" data-year-restore="${e.year}">復原年度</button></div>`).join(''):'<p class="hint">目前沒有已刪除的年度。</p>';
+}
 function renderBasic(){
  const sites=sortedSites(data.sites);
  $('sites-list').innerHTML=sites.length?sites.map(s=>`<div class="basic-item"><div><strong>${esc(s.name)}</strong><p>代碼 ${esc(s.code||'未設定')} · 預設 ${Number(s.expectedUnits||1)} 個輪值廠處 · 順序 ${Number(s.order||0)}</p></div><div class="right"><span class="chip ${s.active===false?'off':''}">${s.active===false?'停用':'啟用'}</span><button type="button" class="table-action" data-edit-site="${attrs(s.id)}">編輯</button></div></div>`).join(''):'<div class="empty">尚無公私場所</div>';
  const siteFilter=$('unit-site-filter').value,units=data.units.filter(u=>!siteFilter||u.siteId===siteFilter).sort((a,b)=>(getSite(a.siteId)?.order||0)-(getSite(b.siteId)?.order||0)||(a.order||0)-(b.order||0));
- $('units-list').innerHTML=units.length?units.map(u=>`<div class="basic-item"><div><strong>${esc(u.name)}</strong><p>${esc(getSite(u.siteId)?.name||'未知場所')} · 輪值順序 ${Number(u.order||0)} · ${esc(u.code||'無代碼')}</p></div><div class="right"><span class="chip ${u.active===false?'off':''}">${u.active===false?'停用':'啟用'}</span><button type="button" class="table-action" data-edit-unit="${attrs(u.id)}">編輯</button></div></div>`).join(''):'<div class="empty">尚未新增演練廠處</div>';
+ $('units-list').innerHTML=units.length?units.map(u=>`<div class="basic-item"><div><strong>${esc(u.name)}</strong><p>${esc(getSite(u.siteId)?.name||'未知場所')} · 輪值順序 ${Number(u.order||0)} · ${esc(u.code||'無代碼')}</p></div><div class="right"><span class="chip ${u.active===false?'off':''}">${u.active===false?'停用':'啟用'}</span><button type="button" class="table-action" data-edit-unit="${attrs(u.id)}">編輯</button><button type="button" class="table-action muted" data-unit-toggle="${attrs(u.id)}">${u.active===false?'啟用':'停用'}</button><button type="button" class="table-action danger" data-unit-delete="${attrs(u.id)}" ${unitWasUsed(u,data.drills,data.rotations)?'disabled title="歷史輪值或演練已引用，僅能停用"':''}>刪除</button></div></div>`).join(''):'<div class="empty">尚未新增演練廠處</div>';
 }
 function renderStatistics(){const s=summary(data.sites,data.drills,year,todayTaipei(),days()),pct=s.sites?Math.round(s.drilled/s.sites*100):0;
  $('statistics-content').innerHTML=`<div class="stat-grid"><div><strong>${pct}%</strong><span>演練完成率</span></div><div><strong>${s.sent}/${s.sites}</strong><span>備查發文件數</span></div><div><strong>${s.overdue}</strong><span>逾期未發文</span></div></div><div class="stat-progress"><div style="width:${pct}%"></div></div><p class="hint">完成率＝已記錄實際演練日期之公私場所數 ÷ 啟用公私場所數。尚未實際演練不計完成；不推定法規符合性。</p>`;
@@ -106,6 +130,7 @@ function editUnit(id=''){
  });
 }
 function editDrill(siteId){
+ if(yearClosed()){notice('此年度已封存或刪除。請至「年度管理」恢復後再編輯。','error');return;}
  if(readOnly()){notice('請等待 Firebase 雲端連線確認後再編輯。','error');return;}
  const site=getSite(siteId);if(!site){notice('找不到公私場所。','error');return;}
  if(site.active===false){notice('已停用的公私場所僅供查詢，不能新增或修改演練。','error');return;}
@@ -143,6 +168,7 @@ function stageImport(rows){
   const y=Number(row.year),key=site&&recordKey(y,site.id);
   if(!site)error='公私場所不存在';else if(site.active===false)error='公私場所已停用';
   else if(!validYear(y))error='年度無效';
+  else if(yearClosed(y))error='年度已封存或刪除，禁止匯入';
   else if(seen.has(key))error='Excel 出現重複年度及公私場所';
   if(key)seen.add(key);
   if(!error){
@@ -169,21 +195,137 @@ async function applyImport(){if(busy||readOnly())return;const selected=imported.
  if(!confirm(`確定將 ${selected.length} 筆新增／更新紀錄寫入正式 Firebase？此操作不會刪除未列於 Excel 的原有資料。`))return;
  busy=true;$('import-apply').disabled=true;let ok=0;
  try{
-  for(const row of selected){try{await cloud.saveDrill(row.obj,row.existing?.version||0);ok++;}
+  for(const row of selected){try{if(yearClosed(row.obj.year))throw Error('年度已封存，禁止匯入');await cloud.saveDrill(row.obj,row.existing?.version||0);ok++;}
    catch(error){throw Error(`第 ${row.row.rowNo} 列失敗：${error.message}`);}}
   $('import-dialog').close();notice(`成功匯入 ${ok} 筆，資料已儲存至雲端。`,'success');
  }catch(e){notice(`已寫入 ${ok} 筆，後續匯入已中止：${e.message}`,'error');}
  finally{busy=false;$('import-apply').disabled=false;imported=[];}
 }
+
+// R0.2 year register, legacy data remain readable without any migration or bulk write.
+function editYear(n=null){
+ if(readOnly()){notice('請先確認雲端已連線。','error');return;}
+ const old=n===null?null:currentYearInfo(n), existing=old&&!old.implicit?old:null;
+ const suggest=Math.min(2100,Math.max(START_YEAR,year+1));
+ const initial=old?.year??suggest;
+ openForm(old?'編輯年度設定':'新增年度','可編輯年度備註與查看年度演練；年度數字一經建立不可直接改名，避免錯置既有演練紀錄。',
+ field('西元年度 *','year',initial,'number',`min="2026" max="2100" required ${old?'readonly':''}`)+textarea('年度備註','note',old?.note||''),async f=>{
+  const y=Number(f.get('year')),note=String(f.get('note')||'').trim();
+  if(!validYear(y))throw Error('年度僅限2026～2100。');
+  const match=allYears().find(r=>r.year===y);
+  if(!old&&match)throw Error('此年度已存在，請直接編輯，或到「已刪除」區復原。');
+  if(old&&y!==old.year)throw Error('年度號碼不可直接變更。');
+  await cloud.saveYear({year:y,status:old?.status||'active',note},existing?.version||0);
+  year=y;return true;
+ });
+}
+async function setYearStatus(n,status){
+ if(readOnly()){notice('請等待 Firebase 雲端連線確認後操作。','error');return;}
+ const row=currentYearInfo(n);if(!row){notice('找不到指定年度。','error');return;}
+ if(status==='deleted'&&hasFormalYearData(n,data.drills)){notice('此年度已有正式演練或發文資料，只能封存。','error');return;}
+ const prompt=status==='deleted'?`確定刪除 ${n} 年度？
+此操作僅將年度移出清單，保留全部演練與輪值歷史資料，之後可復原。`:status==='archived'?`確定封存 ${n} 年？封存後僅能查詢，解除封存才能再修改。`:`確定恢復 ${n} 年度為管理中？`;
+ if(!confirm(prompt))return;
+ if(busy)return;busy=true;
+ try{
+  if(status==='deleted')await cloud.removeYear(n,row.implicit?0:row.version);
+  else await cloud.saveYear({year:n,note:row.note||'',status},row.implicit?0:row.version);
+  notice(`${n} 年度狀態已更新至雲端。`,'success');
+ }catch(e){notice(`年度操作失敗：${e.message}`,'error');}
+ finally{busy=false;}
+}
+async function toggleUnit(id){
+ if(readOnly()||busy){notice('請等待雲端連線後操作。','error');return;}
+ const u=data.units.find(row=>row.id===id);if(!u)return;
+ const next=!u.active;
+ if(next&&data.units.some(other=>other.id!==id&&other.siteId===u.siteId&&other.active!==false&&Number(other.order)===Number(u.order))){notice('無法啟用：所屬公私場所已有相同的啟用輪值順序，請先編輯順序。','error');return;}
+ if(!confirm(`確定${next?'啟用':'停用'}「${u.name}」？歷史演練資料不會變動。`))return;
+ busy=true;try{await cloud.saveUnit({...u,active:next},u.version||0);notice('廠處狀態已儲存至雲端。','success');}catch(e){notice(`操作失敗：${e.message}`,'error');}finally{busy=false;}
+}
+async function deleteUnit(id){
+ if(readOnly()||busy){notice('請等待雲端連線後操作。','error');return;}
+ const u=data.units.find(row=>row.id===id);if(!u)return;
+ if(unitWasUsed(u,data.drills,data.rotations)){notice('此廠處已被演練或輪值引用，不可刪除，請改用停用。','error');return;}
+ if(!confirm(`確定永久刪除未使用的演練廠處「${u.name}」？此操作無法復原，建議先備份。`))return;
+ busy=true;try{await cloud.deleteUnusedUnit(u,u.version||0);notice('未使用的演練廠處已刪除。','success');}catch(e){notice('刪除失敗：'+e.message,'error');}finally{busy=false;}
+}
+function addBulkRow(){
+ if(bulkRows.length>=50){notice('每批最多50筆。','error');return;}
+ const siteId=$('bulk-site').value;
+ const used=[...data.units.filter(u=>u.siteId===siteId).map(u=>Number(u.order)||0),...bulkRows.map(x=>Number(x.order)||0)];
+ bulkRows.push({id:crypto.randomUUID(),name:'',code:'',siteId,order:Math.max(0,...used)+1,active:true,note:''});renderBulkRows();
+}
+function renderBulkRows(){
+ $('bulk-rows').innerHTML=bulkRows.map((r,i)=>`<tr data-bulk-id="${attrs(r.id)}"><td><input aria-label="第${i+1}列輪值順序" data-bulk-key="order" type="number" min="1" max="999" value="${Number(r.order)}" required></td><td><input aria-label="第${i+1}列演練廠處名稱" data-bulk-key="name" maxlength="80" value="${attrs(r.name)}" placeholder="輸入廠處名稱" required></td><td><input aria-label="第${i+1}列代碼" data-bulk-key="code" maxlength="30" value="${attrs(r.code)}" placeholder="選填"></td><td><input aria-label="第${i+1}列是否啟用" data-bulk-key="active" type="checkbox" ${r.active?'checked':''}></td><td><button class="table-action danger" type="button" data-bulk-remove="${attrs(r.id)}">移除</button></td></tr>`).join('');
+}
+function openBulk(){
+ if(readOnly()){notice('請先確認雲端已連線。','error');return;}
+ const sites=sortedSites(data.sites).filter(s=>s.active!==false);
+ if(!sites.length){notice('請先新增或啟用公私場所。','error');return;}
+ const filter=$('unit-site-filter').value,selected=sites.some(s=>s.id===filter)?filter:sites[0].id;
+ $('bulk-site').innerHTML=sites.map(s=>`<option value="${attrs(s.id)}">${esc(s.name)}</option>`).join('');
+ $('bulk-site').value=selected;bulkRows=[];for(let i=0;i<3;i++)addBulkRow();$('bulk-dialog').showModal();
+}
+async function saveBulk(){
+ if(readOnly()||busy)return;
+ const siteId=$('bulk-site').value,site=getSite(siteId);
+ if(!site||site.active===false){notice('公私場所不存在或已停用。','error');return;}
+ try{validateBatchUnits(siteId,bulkRows,data.units);}catch(e){notice('批次資料有誤：'+e.message,'error');return;}
+ if(!confirm(`確定一次新增 ${bulkRows.length} 個演練廠處至「${site.name}」？請確認輪值順序。`))return;
+ busy=true;$('bulk-save').disabled=true;
+ try{await cloud.saveUnitsBatch(siteId,bulkRows,data.units);$('bulk-dialog').close();notice(`已一次儲存 ${bulkRows.length} 筆演練廠處至 Firebase。`,'success');}
+ catch(e){notice('批次儲存失敗：'+e.message,'error');}
+ finally{busy=false;$('bulk-save').disabled=false;}
+}
+
 $('tabs').addEventListener('click',e=>{const btn=e.target.closest('[data-tab]');if(btn)setTab(btn.dataset.tab);});
 $('selected-year').addEventListener('change',e=>{year=Number(e.target.value);render();});
+$('go-years').onclick=()=>setTab('years');
+$('new-year').onclick=()=>editYear();
+function handleYearClicks(e){
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.yearShow){year=Number(b.dataset.yearShow);render();setTab('overview');}
+ else if(b.dataset.yearEdit)editYear(Number(b.dataset.yearEdit));
+ else if(b.dataset.yearArchive)setYearStatus(Number(b.dataset.yearArchive),'archived');
+ else if(b.dataset.yearRemove)setYearStatus(Number(b.dataset.yearRemove),'deleted');
+ else if(b.dataset.yearRestore)setYearStatus(Number(b.dataset.yearRestore),'active');
+}
+$('years-rows').addEventListener('click',handleYearClicks);
+$('years-deleted').addEventListener('click',handleYearClicks);
 ['filter-site','filter-status','filter-date-field','filter-from','filter-to'].forEach(id=>$(id).addEventListener('change',renderOverview));
 $('filter-text').addEventListener('input',renderOverview);
 $('unit-site-filter').addEventListener('change',renderBasic);
 $('overview-rows').addEventListener('click',e=>{const b=e.target.closest('[data-edit-drill]');if(b)editDrill(b.dataset.editDrill);});
 $('sites-list').addEventListener('click',e=>{const b=e.target.closest('[data-edit-site]');if(b)editSite(b.dataset.editSite);});
-$('units-list').addEventListener('click',e=>{const b=e.target.closest('[data-edit-unit]');if(b)editUnit(b.dataset.editUnit);});
+$('units-list').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.editUnit)editUnit(b.dataset.editUnit);
+ else if(b.dataset.unitToggle)toggleUnit(b.dataset.unitToggle);
+ else if(b.dataset.unitDelete)deleteUnit(b.dataset.unitDelete);
+});
 $('new-site').onclick=()=>editSite();$('new-unit').onclick=()=>editUnit();
+$('bulk-new-units').onclick=openBulk;
+$('bulk-close').onclick=()=>$('bulk-dialog').close();
+$('bulk-cancel').onclick=()=>$('bulk-dialog').close();
+$('bulk-add-row').onclick=addBulkRow;
+$('bulk-site').onchange=()=>{bulkRows=[];for(let i=0;i<3;i++)addBulkRow();};
+$('bulk-rows').addEventListener('input',e=>{
+ const input=e.target.closest('[data-bulk-key]');if(!input)return;
+ const row=bulkRows.find(r=>r.id===input.closest('[data-bulk-id]')?.dataset.bulkId);if(!row)return;
+ const key=input.dataset.bulkKey;row[key]=key==='active'?input.checked:key==='order'?Number(input.value):input.value;
+});
+$('bulk-rows').addEventListener('change',e=>{
+ if(e.target.dataset.bulkKey==='active'){
+  const row=bulkRows.find(r=>r.id===e.target.closest('[data-bulk-id]')?.dataset.bulkId);
+  if(row)row.active=e.target.checked;
+ }
+});
+$('bulk-rows').addEventListener('click',e=>{
+ const b=e.target.closest('[data-bulk-remove]');if(!b)return;
+ bulkRows=bulkRows.filter(r=>r.id!==b.dataset.bulkRemove);
+ if(!bulkRows.length)addBulkRow();else renderBulkRows();
+});
+$('bulk-save').onclick=saveBulk;
 $('init-sites').onclick=async()=>{if(busy||readOnly()){notice('Firebase 尚未連線，不能初始化。','error');return;}
  if(!confirm('確定將麥寮廠、海豐廠新增為公私場所基本資料？此操作不會新增演練廠處或歷史演練紀錄。'))return;
  busy=true;$('init-sites').disabled=true;try{await cloud.initializeSites();notice('公私場所初始化完成。請自行建立演練廠處及輪值順序。','success');}catch(e){notice('初始化失敗：'+e.message,'error');}finally{busy=false;$('init-sites').disabled=false;}
@@ -205,7 +347,7 @@ function begin(){
  setupYears();setTab('overview');connected('登入服務連接中…');
  cloud.observeAuth(user=>{
   const seq=++authSeq;if(unsub){unsub();unsub=null;}
-  authorized=cloud.owner();data={sites:[],units:[],rotations:[],drills:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
+  authorized=cloud.owner();data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
   $('user-name').textContent=user?.email||'';$('login').hidden=!!user;$('logout').hidden=!user;
   $('workspace').hidden=true;$('gate').hidden=false;
   if(!authorized){connected(user?'帳號未授權':'尚未登入',user?'danger':'muted');notice(user?'此 Google 帳號未獲授權，請改用管理員帳號。':'請按 Google 登入後使用系統。',user?'error':'');return;}

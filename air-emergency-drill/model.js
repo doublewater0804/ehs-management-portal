@@ -1,4 +1,4 @@
-// 空氣污染突發事故緊急應變演練管理 R0.1 — pure business rules, no Firebase side effects.
+// 空氣污染突發事故緊急應變演練管理 R0.2 — pure business rules, no Firebase side effects.
 export const START_YEAR = 2026;
 export const INITIAL_SITES = [
   {id:'site-mailiao', name:'麥寮廠', code:'MAILIAO', order:1, active:true, expectedUnits:3, rotationStartYear:2026, rotationHint:'SM麥寮 → PC → ARO1', note:''},
@@ -68,4 +68,38 @@ export function summary(sites, records, year, today=todayTaipei(), days=7){
 export function exportRow(site,record,rotation,units,year){
  const base=proposedUnit(site,units,year);
  return [year,site.name,record?.originalUnitName||rotation?.originalUnitName||base.unit?.name||'',record?.assignedUnitName||rotation?.assignedUnitName||base.unit?.name||'',record?.plannedDate||'',record?.actualDate||'',record?.sentDate||'',record?.refNumber||'',record?.note||'',record?.changeReason||''];
+}
+
+// R0.2: preserve legacy implicit years. A deleted year is hidden but its drills stay untouched.
+export function yearInventory(yearDocs=[],drills=[],rotations=[]){
+ const entries=new Map();
+ entries.set(START_YEAR,{year:START_YEAR,status:'active',note:'',version:0,implicit:true});
+ for(const row of [...drills,...rotations])if(validYear(row.year)&&!entries.has(Number(row.year)))entries.set(Number(row.year),{year:Number(row.year),status:'active',note:'',version:0,implicit:true});
+ for(const row of yearDocs)if(validYear(row.year))entries.set(Number(row.year),{...row,year:Number(row.year),status:row.status||'active',implicit:false});
+ return [...entries.values()].sort((a,b)=>a.year-b.year);
+}
+export function isYearClosed(yearDoc){return yearDoc?.status==='archived'||yearDoc?.status==='deleted';}
+export function hasFormalYearData(year,drills=[]){return drills.some(r=>Number(r.year)===Number(year)&&Boolean(r.actualDate||r.sentDate));}
+export function canRemoveYear(year,drills=[]){return validYear(year)&&!hasFormalYearData(year,drills);}
+export function unitWasUsed(unit,drills=[],rotations=[]){
+ if(!unit)return false;
+ const byId=r=>r?.assignedUnitId===unit.id||r?.originalUnitId===unit.id;
+ return drills.some(byId)||rotations.some(r=>byId(r)||r.siteId===unit.siteId&&Array.isArray(r.history)&&r.history.some(h=>h.from===unit.name||h.to===unit.name));
+}
+export function validateBatchUnits(siteId,rows=[],units=[]){
+ if(!siteId)throw Error('請選擇公私場所。');
+ if(!rows.length||rows.length>50)throw Error('每次須新增1～50筆演練廠處。');
+ const names=new Set(units.filter(u=>u.siteId===siteId).map(u=>String(u.name||'').trim().toLocaleLowerCase()));
+ const orders=new Set(units.filter(u=>u.siteId===siteId&&u.active!==false).map(u=>Number(u.order)));
+ for(const r of rows){
+  const name=String(r.name||'').trim(),order=Number(r.order);
+  if(!name||name.length>80)throw Error('演練廠處名稱必填且不得超過80字。');
+  if(String(r.code||'').length>30)throw Error('廠處代碼不可超過30字。');
+  if(!Number.isInteger(order)||order<1||order>999)throw Error('輪值順序須為1～999。');
+  const normalized=name.toLocaleLowerCase();
+  if(names.has(normalized))throw Error(`演練廠處名稱重複：${name}`);
+  names.add(normalized);
+  if(r.active!==false){if(orders.has(order))throw Error(`輪值順序重複：${order}`);orders.add(order);}
+ }
+ return true;
 }

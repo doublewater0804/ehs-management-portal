@@ -51,3 +51,14 @@ node --test air-emergency-drill/tests/model.test.mjs
 - 每年度輪值、年度新增/封存/邏輯刪除/復原、Excel、PDF、法規摘要、Firebase 權限、EHS 首頁按鈕與既有資料路徑均維持，不做舊資料遷移或初始化重建。
 - 移除「統計及設定」的設定介面，不再允許於本頁變更通知提前天數，但保留舊 Firebase 設定紀錄及目前的警示判斷。
 - 本次升級只需取代 `air-emergency-drill/index.html`、`app.js`、`style.css`、`README.md`；不可上傳至 GitHub Repository 根目錄覆蓋同名檔案。
+
+
+## R0.2.2 更新（2026-11-19）
+
+- 「演練管制總表」篩選列新增「年度」選單，與上方「管制年度」雙向同步；保留原有年度管理資料、輪值與演練流程。
+- 管制總表下方、說明文字前新增「年度備註」大型多行輸入欄，支援右下角拖曳調整高度、手動儲存，並依年度獨立載入。
+- 年度備註與 R0.2 原有 `years/{年度}.note`（年度管理說明，500字）**不同**，新增獨立儲存路徑 `ehs_air_emergency_drill_r0/state/year_notes/{YYYY}`，欄位 `year/content/version/updatedAt/updatedBy/createdBy`，不遷移、不覆蓋既有資料。
+- 備註採 Firebase transaction 版本檢查，每份最多 15,000 字；僅在管理員按「儲存備註」後寫入，離線及已封存年度禁止編輯。
+- 切換年度發現尚未儲存的日期、發文及年度備註資料時，提供「儲存並切換／放棄變更並切換／取消切換」三種選擇，離頁時另有瀏覽器提示。
+- R0.2.2 只修改本子系統 `index.html`、`app.js`、`cloud.js`、`style.css`、`README.md`；不修改 GitHub 根目錄 `index.html`、入口 `portal/`、其他子系統或 Firebase Rules。
+- 本機模擬互動／程式測試結果請查閱交付包《驗收紀錄_R0.2.2.md》；實際正式站的 Firebase 讀寫、權限、跨裝置驗收仍須使用者部署後驗證。

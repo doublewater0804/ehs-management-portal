@@ -9,22 +9,22 @@ const auth=getAuth(app),db=getFirestore(app);
 const root=['ehs_air_emergency_drill_r0','state'];
 const cref=name=>collection(db,...root,name);
 const dref=(name,id)=>doc(db,...root,name,id);
-const paths=['sites','units','rotations','drills','years'];
+const paths=['sites','units','rotations','drills','years','yearNotes'];
 export const owner=()=>Boolean(auth.currentUser&&auth.currentUser.email===ADMIN_EMAIL&&auth.currentUser.emailVerified);
 const ensureOwner=()=>{if(!owner())throw Error('須以已驗證的 EHS 管理員帳號登入。');};
 export const observeAuth=callback=>onAuthStateChanged(auth,callback);
 export const login=()=>signInWithPopup(auth,new GoogleAuthProvider());
 export const logout=()=>signOut(auth);
 export function watchAll(callback,failed){
- ensureOwner();let docs={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7}},ready=new Set();
- const cacheFlags={sites:true,units:true,rotations:true,drills:true,years:true,settings:true};
- const subscriptions=paths.map(type=>onSnapshot(cref(type),{includeMetadataChanges:true},snap=>{
+ ensureOwner();let docs={sites:[],units:[],rotations:[],drills:[],years:[],yearNotes:[],settings:{noticeDays:7}},ready=new Set();
+ const cacheFlags={sites:true,units:true,rotations:true,drills:true,years:true,yearNotes:true,settings:true};
+ const subscriptions=paths.map(type=>onSnapshot(cref(type==='yearNotes'?'year_notes':type),{includeMetadataChanges:true},snap=>{
   docs[type]=snap.docs.map(d=>({...d.data(),id:d.id}));ready.add(type);cacheFlags[type]=snap.metadata.fromCache||snap.metadata.hasPendingWrites;
-  callback({...docs,ready:ready.size===6,fromCache:Object.values(cacheFlags).some(Boolean)});
+  callback({...docs,ready:ready.size===7,fromCache:Object.values(cacheFlags).some(Boolean)});
  },failed));
  subscriptions.push(onSnapshot(dref('settings','general'),{includeMetadataChanges:true},snap=>{
   docs.settings=snap.exists()?{...snap.data(),id:'general'}:{noticeDays:7,version:0};ready.add('settings');cacheFlags.settings=snap.metadata.fromCache||snap.metadata.hasPendingWrites;
-  callback({...docs,ready:ready.size===6,fromCache:Object.values(cacheFlags).some(Boolean)});
+  callback({...docs,ready:ready.size===7,fromCache:Object.values(cacheFlags).some(Boolean)});
  },failed));
  return ()=>subscriptions.forEach(stop=>stop());
 }
@@ -83,6 +83,21 @@ export async function saveYear(value,expectedVersion=0){
   const snap=await tx.get(ref),v=snap.exists()?Number(snap.data().version||0):0;
   if(v!==Number(expectedVersion||0))throw Error('年度已被其他裝置更新，請重新整理後再試。');
   tx.set(ref,{year:y,note,status,version:v+1,updatedAt:serverTimestamp(),updatedBy:uid,createdBy:snap.exists()?snap.data().createdBy:uid});
+ });
+}
+// R0.2.2: one independent, version-protected long note per calendar year.
+// Historical annual metadata and drill records are never changed by this action.
+export async function saveYearNote(year,content,expectedVersion=0){
+ ensureOwner();const y=Number(year),value=String(content??'');
+ if(!Number.isInteger(y)||y<2026||y>2100)throw Error('年度須介於2026～2100。');
+ if(value.length>15000)throw Error('年度備註不得超過15000字。');
+ const ref=dref('year_notes',String(y)),yearRef=dref('years',String(y)),uid=auth.currentUser.uid;
+ await runTransaction(db,async tx=>{
+  const [snap,meta]=await Promise.all([tx.get(ref),tx.get(yearRef)]);
+  if(meta.exists()&&['archived','deleted'].includes(meta.data().status))throw Error('年度已封存或刪除，不能修改備註。');
+  const version=snap.exists()?Number(snap.data().version||0):0;
+  if(version!==Number(expectedVersion||0))throw Error('其他裝置已更新此年度備註，請重新讀取後再修改。');
+  tx.set(ref,{year:y,content:value,version:version+1,updatedAt:serverTimestamp(),updatedBy:uid,createdBy:snap.exists()?(snap.data().createdBy||uid):uid});
  });
 }
 // Stronger server-side check before any year deletion (logical deletion / reversible).

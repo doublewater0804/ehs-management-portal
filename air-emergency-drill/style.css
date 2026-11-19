@@ -40,3 +40,21 @@
 @media(max-width:760px){.site-block{padding:11px}.site-edit-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.site-head{align-items:flex-start}.inline-drill-table{min-width:1300px}}
 @media(max-width:470px){.site-edit-fields{grid-template-columns:1fr}.inline-label.wide-field{grid-column:auto}}
 @media print{.print-only{display:inline!important}.screen-only,.inline-drill-table .inline-input,.inline-drill-table .drill-extras,.inline-drill-table [data-due-text]{display:none!important}.inline-drill-table{min-width:0}.inline-drill-table td{word-break:break-word}.site-block,.basic-year-section,.basic-rotation-section{display:none!important}}
+
+/* R0.2.2: synchronized year filter and independent year memo */
+.filters #filter-year{min-width:118px}
+.year-note-block{border:1px solid var(--edge);background:#f8fbfa;border-radius:11px;padding:17px;margin-top:18px}
+.year-note-head,.year-note-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.year-note-head h3{margin:0;font-size:17px;color:var(--dark)}
+.year-note-head p{font-size:12px;color:var(--sub);margin:4px 0 12px}
+.note-year-badge{font-size:12px;display:inline-block;margin-left:8px;padding:3px 8px;border-radius:12px;background:#e4f0ef;color:var(--main)}
+.year-note-text{display:block;box-sizing:border-box;width:100%;min-height:150px;padding:13px;border:1px solid #bfcfce;border-radius:8px;font:inherit;line-height:1.7;resize:vertical;background:white;color:var(--ink)}
+.year-note-text:focus{outline:2px solid var(--main);outline-offset:1px}
+.year-note-text:disabled{background:#f0f3f3;color:#566c6d}
+.year-note-footer{margin-top:11px}.year-note-footer .hint{margin:0}.year-note-state{font-size:12px;color:var(--main);font-weight:700}
+.year-note-state.dirty{color:#916b1b}.year-note-state.error{color:#b33d32}
+.year-switch-dialog{max-width:570px}.year-switch-dialog .dialog-actions{flex-wrap:wrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.year-note-print{display:none}
+@media(max-width:760px){.year-note-block{padding:12px}.year-note-footer .btn{width:100%}.filters #filter-year{min-width:0}}
+@media print{.year-note-block{border:1px solid #ccc;padding:9px;break-inside:avoid}.year-note-text,.year-note-footer,.year-note-head p,.year-note-state{display:none!important}.year-note-print{display:block!important;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}.note-year-badge{border:0}}

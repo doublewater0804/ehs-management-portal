@@ -3,7 +3,7 @@
 <head>
  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
  <title>空氣污染突發事故緊急應變演練管理系統｜EHS</title>
- <link rel="stylesheet" href="./style.css?v=r021">
+ <link rel="stylesheet" href="./style.css?v=r022">
 </head>
 <body>
  <header class="topbar">
@@ -22,8 +22,15 @@
     <div class="page-tools"><div class="year-tool"><label for="selected-year">管制年度</label><select id="selected-year"></select><span class="year-note">各公私場所每年至少演練一次</span></div><div class="toolbar"><button id="excel-export" type="button" class="btn secondary">匯出 Excel</button><button id="excel-import" type="button" class="btn secondary">匯入 Excel</button><button id="print" type="button" class="btn secondary">列印／另存 PDF</button></div></div>
     <div id="kpis" class="kpis"></div>
     <div class="panel"><div class="panel-heading"><div><h2>年度演練及發文管制</h2><p>直接在表格填寫演練及發文資訊，點擊該列「儲存」才會寫入雲端；發文日期指演練後正式發函地方環保局備查之日期。</p></div><span class="small-chip">備查期限：實際演練＋30日</span></div>
-      <div class="filters"><label>廠區<select id="filter-site"><option value="">全部公私場所</option></select></label><label>進度<select id="filter-status"><option value="">全部狀態</option><option value="unplanned">未排定</option><option value="planned">已排定</option><option value="planned-past">已過預定日</option><option value="awaiting">待發文</option><option value="soon">即將到期</option><option value="overdue">備查逾期</option><option value="completed">期限內發文</option><option value="late-sent">逾期發文</option></select></label><label>搜尋<input id="filter-text" type="search" placeholder="廠區／廠處／文號"></label><label>日期欄位<select id="filter-date-field"><option value="actualDate">實際演練日期</option><option value="plannedDate">預定演練日期</option><option value="sentDate">備查發文日期</option></select></label><label>起日<input id="filter-from" type="date"></label><label>迄日<input id="filter-to" type="date"></label></div>
-      <div class="table-wrap"><table class="data-table inline-drill-table"><thead><tr><th>公私場所</th><th>原輪值廠處</th><th>演練廠處</th><th>預定演練</th><th>實際演練</th><th>備查期限</th><th>發文日期</th><th>發文字號</th><th>進度</th><th class="no-print">儲存</th></tr></thead><tbody id="overview-rows"></tbody></table></div><p class="hint">未完成輪值建檔或封存年度僅供查閱。日期變更會先顯示暫定備查期限，儲存成功後才視為正式紀錄。</p><p class="hint">進度僅反映本系統記錄，不代表主管機關已收件或正式認定合規。</p>
+      <div class="filters"><label>年度<select id="filter-year" aria-label="篩選年度"></select></label><label>廠區<select id="filter-site"><option value="">全部公私場所</option></select></label><label>進度<select id="filter-status"><option value="">全部狀態</option><option value="unplanned">未排定</option><option value="planned">已排定</option><option value="planned-past">已過預定日</option><option value="awaiting">待發文</option><option value="soon">即將到期</option><option value="overdue">備查逾期</option><option value="completed">期限內發文</option><option value="late-sent">逾期發文</option></select></label><label>搜尋<input id="filter-text" type="search" placeholder="廠區／廠處／文號"></label><label>日期欄位<select id="filter-date-field"><option value="actualDate">實際演練日期</option><option value="plannedDate">預定演練日期</option><option value="sentDate">備查發文日期</option></select></label><label>起日<input id="filter-from" type="date"></label><label>迄日<input id="filter-to" type="date"></label></div>
+      <div class="table-wrap"><table class="data-table inline-drill-table"><thead><tr><th>公私場所</th><th>原輪值廠處</th><th>演練廠處</th><th>預定演練</th><th>實際演練</th><th>備查期限</th><th>發文日期</th><th>發文字號</th><th>進度</th><th class="no-print">儲存</th></tr></thead><tbody id="overview-rows"></tbody></table></div>
+      <section id="year-note-block" class="year-note-block" aria-label="年度備註">
+        <div class="year-note-head"><div><h3>年度備註 <span id="year-note-year" class="note-year-badge"></span></h3><p>每年度一份獨立備註，切換年度自動讀取；點選「儲存備註」才會寫入 Firebase。</p></div><span id="year-note-save-status" class="year-note-state" aria-live="polite"></span></div>
+        <label class="sr-only" for="year-note-text">本年度備註內容</label><textarea id="year-note-text" class="year-note-text" rows="6" maxlength="15000" placeholder="填寫本年度演練執行情形、協調事項、注意事項與其他補充說明……"></textarea>
+        <div class="year-note-footer"><span id="year-note-length" class="hint">0 / 15000 字</span><button id="year-note-save" class="btn primary no-print" type="button">儲存備註</button></div>
+        <div id="year-note-print" class="year-note-print print-only"></div>
+      </section>
+      <p class="hint">未完成輪值建檔或封存年度僅供查閱。日期變更會先顯示暫定備查期限，儲存成功後才視為正式紀錄。</p><p class="hint">進度僅反映本系統記錄，不代表主管機關已收件或正式認定合規。</p>
     </div>
    </section>
    <section id="tab-basic" class="tab-panel" hidden>
@@ -45,10 +52,11 @@
 
   </div>
  </main>
- <footer class="footer">空氣污染突發事故緊急應變演練管理系統 R0.2.1｜雲端資料僅限核准帳號存取</footer>
+ <footer class="footer">空氣污染突發事故緊急應變演練管理系統 R0.2.2｜雲端資料僅限核准帳號存取</footer>
  <dialog id="edit-dialog" class="editor"><form id="edit-form"><h2 id="edit-heading">編輯</h2><p id="edit-description" class="muted-text"></p><div id="edit-fields" class="form-grid"></div><div class="dialog-actions"><button id="edit-cancel" class="btn ghost" type="button">取消</button><button id="edit-save" class="btn primary" type="submit">儲存至雲端</button></div></form></dialog>
 
  <dialog id="import-dialog" class="editor import-editor"><div class="dialog-top"><h2>Excel 匯入：預覽及差異確認</h2><button id="import-close" class="btn ghost" type="button">關閉</button></div><p class="hint">只處理選取的新增或更新資料；缺漏的舊資料不會刪除。須先檢查衝突與警示，再確認寫入雲端。</p><input type="file" id="import-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div id="import-result" class="import-result"></div><div class="dialog-actions"><button id="import-apply" class="btn primary" disabled type="button">套用選取紀錄至雲端</button></div></dialog>
- <script type="module" src="./app.js?v=r021"></script>
+ <dialog id="year-switch-dialog" class="editor year-switch-dialog" aria-labelledby="year-switch-heading"><h2 id="year-switch-heading">切換年度前有未儲存的資料</h2><p id="year-switch-description">請選擇儲存變更、放棄變更或取消切換。</p><p id="year-switch-error" class="notice error" hidden></p><div class="dialog-actions wrap"><button id="year-switch-cancel" class="btn ghost" type="button">取消切換</button><button id="year-switch-discard" class="btn secondary" type="button">放棄變更並切換</button><button id="year-switch-save" class="btn primary" type="button">儲存並切換</button></div></dialog>
+ <script type="module" src="./app.js?v=r022"></script>
  <script src="../ehs-home-button.js?v=20261005-1"></script>
 </body></html>

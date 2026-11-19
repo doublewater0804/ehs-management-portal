@@ -7,7 +7,7 @@ const attrs=x=>esc(x);
 const textOrDash=x=>x?esc(x):'—';
 const currentYear=Math.max(START_YEAR,Number(todayTaipei().slice(0,4)));
 let year=currentYear, tab='overview', authorized=false,unsub=null, authSeq=0,busy=false;
-let data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
+let data={sites:[],units:[],rotations:[],drills:[],years:[],yearNotes:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
 let imported=[];
 function notice(message,type=''){const e=$('toast');e.textContent=message;e.className=`notice ${type}`;e.hidden=!message;}
 function connected(label,tone='muted'){$('cloud-status').textContent=label;$('cloud-status').className=`pill ${tone}`;}
@@ -20,13 +20,12 @@ const allYears=()=>yearInventory(data.years,data.drills,data.rotations);
 const currentYearInfo=(y=year)=>allYears().find(row=>row.year===Number(y));
 const yearClosed=(y=year)=>isYearClosed(currentYearInfo(y));
 const readOnly=()=>!authorized||!data.ready||data.fromCache;
-function setupYears(){$('selected-year').innerHTML=`<option value="${year}">${year} 年</option>`;}
+function setupYears(){for(const id of ['selected-year','filter-year'])$(id).innerHTML=`<option value="${year}">${year} 年</option>`;}
 function refreshYearSelect(){
  const entries=allYears().filter(row=>row.status!=='deleted');
  if(!entries.some(row=>row.year===year))year=entries.find(row=>row.year===currentYear)?.year||entries[0]?.year||START_YEAR;
- $('selected-year').innerHTML=entries.map(r=>`<option value="${r.year}">${r.year} 年${r.status==='archived'?'（封存）':''}</option>`).join('');
- $('selected-year').value=String(year);
- $('selected-year').disabled=!entries.length;
+ const options=entries.map(r=>`<option value="${r.year}">${r.year} 年${r.status==='archived'?'（封存）':''}</option>`).join('');
+ for(const id of ['selected-year','filter-year']){$(id).innerHTML=options;$(id).value=String(year);$(id).disabled=!entries.length;}
 }
 function setTab(next){tab=next;document.querySelectorAll('#tabs [data-tab]').forEach(b=>{const yes=b.dataset.tab===next;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false')});document.querySelectorAll('.tab-panel').forEach(p=>p.hidden=p.id!==`tab-${next}`);}
 function render(){if(!authorized||!data.ready)return;
@@ -34,8 +33,72 @@ function render(){if(!authorized||!data.ready)return;
  $('print-heading').textContent=`${year}年度｜空氣污染突發事故緊急應變演練管制總表`;
  const sites=sortedSites(data.sites),siteOptions=sites.map(s=>`<option value="${attrs(s.id)}">${esc(s.name)}${s.active===false?'（停用）':''}</option>`).join('');
  for(const id of ['filter-site']){const node=$(id),old=node.value;node.innerHTML=`<option value="">全部公私場所</option>${siteOptions}`;node.value=sites.some(s=>s.id===old)?old:'';}
- renderOverview();renderRotation();renderYears();renderBasic();
+ renderOverview();renderYearNote();renderRotation();renderYears();renderBasic();
  $('init-sites').hidden=INITIAL_SITES.every(s=>sites.some(v=>v.id===s.id));
+}
+// R0.2.2: a separate yearly free-text note, unrelated to the short "year management" note.
+const yearNoteDrafts=new Map();
+const storedYearNote=(y=year)=>data.yearNotes.find(r=>Number(r.year)===Number(y));
+const pendingDrillSites=(y=year)=>[...drillDrafts.keys()].filter(k=>k.startsWith(`${y}_`)).map(k=>k.slice(`${y}_`.length));
+function hasUnsavedYearEdits(y=year){return yearNoteDrafts.has(Number(y))||pendingDrillSites(y).length>0;}
+function renderYearNote(){
+ const existing=storedYearNote(),draft=yearNoteDrafts.get(year),text=draft?draft.content:(existing?.content??'');
+ const box=$('year-note-text');
+ if(box.value!==text)box.value=text;
+ $('year-note-year').textContent=`${year} 年`;
+ box.disabled=readOnly()||yearClosed();
+ $('year-note-save').disabled=box.disabled||!draft||busy;
+ $('year-note-length').textContent=`${box.value.length} / 15000 字`;
+ const label=$('year-note-save-status');
+ label.textContent=yearClosed()?'年度已封存，僅供查詢':readOnly()?'連線待確認':draft?'尚未儲存':existing?'已載入年度備註':'尚未建立備註';
+ label.className=`year-note-state ${draft?'dirty':''}`;
+ $('year-note-print').textContent=text||'（無年度備註）';
+}
+async function saveYearNote(){
+ if(readOnly()||yearClosed()||busy){notice('年度已封存或雲端尚未就緒，無法儲存備註。','error');return false;}
+ const draft=yearNoteDrafts.get(year);
+ if(!draft)return true;
+ if(draft.content.length>15000){notice('年度備註不得超過15000字。','error');return false;}
+ const savingYear=year;
+ busy=true;
+ try{
+  await cloud.saveYearNote(savingYear,draft.content,draft.baseVersion);
+  const updated={id:String(savingYear),year:savingYear,content:draft.content,version:draft.baseVersion+1};
+  data.yearNotes=[...data.yearNotes.filter(r=>Number(r.year)!==savingYear),updated];
+  if(yearNoteDrafts.get(savingYear)===draft)yearNoteDrafts.delete(savingYear);
+  notice(`${savingYear} 年年度備註已成功儲存至 Firebase。`,'success');
+  renderYearNote();return true;
+ }catch(e){notice(`年度備註儲存失敗：${e.message}`,'error');return false;}
+ finally{busy=false;renderYearNote();}
+}
+let pendingYear=null,pendingGoOverview=false,yearSwitchBusy=false;
+function applyYearChange(next,goOverview=false){year=next;render();if(goOverview)setTab('overview');}
+function requestYearChange(next,goOverview=false){
+ next=Number(next);
+ // Restore displayed selection until the year switch has been resolved.
+ for(const id of ['selected-year','filter-year'])$(id).value=String(year);
+ if(!validYear(next)||!allYears().some(row=>row.year===next&&row.status!=='deleted'))return;
+ if(next===year){if(goOverview)setTab('overview');return;}
+ if(!hasUnsavedYearEdits()){applyYearChange(next,goOverview);return;}
+ pendingYear=next;pendingGoOverview=goOverview;
+ const count=pendingDrillSites().length;
+ $('year-switch-description').textContent=`${year} 年度有未儲存的資料（演練資料 ${count} 筆${yearNoteDrafts.has(year)?'、年度備註 1 筆':''}），請先儲存、放棄變更，或取消切換。`;
+ $('year-switch-error').hidden=true;
+ $('year-switch-dialog').showModal();
+}
+function closeYearSwitch(){if(yearSwitchBusy)return;$('year-switch-dialog').close();pendingYear=null;pendingGoOverview=false;}
+function finishYearSwitch(){const n=pendingYear,go=pendingGoOverview;$('year-switch-dialog').close();pendingYear=null;pendingGoOverview=false;applyYearChange(n,go);}
+async function savePendingYearEdits(){
+ if(readOnly()||yearClosed()){throw Error('雲端尚未連線或年度已封存，無法儲存；請取消切換或選擇放棄。');}
+ // Save each changed drill without discarding any other unsaved row on failure.
+ for(const siteId of pendingDrillSites()){
+  const ok=await saveInlineDrill(siteId);
+  if(!ok)throw Error(`演練管制「${getSite(siteId)?.name||siteId}」儲存失敗，請確認畫面上方的錯誤訊息。`);
+ }
+ if(yearNoteDrafts.has(year)){
+  const ok=await saveYearNote();
+  if(!ok)throw Error('年度備註儲存失敗，請確認畫面上方的錯誤訊息。');
+ }
 }
 function filteredYearRows(){
  const selected=$('filter-site').value,status=$('filter-status').value,q=$('filter-text').value.trim().toLowerCase();
@@ -79,22 +142,22 @@ function renderOverview(){
  }).join(''):`<tr><td colspan="10" class="empty">${data.sites.length?'目前篩選條件沒有紀錄。':'尚未建立公私場所，請至基本資料管理初始化。'}</td></tr>`;
 }
 async function saveInlineDrill(siteId){
- if(busy||readOnly()||yearClosed()){notice('年度已封存或尚未連線，不能儲存。','error');return;}
- const site=getSite(siteId);if(!site){notice('找不到公私場所，請重新讀取資料。','error');return;}
+ if(busy||readOnly()||yearClosed()){notice('年度已封存或尚未連線，不能儲存。','error');return false;}
+ const site=getSite(siteId);if(!site){notice('找不到公私場所，請重新讀取資料。','error');return false;}
  const old=recordOf(year,siteId),rotation=rotationOf(year,siteId),base=proposedUnit(site,data.units,year);
- if(site.active===false||(!base.unit&&!old&&!rotation)){notice('此公私場所尚未完成演練廠處輪值建檔。','error');return;}
- const key=recordKey(year,siteId),draft=drillDrafts.get(key);if(!draft){notice('尚未修改本列資料，請先輸入或修改欄位。');return;}
+ if(site.active===false||(!base.unit&&!old&&!rotation)){notice('此公私場所尚未完成演練廠處輪值建檔。','error');return false;}
+ const key=recordKey(year,siteId),draft=drillDrafts.get(key);if(!draft){notice('尚未修改本列資料，請先輸入或修改欄位。');return false;}
  const v=draft?.values||rowDraftValues({record:old,rotation,base,assigned:displayAssigned(site,data.units,year,old,rotation)});
  const unit=data.units.find(u=>u.id===v.assignedUnitId&&u.siteId===siteId),originalUnitId=old?.originalUnitId||rotation?.originalUnitId||base.unit?.id||v.assignedUnitId;
  const originalUnit=data.units.find(u=>u.id===originalUnitId),reason=String(v.changeReason||'').trim();
- if(!unit){notice('請選擇有效的演練廠處。','error');return;}
- if(v.assignedUnitId!==originalUnitId&&!reason){notice('變更原輪值廠處時，請展開「變更原因／備註」並填寫原因。','error');return;}
+ if(!unit){notice('請選擇有效的演練廠處。','error');return false;}
+ if(v.assignedUnitId!==originalUnitId&&!reason){notice('變更原輪值廠處時，請展開「變更原因／備註」並填寫原因。','error');return false;}
  const row={id:key,siteId,siteName:old?.siteName||site.name,year,originalUnitId,originalUnitName:old?.originalUnitName||rotation?.originalUnitName||originalUnit?.name||'',assignedUnitId:unit.id,assignedUnitName:old?.assignedUnitId===unit.id&&old?.assignedUnitName?old.assignedUnitName:unit.name,changeReason:v.assignedUnitId!==originalUnitId?reason:'',plannedDate:v.plannedDate||'',actualDate:v.actualDate||'',sentDate:v.sentDate||'',refNumber:String(v.refNumber||'').trim(),note:String(v.note||'').trim()};
  try{validateDrill(row,site,data.units,old);if(String(row.refNumber).length>100)throw Error('發文字號最多100字。');}
- catch(e){notice(`資料驗證失敗：${e.message}`,'error');return;}
+ catch(e){notice(`資料驗證失敗：${e.message}`,'error');return false;}
  busy=true;
- try{await cloud.saveDrill(row,draft?.baseVersion??old?.version??0);drillDrafts.delete(key);notice(`${year} 年 ${site.name} 演練／備查資料已儲存至雲端。`,'success');renderOverview();}
- catch(e){notice(`儲存失敗：${e.message}`,'error');}
+ try{await cloud.saveDrill(row,draft?.baseVersion??old?.version??0);drillDrafts.delete(key);notice(`${year} 年 ${site.name} 演練／備查資料已儲存至雲端。`,'success');renderOverview();return true;}
+ catch(e){notice(`儲存失敗：${e.message}`,'error');return false;}
  finally{busy=false;}
 }
 function renderRotation(){
@@ -277,12 +340,14 @@ function editYear(n=null){
   if(!old&&match)throw Error('此年度已存在，請直接編輯，或到「已刪除」區復原。');
   if(old&&y!==old.year)throw Error('年度號碼不可直接變更。');
   await cloud.saveYear({year:y,status:old?.status||'active',note},existing?.version||0);
-  year=y;return true;
+  if(!hasUnsavedYearEdits(year))year=y;
+  return true;
  });
 }
 async function setYearStatus(n,status){
  if(readOnly()){notice('請等待 Firebase 雲端連線確認後操作。','error');return;}
  const row=currentYearInfo(n);if(!row){notice('找不到指定年度。','error');return;}
+ if(Number(n)===year&&['deleted','archived'].includes(status)&&hasUnsavedYearEdits(year)){notice('此年度還有未儲存的演練或年度備註，請先儲存或取消變更後再封存／刪除。','error');return;}
  if(status==='deleted'&&hasFormalYearData(n,data.drills)){notice('此年度已有正式演練或發文資料，只能封存。','error');return;}
  const prompt=status==='deleted'?`確定刪除 ${n} 年度？
 此操作僅將年度移出清單，保留全部演練與輪值歷史資料，之後可復原。`:status==='archived'?`確定封存 ${n} 年？封存後僅能查詢，解除封存才能再修改。`:`確定恢復 ${n} 年度為管理中？`;
@@ -311,11 +376,37 @@ async function deleteUnit(id){
  busy=true;try{await cloud.deleteUnusedUnit(u,u.version||0);notice('未使用的演練廠處已刪除。','success');}catch(e){notice('刪除失敗：'+e.message,'error');}finally{busy=false;}
 }
 $('tabs').addEventListener('click',e=>{const btn=e.target.closest('[data-tab]');if(btn)setTab(btn.dataset.tab);});
-$('selected-year').addEventListener('change',e=>{year=Number(e.target.value);render();});
+for(const id of ['selected-year','filter-year'])$(id).addEventListener('change',e=>requestYearChange(e.target.value));
+$('year-note-text').addEventListener('input',e=>{
+ const content=e.target.value,existing=storedYearNote();
+ if(content===(existing?.content??''))yearNoteDrafts.delete(year);
+ else{
+  const previous=yearNoteDrafts.get(year);
+  yearNoteDrafts.set(year,{content,baseVersion:previous?.baseVersion??existing?.version??0});
+ }
+ renderYearNote();
+});
+$('year-note-save').onclick=saveYearNote;
+$('year-switch-cancel').onclick=closeYearSwitch;
+$('year-switch-dialog').addEventListener('cancel',e=>{if(yearSwitchBusy){e.preventDefault();return;}pendingYear=null;pendingGoOverview=false;});
+$('year-switch-discard').onclick=()=>{
+ if(yearSwitchBusy)return;
+ for(const siteId of pendingDrillSites())drillDrafts.delete(recordKey(year,siteId));
+ yearNoteDrafts.delete(year);finishYearSwitch();
+};
+$('year-switch-save').onclick=async()=>{
+ if(yearSwitchBusy)return;
+ yearSwitchBusy=true;
+ for(const id of ['year-switch-save','year-switch-discard','year-switch-cancel'])$(id).disabled=true;
+ try{await savePendingYearEdits();finishYearSwitch();}
+ catch(e){$('year-switch-error').textContent=e.message;$('year-switch-error').hidden=false;}
+ finally{yearSwitchBusy=false;for(const id of ['year-switch-save','year-switch-discard','year-switch-cancel'])$(id).disabled=false;}
+};
+window.addEventListener('beforeunload',e=>{if(!hasUnsavedYearEdits())return;e.preventDefault();e.returnValue='';});
 $('new-year').onclick=()=>editYear();
 function handleYearClicks(e){
  const b=e.target.closest('button');if(!b)return;
- if(b.dataset.yearShow){year=Number(b.dataset.yearShow);render();setTab('overview');}
+ if(b.dataset.yearShow){requestYearChange(Number(b.dataset.yearShow),true);}
  else if(b.dataset.yearEdit)editYear(Number(b.dataset.yearEdit));
  else if(b.dataset.yearArchive)setYearStatus(Number(b.dataset.yearArchive),'archived');
  else if(b.dataset.yearRemove)setYearStatus(Number(b.dataset.yearRemove),'deleted');
@@ -383,7 +474,7 @@ function begin(){
  setupYears();setTab('overview');connected('登入服務連接中…');
  cloud.observeAuth(user=>{
   const seq=++authSeq;if(unsub){unsub();unsub=null;}
-  authorized=cloud.owner();drillDrafts.clear();newUnitDrafts.clear();siteEditor=null;unitEditor=null;data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
+  authorized=cloud.owner();drillDrafts.clear();yearNoteDrafts.clear();newUnitDrafts.clear();siteEditor=null;unitEditor=null;data={sites:[],units:[],rotations:[],drills:[],years:[],yearNotes:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
   $('user-name').textContent=user?.email||'';$('login').hidden=!!user;$('logout').hidden=!user;
   $('workspace').hidden=true;$('gate').hidden=false;
   if(!authorized){connected(user?'帳號未授權':'尚未登入',user?'danger':'muted');notice(user?'此 Google 帳號未獲授權，請改用管理員帳號。':'請按 Google 登入後使用系統。',user?'error':'');return;}

@@ -4,7 +4,8 @@ export const INITIAL_SITES = [
   {id:'site-mailiao', name:'麥寮廠', code:'MAILIAO', order:1, active:true, expectedUnits:3, rotationStartYear:2026, rotationHint:'SM麥寮 → PC → ARO1', note:''},
   {id:'site-haifeng', name:'海豐廠', code:'HAIFENG', order:2, active:true, expectedUnits:4, rotationStartYear:2026, rotationHint:'ARO2 → ARO3 → PHL → SM3', note:''}
 ];
-export const EXCEL_HEADERS = ['年度','公私場所','原輪值廠處','實際演練廠處','預定演練日期','實際演練日期','發文日期','發文字號','備註','變更原因'];
+export const LEGACY_EXCEL_HEADERS = ['年度','公私場所','原輪值廠處','實際演練廠處','預定演練日期','實際演練日期','發文日期','發文字號','備註','變更原因'];
+export const EXCEL_HEADERS = ['年度','公私場所','原輪值廠處','實際演練廠處','預定演練日期','實際演練日期','發文日期','發文字號','備查日期','備查文號','備註','變更原因'];
 export const recordKey = (year, siteId) => `${Number(year)}_${siteId}`;
 export function validYear(year){return Number.isInteger(Number(year))&&Number(year)>=START_YEAR&&Number(year)<=2100;}
 export function validDate(value){
@@ -53,12 +54,13 @@ export function validateDrill(input,site,units,expectedRecord=null){
  const oldAssigned=expectedRecord?.assignedUnitId===input.assignedUnitId;
  if(!chosen&&!oldAssigned)throw Error('請選擇此公私場所的演練廠處。');
  if(chosen?.active===false&&!oldAssigned)throw Error('不可安排新的停用廠處。');
- for(const key of ['plannedDate','actualDate','sentDate'])if(!validDate(input[key]||''))throw Error('日期格式不正確。');
+ for(const key of ['plannedDate','actualDate','sentDate','authorityReplyDate'])if(!validDate(input[key]||''))throw Error('日期格式不正確。');
  if(input.actualDate && Number(input.actualDate.slice(0,4))!==year)throw Error('實際演練日期應在該管制年度內，跨年請另建對應年度紀錄。');
  if(input.sentDate&&!input.actualDate)throw Error('請先填入實際演練日期，才能填發文日期。');
  if(input.sentDate && input.sentDate<input.actualDate)throw Error('發文日期不得早於實際演練日期。');
  if(input.plannedDate && Number(input.plannedDate.slice(0,4))!==year)throw Error('預定演練日期應在該管制年度內。');
  for(const field of ['refNumber','note','changeReason'])if(String(input[field]||'').length>1500)throw Error('欄位內容過長（限1500字）。');
+ if(String(input.authorityReplyNo||'').length>100)throw Error('備查文號最多100字。');
  return true;
 }
 export function summary(sites, records, year, today=todayTaipei(), days=7){
@@ -67,7 +69,7 @@ export function summary(sites, records, year, today=todayTaipei(), days=7){
 }
 export function exportRow(site,record,rotation,units,year){
  const base=proposedUnit(site,units,year);
- return [year,site.name,record?.originalUnitName||rotation?.originalUnitName||base.unit?.name||'',record?.assignedUnitName||rotation?.assignedUnitName||base.unit?.name||'',record?.plannedDate||'',record?.actualDate||'',record?.sentDate||'',record?.refNumber||'',record?.note||'',record?.changeReason||''];
+ return [year,site.name,record?.originalUnitName||rotation?.originalUnitName||base.unit?.name||'',record?.assignedUnitName||rotation?.assignedUnitName||base.unit?.name||'',record?.plannedDate||'',record?.actualDate||'',record?.sentDate||'',record?.refNumber||'',record?.authorityReplyDate||'',record?.authorityReplyNo||'',record?.note||'',record?.changeReason||''];
 }
 
 // R0.2: preserve legacy implicit years. A deleted year is hidden but its drills stay untouched.
@@ -79,7 +81,7 @@ export function yearInventory(yearDocs=[],drills=[],rotations=[]){
  return [...entries.values()].sort((a,b)=>a.year-b.year);
 }
 export function isYearClosed(yearDoc){return yearDoc?.status==='archived'||yearDoc?.status==='deleted';}
-export function hasFormalYearData(year,drills=[]){return drills.some(r=>Number(r.year)===Number(year)&&Boolean(r.actualDate||r.sentDate));}
+export function hasFormalYearData(year,drills=[]){return drills.some(r=>Number(r.year)===Number(year)&&Boolean(r.actualDate||r.sentDate||r.authorityReplyDate||r.authorityReplyNo));}
 export function canRemoveYear(year,drills=[]){return validYear(year)&&!hasFormalYearData(year,drills);}
 export function unitWasUsed(unit,drills=[],rotations=[]){
  if(!unit)return false;

@@ -58,3 +58,14 @@
 .year-note-print{display:none}
 @media(max-width:760px){.year-note-block{padding:12px}.year-note-footer .btn{width:100%}.filters #filter-year{min-width:0}}
 @media print{.year-note-block{border:1px solid #ccc;padding:9px;break-inside:avoid}.year-note-text,.year-note-footer,.year-note-head p,.year-note-state{display:none!important}.year-note-print{display:block!important;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}.note-year-badge{border:0}}
+
+/* R0.2.3: environmental authority reply, inline filing control, shared note */
+.inline-drill-table{min-width:1640px}
+.inline-drill-table th:nth-child(4),.inline-drill-table th:nth-child(5),.inline-drill-table th:nth-child(6),.inline-drill-table th:nth-child(8){min-width:148px}
+.inline-drill-table th:nth-child(7),.inline-drill-table th:nth-child(9){min-width:165px}
+.inline-drill-table th:nth-child(10){min-width:148px}
+.inline-drill-table th:nth-child(11){min-width:95px}
+.inline-drill-table td .reply-hint,.inline-drill-table td .deadline-hint{display:block;margin-top:5px;font-size:11px;color:var(--sub);white-space:normal}
+.inline-drill-table td .deadline-hint{color:var(--warn)}
+@media(max-width:760px){.inline-drill-table{min-width:1600px}}
+@media print{.inline-drill-table{min-width:0;font-size:8px}.inline-drill-table td,.inline-drill-table th{padding:4px 3px}.inline-drill-table td .deadline-hint{font-size:8px}.year-note-print{white-space:pre-wrap}}

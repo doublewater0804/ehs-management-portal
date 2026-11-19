@@ -1,4 +1,4 @@
-import {EXCEL_HEADERS,exportRow,sortedSites,sortedUnits,proposedUnit} from './model.js';
+import {EXCEL_HEADERS,LEGACY_EXCEL_HEADERS,exportRow,sortedSites,sortedUnits,proposedUnit} from './model.js';
 const XLSX_URL='https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
 let pending;
 const xlsx=()=>pending??=(import(XLSX_URL).catch(e=>{pending=null;throw Error('無法載入 Excel 元件，請確認網路連線。');}));
@@ -29,9 +29,11 @@ export async function parseXlsx(file){
  const sheet=wb.Sheets['演練管制'];if(!sheet)throw Error('找不到「演練管制」工作表，請使用本系統匯出的 Excel。');
  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
  const head=rows.shift()||[];
- if(EXCEL_HEADERS.some((h,i)=>String(head[i]||'').trim()!==h))throw Error('Excel 欄位順序不正確，請使用本系統的匯出範本。');
+ const isNew=EXCEL_HEADERS.every((h,i)=>String(head[i]||'').trim()===h);
+ const isLegacy=LEGACY_EXCEL_HEADERS.every((h,i)=>String(head[i]||'').trim()===h);
+ if(!isNew&&!isLegacy)throw Error('Excel 欄位順序不正確，請使用本系統匯出的新舊範本。');
  if(rows.length>250)throw Error('單次最多匯入250筆，請分批處理。');
- return rows.filter(c=>c.some(v=>String(v).trim())).map((c,i)=>({rowNo:i+2,year:String(c[0]||'').trim(),siteName:String(c[1]||'').trim(),originalName:String(c[2]||'').trim(),assignedName:String(c[3]||'').trim(),plannedDate:toISO(c[4]),actualDate:toISO(c[5]),sentDate:toISO(c[6]),refNumber:String(c[7]||'').trim(),note:String(c[8]||'').trim(),changeReason:String(c[9]||'').trim()}));
+ return rows.filter(c=>c.some(v=>String(v).trim())).map((c,i)=>({rowNo:i+2,year:String(c[0]||'').trim(),siteName:String(c[1]||'').trim(),originalName:String(c[2]||'').trim(),assignedName:String(c[3]||'').trim(),plannedDate:toISO(c[4]),actualDate:toISO(c[5]),sentDate:toISO(c[6]),refNumber:String(c[7]||'').trim(),authorityReplyDate:isNew?toISO(c[8]):undefined,authorityReplyNo:isNew?String(c[9]||'').trim():undefined,note:String(c[isNew?10:8]||'').trim(),changeReason:String(c[isNew?11:9]||'').trim()}));
 }
 export function toISO(value){
  if(value===null||value===undefined||String(value).trim()==='')return '';

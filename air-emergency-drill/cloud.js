@@ -16,15 +16,19 @@ export const observeAuth=callback=>onAuthStateChanged(auth,callback);
 export const login=()=>signInWithPopup(auth,new GoogleAuthProvider());
 export const logout=()=>signOut(auth);
 export function watchAll(callback,failed){
- ensureOwner();let docs={sites:[],units:[],rotations:[],drills:[],years:[],yearNotes:[],settings:{noticeDays:7}},ready=new Set();
- const cacheFlags={sites:true,units:true,rotations:true,drills:true,years:true,yearNotes:true,settings:true};
+ ensureOwner();let docs={sites:[],units:[],rotations:[],drills:[],years:[],yearNotes:[],globalNote:null,settings:{noticeDays:7}},ready=new Set();
+ const cacheFlags={sites:true,units:true,rotations:true,drills:true,years:true,yearNotes:true,globalNote:true,settings:true};
  const subscriptions=paths.map(type=>onSnapshot(cref(type==='yearNotes'?'year_notes':type),{includeMetadataChanges:true},snap=>{
   docs[type]=snap.docs.map(d=>({...d.data(),id:d.id}));ready.add(type);cacheFlags[type]=snap.metadata.fromCache||snap.metadata.hasPendingWrites;
-  callback({...docs,ready:ready.size===7,fromCache:Object.values(cacheFlags).some(Boolean)});
+  callback({...docs,ready:ready.size===8,fromCache:Object.values(cacheFlags).some(Boolean)});
+ },failed));
+ subscriptions.push(onSnapshot(dref('settings','global_note'),{includeMetadataChanges:true},snap=>{
+  docs.globalNote=snap.exists()?{...snap.data(),id:'global_note'}:null;ready.add('globalNote');cacheFlags.globalNote=snap.metadata.fromCache||snap.metadata.hasPendingWrites;
+  callback({...docs,ready:ready.size===8,fromCache:Object.values(cacheFlags).some(Boolean)});
  },failed));
  subscriptions.push(onSnapshot(dref('settings','general'),{includeMetadataChanges:true},snap=>{
   docs.settings=snap.exists()?{...snap.data(),id:'general'}:{noticeDays:7,version:0};ready.add('settings');cacheFlags.settings=snap.metadata.fromCache||snap.metadata.hasPendingWrites;
-  callback({...docs,ready:ready.size===7,fromCache:Object.values(cacheFlags).some(Boolean)});
+  callback({...docs,ready:ready.size===8,fromCache:Object.values(cacheFlags).some(Boolean)});
  },failed));
  return ()=>subscriptions.forEach(stop=>stop());
 }
@@ -68,7 +72,7 @@ export async function saveDrill(data,expectedVersion){
   // Avoid unbounded history growth in a single Firestore document; reject rather than silently drop old audit records.
   if(history.length>200)throw Error('異動歷程已達上限，請先進行歷史資料歸檔。');
   tx.set(rotationRef,{siteId:data.siteId,year:Number(data.year),originalUnitId:data.originalUnitId||'',originalUnitName:data.originalUnitName||'',assignedUnitId:data.assignedUnitId,assignedUnitName:data.assignedUnitName,changeReason:data.changeReason||'',history,updatedAt:serverTimestamp(),updatedBy:user.uid});
-  tx.set(drillRef,{...data,id:key,year:Number(data.year),version:v+1,createdBy:record.exists()?(record.data().createdBy||user.uid):user.uid,updatedBy:user.uid,updatedAt:serverTimestamp()});
+  tx.set(drillRef,{...(record.exists()?record.data():{}),...data,id:key,year:Number(data.year),version:v+1,createdBy:record.exists()?(record.data().createdBy||user.uid):user.uid,updatedBy:user.uid,updatedAt:serverTimestamp()});
  });
 }
 
@@ -83,6 +87,31 @@ export async function saveYear(value,expectedVersion=0){
   const snap=await tx.get(ref),v=snap.exists()?Number(snap.data().version||0):0;
   if(v!==Number(expectedVersion||0))throw Error('年度已被其他裝置更新，請重新整理後再試。');
   tx.set(ref,{year:y,note,status,version:v+1,updatedAt:serverTimestamp(),updatedBy:uid,createdBy:snap.exists()?snap.data().createdBy:uid});
+ });
+}
+// R0.2.3: migrate only by copying the 2026 legacy note. Never overwrite a shared note.
+// Both documents are fetched in a single server transaction to avoid stale cached migration.
+export async function ensureGlobalNoteFrom2026(){
+ ensureOwner();const user=auth.currentUser;
+ const globalRef=dref('settings','global_note'),legacyRef=dref('year_notes','2026');
+ return runTransaction(db,async tx=>{
+  const global=await tx.get(globalRef),legacy=await tx.get(legacyRef);
+  if(global.exists())return {state:'existing'};
+  if(!legacy.exists())return {state:'no-legacy'};
+  const original=String(legacy.data().content??'');
+  if(original.length>15000)throw Error('原2026年度備註超過15000字，請先確認資料。');
+  tx.set(globalRef,{content:original,version:1,sourceYear:2026,sourceVersion:Number(legacy.data().version||0),createdBy:user.uid,updatedBy:user.uid,updatedAt:serverTimestamp()});
+  return {state:'copied'};
+ });
+}
+export async function saveGlobalNote(content,expectedVersion=0){
+ ensureOwner();const user=auth.currentUser,value=String(content??'');
+ if(value.length>15000)throw Error('共用備註不得超過15000字。');
+ const ref=dref('settings','global_note');
+ await runTransaction(db,async tx=>{
+  const snap=await tx.get(ref),v=snap.exists()?Number(snap.data().version||0):0;
+  if(v!==Number(expectedVersion||0))throw Error('共用備註已在其他裝置更新，請重新讀取後再修改。');
+  tx.set(ref,{...(snap.exists()?snap.data():{}),content:value,version:v+1,createdBy:snap.exists()?(snap.data().createdBy||user.uid):user.uid,updatedBy:user.uid,updatedAt:serverTimestamp()});
  });
 }
 // R0.2.2: one independent, version-protected long note per calendar year.
@@ -109,7 +138,7 @@ export async function removeYear(year,expectedVersion=0){
  await runTransaction(db,async tx=>{
   const yearSnap=await tx.get(yearRef),reads=[];
   for(const ref of refs)reads.push(await tx.get(ref));
-  if(reads.some(d=>d.exists()&&Boolean(d.data().actualDate||d.data().sentDate)))throw Error('年度已有實際演練或發文紀錄，不得刪除；請改用封存。');
+  if(reads.some(d=>d.exists()&&Boolean(d.data().actualDate||d.data().sentDate||d.data().authorityReplyDate||d.data().authorityReplyNo)))throw Error('年度已有實際演練或發文紀錄，不得刪除；請改用封存。');
   const v=yearSnap.exists()?Number(yearSnap.data().version||0):0;
   if(v!==Number(expectedVersion||0))throw Error('年度已變更，請重新整理後再試。');
   tx.set(yearRef,{year:y,note:yearSnap.exists()?(yearSnap.data().note||''):'',status:'deleted',version:v+1,updatedAt:serverTimestamp(),updatedBy:uid,createdBy:yearSnap.exists()?yearSnap.data().createdBy:uid});

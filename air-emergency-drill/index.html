@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
+ <title>空氣污染突發事故緊急應變演練管理系統｜EHS</title>
+ <link rel="stylesheet" href="./style.css?v=r01">
+</head>
+<body>
+ <header class="topbar">
+  <div class="top-inner">
+   <div class="identity"><span class="logo" aria-hidden="true">環</span><div><span class="overline">EHS · 環保管理</span><h1>空氣污染突發事故緊急應變演練管理</h1><span class="subheading">年度輪值｜演練進度｜發文備查</span></div></div>
+   <div class="top-actions"><span id="cloud-status" class="pill muted" aria-live="polite">連接服務中…</span><span id="user-name" class="top-user"></span><button id="login" type="button" class="btn primary">Google 登入</button><button id="logout" type="button" class="btn ghost" hidden>登出</button><a id="ehs-portal-home-button" class="btn home" href="../index.html#environment" target="_self" aria-label="返回 EHS 首頁">⌂ EHS 首頁</a></div>
+  </div>
+ </header>
+ <main class="page">
+  <p id="toast" class="notice" role="status" aria-live="polite">須以授權的 EHS Google 帳號登入才能讀取資料。</p>
+  <section id="gate" class="gate panel"><div class="gate-symbol">🔒</div><h2>僅限已授權的 EHS 管理員使用</h2><p>登入後才會讀取公私場所、演練廠處及年度備查資料。離線不會自動取代雲端資料。</p></section>
+  <div id="workspace" hidden>
+   <div id="print-heading" hidden></div><div class="page-tools"><div class="year-tool"><label for="selected-year">管制年度</label><select id="selected-year"></select><span class="year-note">各公私場所每年至少演練一次</span></div><div class="toolbar"><button id="excel-export" type="button" class="btn secondary">匯出 Excel</button><button id="excel-import" type="button" class="btn secondary">匯入 Excel</button><button id="print" type="button" class="btn secondary">列印／另存 PDF</button></div></div>
+   <nav class="tabs" aria-label="管理頁籤" id="tabs"><button type="button" class="active" data-tab="overview">演練管制總表</button><button type="button" data-tab="rotation">年度輪值</button><button type="button" data-tab="basic">基本資料管理</button><button type="button" data-tab="laws">法規重點</button><button type="button" data-tab="statistics">統計及設定</button></nav>
+   <section id="tab-overview" class="tab-panel">
+    <div id="kpis" class="kpis"></div>
+    <div class="panel"><div class="panel-heading"><div><h2>年度演練及發文管制</h2><p>一個公私場所一年一筆主輪值紀錄；發文日期為演練後正式發函地方環保局備查之日期。</p></div><span class="small-chip">期限：實際演練日期＋30日</span></div>
+      <div class="filters"><label>廠區<select id="filter-site"><option value="">全部公私場所</option></select></label><label>進度<select id="filter-status"><option value="">全部狀態</option><option value="unplanned">未排定</option><option value="planned">已排定</option><option value="planned-past">已過預定日</option><option value="awaiting">待發文</option><option value="soon">即將到期</option><option value="overdue">備查逾期</option><option value="completed">期限內發文</option><option value="late-sent">逾期發文</option></select></label><label>搜尋<input id="filter-text" type="search" placeholder="廠區／廠處／文號"></label><label>日期欄位<select id="filter-date-field"><option value="actualDate">實際演練日期</option><option value="plannedDate">預定演練日期</option><option value="sentDate">備查發文日期</option></select></label><label>起日<input id="filter-from" type="date"></label><label>迄日<input id="filter-to" type="date"></label></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>公私場所</th><th>原輪值廠處</th><th>演練廠處</th><th>預定演練</th><th>實際演練</th><th>備查期限</th><th>發文日期</th><th>發文字號</th><th>進度</th><th class="no-print">管理</th></tr></thead><tbody id="overview-rows"></tbody></table></div><p class="hint">進度僅反映本系統記錄，不代表主管機關已收件或正式認定合規。</p>
+    </div>
+   </section>
+   <section id="tab-rotation" class="tab-panel" hidden>
+    <div class="panel"><div class="panel-heading"><div><h2>輪值順序與年度預排</h2><p>輪值以各公私場所為單位，按啟用廠處的「輪值順序」每年推進一名。順序 1 對應 2026 年。</p></div></div><div class="table-wrap"><table class="data-table"><thead id="rotation-head"></thead><tbody id="rotation-rows"></tbody></table></div><p class="hint">尚未建滿預設廠處數量時不推算輪值。歷年已儲存的演練紀錄保留當時名稱；臨時替換不改動下一年度基準順序。</p></div>
+   </section>
+   <section id="tab-basic" class="tab-panel" hidden>
+    <div class="basic-columns"><div class="panel"><div class="panel-heading"><div><h2>公私場所（廠區）</h2><p>法規年度管制單位</p></div><button id="new-site" type="button" class="btn secondary">＋新增廠區</button></div><div id="sites-list" class="basic-list"></div><button id="init-sites" type="button" class="btn soft">初始化：麥寮廠、海豐廠</button></div>
+      <div class="panel"><div class="panel-heading"><div><h2>演練廠處</h2><p>同一公私場所內部輪值執行單位</p></div><button id="new-unit" type="button" class="btn secondary">＋新增廠處</button></div><div class="filters"><label>篩選公私場所<select id="unit-site-filter"><option value="">全部</option></select></label></div><div id="units-list" class="basic-list"></div></div></div>
+    <div class="panel subtle-panel"><strong>原始輪值提示</strong><p>麥寮廠：SM麥寮 → PC → ARO1（每3年循環）；海豐廠：ARO2 → ARO3 → PHL → SM3（每4年循環）。依核准需求僅預建公私場所，演練廠處由管理員自行新增並設定順序。</p></div>
+   </section>
+   <section id="tab-laws" class="tab-panel" hidden>
+    <div class="panel"><div class="panel-heading"><div><h2>法規重點與官方全文</h2><p>空氣污染突發事故緊急應變措施計畫及警告通知作業辦法</p></div><span class="small-chip">摘要查核：2026/11/19</span></div><div class="law-intro"><strong>第5條｜年度演練與備查</strong><p>適用公私場所依核定計畫每年至少辦理一次事故演練；演練後應檢附演練相關資料，在30日內報請地方主管機關備查。演練可併同其他相關演練辦理。</p></div><div class="law-grid">
+     <article class="law-card"><span>空氣污染防制法 第33條</span><h3>事故應變與通報</h3><p>固定污染源因突發事故大量排放時，負責人應立即採取緊急應變措施，並至遲於1小時內通報地方主管機關。</p></article>
+     <article class="law-card"><span>作業辦法 第2條</span><h3>適用條件</h3><p>指定應設空污專責單位或人員，且許可證所載製程、儲槽之原物料或產品使用附表管制物質的公私場所，須擬訂並執行應變措施計畫。</p></article>
+     <article class="law-card"><span>作業辦法 第3條</span><h3>應變計畫7項內容</h3><p>包括場所與配置、物料及操作量、周界2公里敏感受體、設備失效應變、洩漏影響分析、預防整備與通報疏散，以及管制物質安全資料表。</p></article>
+     <article class="law-card"><span>作業辦法 第5條</span><h3>每年演練與30日備查</h3><p>每年至少演練一次，演練後30日內檢送資料報備查。本系統依各公私場所分別管制，不以單一演練廠處代表所有場所。</p></article>
+     <article class="law-card"><span>作業辦法 第6條</span><h3>計畫異動檢討</h3><p>管制物質種類改變或重大突發事故，原則上3個月內檢討申請重新核定；特定基本資料、許可量或廠內聯絡人變動，30日內報備查。特殊情形與程序依條文辦理。</p></article>
+     <article class="law-card"><span>作業辦法 第7～9條</span><h3>重大事故警告</h3><p>規定地方主管機關發布警告與相關因應，以及重大事故認定；其中主管機關警告時限不等於公私場所演練後發文期限。</p></article>
+    </div><div class="law-links"><a target="_blank" rel="noopener noreferrer" href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=O0020120">全國法規資料庫｜作業辦法全文 ↗</a><a target="_blank" rel="noopener noreferrer" href="https://oaout.moenv.gov.tw/law/LawContent.aspx?id=GL007655">環境部主管法規系統 ↗</a><a target="_blank" rel="noopener noreferrer" href="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=O0020001">空氣污染防制法全文 ↗</a></div><p class="hint">本區摘要供管理提醒；實際適用條件、最新修法及主管機關核定要求仍以官方法規與核定計畫為準。R0.1 不自動更新法規。</p></div>
+   </section>
+   <section id="tab-statistics" class="tab-panel" hidden><div class="panel"><div class="panel-heading"><div><h2>年度統計與提醒設定</h2><p>以公私場所計算年度應演練數，輪值廠處僅為執行單位。</p></div></div><div id="statistics-content"></div><form id="settings-form" class="inline-form"><label>備查截止前提前警示天數<input id="notice-days" type="number" min="0" max="30" step="1" value="7" required></label><button type="submit" class="btn primary">儲存警示設定</button></form></div></section>
+  </div>
+ </main>
+ <footer class="footer">空氣污染突發事故緊急應變演練管理系統 R0.1｜雲端資料僅限核准帳號存取</footer>
+ <dialog id="edit-dialog" class="editor"><form id="edit-form"><h2 id="edit-heading">編輯</h2><p id="edit-description" class="muted-text"></p><div id="edit-fields" class="form-grid"></div><div class="dialog-actions"><button id="edit-cancel" class="btn ghost" type="button">取消</button><button id="edit-save" class="btn primary" type="submit">儲存至雲端</button></div></form></dialog>
+ <dialog id="import-dialog" class="editor import-editor"><div class="dialog-top"><h2>Excel 匯入：預覽及差異確認</h2><button id="import-close" class="btn ghost" type="button">關閉</button></div><p class="hint">只處理選取的新增或更新資料；缺漏的舊資料不會刪除。須先檢查衝突與警示，再確認寫入雲端。</p><input type="file" id="import-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div id="import-result" class="import-result"></div><div class="dialog-actions"><button id="import-apply" class="btn primary" disabled type="button">套用選取紀錄至雲端</button></div></dialog>
+ <script type="module" src="./app.js?v=r01"></script>
+ <script src="../ehs-home-button.js?v=20261005-1"></script>
+</body></html>

@@ -1,5 +1,5 @@
 import * as cloud from './cloud.js';
-import {START_YEAR,INITIAL_SITES,recordKey,validYear,validDate,addDays,assess,todayTaipei,sortedSites,sortedUnits,proposedUnit,displayAssigned,summary,validateDrill,yearInventory,isYearClosed,hasFormalYearData,canRemoveYear,unitWasUsed,validateBatchUnits} from './model.js';
+import {START_YEAR,INITIAL_SITES,recordKey,validYear,validDate,addDays,assess,todayTaipei,sortedSites,sortedUnits,proposedUnit,displayAssigned,summary,validateDrill,yearInventory,isYearClosed,hasFormalYearData,canRemoveYear,unitWasUsed} from './model.js';
 import {exportXlsx,parseXlsx} from './excel.js';
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,7 +9,6 @@ const currentYear=Math.max(START_YEAR,Number(todayTaipei().slice(0,4)));
 let year=currentYear, tab='overview', authorized=false,unsub=null, authSeq=0,busy=false;
 let data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
 let imported=[];
-let bulkRows=[];
 function notice(message,type=''){const e=$('toast');e.textContent=message;e.className=`notice ${type}`;e.hidden=!message;}
 function connected(label,tone='muted'){$('cloud-status').textContent=label;$('cloud-status').className=`pill ${tone}`;}
 const getSite=id=>data.sites.find(s=>s.id===id);
@@ -34,10 +33,9 @@ function render(){if(!authorized||!data.ready)return;
  refreshYearSelect();
  $('print-heading').textContent=`${year}年度｜空氣污染突發事故緊急應變演練管制總表`;
  const sites=sortedSites(data.sites),siteOptions=sites.map(s=>`<option value="${attrs(s.id)}">${esc(s.name)}${s.active===false?'（停用）':''}</option>`).join('');
- for(const id of ['filter-site','unit-site-filter']){const node=$(id),old=node.value;node.innerHTML=`<option value="">全部公私場所</option>${siteOptions}`;node.value=sites.some(s=>s.id===old)?old:'';}
- renderOverview();renderRotation();renderYears();renderBasic();renderStatistics();
+ for(const id of ['filter-site']){const node=$(id),old=node.value;node.innerHTML=`<option value="">全部公私場所</option>${siteOptions}`;node.value=sites.some(s=>s.id===old)?old:'';}
+ renderOverview();renderRotation();renderYears();renderBasic();
  $('init-sites').hidden=INITIAL_SITES.every(s=>sites.some(v=>v.id===s.id));
- $('notice-days').value=days();
 }
 function filteredYearRows(){
  const selected=$('filter-site').value,status=$('filter-status').value,q=$('filter-text').value.trim().toLowerCase();
@@ -47,14 +45,57 @@ function filteredYearRows(){
   return (!selected||selected===x.site.id)&&(!status||status===x.s.code)&&(!q||`${x.site.name} ${x.assigned.name} ${x.record?.refNumber||''}`.toLowerCase().includes(q))&&(!start||!!d&&d>=start)&&(!end||!!d&&d<=end);
  });
 }
+// Direct in-table editing; draft changes are never written until the row is explicitly saved.
+const drillDrafts=new Map();
+function rowDraftValues(item){
+ const {record,rotation,base,assigned}=item;
+ return {assignedUnitId:record?.assignedUnitId||rotation?.assignedUnitId||assigned.id||base.unit?.id||'',plannedDate:record?.plannedDate||'',actualDate:record?.actualDate||'',sentDate:record?.sentDate||'',refNumber:record?.refNumber||'',note:record?.note||'',changeReason:record?.changeReason||rotation?.changeReason||''};
+}
 function renderOverview(){
  const closed=yearClosed();
  $('year-alert').hidden=!closed;
- $('year-alert').textContent=closed?`${year} 年度已${currentYearInfo()?.status==='archived'?'封存':'刪除'}，目前僅供查詢；請至「年度管理」復原後再修改。`:'';
+ $('year-alert').textContent=closed?`${year} 年度已${currentYearInfo()?.status==='archived'?'封存':'刪除'}，目前僅供查詢；請至「基本資料管理 → 年度管理」復原後再修改。`:'';
  const stat=summary(data.sites,data.drills,year,todayTaipei(),days());
  $('kpis').innerHTML=[['應辦公私場所',stat.sites,'年度適用廠區'],['已完成演練',stat.drilled,'已記錄實際日期'],['已發文備查',stat.sent,'已記錄發文日期'],['尚待發文',stat.awaiting,'含尚未演練'],['備查逾期',stat.overdue,'演練後超過30日']].map((v,i)=>`<div class="kpi ${i===4?'alert':''}"><div class="value">${v[1]}</div><div class="label">${v[0]}</div><div class="foot">${v[2]}</div></div>`).join('');
  const rows=filteredYearRows();
- $('overview-rows').innerHTML=rows.length?rows.map(x=>`<tr><td class="emph">${esc(x.site.name)}${x.site.active===false?' <small>（已停用）</small>':''}</td><td>${textOrDash(x.record?.originalUnitName||x.rotation?.originalUnitName||x.base.unit?.name)}</td><td>${x.assigned.name?esc(x.assigned.name):`<small>${esc(x.base.message||'待建檔')}</small>`}${x.assigned.changed?' <small>（調整）</small>':''}</td><td>${textOrDash(x.record?.plannedDate)}</td><td>${textOrDash(x.record?.actualDate)}</td><td>${textOrDash(x.s.deadline)}</td><td>${textOrDash(x.record?.sentDate)}</td><td>${textOrDash(x.record?.refNumber)}</td><td><span class="status ${x.s.tone}">${esc(x.s.label)}</span></td><td class="no-print"><button type="button" class="table-action" data-edit-drill="${attrs(x.site.id)}" ${closed?'disabled title="已封存年度僅供查詢"':''}>${closed?'已封存':x.record?'編輯':'登錄'}</button></td></tr>`).join(''):`<tr><td colspan="10" class="empty">${data.sites.length?'目前篩選條件沒有紀錄。':'尚未建立公私場所，請至基本資料管理初始化。'}</td></tr>`;
+ $('overview-rows').innerHTML=rows.length?rows.map(item=>{
+  const {site,record,rotation,s,base,assigned}=item,key=recordKey(year,site.id),draft=drillDrafts.get(key);
+  const v=draft?.values||rowDraftValues(item),editable=!closed&&!readOnly()&&site.active!==false&&Boolean(base.unit||record||rotation);
+  const d=editable?'':'disabled',planned=record?.plannedDate||'',actual=record?.actualDate||'',sent=record?.sentDate||'';
+  const selection=sortedUnits(data.units,site.id,true).map(u=>`<option value="${attrs(u.id)}" ${u.id===v.assignedUnitId?'selected':''} ${u.active===false&&u.id!==v.assignedUnitId?'disabled':''}>${esc(u.name)}${u.active===false?'（停用）':''}</option>`).join('');
+  const dateInput=(field,value,original,description)=>`<input class="inline-input compact-date" aria-label="${esc(site.name)}${description}" type="date" data-drill-field="${field}" value="${attrs(value)}" ${d}><span class="print-only">${textOrDash(original)}</span>`;
+  return `<tr data-drill-site="${attrs(site.id)}" class="${draft?'has-unsaved-draft':''}">
+    <td class="emph">${esc(site.name)}${site.active===false?' <small>（停用）</small>':''}</td>
+    <td>${textOrDash(record?.originalUnitName||rotation?.originalUnitName||base.unit?.name)}</td>
+    <td><div class="screen-only"><select class="inline-input unit-choice" data-drill-field="assignedUnitId" aria-label="${esc(site.name)}演練廠處" ${d}>${selection||'<option value="">待建檔</option>'}</select><details class="drill-extras"><summary>變更原因／備註</summary><label>變更原因<textarea data-drill-field="changeReason" maxlength="1500" placeholder="更換輪值廠處時必填" ${d}>${esc(v.changeReason)}</textarea></label><label>演練備註<textarea data-drill-field="note" maxlength="1500" ${d}>${esc(v.note)}</textarea></label></details></div><span class="print-only">${textOrDash(record?.assignedUnitName||rotation?.assignedUnitName||assigned.name)}</span>${!editable&&!record&&!rotation?`<small>${esc(base.message||'請先完成輪值建檔')}</small>`:''}</td>
+    <td>${dateInput('plannedDate',v.plannedDate,planned,'預定演練')}</td>
+    <td>${dateInput('actualDate',v.actualDate,actual,'實際演練')}</td>
+    <td data-due-preview><span data-due-text>${v.actualDate&&validDate(v.actualDate)?esc(addDays(v.actualDate,30)):'—'}</span>${draft?'<small>（未儲存）</small>':''}<span class="print-only">${textOrDash(s.deadline)}</span></td>
+    <td>${dateInput('sentDate',v.sentDate,sent,'發文日期')}</td>
+    <td><input class="inline-input ref-input screen-only" type="text" data-drill-field="refNumber" aria-label="${esc(site.name)}發文字號" value="${attrs(v.refNumber)}" maxlength="100" placeholder="發文字號" ${d}><span class="print-only">${textOrDash(record?.refNumber)}</span></td>
+    <td><span class="status ${s.tone}">${esc(s.label)}</span></td>
+    <td class="no-print"><div class="row-actions"><button type="button" class="table-action" data-drill-save="${attrs(site.id)}" ${d}>儲存</button><button type="button" class="table-action muted" data-drill-cancel="${attrs(site.id)}" ${draft?'':'hidden'}>取消</button><small data-unsaved-indicator ${draft?'':'hidden'}>未儲存</small></div></td>
+   </tr>`;
+ }).join(''):`<tr><td colspan="10" class="empty">${data.sites.length?'目前篩選條件沒有紀錄。':'尚未建立公私場所，請至基本資料管理初始化。'}</td></tr>`;
+}
+async function saveInlineDrill(siteId){
+ if(busy||readOnly()||yearClosed()){notice('年度已封存或尚未連線，不能儲存。','error');return;}
+ const site=getSite(siteId);if(!site){notice('找不到公私場所，請重新讀取資料。','error');return;}
+ const old=recordOf(year,siteId),rotation=rotationOf(year,siteId),base=proposedUnit(site,data.units,year);
+ if(site.active===false||(!base.unit&&!old&&!rotation)){notice('此公私場所尚未完成演練廠處輪值建檔。','error');return;}
+ const key=recordKey(year,siteId),draft=drillDrafts.get(key);if(!draft){notice('尚未修改本列資料，請先輸入或修改欄位。');return;}
+ const v=draft?.values||rowDraftValues({record:old,rotation,base,assigned:displayAssigned(site,data.units,year,old,rotation)});
+ const unit=data.units.find(u=>u.id===v.assignedUnitId&&u.siteId===siteId),originalUnitId=old?.originalUnitId||rotation?.originalUnitId||base.unit?.id||v.assignedUnitId;
+ const originalUnit=data.units.find(u=>u.id===originalUnitId),reason=String(v.changeReason||'').trim();
+ if(!unit){notice('請選擇有效的演練廠處。','error');return;}
+ if(v.assignedUnitId!==originalUnitId&&!reason){notice('變更原輪值廠處時，請展開「變更原因／備註」並填寫原因。','error');return;}
+ const row={id:key,siteId,siteName:old?.siteName||site.name,year,originalUnitId,originalUnitName:old?.originalUnitName||rotation?.originalUnitName||originalUnit?.name||'',assignedUnitId:unit.id,assignedUnitName:old?.assignedUnitId===unit.id&&old?.assignedUnitName?old.assignedUnitName:unit.name,changeReason:v.assignedUnitId!==originalUnitId?reason:'',plannedDate:v.plannedDate||'',actualDate:v.actualDate||'',sentDate:v.sentDate||'',refNumber:String(v.refNumber||'').trim(),note:String(v.note||'').trim()};
+ try{validateDrill(row,site,data.units,old);if(String(row.refNumber).length>100)throw Error('發文字號最多100字。');}
+ catch(e){notice(`資料驗證失敗：${e.message}`,'error');return;}
+ busy=true;
+ try{await cloud.saveDrill(row,draft?.baseVersion??old?.version??0);drillDrafts.delete(key);notice(`${year} 年 ${site.name} 演練／備查資料已儲存至雲端。`,'success');renderOverview();}
+ catch(e){notice(`儲存失敗：${e.message}`,'error');}
+ finally{busy=false;}
 }
 function renderRotation(){
  const sites=sortedSites(data.sites).filter(s=>s.active!==false);
@@ -74,14 +115,100 @@ function renderYears(){
  }).join('')||'<tr><td colspan="6" class="empty">尚無可用年度。</td></tr>';
  $('years-deleted').innerHTML=deleted.length?deleted.map(e=>`<div class="basic-item"><span>${e.year} 年（已刪除，資料未清除）</span><button type="button" class="table-action" data-year-restore="${e.year}">復原年度</button></div>`).join(''):'<p class="hint">目前沒有已刪除的年度。</p>';
 }
+// A single basic-data workspace: site, its units, an always-visible new-unit row.
+let siteEditor=null,unitEditor=null;
+const newUnitDrafts=new Map();
+function nextUnitOrder(siteId){
+ const used=new Set(data.units.filter(u=>u.siteId===siteId&&u.active!==false).map(u=>Number(u.order)));
+ const highest=Math.max(0,...data.units.filter(u=>u.siteId===siteId).map(u=>Number(u.order)||0));
+ if(highest<999&&!used.has(highest+1))return highest+1;
+ for(let i=1;i<=999;i++)if(!used.has(i))return i;
+ return 1;
+}
+const inlineField=(caption,key,value,kind='text',extra='',scope='site')=>`<label class="inline-label">${esc(caption)}<input data-${scope}-field="${key}" type="${kind}" value="${attrs(value??'')}" ${extra}></label>`;
+function siteEditorFields(){
+ const v=siteEditor.values;
+ return `<div class="site-edit-fields">${inlineField('公私場所名稱 *','name',v.name,'text','maxlength="80" required')}${inlineField('代碼','code',v.code,'text','maxlength="30"')}${inlineField('顯示順序 *','order',v.order,'number','min="1" max="999" required')}${inlineField('預期輪值廠處數 *','expectedUnits',v.expectedUnits,'number','min="1" max="50" required')}${inlineField('輪值基準年度 *','rotationStartYear',v.rotationStartYear,'number','min="2026" max="2100" required')}<label class="inline-label">啟用<input data-site-field="active" type="checkbox" ${v.active!==false?'checked':''}></label><label class="inline-label wide-field">備註<textarea data-site-field="note" maxlength="1500">${esc(v.note||'')}</textarea></label></div><div class="inline-actions"><button class="btn primary" type="button" data-site-save>儲存公私場所</button><button class="btn ghost" type="button" data-site-cancel>取消</button></div>`;
+}
+function renderUnitRow(u,site){
+ const editing=unitEditor?.id===u.id;
+ if(editing){const v=unitEditor.values;
+  return `<tr class="unit-edit-row"><td><input class="inline-input" type="number" min="1" max="999" data-unit-field="order" value="${attrs(v.order)}" aria-label="${esc(site.name)}編輯輪值順序"></td><td><input class="inline-input" type="text" maxlength="80" data-unit-field="name" value="${attrs(v.name)}" aria-label="編輯演練廠處名稱"><label class="inline-label note-label">備註<textarea data-unit-field="note" maxlength="1500">${esc(v.note||'')}</textarea></label></td><td><input class="inline-input" type="text" maxlength="30" data-unit-field="code" value="${attrs(v.code||'')}" aria-label="編輯廠處代碼"></td><td><input type="checkbox" data-unit-field="active" ${v.active!==false?'checked':''} aria-label="廠處啟用狀態"></td><td class="row-actions"><button type="button" class="table-action" data-unit-save="${attrs(u.id)}">儲存</button><button type="button" class="table-action muted" data-unit-cancel>取消</button></td></tr>`;
+ }
+ const used=unitWasUsed(u,data.drills,data.rotations);
+ return `<tr><td>${Number(u.order)||'—'}</td><td><strong>${esc(u.name)}</strong>${u.note?`<small>${esc(u.note)}</small>`:''}</td><td>${esc(u.code||'—')}</td><td><span class="chip ${u.active===false?'off':''}">${u.active===false?'停用':'啟用'}</span></td><td class="row-actions"><button type="button" class="table-action" data-unit-edit="${attrs(u.id)}">編輯</button><button type="button" class="table-action muted" data-unit-toggle="${attrs(u.id)}">${u.active===false?'啟用':'停用'}</button><button type="button" class="table-action danger" data-unit-delete="${attrs(u.id)}" ${used?'disabled title="已有歷史引用，僅可停用"':''}>刪除</button></td></tr>`;
+}
 function renderBasic(){
  const sites=sortedSites(data.sites);
- $('sites-list').innerHTML=sites.length?sites.map(s=>`<div class="basic-item"><div><strong>${esc(s.name)}</strong><p>代碼 ${esc(s.code||'未設定')} · 預設 ${Number(s.expectedUnits||1)} 個輪值廠處 · 順序 ${Number(s.order||0)}</p></div><div class="right"><span class="chip ${s.active===false?'off':''}">${s.active===false?'停用':'啟用'}</span><button type="button" class="table-action" data-edit-site="${attrs(s.id)}">編輯</button></div></div>`).join(''):'<div class="empty">尚無公私場所</div>';
- const siteFilter=$('unit-site-filter').value,units=data.units.filter(u=>!siteFilter||u.siteId===siteFilter).sort((a,b)=>(getSite(a.siteId)?.order||0)-(getSite(b.siteId)?.order||0)||(a.order||0)-(b.order||0));
- $('units-list').innerHTML=units.length?units.map(u=>`<div class="basic-item"><div><strong>${esc(u.name)}</strong><p>${esc(getSite(u.siteId)?.name||'未知場所')} · 輪值順序 ${Number(u.order||0)} · ${esc(u.code||'無代碼')}</p></div><div class="right"><span class="chip ${u.active===false?'off':''}">${u.active===false?'停用':'啟用'}</span><button type="button" class="table-action" data-edit-unit="${attrs(u.id)}">編輯</button><button type="button" class="table-action muted" data-unit-toggle="${attrs(u.id)}">${u.active===false?'啟用':'停用'}</button><button type="button" class="table-action danger" data-unit-delete="${attrs(u.id)}" ${unitWasUsed(u,data.drills,data.rotations)?'disabled title="歷史輪值或演練已引用，僅能停用"':''}>刪除</button></div></div>`).join(''):'<div class="empty">尚未新增演練廠處</div>';
+ const newSite=siteEditor?.isNew?`<div class="inline-site-editor"><h3>新增公私場所</h3>${siteEditorFields()}</div>`:'';
+ const blocks=sites.map(s=>{
+  const editSite=siteEditor?.id===s.id;
+  const units=sortedUnits(data.units,s.id,true),draft=newUnitDrafts.get(s.id)||{order:nextUnitOrder(s.id),name:'',code:'',active:true};
+  const disabled=readOnly()||s.active===false?'disabled':'';
+  const unitRows=units.map(u=>renderUnitRow(u,s)).join('');
+  return `<section class="site-block" data-site-group="${attrs(s.id)}"><div class="site-head"><div><h3>${esc(s.name)}</h3><p>代碼 ${esc(s.code||'未設定')} · 預設 ${Number(s.expectedUnits||1)} 個輪值廠處 · 場所順序 ${Number(s.order||0)}</p></div><div class="right"><span class="chip ${s.active===false?'off':''}">${s.active===false?'停用':'啟用'}</span>${!editSite?`<button type="button" class="table-action" data-site-edit="${attrs(s.id)}">編輯公私場所</button>`:''}</div></div>
+  ${editSite?`<div class="inline-site-editor">${siteEditorFields()}</div>`:''}
+  <div class="site-unit-heading"><h4>演練廠處與輪值順序</h4><span>${units.length} 筆（啟用 ${units.filter(u=>u.active!==false).length} 筆）</span></div>
+  <div class="table-wrap"><table class="data-table site-units-table"><thead><tr><th>輪值順序</th><th>演練廠處名稱</th><th>代碼</th><th>狀態</th><th>管理</th></tr></thead><tbody>${unitRows}<tr class="unit-new-row" data-new-unit-site="${attrs(s.id)}"><td><input class="inline-input" data-new-unit-field="order" type="number" min="1" max="999" value="${attrs(draft.order)}" aria-label="${esc(s.name)}新增輪值順序" ${disabled}></td><td><input class="inline-input" data-new-unit-field="name" maxlength="80" value="${attrs(draft.name)}" placeholder="直接輸入新演練廠處" aria-label="${esc(s.name)}新增演練廠處名稱" ${disabled}></td><td><input class="inline-input" data-new-unit-field="code" maxlength="30" value="${attrs(draft.code)}" placeholder="選填" aria-label="新增廠處代碼" ${disabled}></td><td><input data-new-unit-field="active" type="checkbox" ${draft.active?'checked':''} aria-label="新廠處啟用" ${disabled}></td><td><button type="button" class="table-action" data-new-unit-save="${attrs(s.id)}" ${disabled}>＋新增並儲存</button></td></tr></tbody></table></div></section>`;
+ }).join('');
+ $('sites-list').innerHTML=newSite+blocks+(sites.length?'':'<div class="empty">尚無公私場所，請新增或初始化。</div>');
 }
-function renderStatistics(){const s=summary(data.sites,data.drills,year,todayTaipei(),days()),pct=s.sites?Math.round(s.drilled/s.sites*100):0;
- $('statistics-content').innerHTML=`<div class="stat-grid"><div><strong>${pct}%</strong><span>演練完成率</span></div><div><strong>${s.sent}/${s.sites}</strong><span>備查發文件數</span></div><div><strong>${s.overdue}</strong><span>逾期未發文</span></div></div><div class="stat-progress"><div style="width:${pct}%"></div></div><p class="hint">完成率＝已記錄實際演練日期之公私場所數 ÷ 啟用公私場所數。尚未實際演練不計完成；不推定法規符合性。</p>`;
+function startSiteEdit(id=null){
+ if(readOnly()){notice('請確認 Firebase 已連線後再編輯。','error');return;}
+ const old=id?getSite(id):null;
+ siteEditor={id:old?.id||crypto.randomUUID(),isNew:!old,values:old?{...old}:{name:'',code:'',order:Math.max(0,...data.sites.map(s=>Number(s.order)||0))+1,expectedUnits:1,rotationStartYear:2026,active:true,note:'',rotationHint:''}};
+ renderBasic();
+ const form=$('sites-list').querySelector('[data-site-field="name"]');form?.focus();
+}
+function startUnitEdit(id){
+ if(readOnly()){notice('請確認 Firebase 已連線後再編輯。','error');return;}
+ const old=data.units.find(u=>u.id===id);if(!old)return;
+ unitEditor={id,siteId:old.siteId,values:{...old}};renderBasic();
+}
+function validateUnitFields(v,siteId,id=''){
+ const name=String(v.name||'').trim(),code=String(v.code||'').trim(),order=Number(v.order),active=v.active!==false;
+ if(!name||name.length>80)throw Error('演練廠處名稱必填，最多80字。');
+ if(code.length>30)throw Error('廠處代碼最多30字。');
+ if(!Number.isInteger(order)||order<1||order>999)throw Error('輪值順序必須是1～999。');
+ if(data.units.some(u=>u.id!==id&&u.siteId===siteId&&String(u.name||'').trim().toLocaleLowerCase()===name.toLocaleLowerCase()))throw Error(`「${name}」已存在於此公私場所。`);
+ if(active&&data.units.some(u=>u.id!==id&&u.siteId===siteId&&u.active!==false&&Number(u.order)===order))throw Error(`輪值順序 ${order} 已被使用，請另選順序。`);
+ return {name,code,order,active};
+}
+async function saveSiteInline(){
+ if(readOnly()||busy||!siteEditor)return;
+ const e=siteEditor,old=e.isNew?null:getSite(e.id),v=e.values,name=String(v.name||'').trim();
+ if(!name||name.length>80){notice('公私場所名稱必填，最多80字。','error');return;}
+ if(String(v.code||'').length>30||String(v.note||'').length>1500){notice('代碼或備註過長。','error');return;}
+ if(data.sites.some(s=>s.id!==e.id&&s.name.trim().toLocaleLowerCase()===name.toLocaleLowerCase())){notice('公私場所名稱不可重複。','error');return;}
+ const order=Number(v.order),expectedUnits=Number(v.expectedUnits),rotationStartYear=Number(v.rotationStartYear);
+ if(!Number.isInteger(order)||order<1||order>999||!Number.isInteger(expectedUnits)||expectedUnits<1||expectedUnits>50||!validYear(rotationStartYear)){notice('順序、預期廠處數或基準年度超出範圍。','error');return;}
+ const next={...(old||{id:e.id,rotationHint:''}),name,code:String(v.code||'').trim(),note:String(v.note||'').trim(),order,expectedUnits,rotationStartYear,active:v.active!==false};
+ if(old&&!next.active&&data.drills.some(r=>r.siteId===old.id&&!r.actualDate)&&!confirm('此場所仍有未完成演練，停用後不納入新年度管制，確定繼續？'))return;
+ busy=true;
+ try{await cloud.saveSite(next,old?.version||0);siteEditor=null;renderBasic();notice(`公私場所「${name}」已儲存至雲端。`,'success');}
+ catch(err){notice(`公私場所儲存失敗：${err.message}`,'error');}
+ finally{busy=false;}
+}
+async function saveUnitInline(id){
+ if(readOnly()||busy||unitEditor?.id!==id)return;
+ const old=data.units.find(u=>u.id===id);if(!old){notice('廠處資料已不存在，請重新讀取。','error');return;}
+ let fields;
+ try{fields=validateUnitFields(unitEditor.values,old.siteId,id);}catch(e){notice(e.message,'error');return;}
+ busy=true;
+ try{await cloud.saveUnit({...old,...fields,note:String(unitEditor.values.note||'').trim()},old.version||0);unitEditor=null;renderBasic();notice('演練廠處修改已儲存。','success');}
+ catch(e){notice('演練廠處儲存失敗：'+e.message,'error');}
+ finally{busy=false;}
+}
+async function saveNewUnitInline(siteId){
+ if(readOnly()||busy)return;
+ const site=getSite(siteId);if(!site||site.active===false){notice('公私場所不存在或已停用。','error');return;}
+ const draft=newUnitDrafts.get(siteId)||{name:'',code:'',order:nextUnitOrder(siteId),active:true};
+ let fields;
+ try{fields=validateUnitFields(draft,siteId);}catch(e){notice(e.message,'error');return;}
+ busy=true;
+ try{await cloud.saveUnit({id:crypto.randomUUID(),siteId,...fields,note:''},0);newUnitDrafts.delete(siteId);renderBasic();notice(`「${fields.name}」已新增至「${site.name}」。`,'success');}
+ catch(e){notice('新增演練廠處失敗：'+e.message,'error');}
+ finally{busy=false;}
 }
 function openForm(title,description,fields,onSubmit){
  $('edit-heading').textContent=title;$('edit-description').textContent=description;$('edit-fields').innerHTML=fields;
@@ -94,72 +221,6 @@ function openForm(title,description,fields,onSubmit){
 const field=(label,name,value='',type='text',props='')=>`<label>${esc(label)}<input type="${type}" name="${name}" value="${attrs(value)}" ${props}></label>`;
 const textarea=(label,name,value='')=>`<label class="wide">${esc(label)}<textarea name="${name}" maxlength="1500">${esc(value)}</textarea></label>`;
 const check=(label,name,checked)=>`<label class="check"><input type="checkbox" name="${name}" ${checked?'checked':''}>${esc(label)}</label>`;
-function checkUniqueSite(name,id){if(data.sites.some(s=>s.name.trim()===name&&s.id!==id))throw Error('公私場所名稱不可重複。');}
-function editSite(id=''){
- if(readOnly()){notice('請等待 Firebase 雲端連線確認後再編輯。','error');return;}
- const existing=data.sites.find(s=>s.id===id);const o=existing||{id:crypto.randomUUID(),name:'',code:'',order:Math.max(0,...data.sites.map(s=>Number(s.order)||0))+1,expectedUnits:1,rotationStartYear:2026,active:true,note:'',rotationHint:''};
- openForm(existing?'編輯公私場所':'新增公私場所','此處以公私場所作為年度應演練與發文之管制單位。',
- field('公私場所名稱 *','name',o.name,'text','maxlength="80" required')+field('代碼','code',o.code,'text','maxlength="30"')+field('顯示順序 *','order',o.order,'number','min="1" max="999" required')+field('預期輪值廠處數 *','expectedUnits',o.expectedUnits,'number','min="1" max="50" required')+field('輪值基準年度','rotationStartYear',o.rotationStartYear,'number','min="2026" max="2100" required')+check('啟用此公私場所','active',o.active!==false)+textarea('備註','note',o.note),
- async form=>{
-  const name=String(form.get('name')||'').trim();if(!name)throw Error('請輸入公私場所名稱。');checkUniqueSite(name,o.id);
-  const next={...o,name,code:String(form.get('code')||'').trim(),order:Number(form.get('order')),expectedUnits:Number(form.get('expectedUnits')),rotationStartYear:Number(form.get('rotationStartYear')),active:form.has('active'),note:String(form.get('note')||'').trim()};
-  if(!Number.isInteger(next.order)||next.order<1||next.order>999||!Number.isInteger(next.expectedUnits)||next.expectedUnits<1||next.expectedUnits>50||!validYear(next.rotationStartYear))throw Error('順序、輪值數與基準年度必須在允許範圍內。');
-  if(existing&&!next.active&&data.drills.some(r=>r.siteId===o.id&&!r.actualDate)){
-   if(!confirm('此公私場所仍有未完成的歷史紀錄。停用後將不納入新年度義務統計，是否繼續？'))return false;
-  }
-  await cloud.saveSite(next,existing?.version||0);
- });
-}
-function editUnit(id=''){
- if(readOnly()){notice('請等待 Firebase 雲端連線確認後再編輯。','error');return;}
- const existing=data.units.find(u=>u.id===id),initialSite=$('unit-site-filter').value||sortedSites(data.sites).find(s=>s.active!==false)?.id||'';
- if(!existing&&!initialSite){notice('請先建立公私場所。','error');setTab('basic');return;}
- const o=existing||{id:crypto.randomUUID(),name:'',code:'',siteId:initialSite,order:Math.max(0,...data.units.filter(u=>u.siteId===initialSite).map(u=>Number(u.order)||0))+1,active:true,note:''};
- const options=sortedSites(data.sites).map(s=>`<option value="${attrs(s.id)}" ${s.id===o.siteId?'selected':''}>${esc(s.name)}</option>`).join('');
- openForm(existing?'編輯演練廠處':'新增演練廠處','設定輪值順序：順序1對應輪值基準年，順序2為次年，依此循環。',
- `<label>所屬公私場所 *<select name="siteId" required>${options}</select></label>`+field('演練廠處名稱 *','name',o.name,'text','maxlength="80" required')+field('代碼','code',o.code,'text','maxlength="30"')+field('輪值順序 *','order',o.order,'number','min="1" max="999" required')+check('啟用此演練廠處','active',o.active!==false)+textarea('備註','note',o.note),
- async form=>{
-  const siteId=String(form.get('siteId')||''),name=String(form.get('name')||'').trim();if(!name)throw Error('請輸入演練廠處名稱。');
-  if(!getSite(siteId))throw Error('公私場所不存在。');
-  if(existing&&existing.siteId!==siteId&&data.drills.some(r=>r.assignedUnitId===existing.id))throw Error('此廠處已被歷史演練引用，不可變更所屬公私場所。');
-  if(data.units.some(u=>u.siteId===siteId&&u.id!==o.id&&u.name===name))throw Error('同公私場所下廠處名稱不可重複。');
-  const order=Number(form.get('order'));if(!Number.isInteger(order)||order<1||order>999)throw Error('輪值順序必須為1～999。');
-  if(data.units.some(u=>u.siteId===siteId&&u.id!==o.id&&u.active!==false&&u.order===order&&form.has('active')))throw Error('同一公私場所的啟用廠處輪值順序不可重複。');
-  const next={...o,siteId,name,code:String(form.get('code')||'').trim(),order,active:form.has('active'),note:String(form.get('note')||'').trim()};
-  await cloud.saveUnit(next,existing?.version||0);
- });
-}
-function editDrill(siteId){
- if(yearClosed()){notice('此年度已封存或刪除。請至「年度管理」恢復後再編輯。','error');return;}
- if(readOnly()){notice('請等待 Firebase 雲端連線確認後再編輯。','error');return;}
- const site=getSite(siteId);if(!site){notice('找不到公私場所。','error');return;}
- if(site.active===false){notice('已停用的公私場所僅供查詢，不能新增或修改演練。','error');return;}
- const old=recordOf(year,siteId),rot=rotationOf(year,siteId),proposal=proposedUnit(site,data.units,year);
- const first=old?.originalUnitId||rot?.originalUnitId||proposal.unit?.id||'';
- const current=old?.assignedUnitId||rot?.assignedUnitId||first;
- if(!proposal.unit&&!old&&!rot){notice(`${site.name}：${proposal.message}。請先至基本資料管理完成輪值建檔。`,'error');setTab('basic');return;}
- const all=sortedUnits(data.units,siteId,true),options=all.map(u=>`<option value="${attrs(u.id)}" ${u.id===current?'selected':''} ${u.active===false&&u.id!==current?'disabled':''}>${esc(u.name)}${u.active===false?'（已停用）':''}</option>`).join('');
- const fields=`<label>管制年度<input value="${year}" disabled></label><label>公私場所<input value="${attrs(site.name)}" disabled></label>`+
- `<label>原輪值廠處<input value="${attrs(old?.originalUnitName||rot?.originalUnitName||proposal.unit?.name||'待建檔')}" disabled></label>`+
- `<label>實際演練廠處 *<select name="assignedUnitId" required>${options}</select></label>`+
- field('預定演練日期','plannedDate',old?.plannedDate||'','date')+
- field('實際演練日期','actualDate',old?.actualDate||'','date')+
- field('備查發文日期','sentDate',old?.sentDate||'','date')+
- field('發文字號（選填）','refNumber',old?.refNumber||'','text','maxlength="100"')+
- textarea('輪值調整原因（更換廠處時必填）','changeReason',old?.changeReason||rot?.changeReason||'')+
- textarea('演練備註','note',old?.note||'');
- openForm(`${year} 年｜${site.name} 演練管制`,'發文日期指演練後正式發函地方環保局備查之日期。系統將自動計算演練後30日備查期限。',fields,
- async form=>{
-  const unitId=String(form.get('assignedUnitId')||''),unit=all.find(u=>u.id===unitId);if(!unit)throw Error('找不到指定的演練廠處。');
-  const originalUnitId=first||unitId,originalUnit=all.find(u=>u.id===originalUnitId);
-  const reason=String(form.get('changeReason')||'').trim();
-  if(unitId!==originalUnitId&&!reason)throw Error('調整原輪值廠處時必須填寫變更原因。');
-  const dataRow={id:recordKey(year,site.id),siteId:site.id,siteName:site.name,year,originalUnitId,originalUnitName:old?.originalUnitName||rot?.originalUnitName||originalUnit?.name||'',assignedUnitId:unitId,assignedUnitName:(old?.assignedUnitId===unitId&&old?.assignedUnitName)?old.assignedUnitName:unit.name,changeReason:unitId!==originalUnitId?reason:'',plannedDate:String(form.get('plannedDate')||''),actualDate:String(form.get('actualDate')||''),sentDate:String(form.get('sentDate')||''),refNumber:String(form.get('refNumber')||'').trim(),note:String(form.get('note')||'').trim()};
-  validateDrill(dataRow,site,data.units,old);
-  // Explicitly retain original snapshots; no bulk rewrite of older records on basic-data changes.
-  await cloud.saveDrill(dataRow,old?.version||0);
- });
-}
 function showImport(){if(readOnly()){notice('請等待 Firebase 雲端連線確認後再匯入。','error');return;}imported=[];$('import-file').value='';$('import-result').innerHTML='<p>選擇由本系統匯出的 Excel，先預覽差異再選取需寫入的紀錄。</p>';$('import-apply').disabled=true;$('import-dialog').showModal();}
 function stageImport(rows){
  const seen=new Set();imported=[];
@@ -202,7 +263,7 @@ async function applyImport(){if(busy||readOnly())return;const selected=imported.
  finally{busy=false;$('import-apply').disabled=false;imported=[];}
 }
 
-// R0.2 year register, legacy data remain readable without any migration or bulk write.
+// R0.2.1: retained R0.2 year register, legacy data remain readable without any migration or bulk write.
 function editYear(n=null){
  if(readOnly()){notice('請先確認雲端已連線。','error');return;}
  const old=n===null?null:currentYearInfo(n), existing=old&&!old.implicit?old:null;
@@ -249,38 +310,8 @@ async function deleteUnit(id){
  if(!confirm(`確定永久刪除未使用的演練廠處「${u.name}」？此操作無法復原，建議先備份。`))return;
  busy=true;try{await cloud.deleteUnusedUnit(u,u.version||0);notice('未使用的演練廠處已刪除。','success');}catch(e){notice('刪除失敗：'+e.message,'error');}finally{busy=false;}
 }
-function addBulkRow(){
- if(bulkRows.length>=50){notice('每批最多50筆。','error');return;}
- const siteId=$('bulk-site').value;
- const used=[...data.units.filter(u=>u.siteId===siteId).map(u=>Number(u.order)||0),...bulkRows.map(x=>Number(x.order)||0)];
- bulkRows.push({id:crypto.randomUUID(),name:'',code:'',siteId,order:Math.max(0,...used)+1,active:true,note:''});renderBulkRows();
-}
-function renderBulkRows(){
- $('bulk-rows').innerHTML=bulkRows.map((r,i)=>`<tr data-bulk-id="${attrs(r.id)}"><td><input aria-label="第${i+1}列輪值順序" data-bulk-key="order" type="number" min="1" max="999" value="${Number(r.order)}" required></td><td><input aria-label="第${i+1}列演練廠處名稱" data-bulk-key="name" maxlength="80" value="${attrs(r.name)}" placeholder="輸入廠處名稱" required></td><td><input aria-label="第${i+1}列代碼" data-bulk-key="code" maxlength="30" value="${attrs(r.code)}" placeholder="選填"></td><td><input aria-label="第${i+1}列是否啟用" data-bulk-key="active" type="checkbox" ${r.active?'checked':''}></td><td><button class="table-action danger" type="button" data-bulk-remove="${attrs(r.id)}">移除</button></td></tr>`).join('');
-}
-function openBulk(){
- if(readOnly()){notice('請先確認雲端已連線。','error');return;}
- const sites=sortedSites(data.sites).filter(s=>s.active!==false);
- if(!sites.length){notice('請先新增或啟用公私場所。','error');return;}
- const filter=$('unit-site-filter').value,selected=sites.some(s=>s.id===filter)?filter:sites[0].id;
- $('bulk-site').innerHTML=sites.map(s=>`<option value="${attrs(s.id)}">${esc(s.name)}</option>`).join('');
- $('bulk-site').value=selected;bulkRows=[];for(let i=0;i<3;i++)addBulkRow();$('bulk-dialog').showModal();
-}
-async function saveBulk(){
- if(readOnly()||busy)return;
- const siteId=$('bulk-site').value,site=getSite(siteId);
- if(!site||site.active===false){notice('公私場所不存在或已停用。','error');return;}
- try{validateBatchUnits(siteId,bulkRows,data.units);}catch(e){notice('批次資料有誤：'+e.message,'error');return;}
- if(!confirm(`確定一次新增 ${bulkRows.length} 個演練廠處至「${site.name}」？請確認輪值順序。`))return;
- busy=true;$('bulk-save').disabled=true;
- try{await cloud.saveUnitsBatch(siteId,bulkRows,data.units);$('bulk-dialog').close();notice(`已一次儲存 ${bulkRows.length} 筆演練廠處至 Firebase。`,'success');}
- catch(e){notice('批次儲存失敗：'+e.message,'error');}
- finally{busy=false;$('bulk-save').disabled=false;}
-}
-
 $('tabs').addEventListener('click',e=>{const btn=e.target.closest('[data-tab]');if(btn)setTab(btn.dataset.tab);});
 $('selected-year').addEventListener('change',e=>{year=Number(e.target.value);render();});
-$('go-years').onclick=()=>setTab('years');
 $('new-year').onclick=()=>editYear();
 function handleYearClicks(e){
  const b=e.target.closest('button');if(!b)return;
@@ -294,44 +325,49 @@ $('years-rows').addEventListener('click',handleYearClicks);
 $('years-deleted').addEventListener('click',handleYearClicks);
 ['filter-site','filter-status','filter-date-field','filter-from','filter-to'].forEach(id=>$(id).addEventListener('change',renderOverview));
 $('filter-text').addEventListener('input',renderOverview);
-$('unit-site-filter').addEventListener('change',renderBasic);
-$('overview-rows').addEventListener('click',e=>{const b=e.target.closest('[data-edit-drill]');if(b)editDrill(b.dataset.editDrill);});
-$('sites-list').addEventListener('click',e=>{const b=e.target.closest('[data-edit-site]');if(b)editSite(b.dataset.editSite);});
-$('units-list').addEventListener('click',e=>{
+$('overview-rows').addEventListener('input',e=>{
+ const node=e.target.closest('[data-drill-field]'),row=e.target.closest('[data-drill-site]');if(!node||!row)return;
+ const key=recordKey(year,row.dataset.drillSite),old=drillDrafts.get(key),site=getSite(row.dataset.drillSite);
+ if(!site)return;
+ const item={record:recordOf(year,site.id),rotation:rotationOf(year,site.id),base:proposedUnit(site,data.units,year),assigned:displayAssigned(site,data.units,year,recordOf(year,site.id),rotationOf(year,site.id))};
+ const draft=old||{baseVersion:item.record?.version||0,values:rowDraftValues(item)};
+ draft.values[node.dataset.drillField]=node.value;drillDrafts.set(key,draft);
+ row.classList.add('has-unsaved-draft');
+ const due=row.querySelector('[data-due-preview]');if(due){const actual=draft.values.actualDate;const text=due.querySelector('[data-due-text]');if(text)text.textContent=actual&&validDate(actual)?addDays(actual,30):'—';}
+ const status=row.querySelector('[data-unsaved-indicator]');if(status)status.hidden=false;const cancel=row.querySelector('[data-drill-cancel]');if(cancel)cancel.hidden=false;
+});
+$('overview-rows').addEventListener('change',e=>{if(e.target.matches('[data-drill-field]'))e.target.dispatchEvent(new Event('input',{bubbles:true}));});
+$('overview-rows').addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;
- if(b.dataset.editUnit)editUnit(b.dataset.editUnit);
- else if(b.dataset.unitToggle)toggleUnit(b.dataset.unitToggle);
- else if(b.dataset.unitDelete)deleteUnit(b.dataset.unitDelete);
+ if(b.dataset.drillSave)saveInlineDrill(b.dataset.drillSave);
+ else if(b.dataset.drillCancel){drillDrafts.delete(recordKey(year,b.dataset.drillCancel));renderOverview();}
 });
-$('new-site').onclick=()=>editSite();$('new-unit').onclick=()=>editUnit();
-$('bulk-new-units').onclick=openBulk;
-$('bulk-close').onclick=()=>$('bulk-dialog').close();
-$('bulk-cancel').onclick=()=>$('bulk-dialog').close();
-$('bulk-add-row').onclick=addBulkRow;
-$('bulk-site').onchange=()=>{bulkRows=[];for(let i=0;i<3;i++)addBulkRow();};
-$('bulk-rows').addEventListener('input',e=>{
- const input=e.target.closest('[data-bulk-key]');if(!input)return;
- const row=bulkRows.find(r=>r.id===input.closest('[data-bulk-id]')?.dataset.bulkId);if(!row)return;
- const key=input.dataset.bulkKey;row[key]=key==='active'?input.checked:key==='order'?Number(input.value):input.value;
-});
-$('bulk-rows').addEventListener('change',e=>{
- if(e.target.dataset.bulkKey==='active'){
-  const row=bulkRows.find(r=>r.id===e.target.closest('[data-bulk-id]')?.dataset.bulkId);
-  if(row)row.active=e.target.checked;
+$('new-site').onclick=()=>startSiteEdit();
+$('sites-list').addEventListener('input',e=>{
+ const input=e.target,siteField=input.dataset.siteField,unitField=input.dataset.unitField,newUnitField=input.dataset.newUnitField;
+ const value=input.type==='checkbox'?input.checked:input.value;
+ if(siteField&&siteEditor){siteEditor.values[siteField]=value;return;}
+ if(unitField&&unitEditor){unitEditor.values[unitField]=value;return;}
+ if(newUnitField){const siteId=input.closest('[data-new-unit-site]')?.dataset.newUnitSite;if(!siteId)return;
+  const draft=newUnitDrafts.get(siteId)||{order:nextUnitOrder(siteId),name:'',code:'',active:true};draft[newUnitField]=value;newUnitDrafts.set(siteId,draft);
  }
 });
-$('bulk-rows').addEventListener('click',e=>{
- const b=e.target.closest('[data-bulk-remove]');if(!b)return;
- bulkRows=bulkRows.filter(r=>r.id!==b.dataset.bulkRemove);
- if(!bulkRows.length)addBulkRow();else renderBulkRows();
+$('sites-list').addEventListener('change',e=>{if(e.target.matches('input[type="checkbox"][data-site-field],input[type="checkbox"][data-unit-field],input[type="checkbox"][data-new-unit-field]'))e.target.dispatchEvent(new Event('input',{bubbles:true}));});
+$('sites-list').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-site-save'))saveSiteInline();
+ else if(b.hasAttribute('data-site-cancel')){siteEditor=null;renderBasic();}
+ else if(b.dataset.siteEdit)startSiteEdit(b.dataset.siteEdit);
+ else if(b.dataset.unitEdit)startUnitEdit(b.dataset.unitEdit);
+ else if(b.dataset.unitSave)saveUnitInline(b.dataset.unitSave);
+ else if(b.hasAttribute('data-unit-cancel')){unitEditor=null;renderBasic();}
+ else if(b.dataset.unitToggle)toggleUnit(b.dataset.unitToggle);
+ else if(b.dataset.unitDelete)deleteUnit(b.dataset.unitDelete);
+ else if(b.dataset.newUnitSave)saveNewUnitInline(b.dataset.newUnitSave);
 });
-$('bulk-save').onclick=saveBulk;
 $('init-sites').onclick=async()=>{if(busy||readOnly()){notice('Firebase 尚未連線，不能初始化。','error');return;}
  if(!confirm('確定將麥寮廠、海豐廠新增為公私場所基本資料？此操作不會新增演練廠處或歷史演練紀錄。'))return;
  busy=true;$('init-sites').disabled=true;try{await cloud.initializeSites();notice('公私場所初始化完成。請自行建立演練廠處及輪值順序。','success');}catch(e){notice('初始化失敗：'+e.message,'error');}finally{busy=false;$('init-sites').disabled=false;}
-};
-$('settings-form').onsubmit=async e=>{e.preventDefault();if(busy||readOnly()){notice('Firebase 尚未連線，不能變更設定。','error');return;}const v=Number($('notice-days').value);if(!Number.isInteger(v)||v<0||v>30){notice('提前警示天數請輸入0～30。','error');return;}busy=true;
- try{await cloud.saveSettings(v,data.settings.version||0);notice('警示設定已儲存。','success');}catch(e){notice('警示設定儲存失敗：'+e.message,'error');}finally{busy=false;}
 };
 $('excel-export').onclick=async()=>{try{if(readOnly())throw Error('雲端資料尚未就緒。');await exportXlsx({...data,year,exportSiteIds:filteredYearRows().map(x=>x.site.id)});notice('Excel 已完成匯出。','success');}catch(e){notice('Excel 匯出失敗：'+e.message,'error');}};
 $('excel-import').onclick=()=>showImport();
@@ -347,7 +383,7 @@ function begin(){
  setupYears();setTab('overview');connected('登入服務連接中…');
  cloud.observeAuth(user=>{
   const seq=++authSeq;if(unsub){unsub();unsub=null;}
-  authorized=cloud.owner();data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
+  authorized=cloud.owner();drillDrafts.clear();newUnitDrafts.clear();siteEditor=null;unitEditor=null;data={sites:[],units:[],rotations:[],drills:[],years:[],settings:{noticeDays:7,version:0},ready:false,fromCache:true};
   $('user-name').textContent=user?.email||'';$('login').hidden=!!user;$('logout').hidden=!user;
   $('workspace').hidden=true;$('gate').hidden=false;
   if(!authorized){connected(user?'帳號未授權':'尚未登入',user?'danger':'muted');notice(user?'此 Google 帳號未獲授權，請改用管理員帳號。':'請按 Google 登入後使用系統。',user?'error':'');return;}

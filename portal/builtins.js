@@ -2,6 +2,11 @@
 // Existing cloud entries (including hidden or reclassified entries) take precedence.
 const registrations = [
   {
+    id: 'air-emergency-drill-r01', title: '空氣污染突發事故緊急應變演練管理系統',
+    description: '麥寮廠與海豐廠年度應變演練輪值、演練日期、30日備查期限與發文管制，含廠區廠處基本資料、法規重點與 Excel 管理。',
+    href: 'air-emergency-drill/index.html?v=r01', category: 'environment', order: 86, visible: true, favorite: false
+  },
+  {
     id: 'ehs-smart-calendar-r0', title: 'EHS 智慧行事曆',
     description: '月份行事曆、中文智慧新增、活動分類、Google 日曆 CSV 匯入／匯出及 Discord 提醒。',
     href: 'calendar/index.html', category: 'general', order: 52, visible: true, favorite: false

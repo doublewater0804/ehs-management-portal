@@ -1,4 +1,4 @@
-// R0.3：純前端顯示輔助，不讀寫 Firestore；排序只作用於當日清單。
+// R0.5.1：純前端顯示輔助，不讀寫 Firestore；排序只作用於當日清單。
 const STATUS_TEXT = Object.freeze({
   pending: '待辦', completed: '已完成', cancelled: '已取消', postponed: '已延期'
 });
@@ -22,7 +22,11 @@ export function categoryTint(raw, whiteWeight = 0.85) {
 
 export function eventTimeText(event) {
   // 未指定開始時間時不產生「未定時間」；原本明確的全天活動仍顯示「全天」。
-  return event.startTime || (event.allDay ? '全天' : '');
+  if (event.allDay) return '全天';
+  // 跨日延續到後續日期時，不把第一天的開始時刻誤當成當天的開始時間。
+  if (event.occurrenceStart && event.occurrenceDate &&
+      event.occurrenceStart !== event.occurrenceDate) return '';
+  return event.startTime || '';
 }
 
 export function eventStatusText(event) {
@@ -30,10 +34,24 @@ export function eventStatusText(event) {
   return STATUS_TEXT[status] || String(status);
 }
 
+
+// R0.5.1: 「出差／公出」須排在「請假」之前。
+// 僅於畫面排序時調整副本，分類 ID、Firebase 原始順序及歷史行程不變。
+export function orderedCategories(categories) {
+  const sorted=[...categories];
+  const key=s=>String(s??'').replace(/\s+/g,'').replaceAll('／','/');
+  const leave=sorted.findIndex(c=>key(c.name)==='請假');
+  const trip=sorted.findIndex(c=>key(c.name)==='出差/公出');
+  if(leave<0||trip<0||trip<leave) return sorted;
+  const [moved]=sorted.splice(trip,1);
+  sorted.splice(leave,0,moved);
+  return sorted;
+}
+
 // 第一層：分類管理順序；第二層：同分類有時間者早到晚，無時間者最後。
 // 分類管理以既有 categories 陣列顯示，未新增 order 欄位或 Firebase 排序寫入。
 export function sortDayEvents(items, categories) {
-  const order = new Map(categories.map((c, i) => [c.id, i]));
+  const order = new Map(orderedCategories(categories).map((c, i) => [c.id, i]));
   return [...items].sort((a, b) => {
     const ar = order.has(a.categoryId) ? order.get(a.categoryId) : Number.MAX_SAFE_INTEGER;
     const br = order.has(b.categoryId) ? order.get(b.categoryId) : Number.MAX_SAFE_INTEGER;
@@ -42,10 +60,12 @@ export function sortDayEvents(items, categories) {
       const unknown = String(a.categoryId || '').localeCompare(String(b.categoryId || ''), 'zh-Hant');
       if (unknown) return unknown;
     }
-    const aHasTime = Boolean(a.startTime), bHasTime = Boolean(b.startTime);
+    const aTime = eventTimeText(a), bTime = eventTimeText(b);
+    // 「全天」與真正的 HH:MM 分開看待；延續日的原始開始時間不可用於當日排序。
+    const aHasTime = /^\d{2}:\d{2}$/.test(aTime), bHasTime = /^\d{2}:\d{2}$/.test(bTime);
     if (aHasTime !== bHasTime) return aHasTime ? -1 : 1;
-    if (aHasTime && bHasTime && a.startTime !== b.startTime)
-      return a.startTime.localeCompare(b.startTime);
+    if (aHasTime && bHasTime && aTime !== bTime)
+      return aTime.localeCompare(bTime);
     const title = String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hant');
     return title || String(a.id || '').localeCompare(String(b.id || ''), 'zh-Hant');
   });

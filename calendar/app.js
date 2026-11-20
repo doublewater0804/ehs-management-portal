@@ -5,7 +5,7 @@ import {firebaseConfig,allowedEmail} from './config.js';
 import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.4';
 import {icsExport,icsImport} from './ics.js?v=R0.4';
 import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
-import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.4';
+import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents,orderedCategories} from './display.js?v=R0.5.1';
 import {assertNoteSize,collectLegacyNotes,noteMigrationPlan,monthLabel} from './shared-notes.js?v=R0.5';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
@@ -60,7 +60,7 @@ async function removeEvent(id){
 function activeCats(){return categories.filter(c=>c.active)}
 function category(e){return categories.find(c=>c.id===e.categoryId)||{name:'未分類',color:'#9ca3af'}}
 function render(){renderCategories();renderCalendar();renderDay()}
-function renderCategories(){const area=$('categories');area.replaceChildren();categories.forEach(c=>{let label=el('label','catToggle');let input=document.createElement('input');input.type='checkbox';input.checked=!filter.has(c.id);input.addEventListener('change',()=>{if(input.checked)filter.delete(c.id);else filter.add(c.id);renderCalendar();renderDay()});label.append(input);const dot=el('i','dot');dot.style.background=c.color;label.append(dot,txt(el('span'),c.name+(c.active?'':'（停用）')));area.append(label)})}
+function renderCategories(){const area=$('categories');area.replaceChildren();orderedCategories(categories).forEach(c=>{let label=el('label','catToggle');let input=document.createElement('input');input.type='checkbox';input.checked=!filter.has(c.id);input.addEventListener('change',()=>{if(input.checked)filter.delete(c.id);else filter.add(c.id);renderCalendar();renderDay()});label.append(input);const dot=el('i','dot');dot.style.background=c.color;label.append(dot,txt(el('span'),c.name+(c.active?'':'（停用）')));area.append(label)})}
 function shownEvents(){let q=$('search').value.trim().toLowerCase();return monthOccurrences(events,year,month).filter(e=>!filter.has(e.categoryId)&&(!q||[e.title,e.location,e.owner,e.description].some(t=>String(t||'').toLowerCase().includes(q))))}
 function renderCalendar(){
  let cal=$('calendar');cal.replaceChildren();

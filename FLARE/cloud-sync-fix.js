@@ -18,6 +18,22 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
   });
 
 
+  // Firestore does not accept undefined anywhere in a document update.
+  // Copy only plain JSON-like structures, preserving Date / Timestamp / SDK values.
+  // Do not mutate the live state; undefined object properties are omitted and
+  // undefined array slots become null so array indexes remain stable.
+  const withoutUndefined = (value) => {
+    if (Array.isArray(value)) return value.map(item => item === undefined ? null : withoutUndefined(item));
+    if (value && typeof value === 'object' && (Object.getPrototypeOf(value) === null || Object.getPrototypeOf(value)?.constructor?.name === 'Object')) {
+      const result = {};
+      for (const [key, item] of Object.entries(value)) {
+        if (item !== undefined) result[key] = withoutUndefined(item);
+      }
+      return result;
+    }
+    return value;
+  };
+
   const findMatchingExclusionKeys = (exclusions, factory, dateISO) => {
     const normalizedFactory = normalizeText(factory);
     const normalizedDate = normalizeText(dateISO);
@@ -50,7 +66,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
       // 一般儲存：直接取代 top-level state，避免巢狀 excludedDays 被 merge 保留舊 key。
       window.__flareCloudPush = async (state) => {
         await updateDoc(flareDoc, {
-          state,
+          state: withoutUndefined(state),
           updatedAt: serverTimestamp()
         });
       };
@@ -97,11 +113,16 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
             if (amountChanged) history.push({ from: previous, to: nextAmount, at: modifiedAt });
             const typeEditHistory = Array.isArray(event.typeEditHistory) ? [...event.typeEditHistory] : [];
             if (typeChanged) typeEditHistory.push({ from: originalType, to: requestedType, at: modifiedAt, source: 'manual-correction' });
-            return [{ ...event, amount: nextAmount, reason: nextReason,
+            // Only append amount-edit metadata when amount was actually edited.
+            // A type-only correction must not introduce undefined historical fields.
+            return [{ ...event, amount: nextAmount,
+              ...(nextReason === undefined ? {} : { reason: nextReason }),
               ...(typeChanged ? { type: requestedType, typeModifiedAt: modifiedAt, typeEditHistory: typeEditHistory.slice(-20) } : {}),
-              amountModifiedAt: amountChanged ? modifiedAt : event.amountModifiedAt,
-              amountModifiedFrom: amountChanged ? previous : event.amountModifiedFrom,
-              amountEditHistory: history.slice(-20) }];
+              ...(amountChanged ? {
+                amountModifiedAt: modifiedAt,
+                amountModifiedFrom: previous,
+                amountEditHistory: history.slice(-20)
+              } : {}) }];
           });
           if(Array.isArray(state.r07?.records)){
             const nextMap = new Map(state.events.map(e=>[String(e.id),e]));
@@ -116,7 +137,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
             });
           }
           state.updatedAtLocal = modifiedAt;
-          transaction.update(flareDoc, { state, updatedAt: serverTimestamp() });
+          transaction.update(flareDoc, { state: withoutUndefined(state), updatedAt: serverTimestamp() });
           return state;
         });
         // 實際雲端交易提交後才重繪。避免失敗時本機顯示已刪除。
@@ -128,7 +149,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
 
       window.__flareCloudUploadLocal = async (state) => {
         await setDoc(flareDoc, {
-          state,
+          state: withoutUndefined(state),
           updatedAt: serverTimestamp(),
           migratedAt: serverTimestamp()
         });
@@ -158,7 +179,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
           state.excludedDays = exclusions;
 
           transaction.update(flareDoc, {
-            state,
+            state: withoutUndefined(state),
             updatedAt: serverTimestamp()
           });
 

@@ -197,11 +197,14 @@
       if(changes.has(index)) history.push({ from: previous, to: newAmount, at: changedAt });
       const typeEditHistory = Array.isArray(event.typeEditHistory) ? [...event.typeEditHistory] : [];
       if(typeChanged) typeEditHistory.push({from:event.type || 'NON-TA',to:typeMap.get(index),at:changedAt,source:'manual-correction'});
-      return [{ ...event, amount: newAmount, reason: reasonChanged ? reasons[index] : event.reason,
+      return [{ ...event, amount: newAmount,
+        ...(reasonChanged ? { reason: reasons[index] } : {}),
         ...(typeChanged ? { type: typeMap.get(index), typeModifiedAt: changedAt, typeEditHistory: typeEditHistory.slice(-20) } : {}),
-        amountModifiedAt: changes.has(index) ? changedAt : event.amountModifiedAt,
-        amountModifiedFrom: changes.has(index) ? previous : event.amountModifiedFrom,
-        amountEditHistory: history.slice(-20) }];
+        ...(changes.has(index) ? {
+          amountModifiedAt: changedAt,
+          amountModifiedFrom: previous,
+          amountEditHistory: history.slice(-20)
+        } : {}) }];
     });
     const nextState = { ...live, events: nextEvents, updatedAtLocal: changedAt };
     const priorIds = new Set(originalEvents.map(e=>String(e.id)));

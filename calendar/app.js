@@ -1,15 +1,16 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut,setPersistence,browserLocalPersistence} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,getDocs,onSnapshot,serverTimestamp,writeBatch} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,getDocs,getDocFromServer,getDocsFromServer,onSnapshot,serverTimestamp,writeBatch,runTransaction} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {firebaseConfig,allowedEmail} from './config.js';
-import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.2';
-import {icsExport,icsImport} from './ics.js?v=R0.2';
+import {pad,validISO,localDate,parseSmart,monthOccurrences} from './logic.js?v=R0.4';
+import {icsExport,icsImport} from './ics.js?v=R0.4';
 import {officeDay,officeYearSupported} from './holidays.js?v=R0.1';
-import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.3';
+import {categoryColor,categoryTint,eventTimeText,eventStatusText,sortDayEvents} from './display.js?v=R0.4';
+import {assertNoteSize,collectLegacyNotes,noteMigrationPlan,monthLabel} from './shared-notes.js?v=R0.5';
 const $=id=>document.getElementById(id), now=localDate(), today=now, initialCategories=[{id:'meeting',name:'會議',color:'#2563eb',active:true},{id:'audit',name:'稽核',color:'#16a34a',active:true},{id:'training',name:'教育訓練',color:'#ea580c',active:true},{id:'other',name:'其他',color:'#9333ea',active:true}];
 let auth,db,user,events=[],categories=[...initialCategories],month=Number(now.slice(5,7))-1,year=Number(now.slice(0,4)),selected=now,filter=new Set(),unsubs=[],pendingImport=[],smartRows=[],notificationSettings={enabled:true,defaultReminder:'off'};
-const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`,monthlyNotesPath=`${root}/data/monthly_notes`;
-let noteUnsub=null,noteKey='',noteOriginal='',noteDirty=false,notePending=false,noteLoaded=false; 
+const root='ehs_smart_calendar_r0', eventsPath=`${root}/data/events`, categoriesPath=`${root}/data/categories`,settingsPath=`${root}/data/settings`,monthlyNotesPath=`${root}/data/monthly_notes`,sharedNotesPath=`${root}/data/shared_notes`;
+let noteUnsub=null,noteOriginal='',noteDirty=false,notePending=false,noteLoaded=false,noteConflict=false,legacyPreview=null; 
 const dateKey=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
 function tell(message,error=false){$('notice').hidden=false;$('notice').textContent=message;$('notice').style.borderColor=error?'#e19494':'#e8bb82'}
 function safe(fn){return async(...args)=>{try{await fn(...args)}catch(e){console.error(e);tell('操作失敗：'+(e?.message||e),true)}}}
@@ -35,7 +36,7 @@ function snapshot(obj){if(!obj)return null;return Object.fromEntries(Object.entr
 // 寫入活動與操作歷史採同一 batch：避免已刪除但歷史紀錄未保存。
 async function saveEvent(ev,id){
  assertOnline();const normalized=validEvent({...ev});
- for(const key of ['id','createdAt','updatedAt','occurrenceDate','isOccurrence'])delete normalized[key];
+ for(const key of ['id','createdAt','updatedAt','occurrenceDate','isOccurrence','occurrenceStart'])delete normalized[key];
  const old=id?events.find(x=>x.id===id):null;
  if(id&&!old)throw Error('行程已不存在，請重新整理');
  const chosen=categories.find(c=>c.id===normalized.categoryId);
@@ -78,7 +79,10 @@ function renderCalendar(){
    if(office.label)cell.append(el('small','holidayName',office.label));
    cell.addEventListener('click',()=>{selected=iso;renderCalendar();renderDay()});
    cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=iso;renderCalendar();renderDay()}});
-   const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+   const same=view.filter(e=>e.occurrenceDate===iso).sort((a,b)=>{
+   const shownStart=e=>e.occurrenceStart===e.occurrenceDate?(e.startTime||''):'';
+   return shownStart(a).localeCompare(shownStart(b));
+  });
    same.slice(0,4).forEach(ev=>{const time=eventTimeText(ev);let p=el('button',`eventPill ${ev.status==='completed'?'done':''} ${ev.status==='cancelled'?'cancel':''}`,`${time?time+' ':''}${ev.title}`);p.style.background=category(ev).color+'25';p.style.borderLeft=`3px solid ${categoryColor(category(ev).color)}`;p.title=ev.title;p.addEventListener('click',e=>{e.stopPropagation();openEditor(ev)});cell.append(p)});
    if(same.length>4)cell.append(el('small','muted',`另有 ${same.length-4} 件`));
   }
@@ -109,8 +113,8 @@ function renderDay(){
 }
 function setView(y,m){
  if(y===year&&m===month){selected=dateKey(y,m,1);render();return;}
- if((noteDirty||notePending)&&!confirm(`「${noteKey}」月份備註有未儲存或正在儲存的內容，確定放棄修改並切換月份嗎？`))return;
- year=y;month=m;selected=dateKey(year,month,1);render();loadMonthNote();
+ // R0.5: shared note does not change on month/year navigation.
+ year=y;month=m;selected=dateKey(year,month,1);render();
 }
 function openEditor(ev=null,date=selected){if(!user)return tell('請先登入',true);const form=$('editorForm');form.reset();form.elements.id.value=ev?.id||'';form.elements.title.value=ev?.title||'';form.elements.startDate.value=ev?.startDate||date;form.elements.startTime.value=ev?.startTime||'';form.elements.endDate.value=ev?.endDate||'';form.elements.endTime.value=ev?.endTime||'';form.elements.location.value=ev?.location||'';form.elements.owner.value=ev?.owner||'';form.elements.description.value=ev?.description||'';form.elements.status.value=ev?.status||'pending';form.elements.reminder.value=ev?.reminder||notificationSettings.defaultReminder||'off';form.elements.reminderMinutes.value=ev?.reminderMinutes??60;form.elements.repeat.value=ev?.repeat||'none';form.elements.repeatUntil.value=ev?.repeatUntil||'';form.elements.allDay.checked=!!ev?.allDay;let sel=form.elements.categoryId;sel.replaceChildren();const choices=categories.filter(c=>c.active||c.id===ev?.categoryId);for(let c of choices){let op=new Option(c.name+(c.active?'':'（停用）'),c.id);sel.add(op)}sel.value=ev?.categoryId||(choices.find(c=>c.id==='other')?.id||choices[0]?.id||'');$('editorTitle').textContent=ev?(ev.repeat&&ev.repeat!=='none'?'編輯重複行程（整個系列）':'編輯行程'):'新增行程';$('deleteEvent').hidden=!ev;$('editorDialog').showModal()}
 function editorPayload(){let f=$('editorForm').elements;return Object.fromEntries(['title','startDate','startTime','endDate','endTime','location','owner','description','status','reminder','reminderMinutes','categoryId','repeat','repeatUntil'].map(k=>[k,f[k].value.trim()]).concat([['allDay',f.allDay.checked]]))}
@@ -165,55 +169,139 @@ $('confirmExport').onclick=safe(async()=>{
   view.push(...monthOccurrences(events,y,m).filter(e=>e.occurrenceDate>=from&&e.occurrenceDate<=to&&!filter.has(e.categoryId)&&(!q||[e.title,e.location,e.owner,e.description].some(t=>String(t||'').toLowerCase().includes(q)))));
  }
  const {ics,skipped,validCount,componentCount}=icsExport(view);
- if(skipped.length){const details=skipped.slice(0,8).map(e=>`${e.occurrenceDate||e.startDate} ${e.title||'（未命名）'}`).join('\n');if(!confirm(`${skipped.length} 筆缺少完整起迄時間或資料不正確，無法匯出：\n${details}${skipped.length>8?'\n…':''}\n確定只匯出 ${validCount} 次活動嗎？`))return;}
+ if(skipped.length){const details=skipped.slice(0,8).map(e=>`${e.occurrenceStart||e.startDate} ${e.title||'（未命名）'}`).join('\n');if(!confirm(`${skipped.length} 筆缺少完整起迄時間或資料不正確，無法匯出：\n${details}${skipped.length>8?'\n…':''}\n確定只匯出 ${validCount} 次活動嗎？`))return;}
  if(!validCount)return tell('日期區間內沒有符合 ICS 格式的完整行程',true);
  const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');
  a.href=url;a.download=`EHS_GoogleCalendar_${from.replaceAll('-','')}_${to.replaceAll('-','')}.ics`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
  $('exportDialog').close();tell(`已匯出 ${validCount} 次活動（${componentCount} 個日曆項目），略過 ${skipped.length} 筆`);
 });
-function noteMonthKey(){return `${year}-${pad(month+1)}`;}
+// R0.5: one shared note for all years and months. The legacy monthly collection is read-only.
+const sharedRef=()=>doc(db,sharedNotesPath,'general');
 function setNoteState(message){$('noteStatus').textContent=message;}
-function resetNoteSubscription(){
+function setNoteControls(){
+ const enabled=!!user&&noteLoaded&&!notePending;
+ $('sharedNote').disabled=!enabled;
+ $('saveSharedNote').disabled=!enabled;
+ $('mergeLegacyNotes').disabled=!enabled||noteDirty;
+}
+function resetSharedNoteSubscription(){
  if(noteUnsub){noteUnsub();noteUnsub=null;}
- noteKey=noteMonthKey();noteOriginal='';noteDirty=false;notePending=false;noteLoaded=false;
- const input=$('monthNote');input.value='';input.disabled=!user;
- $('saveMonthNote').disabled=!user;
- $('notesTitle').textContent=`${year} 年 ${month+1} 月｜月份備註`;
- setNoteState(user?'雲端讀取中…':'登入後可編輯及儲存');
+ noteOriginal='';noteDirty=false;notePending=false;noteLoaded=false;noteConflict=false;legacyPreview=null;
+ $('sharedNote').value='';$('notesTitle').textContent='備註';
+ setNoteState(user?'共用備註讀取中…':'登入後可編輯及儲存');
+ setNoteControls();
 }
-function loadMonthNote(){
- resetNoteSubscription();if(!db||!user)return;
- const key=noteKey;
- noteUnsub=onSnapshot(doc(db,monthlyNotesPath,key),snap=>{
-  if(key!==noteKey)return;
-  const latest=snap.exists()?String(snap.data().text||''):'';
+function loadSharedNote(){
+ resetSharedNoteSubscription();if(!db||!user)return;
+ noteUnsub=onSnapshot(sharedRef(),snap=>{
+  const latest=snap.exists()?String(snap.data().text??''):'';
+  noteLoaded=true;
   if(noteDirty){
-   if(latest!==noteOriginal&&latest!==$('monthNote').value)setNoteState('雲端備註已更新；目前輸入尚未儲存，請核對');
-   return;
+   if(latest!==noteOriginal&&latest!==$('sharedNote').value){
+    noteConflict=true;setNoteState('雲端備註已有其他更新，請備份目前輸入後重新整理，避免覆蓋');
+   }
+   setNoteControls();return;
   }
-  noteOriginal=latest;noteLoaded=true;$('monthNote').value=latest;
-  setNoteState(latest?'雲端已同步':'本月尚無備註');
- },err=>{if(key===noteKey){noteLoaded=false;setNoteState('備註讀取失敗');tell('月份備註讀取失敗：'+err.message,true)}});
+  noteOriginal=latest;noteConflict=false;$('sharedNote').value=latest;
+  setNoteState(latest?'共用備註已同步':'尚無共用備註，可編輯或整合舊月份備註');
+  setNoteControls();
+ },err=>{noteLoaded=false;setNoteState('共用備註讀取失敗');setNoteControls();tell('共用備註讀取失敗：'+err.message,true)});
 }
-$('monthNote').addEventListener('input',()=>{
+$('sharedNote').addEventListener('input',()=>{
  if(!user)return;
- noteDirty=$('monthNote').value!==noteOriginal;
- setNoteState(noteDirty?'尚未儲存':(noteLoaded?'已同步':'雲端讀取中…'));
+ noteDirty=$('sharedNote').value!==noteOriginal;
+ if(noteDirty&&!noteConflict)setNoteState('尚未儲存');
+ else if(!noteDirty){noteConflict=false;setNoteState(noteLoaded?'共用備註已同步':'雲端讀取中…');}
+ setNoteControls();
 });
-$('saveMonthNote').addEventListener('click',safe(async()=>{
- assertOnline();if(!noteLoaded)throw Error('備註尚未載入，請確認網路連線後再儲存');
+$('saveSharedNote').addEventListener('click',safe(async()=>{
+ assertOnline();if(!noteLoaded)throw Error('備註尚未完成載入，請確認網路後再儲存');
  if(notePending)return;
- const key=noteKey,content=$('monthNote').value;
- notePending=true;$('saveMonthNote').disabled=true;setNoteState('儲存中…');
+ if(noteConflict)throw Error('雲端備註已被其他裝置更新。請先複製未儲存文字備份，重新整理並整合內容後再存。');
+ const content=$('sharedNote').value,expected=noteOriginal;
+ assertNoteSize(content);
+ notePending=true;setNoteControls();setNoteState('共用備註儲存中…');
  try{
-  await setDoc(doc(db,monthlyNotesPath,key),{text:content,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),updatedAt:serverTimestamp(),updatedBy:user.email});
-  if(key===noteKey){noteOriginal=content;noteDirty=$('monthNote').value!==content;setNoteState(noteDirty?'已儲存先前內容，但有新的未儲存修改':'已儲存至 Firebase');}
- }catch(err){if(key===noteKey)setNoteState('備註儲存失敗，內容仍保留');throw err;}finally{notePending=false;$('saveMonthNote').disabled=!user;}
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(sharedRef());
+   const latest=snap.exists()?String(snap.data().text??''):'';
+   if(latest!==expected)throw Error('雲端共用備註已更新，已停止覆蓋；請備份目前輸入後重新整理');
+   // merge:true preserves migratedMonthIds and the legacy migration audit fields.
+   tx.set(sharedRef(),{text:content,updatedAt:serverTimestamp(),updatedBy:user.email},{merge:true});
+  });
+  noteOriginal=content;noteDirty=$('sharedNote').value!==content;noteConflict=false;
+  setNoteState(noteDirty?'已儲存先前內容，但有新的未儲存修改':'已儲存至 Firebase（所有年月共用）');
+ }catch(err){
+  setNoteState('儲存失敗，文字未清除；請檢查並重試');throw err;
+ }finally{notePending=false;setNoteControls();}
+}));
+function listLegacySource(records){return JSON.stringify(collectLegacyNotes(records));}
+$('mergeLegacyNotes').addEventListener('click',safe(async()=>{
+ assertOnline();if(!noteLoaded||notePending)throw Error('請先等待共用備註完成載入');
+ if(noteDirty)throw Error('請先儲存或備份正在編輯的共用備註，再執行整合');
+ setNoteState('檢查 Firebase 舊月份備註中…');
+ const [legacySnap,sharedSnap]=await Promise.all([
+  getDocsFromServer(collection(db,monthlyNotesPath)), getDocFromServer(sharedRef())
+ ]);
+ const legacy=legacySnap.docs.map(d=>({id:d.id,text:d.data().text??''}));
+ const current=sharedSnap.exists()?sharedSnap.data():{};
+ const plan=noteMigrationPlan(current,legacy);
+ legacyPreview={sourceSignature:listLegacySource(legacy),sharedText:String(current.text??''),
+   importedIds:JSON.stringify(current.migratedMonthIds??[]),plan};
+ const rows=$('legacyNotesRows');rows.replaceChildren();
+ $('legacyNotesSummary').textContent=`找到 ${plan.nonemptyCount} 個非空白月份備註；本次新增 ${plan.toAdd.length} 個，已整合／內容相同 ${plan.already.length} 個。舊資料不會刪除。`;
+ for(const item of plan.toAdd){const row=el('div','legacyNoteRow');
+  row.append(el('strong','',`【${monthLabel(item.id)}】`),el('small','',item.text.slice(0,150)+(item.text.length>150?'…':'')));
+  rows.append(row);
+ }
+ if(!plan.toAdd.length)rows.append(el('p','muted','沒有新的非空白月份備註需要整合。'));
+ $('confirmLegacyMerge').disabled=!(plan.toAdd.length||plan.idsToMark.length);
+ $('legacyNotesDialog').showModal();
+ setNoteState('舊月份備註已讀取，請先查看預覽再確認是否整合');
+}));
+$('confirmLegacyMerge').addEventListener('click',safe(async()=>{
+ assertOnline();if(!legacyPreview||!noteLoaded||noteDirty||notePending)throw Error('請重新開啟整合預覽，確認共用備註沒有未儲存修改');
+ const preview=legacyPreview;
+ notePending=true;setNoteControls();$('confirmLegacyMerge').disabled=true;setNoteState('正在檢查並整合舊月份備註…');
+ try{
+  // Re-read server collection to ensure previewed sources are still authoritative.
+  const live=await getDocsFromServer(collection(db,monthlyNotesPath));
+  const legacy=live.docs.map(d=>({id:d.id,text:d.data().text??''}));
+  if(listLegacySource(legacy)!==preview.sourceSignature)throw Error('舊月份備註已有變更，請重新預覽後再整合');
+  if(legacy.length>300)throw Error('舊月份備註文件過多，已停止操作以避免交易限制；舊資料未變動');
+  const ids=legacy.map(x=>x.id);
+  const result=await runTransaction(db,async tx=>{
+   const cloud=await tx.get(sharedRef());
+   const actual=cloud.exists()?cloud.data():{};
+   if(String(actual.text??'')!==preview.sharedText ||
+      JSON.stringify(actual.migratedMonthIds??[])!==preview.importedIds){
+     throw Error('共用備註在預覽後被更新，請重新預覽，避免覆蓋');
+   }
+   const monthly=await Promise.all(ids.map(async id=>{
+    const monthSnap=await tx.get(doc(db,monthlyNotesPath,id));
+    if(!monthSnap.exists())throw Error(`舊月份 ${id} 已變更，請重新預覽`);
+    return {id,text:monthSnap.data().text??''};
+   }));
+   if(listLegacySource(monthly)!==preview.sourceSignature)throw Error('舊月份內容已變更，請重新預覽');
+   const plan=noteMigrationPlan(actual,monthly);
+   if(!plan.toAdd.length&&!plan.idsToMark.length)return {imported:0,skipped:plan.already.length};
+   tx.set(sharedRef(),{
+    text:plan.combined,migratedMonthIds:plan.importedMonthIds,migrationVersion:1,
+    migratedAt:serverTimestamp(),migratedBy:user.email,
+    updatedAt:serverTimestamp(),updatedBy:user.email
+   },{merge:true});
+   return {imported:plan.toAdd.length,skipped:plan.already.length};
+  });
+  legacyPreview=null;$('legacyNotesDialog').close();
+  setNoteState(`舊月份備註整合成功：新增 ${result.imported} 個，已整合 ${result.skipped} 個；舊文件保留`);
+  tell(`共用備註已整合 ${result.imported} 個舊月份，原 Firebase 月份文件完整保留`);
+ }catch(err){setNoteState('整合失敗，沒有變更舊月份備註；請查看錯誤並重試');throw err;
+ }finally{notePending=false;setNoteControls();}
 }));
 window.addEventListener('beforeunload',e=>{if(noteDirty||notePending){e.preventDefault();e.returnValue='';}});
 $('addToday').onclick=()=>openEditor(null,selected);
 function stopListeners(){unsubs.forEach(x=>x());unsubs=[];if(noteUnsub){noteUnsub();noteUnsub=null;}}
 async function init(){if(!firebaseConfig.apiKey||!firebaseConfig.appId||firebaseConfig.projectId!=='esh-v85'){tell('入口網站 Firebase 設定不完整，請確認 portal/config.js。',true);$('cloudStatus').textContent='設定異常';render();return}
- const app=initializeApp(firebaseConfig,'ehs-portal');auth=getAuth(app);db=getFirestore(app);await setPersistence(auth,browserLocalPersistence);getRedirectResult(auth).catch(e=>tell('Google 登入返回失敗：'+e.message,true));$('signIn').onclick=safe(async()=>{let provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});try{await signInWithPopup(auth,provider)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))await signInWithRedirect(auth,provider);else throw e}});$('signOut').onclick=safe(async()=>{if((noteDirty||notePending)&&!confirm('月份備註尚未儲存或正在儲存，確定登出並放棄修改嗎？'))return;await signOut(auth)});
- onAuthStateChanged(auth,async current=>{stopListeners();user=null;events=[];categories=[...initialCategories];notificationSettings={enabled:true,defaultReminder:'off'};$('signIn').hidden=!!current;$('signOut').hidden=!current;if(!current){$('cloudStatus').textContent='尚未登入';resetNoteSubscription();render();return}if(current.email?.toLowerCase()!==allowedEmail.toLowerCase()){$('cloudStatus').textContent='未授權帳號';tell('此帳號沒有此行事曆的存取權限',true);resetNoteSubscription();render();return}user=current;$('cloudStatus').textContent='雲端連線中';loadMonthNote();unsubs.push(onSnapshot(collection(db,eventsPath),snap=>{events=snap.docs.map(d=>({id:d.id,...d.data()}));render();$('cloudStatus').textContent='● 雲端已同步'},e=>tell('行程讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(doc(db,settingsPath,'reminders'),snap=>{notificationSettings={enabled:true,defaultReminder:'off',...(snap.exists()?snap.data():{})};renderNotificationSettings()},e=>tell('提醒設定讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(collection(db,categoriesPath),snap=>{let custom=snap.docs.map(d=>({id:d.id,...d.data()}));let ids=new Set(custom.map(x=>x.id));categories=[...initialCategories.map(c=>custom.find(x=>x.id===c.id)||c),...custom.filter(c=>!initialCategories.some(d=>d.id===c.id))];render();if($('categoryDialog').open)renderCategoryRows()},e=>tell('分類讀取失敗：'+e.message,true)));});}
-render();resetNoteSubscription();init().catch(e=>tell('Firebase 初始化失敗：'+e.message,true));
+ const app=initializeApp(firebaseConfig,'ehs-portal');auth=getAuth(app);db=getFirestore(app);await setPersistence(auth,browserLocalPersistence);getRedirectResult(auth).catch(e=>tell('Google 登入返回失敗：'+e.message,true));$('signIn').onclick=safe(async()=>{let provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});try{await signInWithPopup(auth,provider)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))await signInWithRedirect(auth,provider);else throw e}});$('signOut').onclick=safe(async()=>{if(notePending)throw Error('備註正在儲存或整合，請完成後再登出');if(noteDirty&&!confirm('共用備註尚未儲存，確定登出並放棄修改嗎？'))return;await signOut(auth)});
+ onAuthStateChanged(auth,async current=>{stopListeners();user=null;events=[];categories=[...initialCategories];notificationSettings={enabled:true,defaultReminder:'off'};$('signIn').hidden=!!current;$('signOut').hidden=!current;if(!current){$('cloudStatus').textContent='尚未登入';resetSharedNoteSubscription();render();return}if(current.email?.toLowerCase()!==allowedEmail.toLowerCase()){$('cloudStatus').textContent='未授權帳號';tell('此帳號沒有此行事曆的存取權限',true);resetSharedNoteSubscription();render();return}user=current;$('cloudStatus').textContent='雲端連線中';loadSharedNote();unsubs.push(onSnapshot(collection(db,eventsPath),snap=>{events=snap.docs.map(d=>({id:d.id,...d.data()}));render();$('cloudStatus').textContent='● 雲端已同步'},e=>tell('行程讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(doc(db,settingsPath,'reminders'),snap=>{notificationSettings={enabled:true,defaultReminder:'off',...(snap.exists()?snap.data():{})};renderNotificationSettings()},e=>tell('提醒設定讀取失敗：'+e.message,true)));unsubs.push(onSnapshot(collection(db,categoriesPath),snap=>{let custom=snap.docs.map(d=>({id:d.id,...d.data()}));let ids=new Set(custom.map(x=>x.id));categories=[...initialCategories.map(c=>custom.find(x=>x.id===c.id)||c),...custom.filter(c=>!initialCategories.some(d=>d.id===c.id))];render();if($('categoryDialog').open)renderCategoryRows()},e=>tell('分類讀取失敗：'+e.message,true)));});}
+render();resetSharedNoteSubscription();init().catch(e=>tell('Firebase 初始化失敗：'+e.message,true));

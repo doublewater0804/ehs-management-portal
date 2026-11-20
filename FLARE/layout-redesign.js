@@ -679,7 +679,7 @@
     if (toolbar && !root.classList.contains('flare-r07-view') && !document.getElementById('flare-open-input-page')) {
       const link = makeLink('./data-input.html', '資料輸入', 'input-link');
       link.id = 'flare-open-input-page';
-      toolbar.insertBefore(link, document.getElementById('firebase-sync-status'));
+      toolbar.insertBefore(link, document.getElementById('flare-r07-event-link') || toolbar.firstChild);
     }
     enhanceToolbar();
     enhanceSummary();
@@ -747,7 +747,7 @@
       <div class="flare-input-header">
         <div>
           <h2 class="flare-input-title">資料輸入與管理</h2>
-          <p class="flare-input-subtitle">設定定檢期間、人工排放紀錄、人工剔除及工廠名稱對照。</p>
+          <p class="flare-input-subtitle">設定定檢期間、人工排放紀錄、人工修改與剔除、工廠名稱對照。</p>
         </div>
       </div>
       <div class="flare-input-tabs" role="tablist"></div>
@@ -758,7 +758,7 @@
     const definitions = [
       { id:'schedule', label:'定檢期間設定', node:scheduleCard },
       { id:'manual-event', label:'人工新增排放紀錄', node:manualCard },
-      { id:'exclusion', label:'人工剔除使用日數／清單', node:exclusionCard },
+      { id:'exclusion', label:'人工修改／剔除使用日數／清單', node:exclusionCard },
       { id:'factory-alias', label:'工廠名稱對照管理', node:aliasSection }
     ];
 

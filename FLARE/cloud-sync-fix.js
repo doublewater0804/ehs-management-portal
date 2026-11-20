@@ -56,7 +56,7 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
       };
 
       // 原始排放資料的原子修改：只改目標日期，並拒絕已由其他端更新的舊版本。
-      window.__flareCloudEditEvents = async ({ factory, dateISO, originalEvents, amounts, reasons = [], deleteLinkedNotes = true, deletedIndexes }) => {
+      window.__flareCloudEditEvents = async ({ factory, dateISO, originalEvents, amounts, reasons = [], types = [], deleteLinkedNotes = true, deletedIndexes }) => {
         const deleted = new Set(deletedIndexes);
         const serverState = await runTransaction(db, async (transaction) => {
           const snap = await transaction.get(flareDoc);
@@ -69,6 +69,9 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
           if (stableSerialize(selected) !== stableSerialize(originalEvents)) {
             throw new Error('雲端資料已變更，請重新開啟修改視窗後再操作');
           }
+          if (amounts.length !== selected.length || (types.length && types.length !== selected.length)) {
+            throw new Error('排放紀錄數量已改變，請重新開啟修改視窗');
+          }
           let targetIndex = 0;
           const modifiedAt = new Date().toISOString();
           const priorLinkedIds = new Set(selected.map(event=>String(event.id)));
@@ -78,12 +81,24 @@ import { getFirestore, doc, updateDoc, setDoc, runTransaction, getDocFromServer,
             if (deleted.has(index) || Number(amounts[index]) === 0) return [];
             const nextAmount = Number(amounts[index]);
             const nextReason = event.source === 'manual' ? (reasons[index] ?? event.reason ?? '') : event.reason;
+            const originalType = event.type || 'NON-TA';
+            const requestedType = types.length ? types[index] : originalType;
+            if (event.source === 'manual' && !['TA','NON-TA'].includes(requestedType)) {
+              throw new Error('定檢／非定檢類型格式不正確，已取消儲存');
+            }
+            if (event.source !== 'manual' && types.length && requestedType !== event.type) {
+              throw new Error('僅人工新增紀錄可以修正類型；匯入紀錄請依原本分類規則調整');
+            }
+            const typeChanged = event.source === 'manual' && requestedType !== originalType;
             const amountChanged = nextAmount !== Number(event.amount || 0);
-            if (!amountChanged && nextReason === event.reason) return [event];
+            if (!amountChanged && nextReason === event.reason && !typeChanged) return [event];
             const previous = Number(event.amount || 0);
             const history = Array.isArray(event.amountEditHistory) ? [...event.amountEditHistory] : [];
             if (amountChanged) history.push({ from: previous, to: nextAmount, at: modifiedAt });
+            const typeEditHistory = Array.isArray(event.typeEditHistory) ? [...event.typeEditHistory] : [];
+            if (typeChanged) typeEditHistory.push({ from: originalType, to: requestedType, at: modifiedAt, source: 'manual-correction' });
             return [{ ...event, amount: nextAmount, reason: nextReason,
+              ...(typeChanged ? { type: requestedType, typeModifiedAt: modifiedAt, typeEditHistory: typeEditHistory.slice(-20) } : {}),
               amountModifiedAt: amountChanged ? modifiedAt : event.amountModifiedAt,
               amountModifiedFrom: amountChanged ? previous : event.amountModifiedFrom,
               amountEditHistory: history.slice(-20) }];

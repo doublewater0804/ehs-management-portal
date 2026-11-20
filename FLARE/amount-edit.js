@@ -42,6 +42,9 @@
       #${MODAL_ID} .fae-zero-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:9px 11px;border:1px solid #dbe8fb;border-radius:8px;background:#f8fbff;color:#5b6b82;font-size:11.5px;line-height:1.5}
       #${MODAL_ID} .fae-zero-toggle{flex:none;border:1px solid #b9cbea;border-radius:7px;background:#fff;color:#1d5fd0;padding:6px 9px;font-size:11.5px;font-weight:800;cursor:pointer}
       #${MODAL_ID} .fae-zero-toggle:hover{background:#edf4ff;border-color:#8fb0e5}
+      #${MODAL_ID} .fae-type{min-width:108px;max-width:120px;border:1px solid #b8c5d8;border-radius:8px;padding:7px 6px;color:#172033;background:#fff;font-size:13px;font-weight:800}
+      #${MODAL_ID} .fae-type:focus{border-color:#1d5fd0;outline:2px solid rgba(29,95,208,.14)}
+      #${MODAL_ID} .fae-type-readonly{white-space:nowrap;color:#64748b}
       #${MODAL_ID} .fae-amount{width:160px;border:1px solid #b8c5d8;border-radius:8px;padding:8px 10px;text-align:right;font-size:14px;font-weight:800;color:#172033;background:#fff;outline:none}
       #${MODAL_ID} .fae-amount:focus{border-color:#1d5fd0;box-shadow:0 0 0 3px rgba(29,95,208,.12)}
       #${MODAL_ID} .fae-reason{width:230px;min-height:55px;resize:vertical;border:1px solid #b8c5d8;border-radius:8px;padding:7px;font-size:12px;background:#fff}
@@ -121,6 +124,15 @@
     const inputs = [...modal.querySelectorAll('.fae-amount')];
     const amounts = inputs.map(input => input.value.trim() === '' ? NaN : Number(input.value));
     const reasons = originalEvents.map((event,index) => modal.querySelector(`[data-fae-reason="${index}"]`)?.value.trim() ?? String(event.reason||''));
+    // Only original manual events may override their TA/NON-TA classification.
+    // Imported Excel events continue to follow the current schedule-derived type.
+    const types = originalEvents.map((event,index) => event.source === 'manual'
+      ? (modal.querySelector(`[data-fae-type="${index}"]`)?.value ?? event.type ?? 'NON-TA')
+      : event.type);
+    if (types.some((type,index) => originalEvents[index].source === 'manual' && !['TA','NON-TA'].includes(type))) {
+      alert('人工紀錄的類型必須選擇定檢或非定檢。');
+      return;
+    }
     const deletedIndexes = new Set();
     inputs.forEach((input, index) => {
       if (input.closest('tr')?.dataset.deleted === 'true' || amounts[index] === 0) deletedIndexes.add(index);
@@ -134,7 +146,14 @@
       .filter(({value,index}) => !deletedIndexes.has(index) && Math.abs(value - Number(originalEvents[index]?.amount || 0)) > 0.000001);
     const reasonChanges = reasons.map((reason,index)=>({reason,index}))
       .filter(({reason,index}) => !deletedIndexes.has(index) && reason !== String(originalEvents[index]?.reason||''));
-    if (!deletedIndexes.size && !changedIndexes.length && !reasonChanges.length) { closeModal(); return; }
+    const typeChanges = types.map((type,index)=>({type,index}))
+      .filter(({type,index}) => !deletedIndexes.has(index) && originalEvents[index]?.source === 'manual'
+        && type !== (originalEvents[index]?.type || 'NON-TA'));
+    if (!deletedIndexes.size && !changedIndexes.length && !reasonChanges.length && !typeChanges.length) { closeModal(); return; }
+    if (typeChanges.length && typeof window.__flareCloudEditEvents !== 'function') {
+      alert('雲端交易模組尚未就緒，無法安全修正定檢／非定檢類型，請重新整理並等待同步完成。');
+      return;
+    }
 
     const live = getState();
     if (!live || !Array.isArray(live.events)) {
@@ -149,7 +168,7 @@
       alert('此日期的原始紀錄已被更新，請關閉視窗重新開啟後再修改。');
       return;
     }
-    const description = `${factory} / ${dateISO}\n刪除 ${deletedIndexes.size} 筆（包含所有 0 流量紀錄）\n修改 ${changedIndexes.length} 筆排放量、${reasonChanges.length} 筆原因。`;
+    const description = `${factory} / ${dateISO}\n刪除 ${deletedIndexes.size} 筆（包含所有 0 流量紀錄）\n修改 ${changedIndexes.length} 筆排放量、${reasonChanges.length} 筆原因、${typeChanges.length} 筆定檢／非定檢類型。\n儲存後會依實際日期重算分類天數與合計，使用事件日數採去重計算。`;
     if (!confirm(`${description}\n\n刪除為永久刪除，且當日最後一筆也可刪除。確定儲存至雲端？`)) return;
     const linkedCount = [...deletedIndexes].filter(index => originalEvents[index]?.source==='manual' && originalEvents[index]?.reason).length;
     // Cancel on this second prompt means keep the original note, but detach its event link.
@@ -163,6 +182,7 @@
     const changedAt = new Date().toISOString();
     let ordinal = 0;
     const changes = new Map(changedIndexes.map(({index,value}) => [index, value]));
+    const typeMap = new Map(typeChanges.map(({index,type}) => [index,type]));
     const nextEvents = live.events.flatMap(event => {
       if (String(event?.factory || '').trim() !== String(factory || '').trim() ||
           String(event?.date || '').trim() !== String(dateISO || '').trim()) return [event];
@@ -170,11 +190,15 @@
       if (deletedIndexes.has(index)) return [];
       const newAmount = changes.has(index) ? changes.get(index) : Number(event.amount || 0);
       const reasonChanged = reasons[index] !== String(event.reason||'');
-      if (!changes.has(index) && !reasonChanged) return [event];
+      const typeChanged = event.source === 'manual' && typeMap.has(index);
+      if (!changes.has(index) && !reasonChanged && !typeChanged) return [event];
       const previous = Number(event.amount || 0);
       const history = Array.isArray(event.amountEditHistory) ? [...event.amountEditHistory] : [];
       if(changes.has(index)) history.push({ from: previous, to: newAmount, at: changedAt });
+      const typeEditHistory = Array.isArray(event.typeEditHistory) ? [...event.typeEditHistory] : [];
+      if(typeChanged) typeEditHistory.push({from:event.type || 'NON-TA',to:typeMap.get(index),at:changedAt,source:'manual-correction'});
       return [{ ...event, amount: newAmount, reason: reasonChanged ? reasons[index] : event.reason,
+        ...(typeChanged ? { type: typeMap.get(index), typeModifiedAt: changedAt, typeEditHistory: typeEditHistory.slice(-20) } : {}),
         amountModifiedAt: changes.has(index) ? changedAt : event.amountModifiedAt,
         amountModifiedFrom: changes.has(index) ? previous : event.amountModifiedFrom,
         amountEditHistory: history.slice(-20) }];
@@ -198,7 +222,7 @@
       }
       // 優先使用 Firestore transaction，以伺服器端原始資料版本檢查避免誤覆蓋。
       if (typeof window.__flareCloudEditEvents === 'function') {
-        await window.__flareCloudEditEvents({ factory, dateISO, originalEvents, amounts, reasons, deleteLinkedNotes, deletedIndexes: [...deletedIndexes] });
+        await window.__flareCloudEditEvents({ factory, dateISO, originalEvents, amounts, reasons, types, deleteLinkedNotes, deletedIndexes: [...deletedIndexes] });
       } else {
         await window.__flareCloudPush(nextState);
         if (typeof window.__applyFlareCloudState === 'function') window.__applyFlareCloudState(nextState);
@@ -206,7 +230,7 @@
       }
       closeModal();
       if (typeof window.setFirebaseSyncStatus === 'function') window.setFirebaseSyncStatus('☁️ 已儲存雲端', 'ok');
-      alert(`${factory} / ${dateISO} 儲存成功：刪除 ${deletedIndexes.size} 筆、修改 ${changedIndexes.length} 筆。`);
+      alert(`${factory} / ${dateISO} 儲存成功：刪除 ${deletedIndexes.size} 筆、修改 ${changedIndexes.length} 筆流量、${typeChanges.length} 筆類型。`);
     } catch (error) {
       if (typeof window.setFirebaseSyncStatus === 'function') window.setFirebaseSyncStatus('☁️ 原始紀錄修改失敗', 'err');
       alert(`原始紀錄修改失敗，請重新開啟檢查：${error?.message || error}`);
@@ -235,7 +259,9 @@
       <tr data-deleted="false"${Number(event.amount || 0) === 0 ? ' class="fae-zero-row"' : ''}>
         <td>${index + 1}</td>
         <td>${sourceLabel(event.source)}</td>
-        <td>${typeLabel(event.type)}</td>
+        <td>${event.source === 'manual'
+          ? `<select class="fae-type" data-fae-type="${index}" aria-label="第 ${index + 1} 筆定檢或非定檢類型"><option value="TA" ${event.type === 'TA' ? 'selected' : ''}>定檢</option><option value="NON-TA" ${event.type !== 'TA' ? 'selected' : ''}>非定檢</option></select>`
+          : `<span class="fae-type-readonly" title="Excel 匯入紀錄依預計定檢期間自動判定，不在此手動修改">${typeLabel(event.type)}（自動）</span>`}</td>
         <td><input class="fae-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(event.amount || 0)}" data-index="${index}" aria-label="第 ${index + 1} 筆排放量"></td>
         <td>${event.source === 'manual' ? `<textarea class="fae-reason" rows="2" data-fae-reason="${index}" maxlength="3000" placeholder="使用原因">${escapeReason(event.reason||'')}</textarea>` : '—'}</td>
         <td><button type="button" class="fae-delete" data-fae-delete="${index}" aria-label="刪除第 ${index + 1} 筆紀錄">刪除</button></td>
@@ -250,13 +276,13 @@
       <div class="fae-card">
         <div class="fae-head">
           <div>
-            <h2 class="fae-title">修改排放量</h2>
+            <h2 class="fae-title">修改排放紀錄</h2>
             <div class="fae-meta">${factory}　／　${dateISO}　／　共 ${events.length} 筆原始紀錄</div>
           </div>
           <button type="button" class="fae-close" data-fae-close aria-label="關閉">×</button>
         </div>
         <div class="fae-body">
-          <div class="fae-note">可以逐筆修改流量或標記刪除。儲存時將自動永久刪除本日所有 0 流量紀錄（含原有 0 流量），並依剩餘紀錄重新計算分類與統計；不改變定檢期間與匯入規則。</div>
+          <div class="fae-note">人工新增紀錄可直接修正定檢／非定檢類型、流量及使用原因；Excel 匯入紀錄的類型仍依預計定檢期間自動判定。儲存後依原始日期去重重算分類及區域統計，不更動定檢期間。原有規則：儲存時會永久清除本日所有 0 流量紀錄（含原有 0 流量）。</div>
           <div class="fae-table-wrap">
             <table>
               <thead><tr><th>#</th><th>來源</th><th>類型</th><th>排放量 (NM3)</th><th>使用原因</th><th>操作</th></tr></thead>
@@ -330,7 +356,7 @@
       edit.type = 'button';
       edit.className = 'flare-amount-edit-btn';
       edit.textContent = '修改';
-      edit.title = `修改 ${factory} / ${dateISO} 排放量`;
+      edit.title = `修改 ${factory} / ${dateISO} 人工紀錄類型、排放量及原因`;
       edit.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();

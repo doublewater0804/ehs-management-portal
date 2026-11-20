@@ -560,11 +560,11 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
 </form>
 </div><div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-orange-500">
 <div class="flex items-center justify-between gap-2 mb-2 border-b pb-2">
-<h2 class="text-lg font-bold text-gray-800">人工剔除使用日數</h2>
+<h2 class="text-lg font-bold text-gray-800">人工修改與剔除使用日數</h2>
 <button class="inline-flex items-center gap-1 rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700 hover:bg-orange-100 transition" id="open-exclusion-modal-btn" type="button" title="放大檢視人工剔除清單">⛶ 放大</button>
 </div>
 <p class="text-xs text-gray-500 mb-4 leading-relaxed">
-                        以「工廠 + 日期」為單位人工剔除。資料不會被刪除，只是不納入定檢、非定檢、合計與區域總計。剔除原因可填可不填。
+                        納入統計清單可按「修改」，修正人工新增紀錄的定檢／非定檢類型、流量與使用原因；Excel 匯入的類型依預計定檢期間自動判斷。另可按「剔除」排除指定工廠＋日期的統計（原始資料不刪除，剔除原因可不填）。
                     </p>
 <div class="rounded bg-orange-50 border border-orange-100 p-3 text-xs text-orange-800 mb-3 leading-relaxed" id="exclusion-panel-summary">
                         本年度納入統計 0 天；已剔除 0 天。
@@ -3578,10 +3578,10 @@ html.flare-ui-booting body::before{content:"廠區廢氣燃燒塔管制表載入
     </script>
 <!-- FLARE 原始排放紀錄修改 / Firebase 同步模組（使用版本參數避免 GitHub Pages 舊快取） -->
 <script type="module" src="./sync-guard.js?v=20261027-1"></script>
-<script type="module" src="./cloud-sync-fix.js?v=20261027-2"></script>
+<script type="module" src="./cloud-sync-fix.js?v=20261120-r079-1"></script>
 <script src="./ocr-lite.js?v=20261113-r076-1"></script>
 <script src="./r07.js?v=20261113-r077-1"></script>
-<script src="./layout-redesign.js?v=20261110-1"></script>
-<script src="./amount-edit.js?v=20261110-1"></script>
+<script src="./layout-redesign.js?v=20261120-r079-1"></script>
+<script src="./amount-edit.js?v=20261120-r079-1"></script>
 <script src="../ehs-home-button.js?v=20261005-1"></script></body>
 </html>

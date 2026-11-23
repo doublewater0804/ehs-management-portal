@@ -1,4 +1,4 @@
-/* FLARE R0.7.8 – approval date/document metadata for event rows and date+area interference groups; preserves R0.7.7 area tables and R0.7.6 OCR/cloud logic.
+/* FLARE R0.7.9.2 – approval date/document metadata are independently optional for event rows, interference batches, date+area editor, CSV and OCR; preserves existing R0.7.9.1 cloud logic.
    Shared Firestore document remains flare_control/global_state; this script never changes FLARE day counters. */
 (() => {
   'use strict';
@@ -53,6 +53,30 @@
     if (!(y>=2000 && y<=2100 && mo>=1 && mo<=12 && d>=1 && d<=31)) return '';
     const z=new Date(Date.UTC(y,mo-1,d));
     return z.getUTCFullYear()===y && z.getUTCMonth()+1===mo && z.getUTCDate()===d ? `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`:'';
+  };
+  const optionalApprovalDate=(raw,yearHint)=>{
+    const text=String(raw??'').trim();
+    if(!text)return '';
+    const date=isoDate(text,yearHint);
+    if(!date)throw new Error('核備日期格式不正確，請使用有效日期。');
+    return date;
+  };
+  // One approval set belongs to each date + area; empty CSV/OCR/batch fields
+  // are unspecified, not requests to erase existing cloud metadata.
+  const harmonizeAreaApprovals=(items)=>{
+    const grouped=new Map();
+    for(const row of items){
+      const key=`${row.date}|${areaOf(row.factory)}`;
+      let pair=grouped.get(key);
+      if(!pair){pair={approvalDate:'',approvalDoc:''};grouped.set(key,pair);}
+      for(const field of ['approvalDate','approvalDoc']){
+        const value=String(row[field]||'').trim();
+        if(!value)continue;
+        if(pair[field]&&pair[field]!==value)throw new Error(`${row.date} ${areaOf(row.factory)}：同一日期同一廠區的${field==='approvalDate'?'核備日期':'公文'}不一致。`);
+        pair[field]=value;
+      }
+    }
+    return items.map(row=>({...row,...grouped.get(`${row.date}|${areaOf(row.factory)}`)}));
   };
   const displayDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')?s.replace(/-/g,'/'):'待確認';
   const toAmount=v=>{
@@ -225,7 +249,7 @@
       yearRows(year,'event').sort(newestFirst).map((r,i)=>[i+1,displayDate(r.date),r.approvalDate||'',r.approvalDoc||'',r.content]);
     const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.8_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    const a=document.createElement('a');a.href=url;a.download=`FLARE_R0.7.9.2_${kind==='event'?'使用事件及原因':'干擾流量'}_${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   const rowButton=(action,row,label)=>`<button type="button" class="r07-action" data-r07-action="${action}" data-r07-id="${html(row.id)}">${label}</button>`;
   const inlineForm=()=>document.getElementById('r075-inline-form');
@@ -278,7 +302,7 @@
     if(pipe && !validPipe(pipe))return alert('管道編號只能輸入英文字母、數字及連字號。');
     if(amount===null)return alert('干擾流量必須是 0 或正數。');
     if(!content)return alert('內容不可空白。');
-    if(kind==='event'&&(!approvalDate||!approvalDoc))return alert('請完整填寫核備日期及公文。');
+
     if(factoryForPipe(pipe)&&factoryForPipe(pipe)!==factory&&!confirm(`管道 ${pipe} 的已知對應為 ${factoryForPipe(pipe)}，目前選擇 ${factory}。是否確定？`))return;
     if(typeof window.__flareR075Update!=='function')return alert('Firebase 交易更新元件尚未就緒，未修改資料。');
     // Only update the selected record ID, and never queue a full-document overwrite.
@@ -305,7 +329,7 @@
     const areas=[...new Set(yearRows(selectedYear(),'interference').filter(r=>r.date===date&&areaOf(r.factory)).map(r=>areaOf(r.factory)))].sort((a,b)=>AREAS.indexOf(a)-AREAS.indexOf(b));
     if(!areas.length)return alert('此日期沒有可對應廠區的干擾流量紀錄。');
     host.dataset.date=date;
-    host.innerHTML=`<div class="r078-modal-card"><div class="r078-modal-head"><strong>${displayDate(date)}｜各廠區核備公文</strong><button type="button" data-r078-close>關閉</button></div>${areas.map(area=>{const rows=yearRows(selectedYear(),'interference').filter(r=>r.date===date&&areaOf(r.factory)===area);const first=rows.find(r=>r.approvalDate||r.approvalDoc)||rows[0]||{};return `<section class="r078-area-form" data-r078-area="${html(area)}"><h4>${html(area)}</h4><label>核備日期（必填）<input type="date" name="approvalDate" value="${html(first.approvalDate||'')}" required></label><label>公文（必填）<input type="text" name="approvalDoc" value="${html(first.approvalDoc||'')}" maxlength="120" required placeholder="請輸入公文文號"></label></section>`;}).join('')}<div class="r07-tools"><button type="button" class="r07-btn primary" data-r078-save>儲存核備公文</button><button type="button" class="r07-btn" data-r078-close>取消</button></div></div>`;
+    host.innerHTML=`<div class="r078-modal-card"><div class="r078-modal-head"><strong>${displayDate(date)}｜各廠區核備公文</strong><button type="button" data-r078-close>關閉</button></div>${areas.map(area=>{const rows=yearRows(selectedYear(),'interference').filter(r=>r.date===date&&areaOf(r.factory)===area);const first=rows.find(r=>r.approvalDate||r.approvalDoc)||rows[0]||{};return `<section class="r078-area-form" data-r078-area="${html(area)}"><h4>${html(area)}</h4><label>核備日期（選填）<input type="date" name="approvalDate" value="${html(first.approvalDate||'')}"></label><label>公文（選填）<input type="text" name="approvalDoc" value="${html(first.approvalDoc||'')}" maxlength="120" placeholder="請輸入公文文號"></label></section>`;}).join('')}<div class="r07-tools"><button type="button" class="r07-btn primary" data-r078-save>儲存核備公文</button><button type="button" class="r07-btn" data-r078-close>取消</button></div></div>`;
     host.classList.remove('hidden');
   };
   const saveApprovalEditor=()=>{
@@ -313,8 +337,8 @@
     const host=approvalModal(),date=host?.dataset.date;if(!host||!date)return;
     const updates=[];
     for(const section of host.querySelectorAll('[data-r078-area]')){
-      const area=section.dataset.r078Area,approvalDate=isoDate(section.querySelector('[name="approvalDate"]').value,selectedYear()),approvalDoc=section.querySelector('[name="approvalDoc"]').value.trim();
-      if(!approvalDate||!approvalDoc)return alert(`${area}：請完整填寫核備日期及公文。`);
+      const area=section.dataset.r078Area,rawDate=section.querySelector('[name="approvalDate"]').value.trim(),approvalDate=isoDate(rawDate,selectedYear()),approvalDoc=section.querySelector('[name="approvalDoc"]').value.trim();
+      if(rawDate&&!approvalDate)return alert(`${area}：核備日期格式不正確。`);
       updates.push({area,approvalDate,approvalDoc});
     }
     for(const item of updates)records.forEach(r=>{if(r.kind==='interference'&&r.date===date&&areaOf(r.factory)===item.area){r.approvalDate=item.approvalDate;r.approvalDoc=item.approvalDoc;}});
@@ -412,7 +436,7 @@
     const root=batchForm(),host=root?.querySelector('#r07-batch-items');if(!root||!host)return;
     host.innerHTML=batchDrafts.map((draft,index)=>{
       const options=AREAS.map(area=>`<optgroup label="${html(area)}">${AREA_FACTORIES[area].map(factory=>`<option value="${html(factory)}" ${draft.factory===factory?'selected':''}>${html(factory)}</option>`).join('')}</optgroup>`).join('');
-      return `<section class="r07-batch-card" data-r07-batch-row="${html(draft.key)}"><div class="r07-batch-card-head"><strong>第 ${index+1} 筆廠處紀錄</strong>${batchDrafts.length>1?`<button type="button" class="r07-action" data-r07-batch-remove="${html(draft.key)}">移除此筆</button>`:''}</div><div class="r07-batch-fields"><label>工廠（必選）<select data-r07-batch-field="factory" required><option value="">請選擇工廠…</option>${options}</select><small>廠區自動帶入：<strong data-r07-batch-area>${html(areaOf(draft.factory)||'請先選擇工廠')}</strong></small></label><label>管道編號（新資料必填）<input data-r07-batch-field="pipe" list="r076-pipe-list" maxlength="24" required value="${html(draft.pipe||'')}" placeholder="例如 AL01"></label><label>干擾流量（NM³）<input data-r07-batch-field="amount" type="number" step="any" min="0" required value="${html(draft.amount)}" placeholder="0 或正數"></label><label class="r07-batch-content">內容（必填）<textarea data-r07-batch-field="content" rows="2" maxlength="6000" required>${html(draft.content)}</textarea></label><label>核備日期（必填）<input data-r07-batch-field="approvalDate" type="date" value="${html(draft.approvalDate||'')}" required></label><label>公文（必填）<input data-r07-batch-field="approvalDoc" type="text" maxlength="120" value="${html(draft.approvalDoc||'')}" required placeholder="請輸入公文文號"></label></div></section>`;
+      return `<section class="r07-batch-card" data-r07-batch-row="${html(draft.key)}"><div class="r07-batch-card-head"><strong>第 ${index+1} 筆廠處紀錄</strong>${batchDrafts.length>1?`<button type="button" class="r07-action" data-r07-batch-remove="${html(draft.key)}">移除此筆</button>`:''}</div><div class="r07-batch-fields"><label>工廠（必選）<select data-r07-batch-field="factory" required><option value="">請選擇工廠…</option>${options}</select><small>廠區自動帶入：<strong data-r07-batch-area>${html(areaOf(draft.factory)||'請先選擇工廠')}</strong></small></label><label>管道編號（新資料必填）<input data-r07-batch-field="pipe" list="r076-pipe-list" maxlength="24" required value="${html(draft.pipe||'')}" placeholder="例如 AL01"></label><label>干擾流量（NM³）<input data-r07-batch-field="amount" type="number" step="any" min="0" required value="${html(draft.amount)}" placeholder="0 或正數"></label><label class="r07-batch-content">內容（必填）<textarea data-r07-batch-field="content" rows="2" maxlength="6000" required>${html(draft.content)}</textarea></label><label>核備日期（選填）<input data-r07-batch-field="approvalDate" type="date" value="${html(draft.approvalDate||'')}"></label><label>公文（選填）<input data-r07-batch-field="approvalDoc" type="text" maxlength="120" value="${html(draft.approvalDoc||'')}" placeholder="請輸入公文文號"></label></div></section>`;
     }).join('');
     root.querySelector('[data-r07-batch-count]').textContent=`共 ${batchDrafts.length} 筆廠處紀錄`;
   };
@@ -430,17 +454,15 @@
     if(!date||Number(date.slice(0,4))!==Number(year))throw new Error('日期必須符合目前選取的年度。');
     if(!Array.isArray(drafts)||!drafts.length)throw new Error('請至少新增一筆廠處紀錄。');
     const prepared=drafts.map((draft,index)=>{
-      const factory=normalizeFactory(draft.factory),pipe=normalizePipe(draft.pipe),amount=toAmount(draft.amount),content=String(draft.content||'').trim(),approvalDate=isoDate(draft.approvalDate,year),approvalDoc=String(draft.approvalDoc||'').trim();
+      const factory=normalizeFactory(draft.factory),pipe=normalizePipe(draft.pipe),amount=toAmount(draft.amount),content=String(draft.content||'').trim(),approvalDate=optionalApprovalDate(draft.approvalDate,year),approvalDoc=String(draft.approvalDoc||'').trim();
       if(!factory)throw new Error(`第 ${index+1} 筆：請選擇有效工廠。`);
       if(!validPipe(pipe))throw new Error(`第 ${index+1} 筆：請填寫有效管道編號（英數字）。`);
       if(amount===null)throw new Error(`第 ${index+1} 筆：干擾流量需輸入 0 或正數。`);
       if(!content)throw new Error(`第 ${index+1} 筆：內容不可空白。`);
-      if(!approvalDate||!approvalDoc)throw new Error(`第 ${index+1} 筆：請完整填寫核備日期及公文。`);
       if(factoryForPipe(pipe)&&factoryForPipe(pipe)!==factory&&!confirm(`第 ${index+1} 筆：管道 ${pipe} 的已知對應為 ${factoryForPipe(pipe)}，目前選擇 ${factory}。是否確定？`))throw new Error('已取消工廠／管道不一致的儲存。');
       return normalizeRecord({kind:'interference',date,factory,pipe,amount,content,approvalDate,approvalDoc,source:'manual'});
     });
-    const areaDocs=new Map();prepared.forEach((row,index)=>{const area=areaOf(row.factory),sig=`${row.approvalDate}|${row.approvalDoc}`;if(areaDocs.has(area)&&areaDocs.get(area)!==sig)throw new Error(`${area} 同一日期只能使用一組核備日期及公文，請統一填寫。`);areaDocs.set(area,sig);});
-    return prepared;
+    return harmonizeAreaApprovals(prepared);
   };
   const saveBatchForm=ev=>{
     ev.preventDefault();if(!validateMutation())return;
@@ -465,14 +487,15 @@
     const pipe=kind==='interference'?normalizePipe(root.querySelector('[name="r07-pipe"]').value):'';
     const amount=kind==='interference'?toAmount(root.querySelector('[name="r07-amount"]').value):null;
     const content=root.querySelector('[name="r07-content"]').value.trim();
-    const approvalDate=kind==='event'?isoDate(root.querySelector('[name="r07-approval-date"]').value,selectedYear()):'';
+    const rawApprovalDate=kind==='event'?root.querySelector('[name="r07-approval-date"]').value.trim():'';
+    const approvalDate=kind==='event'?isoDate(rawApprovalDate,selectedYear()):'';
     const approvalDoc=kind==='event'?String(root.querySelector('[name="r07-approval-doc"]').value||'').trim():'';
     if(!date||Number(date.slice(0,4))!==selectedYear())return alert('日期必須符合目前選取的年度。');
     if(kind==='interference'&&!factory)return alert('請選擇有效工廠。');
     if(kind==='interference'&&amount===null)return alert('干擾流量需輸入 0 或正數。');
     if(kind==='interference'&&!validPipe(pipe))return alert('請填寫管道編號。');
     if(!content)return alert('內容不可空白。');
-    if(kind==='event'&&(!approvalDate||!approvalDoc))return alert('請完整填寫核備日期及公文。');
+    if(kind==='event'&&rawApprovalDate&&!approvalDate)return alert('核備日期格式不正確。');
     const target=records.find(r=>r.id===rid);
     if(target&&target.linkedEventId){
       if(date !== target.date) return alert('此紀錄與人工排放事件關聯，不能只從備註畫面修改事件日期；請維持原日期。');
@@ -549,17 +572,18 @@
       if(!date||Number(date.slice(0,4))!==yy||!factory||amount===null||!content){const error=`第 ${index+2} 列：日期／工廠／流量／內容不正確，已略過。`;messages.push(error);errors.push(error);return;}
       if(pipe&&factoryForPipe(pipe)&&factoryForPipe(pipe)!==factory){const error=`第 ${index+2} 列：管道 ${pipe} 的已知工廠為 ${factoryForPipe(pipe)}，與 CSV 的 ${factory} 不一致，請人工修正檔案。`;errors.push(error);messages.push(error);return;}
       if(pipe&&!validPipe(pipe)){const error=`第 ${index+2} 列：管道編號格式不正確。`;errors.push(error);messages.push(error);return;}
-      const approvalDate=ad>=0?isoDate(cells[ad],yy):'',approvalDoc=doc>=0?String(cells[doc]||'').trim():'';
-      if((ad>=0||doc>=0)&&(!approvalDate||!approvalDoc)){const error=`第 ${index+2} 列：核備日期及公文必須同時填寫。`;errors.push(error);messages.push(error);return;}
+      const rawApprovalDate=ad>=0?String(cells[ad]||'').trim():'',approvalDate=rawApprovalDate?isoDate(rawApprovalDate,yy):'',approvalDoc=doc>=0?String(cells[doc]||'').trim():'';
+      if(rawApprovalDate&&!approvalDate){const error=`第 ${index+2} 列：核備日期格式不正確。`;errors.push(error);messages.push(error);return;}
       items.push({kind:'interference',date,factory,pipe,amount,content,approvalDate,approvalDoc,source:'import'});
     });
-    const areaMeta=new Map();items.forEach(row=>{const area=areaOf(row.factory),key=`${row.date}|${area}`,value=`${row.approvalDate}|${row.approvalDoc}`;if(row.approvalDate||row.approvalDoc){if(areaMeta.has(key)&&areaMeta.get(key)!==value)errors.push(`${row.date} ${area}：同一日期同一廠區只能使用一組核備日期及公文。`);else areaMeta.set(key,value);}});
-    if(ad>=0||doc>=0){const grouped=new Map();items.forEach(row=>{const key=`${row.date}|${areaOf(row.factory)}`,sig=`${row.approvalDate}|${row.approvalDoc}`;if(grouped.has(key)&&grouped.get(key)!==sig)errors.push(`${row.date} ${areaOf(row.factory)}：同一日期同一廠區的核備日期及公文必須一致。`);else grouped.set(key,sig);});}
+    let harmonized=items;
+    try{harmonized=harmonizeAreaApprovals(items);}
+    catch(error){errors.push(error.message);messages.push(error.message);}
     const uniques=[],seen=new Set();
-    items.forEach(row=>{const sig=signature(row);if(!seen.has(sig)){seen.add(sig);uniques.push(row);}else messages.push('檔案內有完全重複紀錄，已忽略一筆。');});
+    harmonized.forEach(row=>{const sig=signature(row);if(!seen.has(sig)){seen.add(sig);uniques.push(row);}else messages.push('檔案內有完全重複紀錄，已忽略一筆。');});
     return {items:uniques,messages,errors};
   };
-  // An import is a date+factory GROUP operation; the original rows are never
+  // An import is a date+factory+pipe GROUP operation; the original rows are never
   // implicitly merged away by preview, and unselected groups are untouched.
   const r074Key=r=>`${r.date}|${normalizeFactory(r.factory)}${normalizePipe(r.pipe)?'|'+normalizePipe(r.pipe):''}`;
   const normalizedText=v=>String(v??'').replace(/\r\n?/g,'\n').trim();
@@ -580,8 +604,11 @@
     for(const [key,rows] of incoming){
       const existing=groupOf(serverRecords,key),sameFactory=serverRecords.filter(r=>r.kind==='interference'&&r.date===rows[0].date&&normalizeFactory(r.factory)===normalizeFactory(rows[0].factory)),legacyUnknown=sameFactory.filter(r=>!normalizePipe(r.pipe)),ambiguous=(!normalizePipe(rows[0].pipe)||legacyUnknown.length>0)&&!(sameFactory.every(r=>!normalizePipe(r.pipe))&&!normalizePipe(rows[0].pipe)&&existing.length>0),beforeAmount=groupAmount(existing),afterAmount=groupAmount(rows);
       const beforeText=groupText(existing),afterText=groupText(rows);
-      const beforeApproval=existing.find(r=>r.approvalDate||r.approvalDoc)||{},afterApproval=rows.find(r=>r.approvalDate||r.approvalDoc)||{};
-      const approvalChanged=Boolean((afterApproval.approvalDate||afterApproval.approvalDoc)&&(beforeApproval.approvalDate!==afterApproval.approvalDate||beforeApproval.approvalDoc!==afterApproval.approvalDoc));
+      const areaRecords=serverRecords.filter(r=>r.kind==='interference'&&r.date===rows[0].date&&areaOf(r.factory)===areaOf(rows[0].factory));
+      const beforeApproval={approvalDate:existing.find(r=>r.approvalDate)?.approvalDate||areaRecords.find(r=>r.approvalDate)?.approvalDate||'',approvalDoc:existing.find(r=>r.approvalDoc)?.approvalDoc||areaRecords.find(r=>r.approvalDoc)?.approvalDoc||''};
+      const incomingApproval=rows.find(r=>r.approvalDate||r.approvalDoc)||{};
+      const afterApproval={approvalDate:incomingApproval.approvalDate||beforeApproval.approvalDate||'',approvalDoc:incomingApproval.approvalDoc||beforeApproval.approvalDoc||''};
+      const approvalChanged=Boolean((incomingApproval.approvalDate&&beforeApproval.approvalDate!==incomingApproval.approvalDate)||(incomingApproval.approvalDoc&&beforeApproval.approvalDoc!==incomingApproval.approvalDoc));
       const same=existing.length&&equalAmount(beforeAmount,afterAmount)&&beforeText===afterText&&!approvalChanged;
       const status=ambiguous?'unresolved':!existing.length?'new':same?'same':existing.length>1||!normalizePipe(rows[0].pipe)?'special':'changed';
       output.push({key,date:rows[0].date,factory:rows[0].factory,area:areaOf(rows[0].factory),
@@ -647,7 +674,7 @@
     target.innerHTML=`<p class="r076-ocr-alert">本功能僅辨識你提供的同版型監測表格；圖片只在本機處理，不上傳 OCR 服務。<strong>OCR 數值是累計排放量的預填值，須人工核實是否為當日干擾流量</strong>，不會自動存入 Firebase。</p>
       <p>圖片：${html(ocrDraft.fileName)}｜辨識 ${rows.length} 筆｜辨識方式：${html(ocrDraft.method)}｜0 NM³ 預設不勾選</p>
       <p>各管道正流量顯示合計：${sum.toLocaleString('zh-TW')} NM³｜管編合計：${ocrDraft.referenceTotal===null?'未能辨識，請核對':ocrDraft.referenceTotal.toLocaleString('zh-TW')+' NM³'}${delta!==null?`｜差異：${delta.toFixed(2)} NM³（請人工確認）`:''}</p>${mismatch?'<p class="r07-warn">管道數值合計與管編合計不一致，請逐筆核對，不可直接視為當日流量。</p>':''}
-      <form id="r076-ocr-review"><div class="r07-scroll"><table class="r07-table"><thead><tr><th>選取</th><th>監測日期</th><th>工廠</th><th>管道編號</th><th>管道流量（NM³）</th><th>內容</th><th>核備日期</th><th>公文</th><th>提示</th></tr></thead><tbody>${rows.map((r,i)=>`<tr data-r076-ocr-row="${i}"><td><input type="checkbox" name="include" ${r.amount>0&&!r.review?'checked':''} aria-label="選取第${i+1}筆"></td><td><input type="date" name="date" value="${html(r.date||'')}"></td><td><select name="factory">${factoryOptions(r.factory)}</select></td><td><input name="pipe" maxlength="24" list="r076-pipe-list" value="${html(r.pipe||'')}" placeholder="請確認管道"></td><td><input name="amount" type="number" step="any" min="0" value="${html(r.amount)}"></td><td><textarea name="content" rows="2" maxlength="6000">${html(r.content||'熱擾動')}</textarea></td><td><input type="date" name="approvalDate" required></td><td><input type="text" name="approvalDoc" required maxlength="120" placeholder="公文文號"></td><td>${r.amount===0?'0 NM³／預設不匯入':r.review?'<span class="r07-warn">辨識信心較低，請核對</span>':'請核對'}</td></tr>`).join('')}</tbody></table></div>
+      <form id="r076-ocr-review"><div class="r07-scroll"><table class="r07-table"><thead><tr><th>選取</th><th>監測日期</th><th>工廠</th><th>管道編號</th><th>管道流量（NM³）</th><th>內容</th><th>核備日期</th><th>公文</th><th>提示</th></tr></thead><tbody>${rows.map((r,i)=>`<tr data-r076-ocr-row="${i}"><td><input type="checkbox" name="include" ${r.amount>0&&!r.review?'checked':''} aria-label="選取第${i+1}筆"></td><td><input type="date" name="date" value="${html(r.date||'')}"></td><td><select name="factory">${factoryOptions(r.factory)}</select></td><td><input name="pipe" maxlength="24" list="r076-pipe-list" value="${html(r.pipe||'')}" placeholder="請確認管道"></td><td><input name="amount" type="number" step="any" min="0" value="${html(r.amount)}"></td><td><textarea name="content" rows="2" maxlength="6000">${html(r.content||'熱擾動')}</textarea></td><td><input type="date" name="approvalDate" aria-label="核備日期（選填）"></td><td><input type="text" name="approvalDoc" maxlength="120" aria-label="公文（選填）" placeholder="公文文號"></td><td>${r.amount===0?'0 NM³／預設不匯入':r.review?'<span class="r07-warn">辨識信心較低，請核對</span>':'請核對'}</td></tr>`).join('')}</tbody></table></div>
       <label class="r076-confirm"><input type="checkbox" name="dailyConfirmed" required> 我已對照監測原圖，確認所選資料代表「當日干擾流量」而非未處理的累計讀值。</label>
       <div class="r07-tools"><button type="submit" class="r07-btn primary">核對完成，進入 Firebase 差異比對（尚不寫入）</button><button type="button" class="r07-btn" id="r076-ocr-clear">取消 OCR</button></div></form>`;
   };
@@ -676,17 +703,19 @@
     const items=[],currentYear=selectedYear();
     for(const [i,row] of [...form.querySelectorAll('[data-r076-ocr-row]')].entries()){
       if(!row.querySelector('[name="include"]')?.checked)continue;
-      const date=isoDate(row.querySelector('[name="date"]')?.value,currentYear),approvalDate=isoDate(row.querySelector('[name="approvalDate"]')?.value,currentYear),approvalDoc=String(row.querySelector('[name="approvalDoc"]')?.value||'').trim(),factory=normalizeFactory(row.querySelector('[name="factory"]')?.value),pipe=normalizePipe(row.querySelector('[name="pipe"]')?.value),amount=toAmount(row.querySelector('[name="amount"]')?.value),content=String(row.querySelector('[name="content"]')?.value||'').trim();
+      const date=isoDate(row.querySelector('[name="date"]')?.value,currentYear),rawApprovalDate=String(row.querySelector('[name="approvalDate"]')?.value||'').trim(),approvalDate=isoDate(rawApprovalDate,currentYear),approvalDoc=String(row.querySelector('[name="approvalDoc"]')?.value||'').trim(),factory=normalizeFactory(row.querySelector('[name="factory"]')?.value),pipe=normalizePipe(row.querySelector('[name="pipe"]')?.value),amount=toAmount(row.querySelector('[name="amount"]')?.value),content=String(row.querySelector('[name="content"]')?.value||'').trim();
       if(!date||Number(date.slice(0,4))!==currentYear) return alert(`第 ${i+1} 筆：日期須屬於目前選取年度。`);
-      if(!factory||!validPipe(pipe)||amount===null||amount===0||!content||!approvalDate||!approvalDoc)return alert(`第 ${i+1} 筆：請確認工廠、管道、正流量、內容、核備日期及公文；0 NM³ 不建立紀錄。`);
+      if(rawApprovalDate&&!approvalDate)return alert(`第 ${i+1} 筆：核備日期格式不正確。`);
+      if(!factory||!validPipe(pipe)||amount===null||amount===0||!content)return alert(`第 ${i+1} 筆：請確認工廠、管道、正流量及內容；核備日期、公文可留空，0 NM³ 不建立紀錄。`);
       if(PIPE_FACTORY[pipe]&&PIPE_FACTORY[pipe]!==factory&&!confirm(`第 ${i+1} 筆：管道 ${pipe} 在已知對應中屬於 ${PIPE_FACTORY[pipe]}，目前選擇 ${factory}。是否確定以手動核對結果繼續？`))return;
       items.push({kind:'interference',date,factory,pipe,amount,content,approvalDate,approvalDoc,source:'ocr'});
     }
     if(!items.length)return alert('沒有選取正流量紀錄，未寫入任何資料。');
-    const areaApproval=new Map();for(const row of items){const key=`${row.date}|${areaOf(row.factory)}`,sig=`${row.approvalDate}|${row.approvalDoc}`;if(areaApproval.has(key)&&areaApproval.get(key)!==sig)return alert(`${key.replace('|',' ')}：同一日期同一廠區只能使用一組核備日期及公文。`);areaApproval.set(key,sig);}
+    let mergedItems;
+    try{mergedItems=harmonizeAreaApprovals(items);}catch(error){return alert(error.message);}
     document.getElementById('r076-ocr-results').insertAdjacentHTML('beforeend','<p class="r076-ocr-loading">正在讀取 Firebase 最新資料…</p>');
     try{
-      await stageExternalReview(items,ocrDraft.fileName,'ocr',['OCR 資料已人工確認；來源截圖只在本機使用，不保存到 Firebase。']);
+      await stageExternalReview(mergedItems,ocrDraft.fileName,'ocr',['OCR 資料已人工確認；來源截圖只在本機使用，不保存到 Firebase。']);
       ocrShow(false);ocrDraft=null;
     }catch(err){const msg=document.querySelector('.r076-ocr-loading');if(msg)msg.textContent=`雲端差異比對失敗：${err.message}`;}
   };
@@ -720,8 +749,10 @@
       // Fail the ENTIRE import if any selected group changed since preview.
       if(stableRows(before)!==diff.baseline)throw Error(`雲端資料已變更：${diff.date} ${diff.factory} ${diff.rows[0]?.pipe||''}。請重新取得差異預覽，未覆蓋任何資料。`);
       if(diff.rows[0]?.pipe && base.some(r=>r.kind==='interference'&&r.date===diff.date&&normalizeFactory(r.factory)===diff.factory&&!normalizePipe(r.pipe)))throw Error(`雲端新增了未指定管道的歷史資料：${diff.date} ${diff.factory}，請先人工補正管道再比對。`);
-      const inherited=before.find(r=>r.approvalDate||r.approvalDoc)||{};
-      const after=diff.rows.map(row=>normalizeRecord({...row,approvalDate:row.approvalDate||inherited.approvalDate||'',approvalDoc:row.approvalDoc||inherited.approvalDoc||'',id:id(),year,createdAt:stamp(),source:sourceType==='ocr'?'ocr':'import'}));
+      const areaRecords=base.filter(r=>r.kind==='interference'&&r.date===diff.date&&areaOf(r.factory)===diff.area);
+      const inherited={approvalDate:before.find(r=>r.approvalDate)?.approvalDate||areaRecords.find(r=>r.approvalDate)?.approvalDate||'',approvalDoc:before.find(r=>r.approvalDoc)?.approvalDoc||areaRecords.find(r=>r.approvalDoc)?.approvalDoc||''};
+      // Missing / blank approval fields in an import preserve existing area metadata.
+      const after=diff.rows.map(row=>normalizeRecord({...row,approvalDate:row.approvalDate||inherited.approvalDate,approvalDoc:row.approvalDoc||inherited.approvalDoc,id:id(),year,createdAt:stamp(),source:sourceType==='ocr'?'ocr':'import'}));
       next=next.filter(r=>r074Key(r)!==diff.key||r.kind!=='interference');
       next.push(...after);
       entries.push({key:diff.key,date:diff.date,factory:diff.factory,action:before.length?'replace':'new',before,after});
@@ -819,7 +850,7 @@
       <div class="r07-filter"><label>廠區篩選 <select id="r07-area-filter"><option value="">全部廠區</option>${AREAS.map(a=>`<option value="${a}">${a}</option>`).join('')}</select></label><span>同日同工廠、同管道自動彙總顯示；原始紀錄仍可逐筆修改。</span></div>
       <div class="r07-message" id="r07-message" aria-live="polite"></div><datalist id="r076-pipe-list">${Object.entries(PIPE_FACTORY).map(([pipe,factory])=>`<option value="${html(pipe)}" label="${html(factory)}"></option>`).join('')}</datalist>
       <section id="r076-ocr-panel" class="r07-editor hidden"><h3>OCR 辨識匯入（監測系統表格截圖）</h3><p>選擇圖片或在此區域按 Ctrl+V 貼上截圖。OCR 只在瀏覽器本機辨識，須人工確認後再進入差異比對。</p><div class="r07-tools"><input type="file" id="r076-ocr-file" accept="image/png,image/jpeg,image/webp"><button type="button" class="r07-btn" id="r076-ocr-cancel">關閉 OCR</button></div><div id="r076-ocr-results" aria-live="polite">尚未選擇截圖。</div></section>
-      <form id="r07-editor" class="r07-editor hidden"><div class="r07-form-title" data-r07-form-title>新增紀錄</div><div class="r07-grid"><label>日期（必填）<input name="r07-date" type="date" required></label><label class="r07-factory-field">工廠（必選，廠區自動帶入）<select name="r07-factory"><option value="">請選擇…</option>${AREAS.map(a=>`<optgroup label="${a}">${AREA_FACTORIES[a].map(f=>`<option value="${f}">${f}</option>`).join('')}</optgroup>`).join('')}</select></label><label class="r07-pipe-field">管道編號<input name="r07-pipe" list="r076-pipe-list" maxlength="24" placeholder="例如 AL01"></label><label class="r07-amount-field">干擾流量 (NM³)<input name="r07-amount" type="number" step="any" min="0" placeholder="0 或正數"></label><label class="r07-approval-field">核備日期（必填）<input name="r07-approval-date" type="date" required></label><label class="r07-approval-field">公文（必填）<input name="r07-approval-doc" type="text" maxlength="120" required placeholder="請輸入公文文號"></label><label class="r07-wide">內容（必填）<textarea name="r07-content" rows="3" required maxlength="6000">熱擾動</textarea></label></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存紀錄</button><button type="button" id="r07-cancel" class="r07-btn">取消</button></div></form>
+      <form id="r07-editor" class="r07-editor hidden"><div class="r07-form-title" data-r07-form-title>新增紀錄</div><div class="r07-grid"><label>日期（必填）<input name="r07-date" type="date" required></label><label class="r07-factory-field">工廠（必選，廠區自動帶入）<select name="r07-factory"><option value="">請選擇…</option>${AREAS.map(a=>`<optgroup label="${a}">${AREA_FACTORIES[a].map(f=>`<option value="${f}">${f}</option>`).join('')}</optgroup>`).join('')}</select></label><label class="r07-pipe-field">管道編號<input name="r07-pipe" list="r076-pipe-list" maxlength="24" placeholder="例如 AL01"></label><label class="r07-amount-field">干擾流量 (NM³)<input name="r07-amount" type="number" step="any" min="0" placeholder="0 或正數"></label><label class="r07-approval-field">核備日期（選填）<input name="r07-approval-date" type="date"></label><label class="r07-approval-field">公文（選填）<input name="r07-approval-doc" type="text" maxlength="120" placeholder="請輸入公文文號"></label><label class="r07-wide">內容（必填）<textarea name="r07-content" rows="3" required maxlength="6000">熱擾動</textarea></label></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存紀錄</button><button type="button" id="r07-cancel" class="r07-btn">取消</button></div></form>
       <form id="r07-batch-editor" class="r07-editor hidden"><div class="r07-form-title">干擾流量批次新增</div><div class="r07-batch-date"><label>日期（共用，必填）<input name="r07-batch-date" type="date" required></label><p>選擇一次日期，即可新增同一天不同工廠的多筆干擾流量；每個工廠的流量與內容分別填寫。</p></div><div id="r07-batch-items"></div><div class="r07-tools"><button type="button" id="r07-batch-add" class="r07-btn">＋ 新增廠處</button><span class="r07-batch-count" data-r07-batch-count></span></div><div class="r07-tools"><button type="submit" class="r07-btn primary">儲存當日所有紀錄</button><button type="button" id="r07-batch-cancel" class="r07-btn">取消</button></div></form>
       <div id="r078-approval-modal" class="r078-modal hidden" aria-live="polite"></div><div id="r07-results"></div>
       <section id="r07-import-panel" class="r07-import hidden"><h3>Excel／CSV 干擾流量匯入與差異比對</h3><p>使用標準欄位「日期、工廠、管道編號、干擾流量 (NM³)、內容」。上傳後會重新讀取 Firebase 雲端資料，比對「日期＋工廠＋管道編號」的流量和內容；先逐筆勾選，再進行交易提交，沒有選取的資料不變。</p><div class="r07-tools"><button type="button" class="r07-btn" id="r07-template">下載 CSV 範本</button><input type="file" id="r07-file" accept=".xlsx,.xls,.csv"><button type="button" id="r07-confirm-import" class="r07-btn primary" disabled>確認已選取差異並儲存雲端</button><button type="button" id="r074-history-toggle" class="r07-btn">匯入歷史／復原</button></div><div id="r07-import-preview" aria-live="polite"></div><section id="r074-history" class="r074-history hidden"></section></section>`;

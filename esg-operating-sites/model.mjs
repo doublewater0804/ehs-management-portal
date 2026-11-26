@@ -24,3 +24,43 @@ export function planImport(incoming,records){
  return {rows:result,missing:active.filter(r=>!used.has(r.id))};
 }
 export function stats(records){const active=records.filter(r=>!r.deleted);let groups={};for(const [label,i] of [['公司別',0],['主要公司',3],['地區',2],['主要產業',5]]){let m=new Map();for(const r of active){let v=(i===2?(r.region||region(r.values[i])):r.values[i])||'未填寫';m.set(v,(m.get(v)||0)+1);}groups[label]=[...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'zh-Hant'));}let tw=active.filter(r=>/^台灣/.test(r.region||region(r.values[2]))).length;let unknown=active.filter(r=>!clean(r.region||region(r.values[2]))).length;return {total:active.length,companies:groups['主要公司'].filter(x=>x[0]!=='未填寫').length,tw,overseas:active.length-tw-unknown,unknown,groups};}
+
+// R0.2: group active records by company category and normalized legal company name.
+// Never infer ownership or a legal domicile from a site address.
+const parentNames={'台化':'台灣化學纖維股份有限公司','福懋':'福懋興業股份有限公司','台塑生醫':'台塑生醫科技股份有限公司'};
+const groupOrder=['台化','福懋','台塑生醫'];
+const companyNorm=v=>norm(v).replace(/^臺灣/,'台灣');
+const compare=(a,b)=>a.localeCompare(b,'zh-Hant');
+export function countryOf(v){
+ const s=region(v), n=norm(s);
+ if(!n)return '';
+ if(/^(台灣|taiwan)(?:\s|$)/i.test(s)||/^(台灣|臺灣)[\u4e00-\u9fff]/.test(s))return '台灣';
+ if(/^香港$|^hong kong$/i.test(s))return '香港';
+ if(/^澳門$|^maca[ou]$/i.test(s))return '澳門';
+ if(/^apia$|^samoa$|^薩摩亞(?:\s|$)/i.test(s))return '薩摩亞';
+ const countries=['中國','越南','日本','韓國','開曼群島','美國','加拿大','英國','法國','德國','澳洲','澳大利亞','紐西蘭','新加坡','馬來西亞','泰國','印尼','印度','菲律賓','柬埔寨','緬甸','寮國','義大利','荷蘭','比利時','西班牙','瑞士','瑞典','丹麥','挪威','芬蘭','墨西哥','巴西','阿聯酋','南非','英屬維京群島','新西蘭'];
+ const c=countries.find(c=>s===c||s.startsWith(c+' '));
+ if(c)return ({澳大利亞:'澳洲',新西蘭:'紐西蘭'})[c]||c;
+ const en={china:'中國',vietnam:'越南',japan:'日本',korea:'韓國','south korea':'韓國','cayman islands':'開曼群島',usa:'美國','united states':'美國',singapore:'新加坡'};
+ return Object.entries(en).find(([k])=>n===k||n.startsWith(k+' '))?.[1]||'';
+}
+export function companyOverview(records){
+ const groups=new Map(), countries=new Set();let total=0;
+ for(const r of records){if(r.deleted)continue;total++;const group=clean(r.values?.[0])||'未填寫公司別', name=clean(r.values?.[3])||'未填寫主要公司';
+  const gk=companyNorm(group), ck=companyNorm(name);let g=groups.get(gk);if(!g){g={name:group,key:gk,companies:new Map()};groups.set(gk,g);}
+  let c=g.companies.get(ck);if(!c){c={key:JSON.stringify([gk,ck]),name,group:g.name,parent:!!parentNames[g.name]&&companyNorm(parentNames[g.name])===ck,sites:[]};g.companies.set(ck,c);}
+  const country=countryOf(clean(r.region)||r.values?.[2]);countries.add(country||'未分類');c.sites.push({record:r,country});
+ }
+ const counts={total:0,parent:0,domestic:0,overseas:0,uncertain:0,records:total};
+ const result=[...groups.values()].map(g=>{const companies=[...g.companies.values()].map(c=>{const locations=[...new Set(c.sites.map(s=>s.country))].sort(compare);const hasDomestic=locations.includes('台灣'),hasOverseas=locations.some(x=>x&&x!=='台灣'),hasUnknown=locations.includes('');const category=c.parent?'parent':hasUnknown||hasDomestic&&hasOverseas?'uncertain':hasDomestic?'domestic':'overseas';return {...c,locations,category,issue:hasDomestic&&hasOverseas?'同時具有國內及海外紀錄':hasUnknown?'含未分類地區': '',country:category==='overseas'?(locations.length===1?locations[0]:'多國／地區'):''};}).sort((a,b)=>compare(a.name,b.name));
+  const n={total:companies.length,parent:0,domestic:0,overseas:0,uncertain:0,records:0};for(const c of companies){n[c.category]++;n.records+=c.sites.length;counts[c.category]++;counts.total++;}return {name:g.name,key:g.key,companies,counts:n};
+ }).sort((a,b)=>{const rank=n=>groupOrder.includes(n)?groupOrder.indexOf(n):99;return rank(a.name)-rank(b.name)||compare(a.name,b.name);});
+ return {groups:result,counts,countries:[...countries].sort(compare)};
+}
+export function filterOverview(overview,filters={}){
+ return overview.groups.filter(g=>!filters.group||g.key===filters.group).map(g=>({...g,companies:g.companies.flatMap(c=>{
+  const sites=c.sites.filter(s=>{if(filters.scope==='domestic'&&s.country!=='台灣')return false;if(filters.scope==='overseas'&&(!s.country||s.country==='台灣'))return false;if(filters.scope==='unknown'&&s.country)return false;if(filters.country&&(s.country||'未分類')!==filters.country)return false;return !filters.q||norm([c.name,c.group,s.country,...s.record.values].join(' ')).includes(norm(filters.q));});
+  return sites.length?[{...c,visibleSites:sites}]:[];
+ })})).filter(g=>g.companies.length);
+}
+export function monthlyChanges(history){const m=new Map();for(const h of history){let k=month(h.at);if(!k||!['new','update','delete','restore'].includes(h.action))continue;if(!m.has(k))m.set(k,{new:0,update:0,delete:0,restore:0});m.get(k)[h.action]++;}return [...m].sort((a,b)=>b[0].localeCompare(a[0]));}

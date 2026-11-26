@@ -1,6 +1,7 @@
 // R0.3: register new modules in the portal's native data pipeline.
 // Existing cloud entries (including hidden or reclassified entries) take precedence.
 const registrations = [
+  {id: 'esg-operating-sites', title: '台化營運據點管理系統', description: '營運據點清單、Excel 匯入匯出、統計分析與異動追溯。', href: 'esg-operating-sites/index.html?v=r01', category: 'esg', order: 90, visible: true, favorite: false},
   {
     id: 'air-emergency-drill-r01', title: '空氣污染突發事故緊急應變演練管理系統',
     description: '麥寮廠與海豐廠年度應變演練輪值、演練日期、30日備查期限與發文管制，含廠區廠處基本資料、法規重點與 Excel 管理。',

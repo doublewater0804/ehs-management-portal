@@ -1,5 +1,5 @@
-import {registeredRows} from './builtins.js?v=20261119-air-emergency-r01';
-import {categories,validateRows,sorted} from './model.js?v=20260916-v3';
+import {registeredRows} from './builtins.js?v=20261126-esg-r01';
+import {categories,validateRows,sorted} from './model.js?v=20261126-esg-r01';
 import {CLOUD_ENABLED,ADMIN_EMAIL} from './config.js';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

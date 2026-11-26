@@ -1,0 +1,15 @@
+台化營運據點管理系統 R0.1｜2026-11-26
+原始碼：使用者提供 ehs-management-portal-main (2)(3).zip，ZIP commit 標記 4a433bfdc08caef963aa0c3e890d0497aae56709。
+
+1. 先在 GitHub 下載目前正式版備份，確認自提供 ZIP 後無其他更新。若已有新版，先比對本次四個入口文件，避免覆蓋新功能。
+2. 解壓縮 EHS_ESG_Operating_Sites_R0.1.zip。內有 ehs-management-portal-main 包裝目錄；不要把這個目錄本身上傳至 Repo 根目錄。
+3. 開啟 https://github.com/doublewater0804/ehs-management-portal ，確認分支（基準為 main）。
+4. 建議最小異動部署：將根目錄 index.html、portal/ 下 app.js、model.js、builtins.js 覆蓋到原相同路徑；新增整個 esg-operating-sites/ 目錄。可利用 GitHub Add file > Upload files 或 Git 工具，核對相對路徑。完整 ZIP 也保留原專案全部檔案，不需要重新上傳無異動的子系統。
+5. 提交前核對只有上述四個原檔及新目錄有變更。不需要變更 Firebase Web Config、Rules、Auth、Storage、GitHub Actions。
+6. GitHub Pages 完成發布後，開啟 https://doublewater0804.github.io/ehs-management-portal/ ，強制重新整理。登入，確認 ESG 位於環保管理後面，點選營運據點系統。
+7. 首次進入預期 0 筆，點 Excel 匯入，選原始「20261016_台化營運據點清單(報導期間2026年).xlsx」，確認預覽 52 筆新增（若曾匯入，依實際雲端資料差異），核對後才按確認。原始 Excel 不在部署包中。
+8. 首次匯入後驗證 52 筆、30 家主要公司、台灣 36 筆、海外 16 筆。重匯同一份原始檔預期 52 筆相同、無異動。修改/刪除測試請另建一筆明確的測試資料，測完移入回收區；不要修改正式資料作測試。
+9. PDF 透過瀏覽器列印對話框另存 PDF（A3 橫式，保留所有11欄），並非獨立PDF引擎。Excel 匯出「台化」表前11欄照原順序，第12欄系統ID為回匯識別碼，另有管理資訊、統計、異動紀錄。回匯請保留系統ID。使用 .xlsx，不支援舊 .xls。瀏覽器須支援 DecompressionStream deflate-raw（較新 Safari/Chromium），若不支援請更新瀏覽器或改用近期版本的 Chrome/Edge。
+10. 依驗收紀錄逐項測試正式登入、寫入、重新整理、權限與真實 iPad/iPhone。所有正式操作由使用者自行執行。
+
+備註：匯入每批最多200筆異動；資料庫版本衝突時請先取消未儲存內容並重新載入。來源欄位空白不自動補值；缺失既有資料不自動刪除；疑似同筆必須人工選擇更新或新增；回收資料需先恢復。現有下拉選單修改只變更選項，不批次改寫既有資料。清單統計不等同實體據點數。

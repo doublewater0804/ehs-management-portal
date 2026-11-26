@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';import {fields,parseRows,planImport,stats,region,month,diff} from './model.mjs';
+const a=['甲','DUP','台灣 台北','甲公司','A','塑膠','甲廠','A','','',''],b=['甲','DUP','中國 香港','乙公司','B','紡織','乙廠','B','','',''];
+const incoming=parseRows([fields,a,b]);assert.equal(incoming.length,2);assert.equal(planImport(incoming,[]).rows.filter(x=>x.kind==='new').length,2);
+const rec=[{id:'1',values:a,region:region(a[2])},{id:'2',values:b,region:region(b[2])}];assert.equal(planImport(incoming,rec).rows.filter(x=>x.kind==='same').length,2);
+let next=[...a];next[10]='新窗口';let p=planImport(parseRows([fields,next]),rec);assert.equal(p.rows[0].kind,'review');assert.equal(p.rows[0].candidates.length,2);assert.equal(p.rows[0].include,false);assert.equal(p.missing.length,2);
+p=planImport(parseRows([[...fields,'系統ID'],[...next,'1']]),rec);assert.equal(p.rows[0].kind,'update');assert.equal(p.rows[0].target,'1');assert.equal(p.missing.length,1);
+assert.equal(planImport(incoming,[{...rec[0],deleted:true}]).rows[0].kind,'review');assert.equal(planImport(parseRows([fields,a,a]),[]).rows[1].kind,'duplicate');assert.equal(stats(rec).tw,1);assert.equal(stats(rec).overseas,1);assert.equal(stats([{...rec[0],deleted:true},rec[1]]).total,1);assert.equal(region('中國 香港'),'香港');assert.equal(month('2026-11-30T16:00:00Z'),'2026-12');assert.equal(diff(a,next).length,1);assert.throws(()=>parseRows([['FID'],['a']]));console.log('ESG model assertions passed');

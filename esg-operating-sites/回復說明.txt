@@ -1,0 +1,2 @@
+若新版入口異常，停止匯入與資料編輯。從部署前備份或 Git commit 還原 index.html、portal/app.js、portal/model.js、portal/builtins.js；若確定沒有後續合法變更，亦可回復此次 commit。新增 esg-operating-sites/ 可保留但不顯示，或在確認後另行移除該目錄。GitHub 網頁上傳不會自動刪除舊檔。若曾在入口後台儲存 ESG 分類至雲端 catalog，還原不認識 ESG 的舊程式前須先在新版後台將 ESG 項目移出/移除，並備份 catalog，否則舊版可能拒絕新分類；不得直接清空 catalog。
+前端版本回復不會刪除 Firestore 資料。獨立 ESG Collection 可保留，不應任意刪除；若需復原單筆資料，優先使用回收區或依歷程手動修改；若需完整資料回復，須另行備份與授權。不得修改其他 EHS 資料、Rules、Auth、Storage、Actions。
